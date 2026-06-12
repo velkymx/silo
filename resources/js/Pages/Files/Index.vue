@@ -8,6 +8,7 @@ const props = defineProps({
     files: { type: Array, default: () => [] },
     current: { type: Object, default: null },
     breadcrumbs: { type: Array, default: () => [] },
+    allFolders: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
 
@@ -67,6 +68,21 @@ function iconFor(type) {
     return 'file-earmark';
 }
 
+const rowActions = [
+    { text: 'Rename', action: 'rename', icon: 'pencil' },
+    { text: 'Move', action: 'move', icon: 'arrows-move' },
+    { text: 'Copy', action: 'copy', icon: 'files' },
+    { divider: true },
+    { text: 'Delete', action: 'delete', icon: 'trash' },
+];
+
+function onAction(item, { item: action }) {
+    if (action.action === 'rename') openRename(item);
+    if (action.action === 'move') openTransfer(item, 'move');
+    if (action.action === 'copy') openTransfer(item, 'copy');
+    if (action.action === 'delete') destroy(item);
+}
+
 // ----- Preview modal -----
 const previewOpen = ref(false);
 const previewUrl = ref('');
@@ -111,15 +127,82 @@ function submitFolder() {
     });
 }
 
-// ----- Delete -----
-function destroy(id, label) {
-    if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
-    router.delete(`/delete/${id}`, { preserveScroll: true });
+// ----- Rename -----
+const renameOpen = ref(false);
+const renameItem = ref(null);
+const renameForm = useForm({ name: '' });
+
+function openRename(item) {
+    renameItem.value = item;
+    renameForm.clearErrors();
+    renameForm.name = item.name;
+    renameOpen.value = true;
 }
 
-const uploadProgress = computed(() =>
-    uploadForm.progress ? [{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }] : []
-);
+function submitRename() {
+    renameForm.patch(`/files/${renameItem.value.id}/rename`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            renameOpen.value = false;
+        },
+    });
+}
+
+// ----- Move / Copy -----
+const transferOpen = ref(false);
+const transferMode = ref('move');
+const transferItem = ref(null);
+const transferForm = useForm({ target_id: null });
+
+// Folders the item cannot be moved/copied into (itself + its descendants).
+function descendantIds(folderId) {
+    const ids = new Set([folderId]);
+    let added = true;
+    while (added) {
+        added = false;
+        for (const f of props.allFolders) {
+            if (f.parent_id && ids.has(f.parent_id) && !ids.has(f.id)) {
+                ids.add(f.id);
+                added = true;
+            }
+        }
+    }
+    return ids;
+}
+
+const destinationOptions = computed(() => {
+    const item = transferItem.value;
+    const excluded = item?.is_dir ? descendantIds(item.id) : new Set();
+    const options = [{ value: null, text: 'Home (root)' }];
+    for (const f of props.allFolders) {
+        if (!excluded.has(f.id)) options.push({ value: f.id, text: f.name });
+    }
+    return options;
+});
+
+function openTransfer(item, mode) {
+    transferItem.value = { ...item, is_dir: item.item_count !== undefined };
+    transferMode.value = mode;
+    transferForm.clearErrors();
+    transferForm.target_id = null;
+    transferOpen.value = true;
+}
+
+function submitTransfer() {
+    const url = `/files/${transferItem.value.id}/${transferMode.value}`;
+    transferForm.post(url, {
+        preserveScroll: true,
+        onSuccess: () => {
+            transferOpen.value = false;
+        },
+    });
+}
+
+// ----- Delete -----
+function destroy(item) {
+    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+    router.delete(`/delete/${item.id}`, { preserveScroll: true });
+}
 </script>
 
 <template>
@@ -168,12 +251,23 @@ const uploadProgress = computed(() =>
                 </VibeButton>
             </template>
             <template #cell(actions)="{ item }">
-                <VibeButton variant="info" size="sm" @click="visitFolder(item.id)">
-                    <VibeIcon icon="box-arrow-in-right" />
-                </VibeButton>
-                <VibeButton variant="danger" size="sm" outline class="ms-1" @click="destroy(item.id, item.name)">
-                    <VibeIcon icon="trash" />
-                </VibeButton>
+                <div class="d-flex justify-content-end gap-1">
+                    <VibeButton variant="info" size="sm" @click="visitFolder(item.id)">
+                        <VibeIcon icon="box-arrow-in-right" />
+                    </VibeButton>
+                    <VibeDropdown
+                        size="sm"
+                        variant="secondary"
+                        menu-end
+                        :items="rowActions"
+                        @item-click="onAction(item, $event)"
+                    >
+                        <template #button><VibeIcon icon="three-dots-vertical" /></template>
+                        <template #item="{ item: a }">
+                            <VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}
+                        </template>
+                    </VibeDropdown>
+                </div>
             </template>
         </VibeDataTable>
 
@@ -190,32 +284,41 @@ const uploadProgress = computed(() =>
                 <VibeIcon :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
             </template>
             <template #cell(actions)="{ item }">
-                <VibeButton variant="success" size="sm" :href="`/download/${item.id}`">
-                    <VibeIcon icon="download" />
-                </VibeButton>
-                <VibeButton
-                    v-if="imageTypes.includes(item.type)"
-                    variant="primary"
-                    size="sm"
-                    outline
-                    class="ms-1"
-                    @click="preview(item)"
-                >
-                    <VibeIcon icon="eye" />
-                </VibeButton>
-                <VibeButton
-                    v-else-if="item.type === 'pdf'"
-                    variant="warning"
-                    size="sm"
-                    outline
-                    class="ms-1"
-                    :href="item.url"
-                >
-                    <VibeIcon icon="eye" />
-                </VibeButton>
-                <VibeButton variant="danger" size="sm" outline class="ms-1" @click="destroy(item.id, item.name)">
-                    <VibeIcon icon="trash" />
-                </VibeButton>
+                <div class="d-flex justify-content-end gap-1">
+                    <VibeButton variant="success" size="sm" :href="`/download/${item.id}`">
+                        <VibeIcon icon="download" />
+                    </VibeButton>
+                    <VibeButton
+                        v-if="imageTypes.includes(item.type)"
+                        variant="primary"
+                        size="sm"
+                        outline
+                        @click="preview(item)"
+                    >
+                        <VibeIcon icon="eye" />
+                    </VibeButton>
+                    <VibeButton
+                        v-else-if="item.type === 'pdf'"
+                        variant="warning"
+                        size="sm"
+                        outline
+                        :href="item.url"
+                    >
+                        <VibeIcon icon="eye" />
+                    </VibeButton>
+                    <VibeDropdown
+                        size="sm"
+                        variant="secondary"
+                        menu-end
+                        :items="rowActions"
+                        @item-click="onAction(item, $event)"
+                    >
+                        <template #button><VibeIcon icon="three-dots-vertical" /></template>
+                        <template #item="{ item: a }">
+                            <VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}
+                        </template>
+                    </VibeDropdown>
+                </div>
             </template>
         </VibeDataTable>
 
@@ -239,7 +342,11 @@ const uploadProgress = computed(() =>
                 <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">
                     {{ uploadForm.errors['files.0'] }}
                 </p>
-                <VibeProgress v-if="uploadForm.progress" :bars="uploadProgress" class="my-3" />
+                <VibeProgress
+                    v-if="uploadForm.progress"
+                    :bars="[{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }]"
+                    class="my-3"
+                />
                 <div class="text-end mt-3">
                     <VibeButton
                         type="submit"
@@ -264,6 +371,40 @@ const uploadProgress = computed(() =>
                 </VibeFormGroup>
                 <div class="text-end mt-3">
                     <VibeButton type="submit" variant="primary" :disabled="folderForm.processing">Create</VibeButton>
+                </div>
+            </form>
+        </VibeModal>
+
+        <!-- Rename modal -->
+        <VibeModal v-model="renameOpen" title="Rename" hide-footer>
+            <form @submit.prevent="submitRename">
+                <VibeFormGroup
+                    label="New Name"
+                    :validation-state="renameForm.errors.name ? 'invalid' : null"
+                    :validation-message="renameForm.errors.name"
+                >
+                    <VibeFormInput v-model="renameForm.name" required />
+                </VibeFormGroup>
+                <div class="text-end mt-3">
+                    <VibeButton type="submit" variant="primary" :disabled="renameForm.processing">Rename</VibeButton>
+                </div>
+            </form>
+        </VibeModal>
+
+        <!-- Move / Copy modal -->
+        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" hide-footer>
+            <form @submit.prevent="submitTransfer">
+                <VibeFormGroup
+                    label="Destination Folder"
+                    :validation-state="transferForm.errors.target_id ? 'invalid' : null"
+                    :validation-message="transferForm.errors.target_id"
+                >
+                    <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
+                </VibeFormGroup>
+                <div class="text-end mt-3">
+                    <VibeButton type="submit" variant="primary" :disabled="transferForm.processing">
+                        {{ transferMode === 'move' ? 'Move' : 'Copy' }}
+                    </VibeButton>
                 </div>
             </form>
         </VibeModal>

@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\File;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class FileController extends Controller
@@ -49,6 +52,9 @@ class FileController extends Controller
             'files' => $files,
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
+            // Flat list of every folder the user owns — used by the move/copy destination picker.
+            'allFolders' => File::folders()->where('owner_id', $userId)
+                ->orderBy('name')->get(['id', 'name', 'parent_id']),
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'sort' => $sort,
@@ -92,11 +98,11 @@ class FileController extends Controller
 
         $userId = auth()->id();
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
-        $dir = $parent?->path ?? "uploads/{$userId}";
         $disk = config('filemanager.disk');
 
         foreach ($request->file('files', []) as $upload) {
-            $path = $upload->store($dir, $disk);
+            // Storage is flat per user; the folder hierarchy lives entirely in the DB.
+            $path = $upload->store("uploads/{$userId}", $disk);
 
             File::create([
                 'name' => $upload->getClientOriginalName(),
@@ -131,16 +137,15 @@ class FileController extends Controller
     {
         $this->authorize('delete', $file);
 
-        $disk = Storage::disk($file->disk);
+        DB::transaction(function () use ($file) {
+            if ($file->is_dir) {
+                $this->deleteSubtree($file);
+            } else {
+                Storage::disk($file->disk)->delete($file->path);
+            }
 
-        if ($file->is_dir) {
-            $disk->deleteDirectory($file->path);
-            $this->deleteSubtree($file);
-        } else {
-            $disk->delete($file->path);
-        }
-
-        $file->delete();
+            $file->delete();
+        });
 
         return redirect()->route('files.index', ['folder' => $file->parent_id])
             ->with('success', 'Deleted successfully!');
@@ -156,16 +161,14 @@ class FileController extends Controller
 
         $userId = auth()->id();
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
-        $name = (string) $request->string('folder_name');
-        $disk = config('filemanager.disk');
+        $name = trim((string) $request->string('folder_name'));
 
-        $path = ($parent?->path ?? "uploads/{$userId}")."/{$name}";
-        Storage::disk($disk)->makeDirectory($path);
+        $this->assertNoCollision($parent?->id, $name, $userId);
 
         File::create([
             'name' => $name,
-            'path' => $path,
-            'disk' => $disk,
+            'path' => $name, // informational only; folders have no disk directory
+            'disk' => config('filemanager.disk'),
             'is_dir' => true,
             'parent_id' => $parent?->id,
             'owner_id' => $userId,
@@ -173,6 +176,65 @@ class FileController extends Controller
 
         return redirect()->route('files.index', ['folder' => $parent?->id])
             ->with('success', "Folder '{$name}' created successfully!");
+    }
+
+    // Rename a file or folder (display name only; storage path is stable).
+    public function rename(Request $request, File $file)
+    {
+        $this->authorize('update', $file);
+
+        $request->validate(['name' => 'required|string|max:255']);
+        $name = trim((string) $request->string('name'));
+
+        $this->assertNoCollision($file->parent_id, $name, $file->owner_id, $file->id);
+
+        $file->update(['name' => $name]);
+
+        return back()->with('success', 'Renamed successfully!');
+    }
+
+    // Move a file or folder into another folder (DB reparent only).
+    public function move(Request $request, File $file)
+    {
+        $this->authorize('update', $file);
+
+        $request->validate(['target_id' => 'nullable|integer|exists:files,id']);
+        $target = $this->resolveFolder($request->input('target_id'), $file->owner_id);
+
+        if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
+            throw ValidationException::withMessages([
+                'target_id' => 'Cannot move a folder into itself or one of its subfolders.',
+            ]);
+        }
+
+        $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
+
+        $file->update(['parent_id' => $target?->id]);
+
+        return redirect()->route('files.index', ['folder' => $target?->id])
+            ->with('success', 'Moved successfully!');
+    }
+
+    // Copy a file or folder (deep) into another folder.
+    public function copy(Request $request, File $file)
+    {
+        $this->authorize('view', $file);
+
+        $request->validate(['target_id' => 'nullable|integer|exists:files,id']);
+        $target = $this->resolveFolder($request->input('target_id'), $file->owner_id);
+
+        if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
+            throw ValidationException::withMessages([
+                'target_id' => 'Cannot copy a folder into itself or one of its subfolders.',
+            ]);
+        }
+
+        $name = $this->uniqueName($target?->id, $file->name, $file->owner_id);
+
+        DB::transaction(fn () => $this->copyNode($file, $target?->id, $name));
+
+        return redirect()->route('files.index', ['folder' => $target?->id])
+            ->with('success', 'Copied successfully!');
     }
 
     // Navigate into a folder resolved by DB id.
@@ -196,15 +258,101 @@ class FileController extends Controller
         return $folder;
     }
 
-    // Recursively soft-delete a folder's descendants.
+    // Recursively delete a folder's descendants (DB rows + file blobs).
     protected function deleteSubtree(File $folder): void
     {
         foreach ($folder->children as $child) {
             if ($child->is_dir) {
                 $this->deleteSubtree($child);
+            } else {
+                Storage::disk($child->disk)->delete($child->path);
             }
 
             $child->delete();
         }
+    }
+
+    // Recursively copy a node under a new parent, duplicating file blobs.
+    protected function copyNode(File $source, ?int $parentId, string $name): File
+    {
+        $disk = config('filemanager.disk');
+        $path = $source->name; // folder placeholder
+
+        if (! $source->is_dir) {
+            $path = "uploads/{$source->owner_id}/".Str::random(40);
+            if ($extension = pathinfo($source->path, PATHINFO_EXTENSION)) {
+                $path .= ".{$extension}";
+            }
+            Storage::disk($source->disk)->copy($source->path, $path);
+        }
+
+        $copy = File::create([
+            'name' => $name,
+            'path' => $path,
+            'disk' => $source->is_dir ? $disk : $source->disk,
+            'is_dir' => $source->is_dir,
+            'mime' => $source->mime,
+            'size' => $source->size,
+            'hash' => $source->hash,
+            'parent_id' => $parentId,
+            'owner_id' => $source->owner_id,
+        ]);
+
+        if ($source->is_dir) {
+            foreach ($source->children as $child) {
+                $this->copyNode($child, $copy->id, $child->name);
+            }
+        }
+
+        return $copy;
+    }
+
+    // True when $target is $folder itself or sits inside its subtree.
+    protected function isSelfOrDescendant(File $folder, File $target): bool
+    {
+        for ($node = $target; $node; $node = $node->parent) {
+            if ($node->id === $folder->id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Reject a name that already exists among siblings.
+    protected function assertNoCollision(?int $parentId, string $name, int $ownerId, ?int $ignoreId = null): void
+    {
+        $exists = File::where('owner_id', $ownerId)
+            ->where('parent_id', $parentId)
+            ->where('name', $name)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'name' => "An item named \"{$name}\" already exists here.",
+            ]);
+        }
+    }
+
+    // Produce a non-colliding name by appending "(copy)" / "(copy N)".
+    protected function uniqueName(?int $parentId, string $name, int $ownerId): string
+    {
+        $base = $name;
+        $extension = '';
+        if (($dot = strrpos($name, '.')) !== false && $dot > 0) {
+            $base = substr($name, 0, $dot);
+            $extension = substr($name, $dot);
+        }
+
+        $candidate = $name;
+        $n = 0;
+        while (File::where('owner_id', $ownerId)->where('parent_id', $parentId)->where('name', $candidate)->exists()) {
+            $n++;
+            $suffix = $n === 1 ? ' (copy)' : " (copy {$n})";
+            $candidate = "{$base}{$suffix}{$extension}";
+        }
+
+        return $candidate;
     }
 }
