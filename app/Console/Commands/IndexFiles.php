@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 
-#[Signature('files:index {--disk=public : The filesystem disk to index}')]
+#[Signature('files:index {--disk= : The filesystem disk to index (defaults to filemanager.disk)}')]
 #[Description('Index existing disk contents into the files table')]
 class IndexFiles extends Command
 {
@@ -19,7 +19,8 @@ class IndexFiles extends Command
      */
     public function handle(): int
     {
-        $disk = Storage::disk($diskName = $this->option('disk'));
+        $diskName = $this->option('disk') ?: config('filemanager.disk');
+        $disk = Storage::disk($diskName);
 
         $count = 0;
 

@@ -42,21 +42,22 @@ class FileController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'files.*' => 'required|file|max:5120', // Each file must not exceed 5MB
+            'files.*' => 'required|file|max:'.config('filemanager.max_upload_kb'),
             'parent_id' => 'nullable|integer|exists:files,id',
         ]);
 
         $userId = auth()->id();
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
         $dir = $parent?->path ?? "uploads/{$userId}";
+        $disk = config('filemanager.disk');
 
         foreach ($request->file('files', []) as $upload) {
-            $path = $upload->store($dir, 'public');
+            $path = $upload->store($dir, $disk);
 
             File::create([
                 'name' => $upload->getClientOriginalName(),
                 'path' => $path,
-                'disk' => 'public',
+                'disk' => $disk,
                 'is_dir' => false,
                 'mime' => $upload->getClientMimeType(),
                 'size' => $upload->getSize(),
@@ -112,14 +113,15 @@ class FileController extends Controller
         $userId = auth()->id();
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
         $name = (string) $request->string('folder_name');
+        $disk = config('filemanager.disk');
 
         $path = ($parent?->path ?? "uploads/{$userId}")."/{$name}";
-        Storage::disk('public')->makeDirectory($path);
+        Storage::disk($disk)->makeDirectory($path);
 
         File::create([
             'name' => $name,
             'path' => $path,
-            'disk' => 'public',
+            'disk' => $disk,
             'is_dir' => true,
             'parent_id' => $parent?->id,
             'owner_id' => $userId,
