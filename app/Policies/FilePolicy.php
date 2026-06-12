@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\File;
+use App\Models\Permission;
 use App\Models\User;
 
 class FilePolicy
@@ -28,7 +29,7 @@ class FilePolicy
      */
     public function view(User $user, File $file): bool
     {
-        return $user->id === $file->owner_id;
+        return $this->grants($user, $file, Permission::ABILITY_READ);
     }
 
     /**
@@ -44,7 +45,7 @@ class FilePolicy
      */
     public function update(User $user, File $file): bool
     {
-        return $user->id === $file->owner_id;
+        return $this->grants($user, $file, Permission::ABILITY_WRITE);
     }
 
     /**
@@ -52,7 +53,15 @@ class FilePolicy
      */
     public function delete(User $user, File $file): bool
     {
-        return $user->id === $file->owner_id;
+        return $this->grants($user, $file, Permission::ABILITY_DELETE);
+    }
+
+    /**
+     * Determine whether the user can share the model.
+     */
+    public function share(User $user, File $file): bool
+    {
+        return $this->grants($user, $file, Permission::ABILITY_SHARE);
     }
 
     /**
@@ -69,5 +78,30 @@ class FilePolicy
     public function forceDelete(User $user, File $file): bool
     {
         return $user->id === $file->owner_id;
+    }
+
+    /**
+     * The owner has every ability; otherwise an explicit permission row must
+     * grant the ability to the user directly or via their group.
+     */
+    protected function grants(User $user, File $file, string $ability): bool
+    {
+        if ($user->id === $file->owner_id) {
+            return true;
+        }
+
+        return $file->permissions()
+            ->where('ability', $ability)
+            ->where(function ($query) use ($user) {
+                $query
+                    ->where(fn ($q) => $q
+                        ->where('subject_type', Permission::SUBJECT_USER)
+                        ->where('subject_id', $user->id))
+                    ->when($user->group_id, fn ($q) => $q
+                        ->orWhere(fn ($q) => $q
+                            ->where('subject_type', Permission::SUBJECT_GROUP)
+                            ->where('subject_id', $user->group_id)));
+            })
+            ->exists();
     }
 }

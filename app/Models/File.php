@@ -68,6 +68,14 @@ class File extends Model
     }
 
     /**
+     * Access-control entries for this file.
+     */
+    public function permissions(): HasMany
+    {
+        return $this->hasMany(Permission::class);
+    }
+
+    /**
      * Scope to folders only.
      */
     public function scopeFolders($query)
