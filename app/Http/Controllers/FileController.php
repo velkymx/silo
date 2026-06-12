@@ -2,145 +2,163 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
 {
-    // Display files and folders
+    // Display files and folders for the current (DB-backed) folder.
     public function index(Request $request)
-{
-    $currentFolder = $request->get('folder', ''); // Current folder path or root
-    $userId = auth()->id(); // Authenticated user ID
+    {
+        $userId = auth()->id();
 
-    // Fetch folder metadata
-    $folders = collect(Storage::directories("uploads/{$userId}/{$currentFolder}"))
-        ->map(function ($folder) {
-            $files = Storage::allFiles($folder); // Get all files in the folder
-            $size = collect($files)->sum(function ($file) {
-                return Storage::size($file);
-            });
-            $lastModified = collect($files)->max(function ($file) {
-                return Storage::lastModified($file);
-            });
+        $current = null;
+        if ($request->filled('folder')) {
+            $current = File::folders()->where('owner_id', $userId)->findOrFail($request->integer('folder'));
+            $this->authorize('view', $current);
+        }
 
-            return [
-                'name' => basename($folder),
-                'path' => $folder,
-                'itemCount' => count(Storage::files($folder)) + count(Storage::directories($folder)), // Number of items
-                'size' => $size,
-                'lastModified' => $lastModified ? date('Y-m-d H:i:s', $lastModified) : 'N/A',
-            ];
-        });
+        $query = File::query()
+            ->where('owner_id', $userId)
+            ->where('parent_id', $current?->id);
 
-    // Fetch files metadata
-    $files = collect(Storage::files("uploads/{$userId}/{$currentFolder}"))
-        ->map(function ($file) {
-            return [
-                'name' => basename($file),
-                'path' => $file,
-                'url' => Storage::url($file),
-                'size' => Storage::size($file),
-                'lastModified' => Storage::lastModified($file),
-                'type' => strtolower(pathinfo($file, PATHINFO_EXTENSION)),
-            ];
-        });
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%'.$request->string('search').'%');
+        }
 
-    // Filter by search query if provided
-    if ($request->has('search') && $request->get('search') !== '') {
-        $search = strtolower($request->get('search'));
-        $files = $files->filter(function ($file) use ($search) {
-            return str_contains(strtolower($file['name']), $search);
-        });
+        $sort = in_array($request->get('sort'), ['name', 'size', 'created_at'], true)
+            ? $request->get('sort')
+            : 'name';
+        $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
+
+        $folders = (clone $query)->folders()->orderBy($sort, $direction)->get();
+        $files = (clone $query)->files()->orderBy($sort, $direction)->get();
+
+        return view('files.index', compact('folders', 'files', 'current', 'sort', 'direction'));
     }
 
-    // Handle sorting
-    $sort = $request->get('sort', 'name'); // Default sort by name
-    $direction = $request->get('direction', 'asc'); // Default direction is ascending
-    $files = $files->sortBy($sort, SORT_REGULAR, $direction === 'desc');
-
-    return view('files.index', compact('folders', 'files', 'currentFolder', 'userId', 'sort', 'direction'));
-}
-
-
-    // Upload a file
+    // Upload one or more files into the current folder.
     public function upload(Request $request)
     {
         $request->validate([
             'files.*' => 'required|file|max:5120', // Each file must not exceed 5MB
-            'current_folder' => 'nullable|string',
+            'parent_id' => 'nullable|integer|exists:files,id',
         ]);
-    
-        $userId = auth()->id(); // Get authenticated user ID
-        $currentFolder = $request->input('current_folder', ''); // Get current folder or root
-    
-        // Process each uploaded file
-        foreach ($request->file('files', []) as $file) {
-            $file->store("uploads/{$userId}/{$currentFolder}", 'public'); // Store each file
+
+        $userId = auth()->id();
+        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
+        $dir = $parent?->path ?? "uploads/{$userId}";
+
+        foreach ($request->file('files', []) as $upload) {
+            $path = $upload->store($dir, 'public');
+
+            File::create([
+                'name' => $upload->getClientOriginalName(),
+                'path' => $path,
+                'disk' => 'public',
+                'is_dir' => false,
+                'mime' => $upload->getClientMimeType(),
+                'size' => $upload->getSize(),
+                'hash' => hash_file('sha256', $upload->getRealPath()),
+                'parent_id' => $parent?->id,
+                'owner_id' => $userId,
+            ]);
         }
-    
-        return redirect()->route('files.index', ['folder' => $currentFolder])
+
+        return redirect()->route('files.index', ['folder' => $parent?->id])
             ->with('success', 'Files uploaded successfully!');
     }
-    
 
-    // Download a file
-    public function download($file)
+    // Download a file resolved by DB id (no client-supplied paths).
+    public function download(File $file)
     {
-        $currentFolder = request()->get('folder', ''); // Current folder path
-        $userId = auth()->id(); // Get user ID
-        $filePath = "uploads/{$userId}/{$currentFolder}/{$file}";
+        $this->authorize('view', $file);
 
-        if (Storage::exists($filePath)) {
-            return Storage::download($filePath);
-        }
+        abort_if($file->is_dir, 404);
+        abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
-        return redirect()->route('files.index', ['folder' => $currentFolder])
-            ->with('error', 'File not found!');
+        return Storage::disk($file->disk)->download($file->path, $file->name);
     }
 
-    // Delete a file
-    public function delete($file)
+    // Delete a file or folder (and its contents) resolved by DB id.
+    public function destroy(File $file)
     {
-        $currentFolder = request()->get('folder', ''); // Current folder path
-        $userId = auth()->id(); // Get user ID
-        $filePath = "uploads/{$userId}/{$currentFolder}/{$file}";
+        $this->authorize('delete', $file);
 
-        if (Storage::exists($filePath)) {
-            Storage::delete($filePath);
-            return redirect()->route('files.index', ['folder' => $currentFolder])
-                ->with('success', 'File deleted successfully!');
+        $disk = Storage::disk($file->disk);
+
+        if ($file->is_dir) {
+            $disk->deleteDirectory($file->path);
+            $this->deleteSubtree($file);
+        } else {
+            $disk->delete($file->path);
         }
 
-        return redirect()->route('files.index', ['folder' => $currentFolder])
-            ->with('error', 'File not found!');
+        $file->delete();
+
+        return redirect()->route('files.index', ['folder' => $file->parent_id])
+            ->with('success', 'Deleted successfully!');
     }
 
-    // Create a new folder
+    // Create a new folder inside the current folder.
     public function createFolder(Request $request)
     {
         $request->validate([
-            'folder_name' => 'required|string|max:255', // Folder name validation
-            'current_folder' => 'nullable|string', // Current folder path
+            'folder_name' => 'required|string|max:255',
+            'parent_id' => 'nullable|integer|exists:files,id',
         ]);
 
-        $userId = auth()->id(); // Get user ID
-        $currentFolder = $request->input('current_folder', ''); // Get current folder or root
-        $folderName = $request->input('folder_name'); // New folder name
+        $userId = auth()->id();
+        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
+        $name = (string) $request->string('folder_name');
 
-        // Build the full folder path
-        $folderPath = "uploads/{$userId}/{$currentFolder}/{$folderName}";
-        Storage::makeDirectory($folderPath); // Create the folder
+        $path = ($parent?->path ?? "uploads/{$userId}")."/{$name}";
+        Storage::disk('public')->makeDirectory($path);
 
-        return redirect()->route('files.index', ['folder' => $currentFolder])
-            ->with('success', "Folder '{$folderName}' created successfully!");
+        File::create([
+            'name' => $name,
+            'path' => $path,
+            'disk' => 'public',
+            'is_dir' => true,
+            'parent_id' => $parent?->id,
+            'owner_id' => $userId,
+        ]);
+
+        return redirect()->route('files.index', ['folder' => $parent?->id])
+            ->with('success', "Folder '{$name}' created successfully!");
     }
 
-    // Navigate to a folder
-    public function viewFolder($folder = '')
+    // Navigate into a folder resolved by DB id.
+    public function viewFolder(File $folder)
     {
-        return redirect()->route('files.index', ['folder' => $folder]);
-    }
-    
-}
+        $this->authorize('view', $folder);
 
+        return redirect()->route('files.index', ['folder' => $folder->id]);
+    }
+
+    // Resolve a folder owned by the user, or null for the root.
+    protected function resolveFolder($id, int $userId): ?File
+    {
+        if (! $id) {
+            return null;
+        }
+
+        $folder = File::folders()->where('owner_id', $userId)->findOrFail($id);
+        $this->authorize('update', $folder);
+
+        return $folder;
+    }
+
+    // Recursively soft-delete a folder's descendants.
+    protected function deleteSubtree(File $folder): void
+    {
+        foreach ($folder->children as $child) {
+            if ($child->is_dir) {
+                $this->deleteSubtree($child);
+            }
+
+            $child->delete();
+        }
+    }
+}
