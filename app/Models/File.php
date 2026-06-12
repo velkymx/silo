@@ -34,6 +34,7 @@ class File extends Model
         'hash',
         'status',
         'metadata',
+        'version',
         'parent_id',
         'owner_id',
     ];
@@ -49,6 +50,7 @@ class File extends Model
             'is_dir' => 'boolean',
             'size' => 'integer',
             'metadata' => 'array',
+            'version' => 'integer',
         ];
     }
 
@@ -82,6 +84,14 @@ class File extends Model
     public function permissions(): HasMany
     {
         return $this->hasMany(Permission::class);
+    }
+
+    /**
+     * Historical versions (prior blobs) of this file.
+     */
+    public function versions(): HasMany
+    {
+        return $this->hasMany(FileVersion::class)->orderByDesc('version');
     }
 
     /**

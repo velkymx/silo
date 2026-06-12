@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
+use App\Models\FileVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -45,7 +46,7 @@ class FileController extends Controller
                 'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
             ]);
 
-        $files = (clone $query)->files()->orderBy($sort, $direction)->get()
+        $files = (clone $query)->files()->with('versions')->orderBy($sort, $direction)->get()
             ->map(fn (File $file) => $this->transform($file));
 
         return Inertia::render('Files/Index', [
@@ -77,6 +78,15 @@ class FileController extends Controller
             'status' => $file->status,
             'metadata' => $file->metadata,
             'hash' => $file->hash,
+            'version' => $file->version,
+            'versions' => $file->relationLoaded('versions')
+                ? $file->versions->map(fn (FileVersion $v) => [
+                    'id' => $v->id,
+                    'version' => $v->version,
+                    'size' => $v->size,
+                    'created_at' => $v->created_at->format('Y-m-d H:i'),
+                ])->values()
+                : [],
             'created_at' => $file->created_at->format('Y-m-d H:i'),
         ];
     }
@@ -108,18 +118,26 @@ class FileController extends Controller
             // Storage is flat per user; the folder hierarchy lives entirely in the DB.
             $path = $upload->store("uploads/{$userId}", $disk);
 
-            $file = File::create([
+            $attributes = [
                 'name' => $upload->getClientOriginalName(),
                 'path' => $path,
                 'disk' => $disk,
-                'is_dir' => false,
                 'mime' => $upload->getClientMimeType(),
                 'size' => $upload->getSize(),
                 'hash' => hash_file('sha256', $upload->getRealPath()),
                 'status' => File::STATUS_PENDING,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
+            ];
+
+            // An upload onto an existing file name becomes a new version of that file.
+            $existing = File::files()
+                ->where('owner_id', $userId)
+                ->where('parent_id', $parent?->id)
+                ->where('name', $upload->getClientOriginalName())
+                ->first();
+
+            $file = $existing
+                ? $this->overwrite($existing, $attributes, $userId)
+                : File::create($attributes + ['is_dir' => false, 'parent_id' => $parent?->id, 'owner_id' => $userId]);
 
             // Refine mime + extract metadata off the request cycle.
             ProcessUploadedFile::dispatch($file->id);
@@ -245,12 +263,78 @@ class FileController extends Controller
             ->with('success', 'Copied successfully!');
     }
 
+    // Download a specific historical version of a file.
+    public function downloadVersion(File $file, FileVersion $version)
+    {
+        $this->authorize('view', $file);
+
+        abort_unless($version->file_id === $file->id, 404);
+        abort_unless(Storage::disk($version->disk)->exists($version->path), 404);
+
+        return Storage::disk($version->disk)->download($version->path, $version->name);
+    }
+
+    // Restore a historical version as the file's current content.
+    public function restoreVersion(File $file, FileVersion $version)
+    {
+        $this->authorize('update', $file);
+
+        abort_unless($version->file_id === $file->id, 404);
+
+        DB::transaction(function () use ($file, $version) {
+            // Preserve the current content as a version before overwriting it.
+            $this->snapshotVersion($file);
+
+            $file->update([
+                'path' => $version->path,
+                'disk' => $version->disk,
+                'mime' => $version->mime,
+                'size' => $version->size,
+                'hash' => $version->hash,
+                'version' => $file->version + 1,
+                'status' => File::STATUS_PENDING,
+            ]);
+        });
+
+        ProcessUploadedFile::dispatch($file->id);
+
+        return back()->with('success', "Restored version {$version->version}.");
+    }
+
     // Navigate into a folder resolved by DB id.
     public function viewFolder(File $folder)
     {
         $this->authorize('view', $folder);
 
         return redirect()->route('files.index', ['folder' => $folder->id]);
+    }
+
+    // Replace a file's content, archiving its current blob as a version.
+    protected function overwrite(File $file, array $attributes, int $userId): File
+    {
+        DB::transaction(function () use ($file, $attributes, $userId) {
+            $this->snapshotVersion($file, $userId);
+
+            $file->update($attributes + ['version' => $file->version + 1]);
+        });
+
+        return $file;
+    }
+
+    // Archive the file's current blob as a historical version row.
+    protected function snapshotVersion(File $file, ?int $createdBy = null): void
+    {
+        FileVersion::create([
+            'file_id' => $file->id,
+            'version' => $file->version,
+            'name' => $file->name,
+            'path' => $file->path,
+            'disk' => $file->disk,
+            'mime' => $file->mime,
+            'size' => $file->size,
+            'hash' => $file->hash,
+            'created_by' => $createdBy ?? $file->owner_id,
+        ]);
     }
 
     // Resolve a folder owned by the user, or null for the root.

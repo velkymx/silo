@@ -70,6 +70,7 @@ function iconFor(type) {
 
 const fileActions = [
     { text: 'Details', action: 'details', icon: 'info-circle' },
+    { text: 'Versions', action: 'versions', icon: 'clock-history' },
     { text: 'Rename', action: 'rename', icon: 'pencil' },
     { text: 'Move', action: 'move', icon: 'arrows-move' },
     { text: 'Copy', action: 'copy', icon: 'files' },
@@ -87,10 +88,30 @@ const folderActions = [
 
 function onAction(item, { item: action }) {
     if (action.action === 'details') openDetails(item);
+    if (action.action === 'versions') openVersions(item);
     if (action.action === 'rename') openRename(item);
     if (action.action === 'move') openTransfer(item, 'move');
     if (action.action === 'copy') openTransfer(item, 'copy');
     if (action.action === 'delete') destroy(item);
+}
+
+// ----- Versions -----
+const versionsOpen = ref(false);
+const versionsItem = ref(null);
+
+function openVersions(item) {
+    versionsItem.value = item;
+    versionsOpen.value = true;
+}
+
+function restoreVersion(version) {
+    if (!confirm(`Restore version ${version.version}? Current content is kept in history.`)) return;
+    router.post(`/files/${versionsItem.value.id}/versions/${version.id}/restore`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            versionsOpen.value = false;
+        },
+    });
 }
 
 // ----- Details -----
@@ -362,6 +383,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                 <span v-else-if="item.metadata?.width" class="text-muted small ms-2">
                     {{ item.metadata.width }}×{{ item.metadata.height }}
                 </span>
+                <VibeBadge v-if="item.version > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
@@ -409,6 +431,38 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                     <tr v-for="row in detailsRows" :key="row.label">
                         <th class="text-nowrap pe-3 text-muted" style="width: 40%">{{ row.label }}</th>
                         <td class="text-break font-monospace small">{{ row.value }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </VibeModal>
+
+        <!-- Versions modal -->
+        <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered hide-footer>
+            <p class="text-muted small">
+                Current: version {{ versionsItem?.version }}.
+                <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
+            </p>
+            <table v-if="versionsItem?.versions?.length" class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr><th>Version</th><th>Size</th><th>Saved</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                    <tr v-for="v in versionsItem.versions" :key="v.id">
+                        <td>v{{ v.version }}</td>
+                        <td>{{ (v.size / 1024).toFixed(2) }} KB</td>
+                        <td class="small">{{ v.created_at }}</td>
+                        <td class="text-end">
+                            <VibeButton
+                                variant="success"
+                                size="sm"
+                                :href="`/files/${versionsItem.id}/versions/${v.id}/download`"
+                            >
+                                <VibeIcon icon="download" />
+                            </VibeButton>
+                            <VibeButton variant="primary" size="sm" outline class="ms-1" @click="restoreVersion(v)">
+                                <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
+                            </VibeButton>
+                        </td>
                     </tr>
                 </tbody>
             </table>
