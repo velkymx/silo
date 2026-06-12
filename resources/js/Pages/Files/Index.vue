@@ -15,8 +15,26 @@ const props = defineProps({
     flat: { type: Boolean, default: false },
     activeTag: { type: Object, default: null },
     pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0, per_page: 50 }) },
+    storage: { type: Object, default: () => ({ used: 0, quota: 0 }) },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
+
+function fmtBytes(n) {
+    if (n < 1024) return `${n} B`;
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let v = n / 1024;
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(1)} ${units[i]}`;
+}
+
+const storagePct = computed(() =>
+    props.storage.quota > 0 ? Math.min(100, Math.round((props.storage.used / props.storage.quota) * 100)) : 0
+);
+const storageBars = computed(() => [{
+    value: storagePct.value,
+    variant: storagePct.value > 90 ? 'danger' : storagePct.value > 75 ? 'warning' : 'success',
+}]);
 
 function goToPage(page) {
     const params = { page };
@@ -524,6 +542,16 @@ onBeforeUnmount(() => {
                     <VibeIcon icon="house-door-fill" class="me-1" />Home
                 </VibeButton>
                 <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
+            </VibeCard>
+
+            <VibeCard header="Storage" class="mt-3">
+                <template v-if="storage.quota > 0">
+                    <VibeProgress :bars="storageBars" class="mb-2" />
+                    <div class="small text-muted">
+                        {{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)
+                    </div>
+                </template>
+                <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
             </VibeCard>
 
             <VibeCard v-if="allTags.length" header="Tags" class="mt-3">

@@ -39,4 +39,16 @@ return [
 
     'trash_retention_days' => env('FILEMANAGER_TRASH_RETENTION_DAYS', 30),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Per-User Storage Quota
+    |--------------------------------------------------------------------------
+    |
+    | Maximum total bytes a single user may store (counting current files,
+    | trashed-but-not-purged files, and saved versions). Set to 0 for unlimited.
+    |
+    */
+
+    'user_quota_mb' => env('FILEMANAGER_USER_QUOTA_MB', 1024),
+
 ];

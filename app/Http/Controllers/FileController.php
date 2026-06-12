@@ -6,6 +6,7 @@ use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
 use App\Models\Tag;
+use App\Services\QuotaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -91,6 +92,7 @@ class FileController extends Controller
             // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
+            'storage' => app(QuotaService::class)->summary($userId),
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'sort' => $sort,
@@ -205,6 +207,14 @@ class FileController extends Controller
         $userId = auth()->id();
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
         $disk = config('filemanager.disk');
+
+        // Reject the whole batch if it would push the user over their quota.
+        $incoming = collect($request->file('files', []))->sum(fn ($f) => $f->getSize());
+        if (app(QuotaService::class)->wouldExceed($userId, $incoming)) {
+            throw ValidationException::withMessages([
+                'files' => 'This upload would exceed your storage quota.',
+            ]);
+        }
 
         foreach ($request->file('files', []) as $upload) {
             // Storage is flat per user; the folder hierarchy lives entirely in the DB.
