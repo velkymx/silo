@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class FileController extends Controller
 {
@@ -32,10 +33,53 @@ class FileController extends Controller
             : 'name';
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
 
-        $folders = (clone $query)->folders()->orderBy($sort, $direction)->get();
-        $files = (clone $query)->files()->orderBy($sort, $direction)->get();
+        $folders = (clone $query)->folders()->withCount('children')->orderBy($sort, $direction)->get()
+            ->map(fn (File $folder) => [
+                'id' => $folder->id,
+                'name' => $folder->name,
+                'item_count' => $folder->children_count,
+                'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
+            ]);
 
-        return view('files.index', compact('folders', 'files', 'current', 'sort', 'direction'));
+        $files = (clone $query)->files()->orderBy($sort, $direction)->get()
+            ->map(fn (File $file) => $this->transform($file));
+
+        return Inertia::render('Files/Index', [
+            'folders' => $folders,
+            'files' => $files,
+            'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
+            'breadcrumbs' => $this->breadcrumbs($current),
+            'filters' => [
+                'search' => $request->string('search')->toString(),
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+        ]);
+    }
+
+    // Shape a file model for the frontend.
+    protected function transform(File $file): array
+    {
+        return [
+            'id' => $file->id,
+            'name' => $file->name,
+            'size' => $file->size,
+            'mime' => $file->mime,
+            'type' => strtolower(pathinfo($file->name, PATHINFO_EXTENSION)),
+            'url' => Storage::disk($file->disk)->url($file->path),
+            'created_at' => $file->created_at->format('Y-m-d H:i'),
+        ];
+    }
+
+    // Build the breadcrumb trail from root to the current folder.
+    protected function breadcrumbs(?File $current): array
+    {
+        $trail = [];
+        for ($node = $current; $node; $node = $node->parent) {
+            array_unshift($trail, ['id' => $node->id, 'name' => $node->name]);
+        }
+
+        return $trail;
     }
 
     // Upload one or more files into the current folder.

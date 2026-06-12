@@ -1,0 +1,36 @@
+<script setup>
+import { useForm, Link } from '@inertiajs/vue3';
+import GuestLayout from '../../Layouts/GuestLayout.vue';
+
+defineProps({ status: { type: String, default: null } });
+
+const form = useForm({ email: '' });
+
+function submit() {
+    form.post('/password/email');
+}
+</script>
+
+<template>
+    <GuestLayout title="Reset password">
+        <VibeAlert v-if="status" variant="success">{{ status }}</VibeAlert>
+        <p class="text-muted small">Enter your email and we'll send a reset link.</p>
+        <form @submit.prevent="submit">
+            <VibeFormGroup
+                label="Email"
+                :validation-state="form.errors.email ? 'invalid' : null"
+                :validation-message="form.errors.email"
+            >
+                <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
+            </VibeFormGroup>
+
+            <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
+                Send reset link
+            </VibeButton>
+
+            <div class="text-center mt-3 small">
+                <Link href="/login" class="text-decoration-none">Back to sign in</Link>
+            </div>
+        </form>
+    </GuestLayout>
+</template>

@@ -6,15 +6,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Inertia\Inertia;
 
 class UserController extends Controller
 {
     // Display the profile edit form
     public function edit()
     {
-        $user = Auth::user(); // Get the authenticated user
-        $groups = \App\Models\Group::all(); // Fetch all available groups
-        return view('profile.edit', compact('user', 'groups'));
+        return Inertia::render('Profile/Edit', [
+            'user' => Auth::user()->only('id', 'name', 'email', 'group_id'),
+            'groups' => \App\Models\Group::all(['id', 'name']),
+        ]);
     }
 
     // Handle profile update
@@ -44,26 +46,4 @@ class UserController extends Controller
     
         return redirect()->route('profile.edit')->with('success', 'Profile updated successfully.');
     }
-
-    public function editGroup($id)
-    {
-        $user = User::findOrFail($id);
-        $groups = Group::all();
-    
-        return view('users.edit-group', compact('user', 'groups'));
-    }
-    
-    public function updateGroup(Request $request, $id)
-    {
-        $request->validate([
-            'group_id' => 'required|exists:groups,id',
-        ]);
-    
-        $user = User::findOrFail($id);
-        $user->group_id = $request->group_id;
-        $user->save();
-    
-        return redirect()->route('users.index')->with('success', 'User group updated successfully.');
-    }
-    
 }

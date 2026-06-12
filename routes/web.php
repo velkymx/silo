@@ -22,10 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
 });
 
-Route::get('/debug', function () {
-    return auth()->user();
-});
+Auth::routes(['verify' => false]);
 
-Auth::routes();
-
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Legacy dashboard route now lands on the file manager.
+Route::get('/home', fn () => redirect()->route('files.index'))->name('home');

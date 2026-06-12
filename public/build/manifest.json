@@ -1,13 +1,67 @@
 {
+  "__vite-optional-peer-dep:quill/dist/quill.snow.css:@velkymx/vibeui": {
+    "file": "assets/vibeui-Df6KNeSA.js",
+    "name": "vibeui",
+    "src": "__vite-optional-peer-dep:quill/dist/quill.snow.css:@velkymx/vibeui",
+    "isDynamicEntry": true
+  },
+  "__vite-optional-peer-dep:quill:@velkymx/vibeui": {
+    "file": "assets/vibeui-BIHI7g3E.js",
+    "name": "vibeui",
+    "src": "__vite-optional-peer-dep:quill:@velkymx/vibeui",
+    "isDynamicEntry": true
+  },
+  "node_modules/@velkymx/vibeui/dist/purify.es-1D-VntFD.mjs": {
+    "file": "assets/purify.es-1D-VntFD-DMYGt7zR.js",
+    "name": "purify.es-1D-VntFD",
+    "src": "node_modules/@velkymx/vibeui/dist/purify.es-1D-VntFD.mjs",
+    "isDynamicEntry": true
+  },
+  "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff": {
+    "file": "assets/bootstrap-icons-BeopsB42.woff",
+    "src": "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff"
+  },
+  "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff2": {
+    "file": "assets/bootstrap-icons-mSm7cUeB.woff2",
+    "src": "node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff2"
+  },
+  "node_modules/bootstrap/dist/js/bootstrap.esm.js": {
+    "file": "assets/bootstrap.esm-BT8sLaHD.js",
+    "name": "bootstrap.esm",
+    "src": "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+    "isDynamicEntry": true
+  },
   "resources/js/app.js": {
-    "file": "assets/app-CrG75o6_.js",
+    "file": "assets/app-Bg8V-ajd.js",
     "name": "app",
     "src": "resources/js/app.js",
-    "isEntry": true
-  },
-  "resources/sass/app.scss": {
-    "file": "assets/app-BaVMVknW.css",
-    "src": "resources/sass/app.scss",
-    "isEntry": true
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/@velkymx/vibeui/dist/purify.es-1D-VntFD.mjs",
+      "__vite-optional-peer-dep:quill:@velkymx/vibeui",
+      "__vite-optional-peer-dep:quill/dist/quill.snow.css:@velkymx/vibeui",
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js"
+    ],
+    "css": [
+      "assets/app-C_Ns5tVg.css"
+    ],
+    "assets": [
+      "assets/bootstrap-icons-mSm7cUeB.woff2",
+      "assets/bootstrap-icons-BeopsB42.woff"
+    ]
   }
 }
