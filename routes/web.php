@@ -16,6 +16,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [FileController::class, 'index'])->name('files.index');
     Route::post('/upload', [FileController::class, 'upload'])->name('files.upload');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
+    Route::get('/thumbnail/{file}', [FileController::class, 'thumbnail'])->name('files.thumbnail');
     Route::delete('/delete/{file}', [FileController::class, 'destroy'])->name('files.delete');
     Route::patch('/files/{file}/rename', [FileController::class, 'rename'])->name('files.rename');
     Route::post('/files/{file}/move', [FileController::class, 'move'])->name('files.move');

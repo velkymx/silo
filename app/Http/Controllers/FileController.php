@@ -98,6 +98,7 @@ class FileController extends Controller
             'url' => Storage::disk($file->disk)->url($file->path),
             'status' => $file->status,
             'metadata' => $file->metadata,
+            'thumb_url' => $file->thumbnail_path ? route('files.thumbnail', $file) : null,
             'hash' => $file->hash,
             'version' => $file->version,
             'versions' => $file->relationLoaded('versions')
@@ -179,6 +180,19 @@ class FileController extends Controller
         return Storage::disk($file->disk)->download($file->path, $file->name);
     }
 
+    // Stream a file's cached thumbnail (policy-gated, not a public URL).
+    public function thumbnail(File $file)
+    {
+        $this->authorize('view', $file);
+
+        abort_unless(
+            $file->thumbnail_path && Storage::disk($file->disk)->exists($file->thumbnail_path),
+            404
+        );
+
+        return Storage::disk($file->disk)->response($file->thumbnail_path);
+    }
+
     // Delete a file or folder (and its contents) resolved by DB id.
     public function destroy(File $file)
     {
@@ -189,6 +203,9 @@ class FileController extends Controller
                 $this->deleteSubtree($file);
             } else {
                 Storage::disk($file->disk)->delete($file->path);
+                if ($file->thumbnail_path) {
+                    Storage::disk($file->disk)->delete($file->thumbnail_path);
+                }
             }
 
             $file->delete();
@@ -379,6 +396,9 @@ class FileController extends Controller
                 $this->deleteSubtree($child);
             } else {
                 Storage::disk($child->disk)->delete($child->path);
+                if ($child->thumbnail_path) {
+                    Storage::disk($child->disk)->delete($child->thumbnail_path);
+                }
             }
 
             $child->delete();
@@ -409,6 +429,7 @@ class FileController extends Controller
             'hash' => $source->hash,
             'status' => $source->status,
             'metadata' => $source->metadata,
+            'thumbnail_path' => null,
             'parent_id' => $parentId,
             'owner_id' => $source->owner_id,
         ]);

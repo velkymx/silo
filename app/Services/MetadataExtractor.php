@@ -27,8 +27,21 @@ class MetadataExtractor
             str_starts_with($mime, 'image/') => $this->image($disk->get($file->path)),
             str_starts_with($mime, 'audio/'),
             str_starts_with($mime, 'video/') => $this->media($disk, $file->path),
+            str_starts_with($mime, 'text/') => $this->text($disk->get($file->path)),
             default => [],
         };
+    }
+
+    /**
+     * A short snippet preview for text files.
+     *
+     * @return array<string, mixed>
+     */
+    protected function text(string $contents): array
+    {
+        $snippet = trim(mb_substr($contents, 0, 500));
+
+        return $snippet === '' ? [] : ['preview' => $snippet];
     }
 
     /**

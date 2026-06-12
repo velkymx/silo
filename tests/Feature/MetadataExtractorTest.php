@@ -54,7 +54,7 @@ class MetadataExtractorTest extends TestCase
     {
         Storage::fake('public');
         $user = User::factory()->create();
-        $file = $this->storedFile($user, 'note.txt', 'text/plain', 'hello world');
+        $file = $this->storedFile($user, 'data.bin', 'application/octet-stream', 'hello world');
 
         $this->assertSame([], (new MetadataExtractor)->extract($file));
     }

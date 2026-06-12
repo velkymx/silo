@@ -35,6 +35,7 @@ class File extends Model
         'hash',
         'status',
         'metadata',
+        'thumbnail_path',
         'version',
         'parent_id',
         'owner_id',

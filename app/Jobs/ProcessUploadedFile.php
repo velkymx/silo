@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\File;
 use App\Services\MetadataExtractor;
+use App\Services\ThumbnailGenerator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ class ProcessUploadedFile implements ShouldQueue
     /**
      * Execute the job: refine metadata for an uploaded file.
      */
-    public function handle(MetadataExtractor $extractor): void
+    public function handle(MetadataExtractor $extractor, ThumbnailGenerator $thumbnails): void
     {
         $file = File::find($this->fileId);
 
@@ -45,10 +46,12 @@ class ProcessUploadedFile implements ShouldQueue
         }
 
         $metadata = $extractor->extract($file);
+        $thumbnailPath = $thumbnails->generate($file);
 
         $file->update([
             'mime' => $file->mime,
             'metadata' => $metadata ?: null,
+            'thumbnail_path' => $thumbnailPath,
             'status' => File::STATUS_READY,
         ]);
     }

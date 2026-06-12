@@ -152,6 +152,7 @@ const metadataLabels = {
     bitrate: 'Bitrate (kbps)',
     sample_rate: 'Sample Rate',
     channels: 'Channels',
+    preview: 'Preview',
 };
 
 const detailsRows = computed(() => {
@@ -425,7 +426,15 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                 </VibeButton>
             </template>
             <template #cell(name)="{ item }">
-                <VibeIcon :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
+                <img
+                    v-if="item.thumb_url"
+                    :src="item.thumb_url"
+                    :alt="item.name"
+                    class="rounded border me-2"
+                    style="width: 32px; height: 32px; object-fit: cover; cursor: pointer"
+                    @click="preview(item)"
+                >
+                <VibeIcon v-else :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
                 <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
                     <VibeSpinner size="sm" class="me-1" />Processing
                 </VibeBadge>
