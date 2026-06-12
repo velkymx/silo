@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class File extends Model
 {
     /** @use HasFactory<\Database\Factories\FileFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, Searchable, SoftDeletes;
 
     public const STATUS_PENDING = 'pending';
 
@@ -52,6 +53,28 @@ class File extends Model
             'metadata' => 'array',
             'version' => 'integer',
         ];
+    }
+
+    /**
+     * The columns Scout (database driver) matches a query against.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'mime' => $this->mime,
+            'metadata' => is_array($this->metadata) ? implode(' ', array_map('strval', $this->metadata)) : null,
+        ];
+    }
+
+    /**
+     * Only real files (never folders) are searchable.
+     */
+    public function shouldBeSearchable(): bool
+    {
+        return ! $this->is_dir;
     }
 
     /**

@@ -25,35 +25,42 @@ class FileController extends Controller
             $this->authorize('view', $current);
         }
 
-        $query = File::query()
-            ->where('owner_id', $userId)
-            ->where('parent_id', $current?->id);
-
-        if ($request->filled('search')) {
-            $query->where('name', 'like', '%'.$request->string('search').'%');
-        }
-
         $sort = in_array($request->get('sort'), ['name', 'size', 'created_at'], true)
             ? $request->get('sort')
             : 'name';
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
+        $searching = $request->filled('search');
 
-        $folders = (clone $query)->folders()->withCount('children')->orderBy($sort, $direction)->get()
-            ->map(fn (File $folder) => [
-                'id' => $folder->id,
-                'name' => $folder->name,
-                'item_count' => $folder->children_count,
-                'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
-            ]);
+        if ($searching) {
+            // Full-text search (Scout) spans every folder the user owns.
+            $folders = collect();
+            $files = File::search($request->string('search')->toString())
+                ->where('owner_id', $userId)
+                ->where('is_dir', false)
+                ->get()
+                ->load('versions')
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file)]);
+        } else {
+            $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
 
-        $files = (clone $query)->files()->with('versions')->orderBy($sort, $direction)->get()
-            ->map(fn (File $file) => $this->transform($file));
+            $folders = (clone $query)->folders()->withCount('children')->orderBy($sort, $direction)->get()
+                ->map(fn (File $folder) => [
+                    'id' => $folder->id,
+                    'name' => $folder->name,
+                    'item_count' => $folder->children_count,
+                    'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
+                ]);
+
+            $files = (clone $query)->files()->with('versions')->orderBy($sort, $direction)->get()
+                ->map(fn (File $file) => $this->transform($file));
+        }
 
         return Inertia::render('Files/Index', [
-            'folders' => $folders,
-            'files' => $files,
+            'folders' => $folders->values(),
+            'files' => $files->values(),
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
+            'searching' => $searching,
             // Flat list of every folder the user owns — used by the move/copy destination picker.
             'allFolders' => File::folders()->where('owner_id', $userId)
                 ->orderBy('name')->get(['id', 'name', 'parent_id']),
@@ -63,6 +70,20 @@ class FileController extends Controller
                 'direction' => $direction,
             ],
         ]);
+    }
+
+    // Human-readable folder path for a search result ("Home / Docs / 2026").
+    protected function locationLabel(File $file): array
+    {
+        $trail = [];
+        for ($node = $file->parent; $node; $node = $node->parent) {
+            array_unshift($trail, ['id' => $node->id, 'name' => $node->name]);
+        }
+
+        return [
+            'folder_id' => $file->parent_id,
+            'path' => 'Home'.collect($trail)->reduce(fn ($carry, $n) => $carry.' / '.$n['name'], ''),
+        ];
     }
 
     // Shape a file model for the frontend.

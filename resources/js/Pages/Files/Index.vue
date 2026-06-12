@@ -9,6 +9,7 @@ const props = defineProps({
     current: { type: Object, default: null },
     breadcrumbs: { type: Array, default: () => [] },
     allFolders: { type: Array, default: () => [] },
+    searching: { type: Boolean, default: false },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
 
@@ -43,6 +44,11 @@ function runSearch() {
     });
 }
 
+function clearSearch() {
+    search.value = '';
+    router.get('/', currentId.value ? { folder: currentId.value } : {}, { preserveScroll: true });
+}
+
 // ----- Tables -----
 const folderColumns = [
     { key: 'name', label: 'Folder' },
@@ -51,12 +57,13 @@ const folderColumns = [
     { key: 'actions', label: '', sortable: false, searchable: false },
 ];
 
-const fileColumns = [
+const fileColumns = computed(() => [
     { key: 'name', label: 'File Name' },
+    ...(props.searching ? [{ key: 'location', label: 'Location', sortable: false }] : []),
     { key: 'size', label: 'Size', formatter: (v) => `${(v / 1024).toFixed(2)} KB` },
     { key: 'created_at', label: 'Uploaded' },
     { key: 'actions', label: '', sortable: false, searchable: false },
-];
+]);
 
 const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
@@ -325,20 +332,29 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                 <VibeButton variant="primary" @click="runSearch">
                     <VibeIcon icon="search" class="me-1" />Search
                 </VibeButton>
+                <VibeButton v-if="searching" variant="secondary" outline @click="clearSearch">
+                    <VibeIcon icon="x-lg" />
+                </VibeButton>
             </template>
         </VibeInputGroup>
 
-        <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="folder" />Folders</h5>
-        <VibeDataTable
-            :items="folders"
-            :columns="folderColumns"
-            row-key="id"
-            hover
-            :searchable="false"
-            :paginated="false"
-            empty-text="No folders here."
-            class="mb-4"
-        >
+        <VibeAlert v-if="searching" variant="info" class="d-flex align-items-center justify-content-between">
+            <span><VibeIcon icon="search" class="me-1" />Results for "{{ filters.search }}" across all folders.</span>
+            <VibeButton variant="info" size="sm" outline @click="clearSearch">Clear</VibeButton>
+        </VibeAlert>
+
+        <template v-if="!searching">
+            <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="folder" />Folders</h5>
+            <VibeDataTable
+                :items="folders"
+                :columns="folderColumns"
+                row-key="id"
+                hover
+                :searchable="false"
+                :paginated="false"
+                empty-text="No folders here."
+                class="mb-4"
+            >
             <template #cell(name)="{ item }">
                 <VibeButton variant="link" class="p-0 text-decoration-none" @click="visitFolder(item.id)">
                     <VibeIcon icon="folder-fill" class="me-1 text-warning" />{{ item.name }}
@@ -363,7 +379,8 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                     </VibeDropdown>
                 </div>
             </template>
-        </VibeDataTable>
+            </VibeDataTable>
+        </template>
 
         <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="file-earmark" />Files</h5>
         <VibeDataTable
@@ -374,6 +391,11 @@ onBeforeUnmount(() => poll && clearInterval(poll));
             striped
             empty-text="No files here."
         >
+            <template v-if="searching" #cell(location)="{ item }">
+                <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location.folder_id)">
+                    {{ item.location.path }}
+                </VibeButton>
+            </template>
             <template #cell(name)="{ item }">
                 <VibeIcon :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
                 <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
