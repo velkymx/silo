@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -203,6 +203,29 @@ function destroy(item) {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
     router.delete(`/delete/${item.id}`, { preserveScroll: true });
 }
+
+// ----- Background-job status polling -----
+const hasPending = computed(() => props.files.some((f) => f.status === 'pending'));
+let poll = null;
+
+function startPolling() {
+    if (poll || !hasPending.value) return;
+    poll = setInterval(() => {
+        if (!hasPending.value) {
+            clearInterval(poll);
+            poll = null;
+            return;
+        }
+        router.reload({ only: ['files'], preserveScroll: true });
+    }, 3000);
+}
+
+watch(hasPending, (pending) => {
+    if (pending) startPolling();
+});
+
+onMounted(startPolling);
+onBeforeUnmount(() => poll && clearInterval(poll));
 </script>
 
 <template>
@@ -282,6 +305,13 @@ function destroy(item) {
         >
             <template #cell(name)="{ item }">
                 <VibeIcon :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
+                <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
+                    <VibeSpinner size="sm" class="me-1" />Processing
+                </VibeBadge>
+                <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
+                <span v-else-if="item.metadata?.width" class="text-muted small ms-2">
+                    {{ item.metadata.width }}×{{ item.metadata.height }}
+                </span>
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">

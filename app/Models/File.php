@@ -13,6 +13,12 @@ class File extends Model
     /** @use HasFactory<\Database\Factories\FileFactory> */
     use HasFactory, SoftDeletes;
 
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_READY = 'ready';
+
+    public const STATUS_FAILED = 'failed';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -26,6 +32,8 @@ class File extends Model
         'mime',
         'size',
         'hash',
+        'status',
+        'metadata',
         'parent_id',
         'owner_id',
     ];
@@ -40,6 +48,7 @@ class File extends Model
         return [
             'is_dir' => 'boolean',
             'size' => 'integer',
+            'metadata' => 'array',
         ];
     }
 

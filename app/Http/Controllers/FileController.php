@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +74,8 @@ class FileController extends Controller
             'mime' => $file->mime,
             'type' => strtolower(pathinfo($file->name, PATHINFO_EXTENSION)),
             'url' => Storage::disk($file->disk)->url($file->path),
+            'status' => $file->status,
+            'metadata' => $file->metadata,
             'created_at' => $file->created_at->format('Y-m-d H:i'),
         ];
     }
@@ -104,7 +107,7 @@ class FileController extends Controller
             // Storage is flat per user; the folder hierarchy lives entirely in the DB.
             $path = $upload->store("uploads/{$userId}", $disk);
 
-            File::create([
+            $file = File::create([
                 'name' => $upload->getClientOriginalName(),
                 'path' => $path,
                 'disk' => $disk,
@@ -112,9 +115,13 @@ class FileController extends Controller
                 'mime' => $upload->getClientMimeType(),
                 'size' => $upload->getSize(),
                 'hash' => hash_file('sha256', $upload->getRealPath()),
+                'status' => File::STATUS_PENDING,
                 'parent_id' => $parent?->id,
                 'owner_id' => $userId,
             ]);
+
+            // Refine mime + extract metadata off the request cycle.
+            ProcessUploadedFile::dispatch($file->id);
         }
 
         return redirect()->route('files.index', ['folder' => $parent?->id])
@@ -294,6 +301,8 @@ class FileController extends Controller
             'mime' => $source->mime,
             'size' => $source->size,
             'hash' => $source->hash,
+            'status' => $source->status,
+            'metadata' => $source->metadata,
             'parent_id' => $parentId,
             'owner_id' => $source->owner_id,
         ]);
