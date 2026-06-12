@@ -16,8 +16,14 @@ const props = defineProps({
     activeTag: { type: Object, default: null },
     pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0, per_page: 50 }) },
     storage: { type: Object, default: () => ({ used: 0, quota: 0 }) },
+    maxUploadKb: { type: Number, default: 0 },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
+
+const maxUploadBytes = computed(() => props.maxUploadKb * 1024);
+const maxUploadLabel = computed(() =>
+    props.maxUploadKb >= 1024 ? `${(props.maxUploadKb / 1024).toFixed(0)} MB` : `${props.maxUploadKb} KB`
+);
 
 function fmtBytes(n) {
     if (n < 1024) return `${n} B`;
@@ -998,7 +1004,8 @@ onBeforeUnmount(() => {
                     label="Choose Files"
                     multiple
                     drag-drop
-                    help-text="Up to 5 MB per file."
+                    :max-size="maxUploadBytes"
+                    :help-text="`Up to ${maxUploadLabel} per file.`"
                 />
                 <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">
                     {{ uploadForm.errors['files.0'] }}

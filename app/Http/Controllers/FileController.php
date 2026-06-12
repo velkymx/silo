@@ -8,6 +8,7 @@ use App\Models\FileVersion;
 use App\Models\Tag;
 use App\Services\Audit;
 use App\Services\QuotaService;
+use App\Support\Uploads;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -94,6 +95,7 @@ class FileController extends Controller
             'allFolders' => $allFolders,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
             'storage' => app(QuotaService::class)->summary($userId),
+            'maxUploadKb' => Uploads::maxKb(),
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'sort' => $sort,
@@ -201,7 +203,7 @@ class FileController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'files.*' => 'required|file|max:'.config('filemanager.max_upload_kb'),
+            'files.*' => 'required|file|max:'.Uploads::maxKb(),
             'parent_id' => 'nullable|integer|exists:files,id',
         ]);
 

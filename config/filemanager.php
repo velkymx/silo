@@ -21,11 +21,13 @@ return [
     | Maximum Upload Size
     |--------------------------------------------------------------------------
     |
-    | Maximum size, in kilobytes, allowed per uploaded file.
+    | Maximum size, in kilobytes, allowed per uploaded file. Leave unset to
+    | fall back to PHP's own limit (the smaller of upload_max_filesize and
+    | post_max_size). Resolved via App\Support\Uploads::maxKb().
     |
     */
 
-    'max_upload_kb' => env('FILEMANAGER_MAX_UPLOAD_KB', 5120),
+    'max_upload_kb' => env('FILEMANAGER_MAX_UPLOAD_KB'),
 
     /*
     |--------------------------------------------------------------------------
