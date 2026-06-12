@@ -180,14 +180,45 @@ function openDetails(item) {
     detailsOpen.value = true;
 }
 
-// ----- Preview modal -----
-const previewOpen = ref(false);
-const previewUrl = ref('');
+// ----- Quick Look -----
+const quickOpen = ref(false);
+const quickIndex = ref(0);
+const quickFile = computed(() => props.files[quickIndex.value] ?? null);
 
-function preview(file) {
-    previewUrl.value = file.url;
-    previewOpen.value = true;
+function quickLook(file) {
+    const idx = props.files.findIndex((f) => f.id === file.id);
+    quickIndex.value = idx >= 0 ? idx : 0;
+    quickOpen.value = true;
 }
+
+function quickStep(delta) {
+    if (!props.files.length) return;
+    quickIndex.value = (quickIndex.value + delta + props.files.length) % props.files.length;
+}
+
+// Spacebar opens Quick Look for the selected row; arrows page through files.
+const selectedIndex = ref(0);
+
+function onKey(e) {
+    const tag = (e.target?.tagName || '').toLowerCase();
+    if (['input', 'textarea', 'select'].includes(tag) || e.target?.isContentEditable) return;
+
+    if (quickOpen.value) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); quickStep(1); }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); quickStep(-1); }
+        if (e.key === 'Escape') quickOpen.value = false;
+        if (e.key === ' ') { e.preventDefault(); quickOpen.value = false; }
+        return;
+    }
+
+    if (e.key === ' ' && props.files.length) {
+        e.preventDefault();
+        quickIndex.value = Math.min(selectedIndex.value, props.files.length - 1);
+        quickOpen.value = true;
+    }
+}
+
+const imageMime = (f) => f && (f.type ? imageTypes.includes(f.type) : false);
 
 // ----- Upload -----
 const uploadOpen = ref(false);
@@ -366,8 +397,14 @@ watch(hasPending, (pending) => {
     if (pending) startPolling();
 });
 
-onMounted(startPolling);
-onBeforeUnmount(() => poll && clearInterval(poll));
+onMounted(() => {
+    startPolling();
+    window.addEventListener('keydown', onKey);
+});
+onBeforeUnmount(() => {
+    poll && clearInterval(poll);
+    window.removeEventListener('keydown', onKey);
+});
 </script>
 
 <template>
@@ -490,6 +527,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
             hover
             striped
             empty-text="No files here."
+            @row-clicked="(item, i) => (selectedIndex = i)"
         >
             <template v-if="flat" #cell(location)="{ item }">
                 <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location.folder_id)">
@@ -503,7 +541,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                     :alt="item.name"
                     class="rounded border me-2"
                     style="width: 32px; height: 32px; object-fit: cover; cursor: pointer"
-                    @click="preview(item)"
+                    @click="quickLook(item)"
                 >
                 <VibeIcon v-else :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
                 <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
@@ -524,26 +562,11 @@ onBeforeUnmount(() => poll && clearInterval(poll));
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
+                    <VibeButton variant="primary" size="sm" outline title="Quick Look (Space)" @click="quickLook(item)">
+                        <VibeIcon icon="eye" />
+                    </VibeButton>
                     <VibeButton variant="success" size="sm" :href="`/download/${item.id}`">
                         <VibeIcon icon="download" />
-                    </VibeButton>
-                    <VibeButton
-                        v-if="imageTypes.includes(item.type)"
-                        variant="primary"
-                        size="sm"
-                        outline
-                        @click="preview(item)"
-                    >
-                        <VibeIcon icon="eye" />
-                    </VibeButton>
-                    <VibeButton
-                        v-else-if="item.type === 'pdf'"
-                        variant="warning"
-                        size="sm"
-                        outline
-                        :href="item.url"
-                    >
-                        <VibeIcon icon="eye" />
                     </VibeButton>
                     <VibeDropdown
                         size="sm"
@@ -632,10 +655,61 @@ onBeforeUnmount(() => poll && clearInterval(poll));
             </table>
         </VibeModal>
 
-        <!-- Preview modal -->
-        <VibeModal v-model="previewOpen" title="Preview" centered hide-footer>
-            <div class="text-center">
-                <img :src="previewUrl" alt="Preview" class="img-fluid">
+        <!-- Quick Look modal -->
+        <VibeModal v-model="quickOpen" size="xl" centered hide-footer>
+            <template #header>
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <h5 class="modal-title text-truncate mb-0">
+                        <VibeIcon :icon="quickFile ? iconFor(quickFile.type) : 'file-earmark'" class="me-2" />
+                        {{ quickFile?.name }}
+                    </h5>
+                    <div class="d-flex gap-2 align-items-center ms-3">
+                        <small class="text-muted">{{ quickIndex + 1 }} / {{ files.length }}</small>
+                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" @click="quickStep(-1)">
+                            <VibeIcon icon="chevron-left" />
+                        </VibeButton>
+                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" @click="quickStep(1)">
+                            <VibeIcon icon="chevron-right" />
+                        </VibeButton>
+                        <VibeButton variant="success" size="sm" :href="`/download/${quickFile?.id}`">
+                            <VibeIcon icon="download" class="me-1" />Download
+                        </VibeButton>
+                    </div>
+                </div>
+            </template>
+
+            <div v-if="quickFile" class="text-center" style="min-height: 50vh">
+                <img
+                    v-if="imageMime(quickFile)"
+                    :src="quickFile.url"
+                    :alt="quickFile.name"
+                    class="img-fluid rounded"
+                    style="max-height: 72vh"
+                >
+                <iframe
+                    v-else-if="quickFile.type === 'pdf'"
+                    :src="quickFile.url"
+                    class="w-100 border rounded"
+                    style="height: 72vh"
+                ></iframe>
+                <audio v-else-if="quickFile.mime?.startsWith('audio/')" :src="quickFile.url" controls class="w-100 mt-5" />
+                <video
+                    v-else-if="quickFile.mime?.startsWith('video/')"
+                    :src="quickFile.url"
+                    controls
+                    class="img-fluid rounded"
+                    style="max-height: 72vh"
+                />
+                <pre
+                    v-else-if="quickFile.metadata?.preview"
+                    class="text-start p-3 bg-body-tertiary rounded border"
+                    style="max-height: 72vh; overflow: auto; white-space: pre-wrap"
+                >{{ quickFile.metadata.preview }}</pre>
+                <div v-else class="text-muted py-5">
+                    <VibeIcon :icon="iconFor(quickFile.type)" class="display-1 d-block mb-3" />
+                    No inline preview for this file type.
+                    <div class="small mt-2">{{ quickFile.mime || 'unknown type' }} · {{ (quickFile.size / 1024).toFixed(1) }} KB</div>
+                </div>
             </div>
         </VibeModal>
 
