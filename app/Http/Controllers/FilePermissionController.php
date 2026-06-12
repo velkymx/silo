@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\Group;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -64,6 +65,12 @@ class FilePermissionController extends Controller
             ]);
         }
 
+        Audit::log('permission.grant', $file, [
+            'subject_type' => $data['subject_type'],
+            'subject_id' => $subjectId,
+            'abilities' => $data['abilities'],
+        ]);
+
         return response()->json(['permissions' => $this->grants($file)]);
     }
 
@@ -73,6 +80,11 @@ class FilePermissionController extends Controller
         $this->authorize('share', $file);
         abort_unless($permission->file_id === $file->id, 404);
 
+        Audit::log('permission.revoke', $file, [
+            'subject_type' => $permission->subject_type,
+            'subject_id' => $permission->subject_id,
+            'ability' => $permission->ability,
+        ]);
         $permission->delete();
 
         return response()->json(['permissions' => $this->grants($file)]);

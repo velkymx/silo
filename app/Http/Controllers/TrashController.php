@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\File;
+use App\Services\Audit;
 use App\Services\TrashService;
 use Inertia\Inertia;
 
@@ -32,6 +33,7 @@ class TrashController extends Controller
     {
         $this->authorize('restore', $file);
         $this->trash->restore($file);
+        Audit::log('file.restore', $file);
 
         return back()->with('success', 'Restored.');
     }
@@ -40,6 +42,7 @@ class TrashController extends Controller
     public function destroy(File $file)
     {
         $this->authorize('forceDelete', $file);
+        Audit::log('file.purge', $file);
         $this->trash->purge($file);
 
         return back()->with('success', 'Permanently deleted.');

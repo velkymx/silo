@@ -6,6 +6,7 @@ use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
 use App\Models\Tag;
+use App\Services\Audit;
 use App\Services\QuotaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -243,6 +244,7 @@ class FileController extends Controller
 
             // Refine mime + extract metadata off the request cycle.
             ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.upload', $file, ['size' => $file->size]);
         }
 
         return redirect()->route('files.index', ['folder' => $parent?->id])
@@ -256,6 +258,8 @@ class FileController extends Controller
 
         abort_if($file->is_dir, 404);
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
+
+        Audit::log('file.download', $file);
 
         return Storage::disk($file->disk)->download($file->path, $file->name);
     }
@@ -299,6 +303,8 @@ class FileController extends Controller
 
             $file->delete();
         });
+
+        Audit::log('file.trash', $file);
 
         return redirect()->route('files.index', ['folder' => $file->parent_id])
             ->with('success', 'Moved to trash.');

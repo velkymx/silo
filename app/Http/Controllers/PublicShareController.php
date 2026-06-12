@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ShareLink;
+use App\Services\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -73,6 +74,8 @@ class PublicShareController extends Controller
         $this->assertUnlocked($link, $token);
         abort_unless($link->allow_download, 403);
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
+
+        Audit::log('link.download', $link->file, ['token' => $token], userId: $link->created_by);
 
         return Storage::disk($link->file->disk)->download($link->file->path, $link->file->name);
     }

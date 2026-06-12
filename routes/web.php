@@ -10,6 +10,7 @@ use App\Http\Controllers\SharedController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuditController;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
@@ -21,6 +22,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/groups', [GroupController::class, 'store'])->name('admin.groups.store');
     Route::patch('/groups/{group}', [GroupController::class, 'update'])->name('admin.groups.update');
     Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('admin.groups.destroy');
+
+    Route::get('/audit', [AuditController::class, 'index'])->name('admin.audit.index');
 
     Route::get('/profile', [UserController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [UserController::class, 'update'])->name('profile.update');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\File;
 use App\Models\ShareLink;
+use App\Services\Audit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -39,6 +40,11 @@ class ShareLinkController extends Controller
             'created_by' => auth()->id(),
         ]);
 
+        Audit::log('link.create', $file, [
+            'allow_download' => $data['allow_download'] ?? true,
+            'protected' => isset($data['password']),
+        ]);
+
         return response()->json(['links' => $this->shape($file)]);
     }
 
@@ -48,6 +54,7 @@ class ShareLinkController extends Controller
         $this->authorize('share', $file);
         abort_unless($link->file_id === $file->id, 404);
 
+        Audit::log('link.revoke', $file);
         $link->delete();
 
         return response()->json(['links' => $this->shape($file)]);
