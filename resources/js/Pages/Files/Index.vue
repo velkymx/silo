@@ -102,6 +102,7 @@ function iconFor(type) {
 
 const fileActions = [
     { text: 'Details', action: 'details', icon: 'info-circle' },
+    { text: 'Share', action: 'share', icon: 'person-plus' },
     { text: 'Tags', action: 'tags', icon: 'tags' },
     { text: 'Versions', action: 'versions', icon: 'clock-history' },
     { text: 'Rename', action: 'rename', icon: 'pencil' },
@@ -121,6 +122,7 @@ const folderActions = [
 
 function onAction(item, { item: action }) {
     if (action.action === 'details') openDetails(item);
+    if (action.action === 'share') openShare(item);
     if (action.action === 'tags') openTags(item);
     if (action.action === 'versions') openVersions(item);
     if (action.action === 'rename') openRename(item);
@@ -333,6 +335,62 @@ function submitTransfer() {
             transferOpen.value = false;
         },
     });
+}
+
+// ----- Share / permissions -----
+const shareOpen = ref(false);
+const shareItem = ref(null);
+const shareGrants = ref([]);
+const shareGroups = ref([]);
+const shareError = ref('');
+const shareBusy = ref(false);
+const grant = ref({ subject_type: 'user', email: '', group_id: null, abilities: ['read'] });
+const abilityOptions = ['read', 'write', 'delete', 'share'];
+
+const subjectTypeOptions = [
+    { value: 'user', text: 'User (email)' },
+    { value: 'group', text: 'Group' },
+];
+
+function resetGrant() {
+    grant.value = { subject_type: 'user', email: '', group_id: null, abilities: ['read'] };
+    shareError.value = '';
+}
+
+async function openShare(item) {
+    shareItem.value = item;
+    resetGrant();
+    shareGrants.value = [];
+    shareOpen.value = true;
+    const { data } = await window.axios.get(`/files/${item.id}/permissions`);
+    shareGrants.value = data.permissions;
+    shareGroups.value = data.groups.map((g) => ({ value: g.id, text: g.name }));
+}
+
+function toggleAbility(ability) {
+    const set = new Set(grant.value.abilities);
+    set.has(ability) ? set.delete(ability) : set.add(ability);
+    grant.value.abilities = [...set];
+}
+
+async function addGrant() {
+    shareError.value = '';
+    shareBusy.value = true;
+    try {
+        const { data } = await window.axios.post(`/files/${shareItem.value.id}/permissions`, grant.value);
+        shareGrants.value = data.permissions;
+        resetGrant();
+    } catch (e) {
+        const errs = e.response?.data?.errors;
+        shareError.value = errs ? Object.values(errs).flat().join(' ') : 'Could not add grant.';
+    } finally {
+        shareBusy.value = false;
+    }
+}
+
+async function removeGrant(id) {
+    const { data } = await window.axios.delete(`/files/${shareItem.value.id}/permissions/${id}`);
+    shareGrants.value = data.permissions;
 }
 
 // ----- Tags -----
@@ -614,6 +672,63 @@ onBeforeUnmount(() => {
                     </tr>
                 </tbody>
             </table>
+        </VibeModal>
+
+        <!-- Share modal -->
+        <VibeModal v-model="shareOpen" :title="`Share — ${shareItem?.name || ''}`" hide-footer>
+            <h6 class="text-muted">People &amp; groups with access</h6>
+            <table v-if="shareGrants.length" class="table table-sm align-middle">
+                <tbody>
+                    <tr v-for="g in shareGrants" :key="g.id">
+                        <td>
+                            <VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />
+                            {{ g.subject_label }}
+                        </td>
+                        <td><VibeBadge variant="secondary">{{ g.ability }}</VibeBadge></td>
+                        <td class="text-end">
+                            <VibeButton variant="danger" size="sm" outline @click="removeGrant(g.id)">
+                                <VibeIcon icon="x" />
+                            </VibeButton>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p v-else class="text-muted small">Only you (the owner) can access this file.</p>
+
+            <hr>
+            <h6 class="text-muted">Grant access</h6>
+            <VibeAlert v-if="shareError" variant="danger">{{ shareError }}</VibeAlert>
+            <div class="row g-2">
+                <div class="col-5">
+                    <VibeFormSelect v-model="grant.subject_type" :options="subjectTypeOptions" />
+                </div>
+                <div class="col-7">
+                    <VibeFormInput
+                        v-if="grant.subject_type === 'user'"
+                        v-model="grant.email"
+                        type="email"
+                        placeholder="person@example.com"
+                    />
+                    <VibeFormSelect
+                        v-else
+                        v-model="grant.group_id"
+                        :options="shareGroups"
+                        placeholder="Choose a group…"
+                    />
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-3">
+                <VibeFormCheckbox
+                    v-for="a in abilityOptions"
+                    :key="a"
+                    :model-value="grant.abilities.includes(a)"
+                    :label="a"
+                    @update:model-value="toggleAbility(a)"
+                />
+            </div>
+            <div class="text-end mt-3">
+                <VibeButton variant="primary" :disabled="shareBusy" @click="addGrant">Grant</VibeButton>
+            </div>
         </VibeModal>
 
         <!-- Tags modal -->
