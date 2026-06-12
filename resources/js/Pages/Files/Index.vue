@@ -68,7 +68,16 @@ function iconFor(type) {
     return 'file-earmark';
 }
 
-const rowActions = [
+const fileActions = [
+    { text: 'Details', action: 'details', icon: 'info-circle' },
+    { text: 'Rename', action: 'rename', icon: 'pencil' },
+    { text: 'Move', action: 'move', icon: 'arrows-move' },
+    { text: 'Copy', action: 'copy', icon: 'files' },
+    { divider: true },
+    { text: 'Delete', action: 'delete', icon: 'trash' },
+];
+
+const folderActions = [
     { text: 'Rename', action: 'rename', icon: 'pencil' },
     { text: 'Move', action: 'move', icon: 'arrows-move' },
     { text: 'Copy', action: 'copy', icon: 'files' },
@@ -77,10 +86,51 @@ const rowActions = [
 ];
 
 function onAction(item, { item: action }) {
+    if (action.action === 'details') openDetails(item);
     if (action.action === 'rename') openRename(item);
     if (action.action === 'move') openTransfer(item, 'move');
     if (action.action === 'copy') openTransfer(item, 'copy');
     if (action.action === 'delete') destroy(item);
+}
+
+// ----- Details -----
+const detailsOpen = ref(false);
+const detailsItem = ref(null);
+
+const metadataLabels = {
+    width: 'Width',
+    height: 'Height',
+    camera_make: 'Camera Make',
+    camera_model: 'Camera Model',
+    taken_at: 'Taken At',
+    orientation: 'Orientation',
+    title: 'Title',
+    artist: 'Artist',
+    album: 'Album',
+    duration: 'Duration (s)',
+    bitrate: 'Bitrate (kbps)',
+    sample_rate: 'Sample Rate',
+    channels: 'Channels',
+};
+
+const detailsRows = computed(() => {
+    const item = detailsItem.value;
+    if (!item) return [];
+    const rows = [
+        { label: 'Type', value: item.mime || 'folder' },
+        { label: 'Size', value: `${(item.size / 1024).toFixed(2)} KB` },
+        { label: 'Uploaded', value: item.created_at },
+    ];
+    if (item.hash) rows.push({ label: 'SHA-256', value: item.hash });
+    for (const [key, val] of Object.entries(item.metadata ?? {})) {
+        rows.push({ label: metadataLabels[key] ?? key, value: String(val) });
+    }
+    return rows;
+});
+
+function openDetails(item) {
+    detailsItem.value = item;
+    detailsOpen.value = true;
 }
 
 // ----- Preview modal -----
@@ -282,7 +332,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                         size="sm"
                         variant="secondary"
                         menu-end
-                        :items="rowActions"
+                        :items="folderActions"
                         @item-click="onAction(item, $event)"
                     >
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>
@@ -340,7 +390,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                         size="sm"
                         variant="secondary"
                         menu-end
-                        :items="rowActions"
+                        :items="fileActions"
                         @item-click="onAction(item, $event)"
                     >
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>
@@ -351,6 +401,18 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                 </div>
             </template>
         </VibeDataTable>
+
+        <!-- Details modal -->
+        <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered hide-footer>
+            <table class="table table-sm mb-0">
+                <tbody>
+                    <tr v-for="row in detailsRows" :key="row.label">
+                        <th class="text-nowrap pe-3 text-muted" style="width: 40%">{{ row.label }}</th>
+                        <td class="text-break font-monospace small">{{ row.value }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </VibeModal>
 
         <!-- Preview modal -->
         <VibeModal v-model="previewOpen" title="Preview" centered hide-footer>

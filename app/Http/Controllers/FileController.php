@@ -76,6 +76,7 @@ class FileController extends Controller
             'url' => Storage::disk($file->disk)->url($file->path),
             'status' => $file->status,
             'metadata' => $file->metadata,
+            'hash' => $file->hash,
             'created_at' => $file->created_at->format('Y-m-d H:i'),
         ];
     }

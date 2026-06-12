@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\File;
+use App\Services\MetadataExtractor;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +23,7 @@ class ProcessUploadedFile implements ShouldQueue
     /**
      * Execute the job: refine metadata for an uploaded file.
      */
-    public function handle(): void
+    public function handle(MetadataExtractor $extractor): void
     {
         $file = File::find($this->fileId);
 
@@ -38,21 +39,12 @@ class ProcessUploadedFile implements ShouldQueue
             return;
         }
 
-        $metadata = [];
-
         // Refine the MIME type from the stored bytes (client-reported types lie).
         if ($mime = $disk->mimeType($file->path)) {
             $file->mime = $mime;
         }
 
-        // Extract image dimensions when the file is an image.
-        if (str_starts_with((string) $file->mime, 'image/')) {
-            $info = @getimagesizefromstring($disk->get($file->path));
-            if ($info !== false) {
-                $metadata['width'] = $info[0];
-                $metadata['height'] = $info[1];
-            }
-        }
+        $metadata = $extractor->extract($file);
 
         $file->update([
             'mime' => $file->mime,
