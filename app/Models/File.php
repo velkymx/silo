@@ -128,6 +128,14 @@ class File extends Model
     }
 
     /**
+     * Public share links pointing at this file.
+     */
+    public function shareLinks(): HasMany
+    {
+        return $this->hasMany(ShareLink::class);
+    }
+
+    /**
      * Scope to folders only.
      */
     public function scopeFolders($query)

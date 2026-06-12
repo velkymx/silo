@@ -357,14 +357,46 @@ function resetGrant() {
     shareError.value = '';
 }
 
+const shareLinks = ref([]);
+const linkForm = ref({ allow_download: true, expires_in_days: null, password: '' });
+const linkCopied = ref(null);
+
 async function openShare(item) {
     shareItem.value = item;
     resetGrant();
     shareGrants.value = [];
+    shareLinks.value = [];
+    linkForm.value = { allow_download: true, expires_in_days: null, password: '' };
     shareOpen.value = true;
-    const { data } = await window.axios.get(`/files/${item.id}/permissions`);
-    shareGrants.value = data.permissions;
-    shareGroups.value = data.groups.map((g) => ({ value: g.id, text: g.name }));
+    const [{ data: perms }, { data: links }] = await Promise.all([
+        window.axios.get(`/files/${item.id}/permissions`),
+        window.axios.get(`/files/${item.id}/links`),
+    ]);
+    shareGrants.value = perms.permissions;
+    shareGroups.value = perms.groups.map((g) => ({ value: g.id, text: g.name }));
+    shareLinks.value = links.links;
+}
+
+async function createLink() {
+    const payload = {
+        allow_download: linkForm.value.allow_download,
+        expires_in_days: linkForm.value.expires_in_days || null,
+        password: linkForm.value.password || null,
+    };
+    const { data } = await window.axios.post(`/files/${shareItem.value.id}/links`, payload);
+    shareLinks.value = data.links;
+    linkForm.value = { allow_download: true, expires_in_days: null, password: '' };
+}
+
+async function revokeLink(id) {
+    const { data } = await window.axios.delete(`/files/${shareItem.value.id}/links/${id}`);
+    shareLinks.value = data.links;
+}
+
+function copyLink(url, id) {
+    navigator.clipboard?.writeText(url);
+    linkCopied.value = id;
+    setTimeout(() => (linkCopied.value = null), 1500);
 }
 
 function toggleAbility(ability) {
@@ -728,6 +760,56 @@ onBeforeUnmount(() => {
             </div>
             <div class="text-end mt-3">
                 <VibeButton variant="primary" :disabled="shareBusy" @click="addGrant">Grant</VibeButton>
+            </div>
+
+            <hr>
+            <h6 class="text-muted">Public links</h6>
+            <table v-if="shareLinks.length" class="table table-sm align-middle">
+                <tbody>
+                    <tr v-for="link in shareLinks" :key="link.id">
+                        <td class="text-truncate" style="max-width: 220px">
+                            <a :href="link.url" target="_blank" class="small">{{ link.url }}</a>
+                            <div class="small text-muted">
+                                <span v-if="link.protected"><VibeIcon icon="lock" /> password · </span>
+                                <span>{{ link.allow_download ? 'download' : 'view only' }}</span>
+                                <span v-if="link.expires_at"> · expires {{ link.expires_at }}</span>
+                                <span v-if="link.expired" class="text-danger"> · expired</span>
+                            </div>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <VibeButton variant="secondary" size="sm" outline @click="copyLink(link.url, link.id)">
+                                <VibeIcon :icon="linkCopied === link.id ? 'check' : 'clipboard'" />
+                            </VibeButton>
+                            <VibeButton variant="danger" size="sm" outline class="ms-1" @click="revokeLink(link.id)">
+                                <VibeIcon icon="x" />
+                            </VibeButton>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p v-else class="text-muted small">No public links.</p>
+
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <VibeFormCheckbox v-model="linkForm.allow_download" label="Allow download" />
+                </div>
+                <div class="col">
+                    <VibeFormInput
+                        v-model="linkForm.expires_in_days"
+                        type="number"
+                        placeholder="Expires in N days (optional)"
+                    />
+                </div>
+                <div class="col">
+                    <VibeFormInput
+                        v-model="linkForm.password"
+                        type="password"
+                        placeholder="Password (optional)"
+                    />
+                </div>
+                <div class="col-auto">
+                    <VibeButton variant="primary" @click="createLink">Create link</VibeButton>
+                </div>
             </div>
         </VibeModal>
 

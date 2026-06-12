@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilePermissionController;
+use App\Http\Controllers\PublicShareController;
+use App\Http\Controllers\ShareLinkController;
 use App\Http\Controllers\SharedController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
@@ -30,12 +32,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/files/{file}/permissions', [FilePermissionController::class, 'index'])->name('files.permissions.index');
     Route::post('/files/{file}/permissions', [FilePermissionController::class, 'store'])->name('files.permissions.store');
     Route::delete('/files/{file}/permissions/{permission}', [FilePermissionController::class, 'destroy'])->name('files.permissions.destroy');
+    Route::get('/files/{file}/links', [ShareLinkController::class, 'index'])->name('files.links.index');
+    Route::post('/files/{file}/links', [ShareLinkController::class, 'store'])->name('files.links.store');
+    Route::delete('/files/{file}/links/{link}', [ShareLinkController::class, 'destroy'])->name('files.links.destroy');
     Route::get('/files/{file}/versions/{version}/download', [FileController::class, 'downloadVersion'])->name('files.versions.download');
     Route::post('/files/{file}/versions/{version}/restore', [FileController::class, 'restoreVersion'])->name('files.versions.restore');
 
     Route::post('/folders', [FileController::class, 'createFolder'])->name('folders.create');
     Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
 });
+
+// Public share links (no authentication).
+Route::get('/s/{token}', [PublicShareController::class, 'show'])->name('shares.public.show');
+Route::post('/s/{token}/unlock', [PublicShareController::class, 'unlock'])->name('shares.public.unlock');
+Route::get('/s/{token}/raw', [PublicShareController::class, 'raw'])->name('shares.public.raw');
+Route::get('/s/{token}/download', [PublicShareController::class, 'download'])->name('shares.public.download');
 
 Auth::routes(['verify' => false]);
 
