@@ -948,6 +948,9 @@ onBeforeUnmount(() => {
                         <VibeButton variant="success" size="sm" :href="`/download/${quickFile?.id}`">
                             <VibeIcon icon="download" class="me-1" />Download
                         </VibeButton>
+                        <VibeButton variant="secondary" size="sm" outline title="Close" @click="quickOpen = false">
+                            <VibeIcon icon="x-lg" />
+                        </VibeButton>
                     </div>
                 </div>
             </template>

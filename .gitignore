@@ -11,3 +11,6 @@ todo.md
 
 /qa-drive*.mjs
 /tmp
+
+/test-results
+/playwright-report
