@@ -36,6 +36,22 @@ class InertiaPagesTest extends TestCase
         );
     }
 
+    public function test_index_supplies_all_folders_for_the_tree(): void
+    {
+        $user = User::factory()->create();
+        $root = File::factory()->for($user, 'owner')->folder()->create(['name' => 'Root']);
+        File::factory()->for($user, 'owner')->folder()->create(['name' => 'Child', 'parent_id' => $root->id]);
+
+        $this->actingAs($user)->get('/')->assertInertia(
+            fn (Assert $page) => $page
+                ->has('allFolders', 2)
+                ->where('allFolders.0.name', 'Child')
+                ->where('allFolders.0.parent_id', $root->id)
+                ->where('allFolders.1.name', 'Root')
+                ->where('allFolders.1.parent_id', null)
+        );
+    }
+
     public function test_profile_page_renders(): void
     {
         $user = User::factory()->create();

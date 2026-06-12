@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import FolderTree from '../../Components/FolderTree.vue';
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
@@ -14,6 +15,18 @@ const props = defineProps({
 });
 
 const currentId = computed(() => props.current?.id ?? null);
+
+// IDs along the path from root to the current folder — used to auto-expand the tree.
+const ancestorIds = computed(() => {
+    const byId = Object.fromEntries(props.allFolders.map((f) => [f.id, f]));
+    const ids = new Set();
+    let id = currentId.value;
+    while (id) {
+        ids.add(id);
+        id = byId[id]?.parent_id ?? null;
+    }
+    return ids;
+});
 
 // ----- Breadcrumb -----
 const breadcrumbItems = computed(() => [
@@ -308,6 +321,21 @@ onBeforeUnmount(() => poll && clearInterval(poll));
 
 <template>
     <AppLayout>
+      <VibeRow>
+        <VibeCol :md="3" :lg="3" class="mb-3">
+            <VibeCard header="Folders">
+                <VibeButton
+                    variant="link"
+                    class="p-0 text-decoration-none mb-1 d-block"
+                    :class="!current ? 'fw-bold' : 'text-body'"
+                    @click="visitFolder(null)"
+                >
+                    <VibeIcon icon="house-door-fill" class="me-1" />Home
+                </VibeButton>
+                <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
+            </VibeCard>
+        </VibeCol>
+        <VibeCol :md="9" :lg="9">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <VibeBreadcrumb :items="breadcrumbItems" class="mb-0" @item-click="onBreadcrumb" />
             <div class="d-flex gap-2">
@@ -576,5 +604,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                 </div>
             </form>
         </VibeModal>
+        </VibeCol>
+      </VibeRow>
     </AppLayout>
 </template>
