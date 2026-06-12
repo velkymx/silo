@@ -14,8 +14,17 @@ const props = defineProps({
     searching: { type: Boolean, default: false },
     flat: { type: Boolean, default: false },
     activeTag: { type: Object, default: null },
+    pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0, per_page: 50 }) },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
+
+function goToPage(page) {
+    const params = { page };
+    if (props.searching) params.search = props.filters.search;
+    else if (props.activeTag) params.tag = props.activeTag.id;
+    else if (currentId.value) params.folder = currentId.value;
+    router.get('/', params, { preserveScroll: true, preserveState: true });
+}
 
 const currentId = computed(() => props.current?.id ?? null);
 
@@ -526,6 +535,8 @@ onBeforeUnmount(() => {
             row-key="id"
             hover
             striped
+            :searchable="false"
+            :paginated="false"
             empty-text="No files here."
             @row-clicked="(item, i) => (selectedIndex = i)"
         >
@@ -583,6 +594,15 @@ onBeforeUnmount(() => {
                 </div>
             </template>
         </VibeDataTable>
+
+        <div v-if="pagination.last_page > 1" class="d-flex justify-content-between align-items-center mt-3">
+            <small class="text-muted">{{ pagination.total }} files</small>
+            <VibePagination
+                :total-pages="pagination.last_page"
+                :current-page="pagination.current_page"
+                @page-click="goToPage"
+            />
+        </div>
 
         <!-- Details modal -->
         <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered hide-footer>

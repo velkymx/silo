@@ -35,21 +35,31 @@ class FileController extends Controller
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
 
+        $perPage = 50;
+
+        // One query for every folder the user owns: powers the tree, the move/copy
+        // picker, and search/tag location labels (no per-file parent walking).
+        $allFolders = File::folders()->where('owner_id', $userId)
+            ->orderBy('name')->get(['id', 'name', 'parent_id']);
+        $folderById = $allFolders->keyBy('id');
+
         if ($searching) {
             // Full-text search (Scout) spans every folder the user owns.
             $folders = collect();
-            $files = File::search($request->string('search')->toString())
+            $paginator = File::search($request->string('search')->toString())
                 ->where('owner_id', $userId)
                 ->where('is_dir', false)
-                ->get()
-                ->load(['versions', 'tags'])
-                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file)]);
+                ->paginate($perPage)->withQueryString();
+            $paginator->getCollection()->load(['versions', 'tags']);
+            $files = collect($paginator->items())
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($activeTag) {
             // Tag filter spans every folder the user owns.
             $folders = collect();
-            $files = $activeTag->files()->where('owner_id', $userId)->where('is_dir', false)
-                ->with(['versions', 'tags'])->orderBy('name')->get()
-                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file)]);
+            $paginator = $activeTag->files()->where('owner_id', $userId)->where('is_dir', false)
+                ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
+            $files = collect($paginator->items())
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } else {
             $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
 
@@ -61,21 +71,27 @@ class FileController extends Controller
                     'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
                 ]);
 
-            $files = (clone $query)->files()->with(['versions', 'tags'])->orderBy($sort, $direction)->get()
-                ->map(fn (File $file) => $this->transform($file));
+            $paginator = (clone $query)->files()->with(['versions', 'tags'])
+                ->orderBy($sort, $direction)->paginate($perPage)->withQueryString();
+            $files = collect($paginator->items())->map(fn (File $file) => $this->transform($file));
         }
 
         return Inertia::render('Files/Index', [
             'folders' => $folders->values(),
             'files' => $files->values(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+            ],
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $searching,
             'flat' => $searching || (bool) $activeTag,
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
-            // Flat list of every folder the user owns — used by the move/copy destination picker.
-            'allFolders' => File::folders()->where('owner_id', $userId)
-                ->orderBy('name')->get(['id', 'name', 'parent_id']),
+            // Flat list of every folder the user owns — used by the tree + move/copy picker.
+            'allFolders' => $allFolders,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
                 'search' => $request->string('search')->toString(),
@@ -108,17 +124,18 @@ class FileController extends Controller
         return back()->with('success', 'Tags updated.');
     }
 
-    // Human-readable folder path for a search result ("Home / Docs / 2026").
-    protected function locationLabel(File $file): array
+    // Human-readable folder path for a search result ("Home / Docs / 2026"),
+    // resolved from a prefetched folder map to avoid per-file queries.
+    protected function locationLabel(File $file, \Illuminate\Support\Collection $folderById): array
     {
-        $trail = [];
-        for ($node = $file->parent; $node; $node = $node->parent) {
-            array_unshift($trail, ['id' => $node->id, 'name' => $node->name]);
+        $names = [];
+        for ($id = $file->parent_id; $id && ($node = $folderById->get($id)); $id = $node->parent_id) {
+            array_unshift($names, $node->name);
         }
 
         return [
             'folder_id' => $file->parent_id,
-            'path' => 'Home'.collect($trail)->reduce(fn ($carry, $n) => $carry.' / '.$n['name'], ''),
+            'path' => 'Home'.collect($names)->reduce(fn ($carry, $n) => $carry.' / '.$n, ''),
         ];
     }
 
@@ -131,7 +148,7 @@ class FileController extends Controller
             'size' => $file->size,
             'mime' => $file->mime,
             'type' => strtolower(pathinfo($file->name, PATHINFO_EXTENSION)),
-            'url' => Storage::disk($file->disk)->url($file->path),
+            'url' => route('files.raw', $file),
             'status' => $file->status,
             'metadata' => $file->metadata,
             'thumb_url' => $file->thumbnail_path ? route('files.thumbnail', $file) : null,
@@ -217,6 +234,19 @@ class FileController extends Controller
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
         return Storage::disk($file->disk)->download($file->path, $file->name);
+    }
+
+    // Stream a file's bytes inline (policy-gated) for previews/embeds.
+    public function raw(File $file)
+    {
+        $this->authorize('view', $file);
+
+        abort_if($file->is_dir, 404);
+        abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
+
+        return Storage::disk($file->disk)->response($file->path, $file->name, [
+            'Content-Type' => $file->mime ?: 'application/octet-stream',
+        ]);
     }
 
     // Stream a file's cached thumbnail (policy-gated, not a public URL).
