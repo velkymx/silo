@@ -81,8 +81,9 @@ class FilePolicy
     }
 
     /**
-     * The owner has every ability; otherwise an explicit permission row must
-     * grant the ability to the user directly or via their group.
+     * The owner has every ability; otherwise an explicit permission must grant
+     * the ability to the user (directly or via their group) on the file itself
+     * OR on any ancestor folder — folder grants cascade to their contents.
      */
     protected function grants(User $user, File $file, string $ability): bool
     {
@@ -90,7 +91,8 @@ class FilePolicy
             return true;
         }
 
-        return $file->permissions()
+        return Permission::query()
+            ->whereIn('file_id', $this->lineageIds($file))
             ->where('ability', $ability)
             ->where(function ($query) use ($user) {
                 $query
@@ -103,5 +105,21 @@ class FilePolicy
                             ->where('subject_id', $user->group_id)));
             })
             ->exists();
+    }
+
+    /**
+     * The file's id plus every ancestor folder id (root-ward), so an effective
+     * permission can be inherited from any folder above it.
+     *
+     * @return array<int, int>
+     */
+    protected function lineageIds(File $file): array
+    {
+        $ids = [];
+        for ($node = $file; $node; $node = $node->parent) {
+            $ids[] = $node->id;
+        }
+
+        return $ids;
     }
 }
