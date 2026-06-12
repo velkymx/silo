@@ -103,4 +103,22 @@ class FilePermissionApiTest extends TestCase
 
         $this->assertDatabaseMissing('permissions', ['id' => $perm->id]);
     }
+
+    public function test_index_reports_grants_inherited_from_parent_folders(): void
+    {
+        $owner = User::factory()->create();
+        $grantee = User::factory()->create();
+        $folder = File::factory()->for($owner, 'owner')->folder()->create(['name' => 'Parent']);
+        $file = File::factory()->for($owner, 'owner')->create(['parent_id' => $folder->id]);
+        Permission::create([
+            'file_id' => $folder->id, 'subject_type' => 'user',
+            'subject_id' => $grantee->id, 'ability' => 'read',
+        ]);
+
+        $this->actingAs($owner)->getJson(route('files.permissions.index', $file))
+            ->assertOk()
+            ->assertJsonPath('inherited.0.ability', 'read')
+            ->assertJsonPath('inherited.0.source', 'Parent')
+            ->assertJsonCount(0, 'permissions');
+    }
 }

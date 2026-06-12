@@ -343,6 +343,7 @@ function submitTransfer() {
 const shareOpen = ref(false);
 const shareItem = ref(null);
 const shareGrants = ref([]);
+const shareInherited = ref([]);
 const shareGroups = ref([]);
 const shareError = ref('');
 const shareBusy = ref(false);
@@ -375,6 +376,7 @@ async function openShare(item) {
         window.axios.get(`/files/${item.id}/links`),
     ]);
     shareGrants.value = perms.permissions;
+    shareInherited.value = perms.inherited ?? [];
     shareGroups.value = perms.groups.map((g) => ({ value: g.id, text: g.name }));
     shareLinks.value = links.links;
 }
@@ -734,7 +736,23 @@ onBeforeUnmount(() => {
                     </tr>
                 </tbody>
             </table>
-            <p v-else class="text-muted small">Only you (the owner) can access this file.</p>
+            <p v-else class="text-muted small">No direct grants on this item.</p>
+
+            <template v-if="shareInherited.length">
+                <h6 class="text-muted">Inherited from parent folders</h6>
+                <table class="table table-sm align-middle">
+                    <tbody>
+                        <tr v-for="(g, i) in shareInherited" :key="i" class="text-muted">
+                            <td>
+                                <VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />
+                                {{ g.subject_label }}
+                            </td>
+                            <td><VibeBadge variant="light" class="text-dark border">{{ g.ability }}</VibeBadge></td>
+                            <td class="small"><VibeIcon icon="folder" class="me-1" />{{ g.source }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </template>
 
             <hr>
             <h6 class="text-muted">Grant access</h6>

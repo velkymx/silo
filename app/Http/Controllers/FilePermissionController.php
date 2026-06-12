@@ -25,6 +25,7 @@ class FilePermissionController extends Controller
 
         return response()->json([
             'permissions' => $this->grants($file),
+            'inherited' => $this->inheritedGrants($file),
             'groups' => Group::orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -75,6 +76,19 @@ class FilePermissionController extends Controller
         $permission->delete();
 
         return response()->json(['permissions' => $this->grants($file)]);
+    }
+
+    // Read-only grants inherited from ancestor folders (effective via the policy).
+    private function inheritedGrants(File $file): array
+    {
+        $out = [];
+        for ($node = $file->parent; $node; $node = $node->parent) {
+            foreach ($this->grants($node) as $grant) {
+                $out[] = $grant + ['source' => $node->name];
+            }
+        }
+
+        return $out;
     }
 
     // Shape the file's grants with a human-readable subject label.
