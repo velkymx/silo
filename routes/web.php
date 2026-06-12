@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilePermissionController;
+use App\Http\Controllers\SharedController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 
@@ -15,6 +16,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [UserController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [UserController::class, 'update'])->name('profile.update');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
+    Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
+    Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
     Route::post('/upload', [FileController::class, 'upload'])->name('files.upload');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/raw/{file}', [FileController::class, 'raw'])->name('files.raw');

@@ -8,6 +8,8 @@ const flash = computed(() => page.props.flash ?? {});
 
 const navItems = computed(() => {
     const items = [];
+    if (user.value) items.push({ text: 'My Files', href: '/' });
+    if (user.value) items.push({ text: 'Shared with me', href: '/shared' });
     if (user.value?.is_admin) items.push({ text: 'Users', href: '/users' });
     if (user.value) items.push({ text: user.value.name, href: '/profile' });
     return items;
