@@ -54,4 +54,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Group::class);
     }
+
+    public function files()
+    {
+        return $this->hasMany(File::class, 'owner_id');
+    }
 }
