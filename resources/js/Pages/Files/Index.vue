@@ -10,7 +10,10 @@ const props = defineProps({
     current: { type: Object, default: null },
     breadcrumbs: { type: Array, default: () => [] },
     allFolders: { type: Array, default: () => [] },
+    allTags: { type: Array, default: () => [] },
     searching: { type: Boolean, default: false },
+    flat: { type: Boolean, default: false },
+    activeTag: { type: Object, default: null },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
 
@@ -72,7 +75,7 @@ const folderColumns = [
 
 const fileColumns = computed(() => [
     { key: 'name', label: 'File Name' },
-    ...(props.searching ? [{ key: 'location', label: 'Location', sortable: false }] : []),
+    ...(props.flat ? [{ key: 'location', label: 'Location', sortable: false }] : []),
     { key: 'size', label: 'Size', formatter: (v) => `${(v / 1024).toFixed(2)} KB` },
     { key: 'created_at', label: 'Uploaded' },
     { key: 'actions', label: '', sortable: false, searchable: false },
@@ -90,6 +93,7 @@ function iconFor(type) {
 
 const fileActions = [
     { text: 'Details', action: 'details', icon: 'info-circle' },
+    { text: 'Tags', action: 'tags', icon: 'tags' },
     { text: 'Versions', action: 'versions', icon: 'clock-history' },
     { text: 'Rename', action: 'rename', icon: 'pencil' },
     { text: 'Move', action: 'move', icon: 'arrows-move' },
@@ -108,6 +112,7 @@ const folderActions = [
 
 function onAction(item, { item: action }) {
     if (action.action === 'details') openDetails(item);
+    if (action.action === 'tags') openTags(item);
     if (action.action === 'versions') openVersions(item);
     if (action.action === 'rename') openRename(item);
     if (action.action === 'move') openTransfer(item, 'move');
@@ -290,6 +295,51 @@ function submitTransfer() {
     });
 }
 
+// ----- Tags -----
+const tagsOpen = ref(false);
+const tagsItem = ref(null);
+const tagList = ref([]);
+const tagInput = ref('');
+const tagSaving = ref(false);
+
+const tagSuggestions = computed(() =>
+    props.allTags.map((t) => t.name).filter((n) => !tagList.value.includes(n))
+);
+
+function openTags(item) {
+    tagsItem.value = item;
+    tagList.value = (item.tags ?? []).map((t) => t.name);
+    tagInput.value = '';
+    tagsOpen.value = true;
+}
+
+function addTag(name) {
+    const value = (name ?? tagInput.value).trim();
+    if (value && !tagList.value.includes(value)) tagList.value.push(value);
+    tagInput.value = '';
+}
+
+function removeTag(name) {
+    tagList.value = tagList.value.filter((n) => n !== name);
+}
+
+function saveTags() {
+    tagSaving.value = true;
+    router.put(`/files/${tagsItem.value.id}/tags`, { tags: tagList.value }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            tagsOpen.value = false;
+        },
+        onFinish: () => {
+            tagSaving.value = false;
+        },
+    });
+}
+
+function filterByTag(id) {
+    router.get('/', { tag: id }, { preserveScroll: true });
+}
+
 // ----- Delete -----
 function destroy(item) {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
@@ -335,6 +385,22 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                 </VibeButton>
                 <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
             </VibeCard>
+
+            <VibeCard v-if="allTags.length" header="Tags" class="mt-3">
+                <div class="d-flex flex-wrap gap-1">
+                    <span
+                        v-for="tag in allTags"
+                        :key="tag.id"
+                        class="badge rounded-pill"
+                        :style="{
+                            backgroundColor: tag.color || '#6c757d',
+                            cursor: 'pointer',
+                            opacity: activeTag && activeTag.id === tag.id ? 1 : 0.85,
+                        }"
+                        @click="filterByTag(tag.id)"
+                    >{{ tag.name }}</span>
+                </div>
+            </VibeCard>
         </VibeCol>
         <VibeCol :md="9" :lg="9">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -372,7 +438,12 @@ onBeforeUnmount(() => poll && clearInterval(poll));
             <VibeButton variant="info" size="sm" outline @click="clearSearch">Clear</VibeButton>
         </VibeAlert>
 
-        <template v-if="!searching">
+        <VibeAlert v-if="activeTag" variant="primary" class="d-flex align-items-center justify-content-between">
+            <span><VibeIcon icon="tag-fill" class="me-1" />Files tagged "{{ activeTag.name }}".</span>
+            <VibeButton variant="primary" size="sm" outline @click="filterByTag(null)">Clear</VibeButton>
+        </VibeAlert>
+
+        <template v-if="!flat">
             <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="folder" />Folders</h5>
             <VibeDataTable
                 :items="folders"
@@ -420,7 +491,7 @@ onBeforeUnmount(() => poll && clearInterval(poll));
             striped
             empty-text="No files here."
         >
-            <template v-if="searching" #cell(location)="{ item }">
+            <template v-if="flat" #cell(location)="{ item }">
                 <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location.folder_id)">
                     {{ item.location.path }}
                 </VibeButton>
@@ -443,6 +514,13 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                     {{ item.metadata.width }}×{{ item.metadata.height }}
                 </span>
                 <VibeBadge v-if="item.version > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
+                <span
+                    v-for="tag in item.tags"
+                    :key="tag.id"
+                    class="badge rounded-pill ms-1"
+                    :style="{ backgroundColor: tag.color || '#6c757d', cursor: 'pointer' }"
+                    @click="filterByTag(tag.id)"
+                >{{ tag.name }}</span>
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
@@ -493,6 +571,33 @@ onBeforeUnmount(() => poll && clearInterval(poll));
                     </tr>
                 </tbody>
             </table>
+        </VibeModal>
+
+        <!-- Tags modal -->
+        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" hide-footer>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <VibeBadge v-for="name in tagList" :key="name" variant="primary" class="d-flex align-items-center">
+                    {{ name }}
+                    <VibeIcon icon="x" class="ms-1" style="cursor: pointer" @click="removeTag(name)" />
+                </VibeBadge>
+                <span v-if="!tagList.length" class="text-muted small">No tags yet.</span>
+            </div>
+            <div class="d-flex gap-2 align-items-end">
+                <div class="flex-grow-1">
+                    <VibeAutocomplete
+                        v-model="tagInput"
+                        :source="tagSuggestions"
+                        label="Add a tag"
+                        placeholder="Type a tag and press Add"
+                        @select="addTag"
+                        @keyup.enter="addTag()"
+                    />
+                </div>
+                <VibeButton variant="secondary" @click="addTag()">Add</VibeButton>
+            </div>
+            <div class="text-end mt-3">
+                <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags">Save</VibeButton>
+            </div>
         </VibeModal>
 
         <!-- Versions modal -->

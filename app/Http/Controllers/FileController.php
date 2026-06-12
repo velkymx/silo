@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
+use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +31,9 @@ class FileController extends Controller
             : 'name';
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
         $searching = $request->filled('search');
+        $activeTag = $request->filled('tag')
+            ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
+            : null;
 
         if ($searching) {
             // Full-text search (Scout) spans every folder the user owns.
@@ -38,7 +42,13 @@ class FileController extends Controller
                 ->where('owner_id', $userId)
                 ->where('is_dir', false)
                 ->get()
-                ->load('versions')
+                ->load(['versions', 'tags'])
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file)]);
+        } elseif ($activeTag) {
+            // Tag filter spans every folder the user owns.
+            $folders = collect();
+            $files = $activeTag->files()->where('owner_id', $userId)->where('is_dir', false)
+                ->with(['versions', 'tags'])->orderBy('name')->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file)]);
         } else {
             $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
@@ -51,7 +61,7 @@ class FileController extends Controller
                     'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
                 ]);
 
-            $files = (clone $query)->files()->with('versions')->orderBy($sort, $direction)->get()
+            $files = (clone $query)->files()->with(['versions', 'tags'])->orderBy($sort, $direction)->get()
                 ->map(fn (File $file) => $this->transform($file));
         }
 
@@ -61,15 +71,41 @@ class FileController extends Controller
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $searching,
+            'flat' => $searching || (bool) $activeTag,
+            'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
             // Flat list of every folder the user owns — used by the move/copy destination picker.
             'allFolders' => File::folders()->where('owner_id', $userId)
                 ->orderBy('name')->get(['id', 'name', 'parent_id']),
+            'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'sort' => $sort,
                 'direction' => $direction,
             ],
         ]);
+    }
+
+    // Replace a file's tags from a list of names (creating tags as needed).
+    public function syncTags(Request $request, File $file)
+    {
+        $this->authorize('update', $file);
+
+        $request->validate([
+            'tags' => 'array',
+            'tags.*' => 'string|max:50',
+        ]);
+
+        $ids = collect($request->input('tags', []))
+            ->map(fn ($name) => trim($name))
+            ->filter()
+            ->unique()
+            ->map(fn ($name) => Tag::firstOrCreate(
+                ['owner_id' => $file->owner_id, 'name' => $name],
+            )->id);
+
+        $file->tags()->sync($ids);
+
+        return back()->with('success', 'Tags updated.');
     }
 
     // Human-readable folder path for a search result ("Home / Docs / 2026").
@@ -99,6 +135,9 @@ class FileController extends Controller
             'status' => $file->status,
             'metadata' => $file->metadata,
             'thumb_url' => $file->thumbnail_path ? route('files.thumbnail', $file) : null,
+            'tags' => $file->relationLoaded('tags')
+                ? $file->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
+                : [],
             'hash' => $file->hash,
             'version' => $file->version,
             'versions' => $file->relationLoaded('versions')

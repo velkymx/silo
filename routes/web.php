@@ -21,6 +21,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/files/{file}/rename', [FileController::class, 'rename'])->name('files.rename');
     Route::post('/files/{file}/move', [FileController::class, 'move'])->name('files.move');
     Route::post('/files/{file}/copy', [FileController::class, 'copy'])->name('files.copy');
+    Route::put('/files/{file}/tags', [FileController::class, 'syncTags'])->name('files.tags');
     Route::get('/files/{file}/versions/{version}/download', [FileController::class, 'downloadVersion'])->name('files.versions.download');
     Route::post('/files/{file}/versions/{version}/restore', [FileController::class, 'restoreVersion'])->name('files.versions.restore');
 
