@@ -6,6 +6,7 @@ use App\Http\Controllers\FilePermissionController;
 use App\Http\Controllers\PublicShareController;
 use App\Http\Controllers\ShareLinkController;
 use App\Http\Controllers\SharedController;
+use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 
@@ -20,6 +21,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [FileController::class, 'index'])->name('files.index');
     Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
+
+    Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
+    Route::delete('/trash/empty', [TrashController::class, 'empty'])->name('trash.empty');
+    Route::post('/trash/{file}/restore', [TrashController::class, 'restore'])->withTrashed()->name('trash.restore');
+    Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
     Route::post('/upload', [FileController::class, 'upload'])->name('files.upload');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/raw/{file}', [FileController::class, 'raw'])->name('files.raw');

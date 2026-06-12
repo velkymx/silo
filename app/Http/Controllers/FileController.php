@@ -262,26 +262,22 @@ class FileController extends Controller
         return Storage::disk($file->disk)->response($file->thumbnail_path);
     }
 
-    // Delete a file or folder (and its contents) resolved by DB id.
+    // Soft-delete a file or folder (and its contents) into the trash.
+    // Blobs are kept until the item is purged from the trash, so it can be restored.
     public function destroy(File $file)
     {
         $this->authorize('delete', $file);
 
         DB::transaction(function () use ($file) {
             if ($file->is_dir) {
-                $this->deleteSubtree($file);
-            } else {
-                Storage::disk($file->disk)->delete($file->path);
-                if ($file->thumbnail_path) {
-                    Storage::disk($file->disk)->delete($file->thumbnail_path);
-                }
+                $this->trashSubtree($file);
             }
 
             $file->delete();
         });
 
         return redirect()->route('files.index', ['folder' => $file->parent_id])
-            ->with('success', 'Deleted successfully!');
+            ->with('success', 'Moved to trash.');
     }
 
     // Create a new folder inside the current folder.
@@ -457,17 +453,12 @@ class FileController extends Controller
         return $folder;
     }
 
-    // Recursively delete a folder's descendants (DB rows + file blobs).
-    protected function deleteSubtree(File $folder): void
+    // Recursively soft-delete a folder's descendants into the trash (blobs kept).
+    protected function trashSubtree(File $folder): void
     {
         foreach ($folder->children as $child) {
             if ($child->is_dir) {
-                $this->deleteSubtree($child);
-            } else {
-                Storage::disk($child->disk)->delete($child->path);
-                if ($child->thumbnail_path) {
-                    Storage::disk($child->disk)->delete($child->thumbnail_path);
-                }
+                $this->trashSubtree($child);
             }
 
             $child->delete();

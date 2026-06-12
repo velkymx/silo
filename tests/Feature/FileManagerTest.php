@@ -73,7 +73,8 @@ class FileManagerTest extends TestCase
             ->assertRedirect();
 
         $this->assertSoftDeleted($file);
-        Storage::disk('public')->assertMissing('uploads/'.$user->id.'/a.txt');
+        // Soft-delete moves the file to trash; the blob is kept until purged.
+        Storage::disk('public')->assertExists('uploads/'.$user->id.'/a.txt');
     }
 
     public function test_user_cannot_delete_another_users_file(): void
