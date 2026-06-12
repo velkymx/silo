@@ -54,8 +54,10 @@ class FileController extends Controller
             $files = collect($paginator->items())
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($activeTag) {
-            // Tag filter spans every folder the user owns.
-            $folders = collect();
+            // Tag filter spans every folder the user owns (folders + files).
+            $folders = $activeTag->files()->where('owner_id', $userId)->where('is_dir', true)
+                ->withCount('children')->with('tags')->orderBy('name')->get()
+                ->map(fn (File $folder) => $this->folderShape($folder));
             $paginator = $activeTag->files()->where('owner_id', $userId)->where('is_dir', false)
                 ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
             $files = collect($paginator->items())
@@ -63,13 +65,9 @@ class FileController extends Controller
         } else {
             $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
 
-            $folders = (clone $query)->folders()->withCount('children')->orderBy($sort, $direction)->get()
-                ->map(fn (File $folder) => [
-                    'id' => $folder->id,
-                    'name' => $folder->name,
-                    'item_count' => $folder->children_count,
-                    'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
-                ]);
+            $folders = (clone $query)->folders()->withCount('children')->with('tags')
+                ->orderBy($sort, $direction)->get()
+                ->map(fn (File $folder) => $this->folderShape($folder));
 
             $paginator = (clone $query)->files()->with(['versions', 'tags'])
                 ->orderBy($sort, $direction)->paginate($perPage)->withQueryString();
@@ -139,12 +137,28 @@ class FileController extends Controller
         ];
     }
 
+    // Shape a folder model for the frontend (id, counts, tags).
+    protected function folderShape(File $folder): array
+    {
+        return [
+            'id' => $folder->id,
+            'name' => $folder->name,
+            'is_dir' => true,
+            'item_count' => $folder->children_count ?? $folder->children()->count(),
+            'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
+            'tags' => $folder->relationLoaded('tags')
+                ? $folder->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
+                : [],
+        ];
+    }
+
     // Shape a file model for the frontend.
     protected function transform(File $file): array
     {
         return [
             'id' => $file->id,
             'name' => $file->name,
+            'is_dir' => false,
             'size' => $file->size,
             'mime' => $file->mime,
             'type' => strtolower(pathinfo($file->name, PATHINFO_EXTENSION)),

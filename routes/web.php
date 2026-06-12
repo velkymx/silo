@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilePermissionController;
+use App\Http\Controllers\GroupController;
 use App\Http\Controllers\PublicShareController;
 use App\Http\Controllers\ShareLinkController;
 use App\Http\Controllers\SharedController;
@@ -15,6 +16,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('admin.users.edit');
     Route::post('/users/{user}/update-group', [AdminController::class, 'updateGroup'])->name('admin.users.updateGroup');
     Route::patch('/admin/users/{user}', [AdminController::class, 'update'])->name('admin.users.update');
+
+    Route::get('/groups', [GroupController::class, 'index'])->name('admin.groups.index');
+    Route::post('/groups', [GroupController::class, 'store'])->name('admin.groups.store');
+    Route::patch('/groups/{group}', [GroupController::class, 'update'])->name('admin.groups.update');
+    Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('admin.groups.destroy');
 
     Route::get('/profile', [UserController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [UserController::class, 'update'])->name('profile.update');

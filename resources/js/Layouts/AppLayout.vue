@@ -12,6 +12,7 @@ const navItems = computed(() => {
     if (user.value) items.push({ text: 'Shared with me', href: '/shared' });
     if (user.value) items.push({ text: 'Trash', href: '/trash' });
     if (user.value?.is_admin) items.push({ text: 'Users', href: '/users' });
+    if (user.value?.is_admin) items.push({ text: 'Groups', href: '/groups' });
     if (user.value) items.push({ text: user.value.name, href: '/profile' });
     return items;
 });

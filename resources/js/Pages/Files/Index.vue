@@ -113,6 +113,8 @@ const fileActions = [
 ];
 
 const folderActions = [
+    { text: 'Share', action: 'share', icon: 'person-plus' },
+    { text: 'Tags', action: 'tags', icon: 'tags' },
     { text: 'Rename', action: 'rename', icon: 'pencil' },
     { text: 'Move', action: 'move', icon: 'arrows-move' },
     { text: 'Copy', action: 'copy', icon: 'files' },
@@ -579,7 +581,7 @@ onBeforeUnmount(() => {
             <VibeButton variant="primary" size="sm" outline @click="filterByTag(null)">Clear</VibeButton>
         </VibeAlert>
 
-        <template v-if="!flat">
+        <template v-if="!searching">
             <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="folder" />Folders</h5>
             <VibeDataTable
                 :items="folders"
@@ -595,6 +597,13 @@ onBeforeUnmount(() => {
                 <VibeButton variant="link" class="p-0 text-decoration-none" @click="visitFolder(item.id)">
                     <VibeIcon icon="folder-fill" class="me-1 text-warning" />{{ item.name }}
                 </VibeButton>
+                <span
+                    v-for="tag in item.tags"
+                    :key="tag.id"
+                    class="badge rounded-pill ms-1"
+                    :style="{ backgroundColor: tag.color || '#6c757d', cursor: 'pointer' }"
+                    @click="filterByTag(tag.id)"
+                >{{ tag.name }}</span>
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
@@ -762,6 +771,7 @@ onBeforeUnmount(() => {
                 <VibeButton variant="primary" :disabled="shareBusy" @click="addGrant">Grant</VibeButton>
             </div>
 
+            <template v-if="!shareItem?.is_dir">
             <hr>
             <h6 class="text-muted">Public links</h6>
             <table v-if="shareLinks.length" class="table table-sm align-middle">
@@ -811,6 +821,7 @@ onBeforeUnmount(() => {
                     <VibeButton variant="primary" @click="createLink">Create link</VibeButton>
                 </div>
             </div>
+            </template>
         </VibeModal>
 
         <!-- Tags modal -->
