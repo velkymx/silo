@@ -187,6 +187,7 @@ function iconFor(type) {
 }
 
 const fileActions = [
+    { text: 'Download', action: 'download', icon: 'download' },
     { text: 'Details', action: 'details', icon: 'info-circle' },
     { text: 'Share', action: 'share', icon: 'person-plus' },
     { text: 'Tags', action: 'tags', icon: 'tags' },
@@ -209,6 +210,7 @@ const folderActions = [
 ];
 
 function onAction(item, { item: action }) {
+    if (action.action === 'download') window.location.href = `/download/${item.id}`;
     if (action.action === 'details') openDetails(item);
     if (action.action === 'share') openShare(item);
     if (action.action === 'tags') openTags(item);
@@ -606,7 +608,7 @@ onBeforeUnmount(() => {
 <template>
     <AppLayout>
         <template #topbar>
-            <VibeInputGroup>
+            <VibeInputGroup class="mx-auto" style="max-width: 560px">
                 <template #prepend>
                     <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
                 </template>
@@ -853,16 +855,6 @@ onBeforeUnmount(() => {
                         @click="toggleStar(item)"
                     >
                         <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
-                    </VibeButton>
-                    <VibeButton
-                        v-if="!item.is_dir"
-                        variant="secondary"
-                        size="sm"
-                        outline
-                        :href="`/download/${item.id}`"
-                        title="Download"
-                    >
-                        <VibeIcon icon="download" />
                     </VibeButton>
                     <VibeDropdown
                         size="sm"

@@ -95,7 +95,7 @@ function onUserMenu({ item }) {
                     <slot name="topbar" />
                 </div>
                 <VibeButton variant="secondary" size="sm" outline :title="`Theme: ${colorMode}`" @click="toggleColorMode">
-                    <VibeIcon :icon="themeIcon" />
+                    <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
                 </VibeButton>
                 <VibeDropdown v-if="user" size="sm" variant="secondary" outline menu-end :items="userMenu" @item-click="onUserMenu">
                     <template #button><VibeIcon icon="person-circle" class="me-1" />{{ user.name }}</template>
