@@ -19,12 +19,27 @@
     "src": "node_modules/bootstrap/dist/js/bootstrap.esm.js",
     "isDynamicEntry": true
   },
+  "node_modules/docx-preview/dist/docx-preview.mjs": {
+    "file": "assets/docx-preview-yDJ1EE2z.js",
+    "name": "docx-preview",
+    "src": "node_modules/docx-preview/dist/docx-preview.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
   "node_modules/quill/dist/quill.snow.css": {
     "file": "assets/quill-BzY4kI8E.css",
     "src": "node_modules/quill/dist/quill.snow.css"
   },
+  "node_modules/xlsx/xlsx.mjs": {
+    "file": "assets/xlsx-B6sNpj_1.js",
+    "name": "xlsx",
+    "src": "node_modules/xlsx/xlsx.mjs",
+    "isDynamicEntry": true
+  },
   "resources/js/app.js": {
-    "file": "assets/app-i7COFL6K.js",
+    "file": "assets/app-D4IDYOy3.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -44,7 +59,9 @@
       "node_modules/bootstrap/dist/js/bootstrap.esm.js",
       "node_modules/bootstrap/dist/js/bootstrap.esm.js",
       "node_modules/@velkymx/vibeui/dist/purify.es-1D-VntFD.mjs",
-      "node_modules/bootstrap/dist/js/bootstrap.esm.js"
+      "node_modules/bootstrap/dist/js/bootstrap.esm.js",
+      "node_modules/docx-preview/dist/docx-preview.mjs",
+      "node_modules/xlsx/xlsx.mjs"
     ],
     "css": [
       "assets/app-JMPvzrX2.css"

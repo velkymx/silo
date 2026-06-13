@@ -4,6 +4,9 @@ import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import FolderTree from '../../Components/FolderTree.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
+import DocViewer from '../../Components/DocViewer.vue';
+
+const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
@@ -1187,6 +1190,13 @@ onBeforeUnmount(() => {
                     controls
                     class="img-fluid rounded"
                     style="max-height: 72vh"
+                />
+                <DocViewer
+                    v-else-if="officeTypes.includes(quickFile.type)"
+                    :key="quickFile.id"
+                    :url="quickFile.url"
+                    :type="quickFile.type"
+                    class="text-start"
                 />
                 <pre
                     v-else-if="quickFile.metadata?.preview"
