@@ -50,7 +50,7 @@ function emptyTrash() {
             row-key="id"
             hover
             striped
-            :paginated="false"
+            :per-page="25"
             empty-text="Trash is empty."
         >
             <template #cell(name)="{ item }">

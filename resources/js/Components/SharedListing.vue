@@ -54,7 +54,7 @@ function quickLook(file) {
         row-key="id"
         hover
         :searchable="false"
-        :paginated="false"
+        :per-page="25"
         empty-text="No shared folders."
         class="mb-4"
     >
@@ -81,7 +81,7 @@ function quickLook(file) {
         hover
         striped
         :searchable="false"
-        :paginated="false"
+        :per-page="25"
         empty-text="No shared files."
     >
         <template #cell(name)="{ item }">

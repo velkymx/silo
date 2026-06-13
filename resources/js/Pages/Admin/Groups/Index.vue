@@ -65,7 +65,7 @@ function destroy(group) {
             row-key="id"
             hover
             striped
-            :paginated="false"
+            :per-page="25"
             empty-text="No groups yet."
         >
             <template #cell(name)="{ item }">
