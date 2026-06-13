@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RestoreBackup;
 use App\Jobs\RunBackup;
 use App\Models\Backup;
 use App\Models\Setting;
@@ -71,6 +72,17 @@ class BackupController extends Controller
         Audit::log('backup.download', null, ['backup_id' => $backup->id]);
 
         return Storage::disk($backup->disk)->download($backup->path, $backup->filename);
+    }
+
+    // Restore from a backup. Destructive — overwrites the live DB + files.
+    public function restore(Backup $backup)
+    {
+        abort_unless($backup->status === Backup::STATUS_READY, 404);
+
+        RestoreBackup::dispatch($backup->id);
+        Audit::log('backup.restore', null, ['backup_id' => $backup->id]);
+
+        return back()->with('success', 'Restore started. The app may be briefly unavailable while data is replaced.');
     }
 
     public function destroy(Backup $backup, BackupService $service)

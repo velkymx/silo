@@ -32,6 +32,12 @@ function remove(b) {
     }
 }
 
+function restore(b) {
+    if (!confirm(`Restore ${b.filename}? This OVERWRITES all current data (database + files).`)) return;
+    if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+    router.post(`/backups/${b.id}/restore`, {}, { preserveScroll: true });
+}
+
 function human(bytes) {
     if (!bytes) return '—';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -137,6 +143,16 @@ onBeforeUnmount(() => clearInterval(poll));
                                     title="Download"
                                 >
                                     <VibeIcon icon="download" />
+                                </VibeButton>
+                                <VibeButton
+                                    v-if="item.status === 'ready'"
+                                    variant="warning"
+                                    size="sm"
+                                    outline
+                                    title="Restore (overwrites all data)"
+                                    @click="restore(item)"
+                                >
+                                    <VibeIcon icon="arrow-counterclockwise" />
                                 </VibeButton>
                                 <VibeButton variant="danger" size="sm" outline title="Delete" @click="remove(item)">
                                     <VibeIcon icon="trash" />

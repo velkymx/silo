@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Backup;
 use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 use ZipArchive;
 
@@ -37,6 +39,7 @@ class BackupService
         $absPath = $absDir.DIRECTORY_SEPARATOR.$filename;
 
         try {
+            $this->assertFreeSpace($absDir);
             $compression = $this->buildArchive($absPath);
 
             $backup->update([
@@ -93,33 +96,72 @@ class BackupService
         $zip->addFile($dumpRel['abs'], 'database/'.$dumpRel['name']);
         $zip->setCompressionName('database/'.$dumpRel['name'], $method);
 
-        // 2) File blobs from the filemanager disk + the thumbnail disk.
+        // 2) File blobs from the filemanager disk + the thumbnail disk. Each
+        //    entry is streamed via addFile (from a local path, or a temp copy
+        //    for remote disks) so blobs are never loaded whole into memory.
+        $tempCopies = [];
         $disks = array_unique([config('filemanager.disk'), ThumbnailGenerator::disk()]);
         foreach ($disks as $diskName) {
             $disk = Storage::disk($diskName);
             $count = 0;
             foreach ($disk->allFiles() as $rel) {
                 $entry = "blobs/{$diskName}/{$rel}";
-                $stream = $disk->readStream($rel);
-                if ($stream === null) {
+
+                $local = $this->localPathFor($disk, $rel);
+                if ($local['path'] === null) {
                     continue;
                 }
-                $zip->addFromString($entry, stream_get_contents($stream));
-                fclose($stream);
+                $zip->addFile($local['path'], $entry);
                 $zip->setCompressionName($entry, $method);
+                if ($local['temp']) {
+                    $tempCopies[] = $local['path'];
+                }
                 $count++;
             }
             $manifest['disks'][$diskName] = $count;
         }
 
         $zip->addFromString('manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
-        $zip->close();
+        $zip->close(); // streams everything to disk here
 
+        foreach ($tempCopies as $t) {
+            @unlink($t);
+        }
         if (isset($dumpRel['cleanup']) && $dumpRel['cleanup']) {
             @unlink($dumpRel['abs']);
         }
 
         return $label;
+    }
+
+    /**
+     * Resolve a local filesystem path the zip can stream from. Local disks
+     * expose one directly; remote disks are streamed to a temp file.
+     *
+     * @return array{path: ?string, temp: bool}
+     */
+    private function localPathFor($disk, string $rel): array
+    {
+        try {
+            $direct = $disk->path($rel);
+            if (is_file($direct)) {
+                return ['path' => $direct, 'temp' => false];
+            }
+        } catch (\Throwable $e) {
+            // No local path (e.g. s3) — fall through to a temp copy.
+        }
+
+        $stream = $disk->readStream($rel);
+        if ($stream === null) {
+            return ['path' => null, 'temp' => false];
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'bkblob_');
+        $out = fopen($tmp, 'wb');
+        stream_copy_to_stream($stream, $out); // streamed, constant memory
+        fclose($out);
+        fclose($stream);
+
+        return ['path' => $tmp, 'temp' => true];
     }
 
     /**
@@ -200,6 +242,163 @@ class BackupService
             throw new \RuntimeException('Database dump failed: '.trim($process->getErrorOutput()));
         }
         file_put_contents($outFile, $process->getOutput());
+    }
+
+    /** Abort early if the target volume clearly can't hold the data. */
+    private function assertFreeSpace(string $dir): void
+    {
+        $needed = 0;
+        foreach (array_unique([config('filemanager.disk'), ThumbnailGenerator::disk()]) as $diskName) {
+            $disk = Storage::disk($diskName);
+            foreach ($disk->allFiles() as $rel) {
+                try {
+                    $needed += $disk->size($rel);
+                } catch (\Throwable $e) {
+                    // ignore unreadable entry
+                }
+            }
+        }
+
+        $free = @disk_free_space($dir);
+        // Compression shrinks the archive, so the raw total is a safe headroom.
+        if ($free !== false && $needed > 0 && $free < $needed) {
+            throw new \RuntimeException(
+                'Insufficient disk space for backup: need ~'.$needed.' bytes, '.$free.' free.'
+            );
+        }
+    }
+
+    /**
+     * Restore a backup: replace the database and file blobs from the archive.
+     * DESTRUCTIVE — overwrites current data. Returns a short summary.
+     */
+    public function restore(Backup $backup): array
+    {
+        $archive = Storage::disk($backup->disk)->path($backup->path);
+        if (! $backup->path || ! is_file($archive)) {
+            throw new \RuntimeException('Backup archive is missing.');
+        }
+
+        $work = sys_get_temp_dir().'/restore_'.Str::random(12);
+        mkdir($work, 0775, true);
+
+        $zip = new ZipArchive();
+        if ($zip->open($archive) !== true) {
+            throw new \RuntimeException('Could not open the backup archive.');
+        }
+        $zip->extractTo($work);
+        $zip->close();
+
+        try {
+            $this->restoreDatabase($work);
+            $disks = $this->restoreBlobs($work);
+
+            return ['disks' => $disks];
+        } finally {
+            $this->rmrf($work);
+        }
+    }
+
+    private function restoreDatabase(string $work): void
+    {
+        $dir = $work.'/database';
+        $driver = config('database.default');
+        $config = config("database.connections.{$driver}");
+
+        if (is_file($dir.'/database.sqlite') && ($config['driver'] ?? null) === 'sqlite'
+            && ($config['database'] ?? null) !== ':memory:' && $config['database']) {
+            DB::disconnect();
+            copy($dir.'/database.sqlite', $config['database']);
+
+            return;
+        }
+
+        if (is_file($dir.'/database.sql')) {
+            $sql = file_get_contents($dir.'/database.sql');
+            DB::unprepared($sql);
+
+            return;
+        }
+
+        if (is_file($dir.'/database.json')) {
+            $data = json_decode(file_get_contents($dir.'/database.json'), true) ?: [];
+            $this->restoreJsonSnapshot($data);
+
+            return;
+        }
+
+        throw new \RuntimeException('No database dump found in the archive.');
+    }
+
+    /** Truncate + reinsert every table from a JSON snapshot (FK checks off). */
+    private function restoreJsonSnapshot(array $data): void
+    {
+        Schema::disableForeignKeyConstraints();
+        try {
+            foreach ($data as $table => $rows) {
+                if (! Schema::hasTable($table)) {
+                    continue;
+                }
+                DB::table($table)->truncate();
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    if ($chunk) {
+                        DB::table($table)->insert($chunk);
+                    }
+                }
+            }
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
+    }
+
+    /** Restore blob files into their disks. Returns per-disk counts. */
+    private function restoreBlobs(string $work): array
+    {
+        $base = $work.'/blobs';
+        $counts = [];
+        if (! is_dir($base)) {
+            return $counts;
+        }
+
+        foreach (scandir($base) as $diskName) {
+            if ($diskName === '.' || $diskName === '..' || ! is_dir($base.'/'.$diskName)) {
+                continue;
+            }
+            $disk = Storage::disk($diskName);
+            $root = $base.'/'.$diskName;
+            $count = 0;
+            $iter = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iter as $fileInfo) {
+                if (! $fileInfo->isFile()) {
+                    continue;
+                }
+                $rel = ltrim(str_replace($root, '', $fileInfo->getPathname()), '/\\');
+                $stream = fopen($fileInfo->getPathname(), 'rb');
+                $disk->writeStream($rel, $stream);
+                fclose($stream);
+                $count++;
+            }
+            $counts[$diskName] = $count;
+        }
+
+        return $counts;
+    }
+
+    private function rmrf(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($iter as $f) {
+            $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname());
+        }
+        @rmdir($dir);
     }
 
     /** Delete oldest backups beyond the configured retention count. */
