@@ -25,28 +25,37 @@ class ThumbnailGenerator
             return null;
         }
 
-        $disk = Storage::disk($file->disk);
+        $source = Storage::disk($file->disk);
 
-        if (! $disk->exists($file->path)) {
+        if (! $source->exists($file->path)) {
             return null;
         }
 
         try {
-            $image = (new ImageManager(Driver::class))->decodeBinary($disk->get($file->path));
+            $image = (new ImageManager(Driver::class))->decodeBinary($source->get($file->path));
             $image->scaleDown(self::MAX_EDGE, self::MAX_EDGE);
             $encoded = (string) $image->encode(new JpegEncoder(quality: 70));
         } catch (Throwable) {
             return null;
         }
 
+        // Thumbnails always live on the app's writable disk, so source files on
+        // read-only/imported disks still get previews. Served via files.thumbnail.
+        $thumbs = Storage::disk(self::disk());
         $path = "thumbnails/{$file->owner_id}/".Str::random(40).'.jpg';
-        $disk->put($path, $encoded);
+        $thumbs->put($path, $encoded);
 
         // Remove a previous thumbnail when regenerating.
         if ($file->thumbnail_path && $file->thumbnail_path !== $path) {
-            $disk->delete($file->thumbnail_path);
+            $thumbs->delete($file->thumbnail_path);
         }
 
         return $path;
+    }
+
+    /** The disk thumbnails are written to and served from. */
+    public static function disk(): string
+    {
+        return config('filemanager.disk');
     }
 }

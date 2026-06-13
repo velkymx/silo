@@ -315,12 +315,13 @@ class FileController extends Controller
     {
         $this->authorize('view', $file);
 
+        $disk = \App\Services\ThumbnailGenerator::disk();
         abort_unless(
-            $file->thumbnail_path && Storage::disk($file->disk)->exists($file->thumbnail_path),
+            $file->thumbnail_path && Storage::disk($disk)->exists($file->thumbnail_path),
             404
         );
 
-        return Storage::disk($file->disk)->response($file->thumbnail_path);
+        return Storage::disk($disk)->response($file->thumbnail_path);
     }
 
     // Soft-delete a file or folder (and its contents) into the trash.

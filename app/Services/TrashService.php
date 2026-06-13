@@ -95,15 +95,18 @@ class TrashService
             return;
         }
 
-        $disk = Storage::disk($file->disk);
-        $disk->delete($file->path);
+        // Never delete the source bytes of an imported/referenced file.
+        if (! $file->referenced) {
+            Storage::disk($file->disk)->delete($file->path);
 
-        if ($file->thumbnail_path) {
-            $disk->delete($file->thumbnail_path);
+            foreach ($file->versions()->get() as $version) {
+                Storage::disk($version->disk)->delete($version->path);
+            }
         }
 
-        foreach ($file->versions()->get() as $version) {
-            Storage::disk($version->disk)->delete($version->path);
+        // Thumbnails are always ours, on the app's writable disk.
+        if ($file->thumbnail_path) {
+            Storage::disk(\App\Services\ThumbnailGenerator::disk())->delete($file->thumbnail_path);
         }
     }
 }
