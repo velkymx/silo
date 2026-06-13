@@ -3,10 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\File;
+use App\Services\Audit;
 use App\Services\MetadataExtractor;
 use App\Services\ThumbnailGenerator;
+use App\Services\VirusScanner;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -24,7 +27,7 @@ class ProcessUploadedFile implements ShouldQueue
     /**
      * Execute the job: refine metadata for an uploaded file.
      */
-    public function handle(MetadataExtractor $extractor, ThumbnailGenerator $thumbnails): void
+    public function handle(MetadataExtractor $extractor, ThumbnailGenerator $thumbnails, VirusScanner $scanner): void
     {
         $file = File::find($this->fileId);
 
@@ -36,6 +39,24 @@ class ProcessUploadedFile implements ShouldQueue
 
         if (! $disk->exists($file->path)) {
             $file->update(['status' => File::STATUS_FAILED]);
+
+            return;
+        }
+
+        // Antivirus gate (fail closed): infected blobs are deleted, scanner
+        // errors leave the file failed and unservable.
+        $verdict = $scanner->scan($file);
+        if ($verdict === VirusScanner::INFECTED) {
+            $disk->delete($file->path);
+            $file->update(['status' => File::STATUS_INFECTED, 'thumbnail_path' => null]);
+            Audit::log('file.infected', $file);
+            Log::warning('file.infected', ['file_id' => $file->id, 'owner_id' => $file->owner_id]);
+
+            return;
+        }
+        if ($verdict === VirusScanner::ERROR) {
+            $file->update(['status' => File::STATUS_FAILED]);
+            Log::error('file.scan_error', ['file_id' => $file->id]);
 
             return;
         }

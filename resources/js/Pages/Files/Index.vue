@@ -853,6 +853,9 @@ onBeforeUnmount(() => {
                             {{ item.is_dir ? `${item.item_count} items` : `${(item.size / 1024).toFixed(1)} KB` }}
                         </div>
                         <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
+                        <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="mt-1">
+                            <VibeIcon icon="shield-exclamation" class="me-1" />Infected
+                        </VibeBadge>
                         <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
                     </div>
                 </div>
@@ -898,6 +901,9 @@ onBeforeUnmount(() => {
                     <span class="text-truncate">{{ item.name }}</span>
                     <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
                         <VibeSpinner size="sm" class="me-1" />Processing
+                    </VibeBadge>
+                    <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="ms-2">
+                        <VibeIcon icon="shield-exclamation" class="me-1" />Infected
                     </VibeBadge>
                     <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
                     <VibeBadge v-if="item.version > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>

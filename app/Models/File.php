@@ -21,6 +21,8 @@ class File extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const STATUS_INFECTED = 'infected';
+
     /**
      * The attributes that are mass assignable.
      *

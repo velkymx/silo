@@ -53,4 +53,24 @@ return [
 
     'user_quota_mb' => env('FILEMANAGER_USER_QUOTA_MB', 1024),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Antivirus Scanning
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, every uploaded file is scanned (during ProcessUploadedFile)
+    | with the configured command. A clamd-backed scanner is expected:
+    | `clamdscan` is fast (daemon) while `clamscan` is standalone. The scanned
+    | file path is appended to the command. Exit code 1 = infected, 0 = clean,
+    | anything else = scanner error. On infection the blob is removed and the
+    | file is flagged; on error the file is marked failed (fail closed).
+    |
+    */
+
+    'av' => [
+        'enabled' => env('FILEMANAGER_AV_ENABLED', false),
+        'command' => env('FILEMANAGER_AV_COMMAND', 'clamdscan --no-summary --fdpass'),
+        'timeout' => (int) env('FILEMANAGER_AV_TIMEOUT', 120),
+    ],
+
 ];
