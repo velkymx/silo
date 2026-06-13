@@ -294,6 +294,15 @@ function onAction(item, { item: action }) {
     if (action.action === 'delete') destroy(item);
 }
 
+// Run a file action from inside Quick Look: close the preview first so the
+// action's own modal isn't stacked on top of it.
+function onQuickAction({ item: action }) {
+    const target = quickFile.value;
+    if (!target) return;
+    quickOpen.value = false;
+    onAction(target, { item: action });
+}
+
 // ----- Versions -----
 const versionsOpen = ref(false);
 const versionsItem = ref(null);
@@ -1188,6 +1197,15 @@ onBeforeUnmount(() => {
                         <VibeButton variant="success" size="sm" :href="`/download/${quickFile?.id}`">
                             <VibeIcon icon="download" class="me-1" />Download
                         </VibeButton>
+                        <VibeDropdown
+                            v-if="quickFile"
+                            variant="primary"
+                            size="sm"
+                            :items="fileMenu(quickFile)"
+                            @item-click="onQuickAction"
+                        >
+                            <VibeIcon icon="three-dots-vertical" class="me-1" />Actions
+                        </VibeDropdown>
                     </div>
                 </div>
             </template>
