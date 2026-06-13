@@ -137,7 +137,7 @@ function onUserMenu({ item }) {
                 </div>
 
                 <footer class="border-top mt-4 pt-3 text-muted small d-flex flex-wrap align-items-center gap-1">
-                    <span>&copy; {{ year }} {{ appName }}.</span>
+                    <span>&copy; {{ year }} {{ appName }}</span>
                     <span>Released under the
                         <a :href="`${repoUrl}/blob/main/LICENSE`" target="_blank" rel="noopener" class="text-decoration-none">MIT License</a>.
                     </span>
