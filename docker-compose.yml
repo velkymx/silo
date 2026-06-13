@@ -1,0 +1,33 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ajbapps/file-manager:latest
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      # First-boot admin credentials (change these!).
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@example.com}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-changeme}"
+      ADMIN_NAME: "${ADMIN_NAME:-Administrator}"
+    volumes:
+      # Persist uploads + the SQLite database + framework storage.
+      - app_storage:/var/www/storage/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/up') ? 0 : 1);"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # Optional: enable upload virus scanning.
+  # Set FILEMANAGER_AV_ENABLED=true and FILEMANAGER_AV_COMMAND in the app env,
+  # and point clamdscan at this host, then uncomment.
+  # clamav:
+  #   image: clamav/clamav:latest
+  #   restart: unless-stopped
+
+volumes:
+  app_storage:
