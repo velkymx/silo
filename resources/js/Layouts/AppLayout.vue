@@ -1,9 +1,16 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
-import { useColorMode } from '@velkymx/vibeui';
+import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 
+const { isMobile } = useBreakpoints();
 const mobileNavOpen = ref(false);
+const sidebarOpen = ref(true);
+
+function toggleSidebar() {
+    if (isMobile.value) mobileNavOpen.value = true;
+    else sidebarOpen.value = !sidebarOpen.value;
+}
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
@@ -59,7 +66,7 @@ function onUserMenu({ item }) {
     <div class="d-flex flex-column min-vh-100 bg-body-tertiary">
         <!-- Full-width top bar -->
         <header class="d-flex align-items-center gap-3 border-bottom bg-body px-3 py-2">
-            <VibeButton variant="secondary" size="sm" outline class="d-md-none" title="Menu" @click="mobileNavOpen = true">
+            <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
             </VibeButton>
             <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; width: 218px" @click="router.visit('/')">
@@ -84,8 +91,8 @@ function onUserMenu({ item }) {
         </header>
 
         <div class="d-flex flex-grow-1" style="min-height: 0">
-            <!-- Sidebar -->
-            <aside class="d-none d-md-flex flex-column flex-shrink-0 border-end bg-body p-3" style="width: 250px">
+            <!-- Sidebar (collapsible on desktop, offcanvas on mobile) -->
+            <aside v-if="!isMobile && sidebarOpen" class="d-flex flex-column flex-shrink-0 border-end bg-body p-3" style="width: 250px">
                 <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}

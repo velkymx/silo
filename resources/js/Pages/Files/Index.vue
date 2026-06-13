@@ -724,7 +724,7 @@ onBeforeUnmount(() => {
                 <VibeButton variant="primary" @click="uploadOpen = true">
                     <VibeIcon icon="upload" class="me-1" />Upload
                 </VibeButton>
-                <VibeDropdown variant="primary" outline :items="newMenu" @item-click="onNewMenu">
+                <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
                     <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
@@ -901,8 +901,7 @@ onBeforeUnmount(() => {
                     </VibeButton>
                     <VibeDropdown
                         size="sm"
-                        variant="secondary"
-                        outline
+                        variant="light"
                         menu-end
                         :items="item.is_dir ? folderActions : fileMenu(item)"
                         @item-click="onAction(item, $event)"
