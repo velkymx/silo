@@ -114,6 +114,56 @@ class FileController extends Controller
         ]);
     }
 
+    // Create a new text/markdown file from editor content.
+    public function createText(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'content' => 'present|string',
+            'parent_id' => 'nullable|integer|exists:files,id',
+        ]);
+
+        $userId = auth()->id();
+        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
+        $disk = config('filemanager.disk');
+
+        $name = trim((string) $request->string('name'));
+        if (! pathinfo($name, PATHINFO_EXTENSION)) {
+            $name .= '.md';
+        }
+        $this->assertNoCollision($parent?->id, $name, $userId);
+
+        $content = (string) $request->input('content');
+        if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
+            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
+        }
+
+        $path = "uploads/{$userId}/".Str::random(40);
+        if ($ext = pathinfo($name, PATHINFO_EXTENSION)) {
+            $path .= ".{$ext}";
+        }
+        Storage::disk($disk)->put($path, $content);
+
+        $file = File::create([
+            'name' => $name,
+            'path' => $path,
+            'disk' => $disk,
+            'is_dir' => false,
+            'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
+            'size' => strlen($content),
+            'hash' => hash('sha256', $content),
+            'status' => File::STATUS_PENDING,
+            'parent_id' => $parent?->id,
+            'owner_id' => $userId,
+        ]);
+
+        ProcessUploadedFile::dispatch($file->id);
+        Audit::log('file.create', $file);
+
+        return redirect()->route('files.index', ['folder' => $parent?->id])
+            ->with('success', "Created “{$name}”.");
+    }
+
     // Save edited text content as a new version of a file.
     public function updateContent(Request $request, File $file)
     {

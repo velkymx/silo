@@ -148,7 +148,7 @@ function applyCrop() {
         </VibeRow>
 
         <!-- Crop modal -->
-        <VibeModal v-model="cropOpen" title="Crop photo" hide-footer>
+        <VibeModal v-model="cropOpen" title="Crop photo" fullscreen hide-footer>
             <Cropper
                 ref="cropper"
                 :src="cropSrc"

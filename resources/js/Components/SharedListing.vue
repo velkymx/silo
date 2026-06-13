@@ -117,7 +117,7 @@ function quickLook(file) {
         </template>
     </VibeDataTable>
 
-    <VibeModal v-model="previewOpen" size="xl" centered hide-footer :title="previewFile?.name">
+    <VibeModal v-model="previewOpen" fullscreen hide-footer :title="previewFile?.name">
         <div v-if="previewFile" class="text-center" style="min-height: 50vh">
             <img
                 v-if="imageTypes.includes(previewFile.type)"

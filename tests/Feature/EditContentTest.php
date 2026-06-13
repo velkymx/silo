@@ -53,6 +53,33 @@ class EditContentTest extends TestCase
         Storage::disk('public')->assertExists('readme.txt'); // original source untouched
     }
 
+    public function test_can_create_a_new_markdown_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('files.text'), [
+            'name' => 'notes',
+            'content' => '# Title',
+            'parent_id' => null,
+        ])->assertRedirect();
+
+        $file = File::where('owner_id', $user->id)->where('name', 'notes.md')->firstOrFail();
+        $this->assertSame('# Title', Storage::disk('public')->get($file->path));
+        $this->assertSame('text/markdown', $file->mime);
+    }
+
+    public function test_new_file_rejects_name_collision(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        File::factory()->for($user, 'owner')->create(['name' => 'taken.md', 'parent_id' => null]);
+
+        $this->actingAs($user)->post(route('files.text'), [
+            'name' => 'taken.md', 'content' => 'x', 'parent_id' => null,
+        ])->assertSessionHasErrors('name');
+    }
+
     public function test_cannot_edit_a_folder_or_another_users_file(): void
     {
         Storage::fake('public');

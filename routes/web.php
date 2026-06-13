@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/trash/{file}/restore', [TrashController::class, 'restore'])->withTrashed()->name('trash.restore');
     Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
     Route::post('/upload', [FileController::class, 'upload'])->name('files.upload');
+    Route::post('/files/text', [FileController::class, 'createText'])->name('files.text');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/raw/{file}', [FileController::class, 'raw'])->name('files.raw');
     Route::get('/thumbnail/{file}', [FileController::class, 'thumbnail'])->name('files.thumbnail');

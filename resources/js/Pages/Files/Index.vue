@@ -154,6 +154,8 @@ const editKind = ref('markdown');
 const editContent = ref('');
 const editLoading = ref(false);
 const editSaving = ref(false);
+const editCreating = ref(false);
+const editName = ref('');
 
 function isEditable(item) {
     return !item.is_dir && (markdownTypes.includes(item.type) || htmlTypes.includes(item.type));
@@ -167,6 +169,7 @@ function fileMenu(item) {
 async function openEditor(item) {
     if (!isEditable(item)) return;
     editItem.value = item;
+    editCreating.value = false;
     editKind.value = htmlTypes.includes(item.type) ? 'html' : 'markdown';
     editContent.value = '';
     editLoading.value = true;
@@ -179,27 +182,40 @@ async function openEditor(item) {
     }
 }
 
+function openNewMarkdown() {
+    editItem.value = null;
+    editCreating.value = true;
+    editKind.value = 'markdown';
+    editName.value = 'untitled.md';
+    editContent.value = '';
+    editLoading.value = false;
+    editOpen.value = true;
+}
+
 function saveEdit() {
     editSaving.value = true;
-    router.put(`/files/${editItem.value.id}/content`, { content: editContent.value }, {
+    const done = {
         preserveScroll: true,
-        onSuccess: () => {
-            editOpen.value = false;
-        },
-        onFinish: () => {
-            editSaving.value = false;
-        },
-    });
+        onSuccess: () => { editOpen.value = false; },
+        onFinish: () => { editSaving.value = false; },
+    };
+    if (editCreating.value) {
+        router.post('/files/text', { name: editName.value, content: editContent.value, parent_id: currentId.value }, done);
+    } else {
+        router.put(`/files/${editItem.value.id}/content`, { content: editContent.value }, done);
+    }
 }
 
 const newMenu = [
     { text: 'New Folder', action: 'folder', icon: 'folder-plus' },
+    { text: 'Markdown file', action: 'markdown', icon: 'markdown' },
     { text: 'Upload files', action: 'upload', icon: 'upload' },
 ];
 
 function onNewMenu({ item }) {
     if (item.action === 'folder') folderOpen.value = true;
     if (item.action === 'upload') uploadOpen.value = true;
+    if (item.action === 'markdown') openNewMarkdown();
 }
 
 function openItem(item) {
@@ -916,24 +932,32 @@ onBeforeUnmount(() => {
         </VibeDataTable>
 
         <!-- Editor modal -->
-        <VibeModal v-model="editOpen" :title="`Edit — ${editItem?.name || ''}`" size="xl" hide-footer>
+        <VibeModal
+            v-model="editOpen"
+            :title="editCreating ? 'New Markdown file' : `Edit — ${editItem?.name || ''}`"
+            fullscreen
+            hide-footer
+        >
             <div v-if="editLoading" class="text-center py-5 text-muted">
                 <VibeSpinner class="me-2" />Loading…
             </div>
             <template v-else>
+                <VibeFormGroup v-if="editCreating" label="File name" class="mb-3">
+                    <VibeFormInput v-model="editName" placeholder="untitled.md" />
+                </VibeFormGroup>
                 <MarkdownEditor v-if="editKind === 'markdown'" v-model="editContent" />
                 <VibeFormWysiwyg v-else v-model="editContent" height="60vh" />
                 <div class="text-end mt-3">
                     <VibeButton variant="secondary" outline class="me-2" @click="editOpen = false">Cancel</VibeButton>
                     <VibeButton variant="primary" :disabled="editSaving" @click="saveEdit">
-                        <VibeIcon icon="save" class="me-1" />Save
+                        <VibeIcon icon="save" class="me-1" />{{ editCreating ? 'Create' : 'Save' }}
                     </VibeButton>
                 </div>
             </template>
         </VibeModal>
 
         <!-- Details modal -->
-        <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered hide-footer>
+        <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
             <table class="table table-sm mb-0">
                 <tbody>
                     <tr v-for="row in detailsRows" :key="row.label">
@@ -945,7 +969,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Share modal -->
-        <VibeModal v-model="shareOpen" :title="`Share — ${shareItem?.name || ''}`" hide-footer>
+        <VibeModal v-model="shareOpen" :title="`Share — ${shareItem?.name || ''}`" fullscreen hide-footer>
             <h6 class="text-muted">People &amp; groups with access</h6>
             <table v-if="shareGrants.length" class="table table-sm align-middle">
                 <tbody>
@@ -1070,7 +1094,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Tags modal -->
-        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" hide-footer>
+        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" fullscreen hide-footer>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <VibeBadge v-for="name in tagList" :key="name" variant="primary" class="d-flex align-items-center">
                     {{ name }}
@@ -1097,7 +1121,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Versions modal -->
-        <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered hide-footer>
+        <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
             <p class="text-muted small">
                 Current: version {{ versionsItem?.version }}.
                 <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
@@ -1129,7 +1153,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Quick Look modal -->
-        <VibeModal v-model="quickOpen" size="xl" centered hide-footer>
+        <VibeModal v-model="quickOpen" size="xl" centered fullscreen hide-footer>
             <template #header>
                 <div class="d-flex align-items-center justify-content-between w-100">
                     <h5 class="modal-title text-truncate mb-0">
@@ -1146,9 +1170,6 @@ onBeforeUnmount(() => {
                         </VibeButton>
                         <VibeButton variant="success" size="sm" :href="`/download/${quickFile?.id}`">
                             <VibeIcon icon="download" class="me-1" />Download
-                        </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Close" @click="quickOpen = false">
-                            <VibeIcon icon="x-lg" />
                         </VibeButton>
                     </div>
                 </div>
@@ -1197,7 +1218,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Upload modal -->
-        <VibeModal v-model="uploadOpen" title="Upload Files" hide-footer>
+        <VibeModal v-model="uploadOpen" title="Upload Files" fullscreen hide-footer>
             <form @submit.prevent="submitUpload">
                 <VibeFileInput
                     v-model="uploadFiles"
@@ -1228,7 +1249,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Create folder modal -->
-        <VibeModal v-model="folderOpen" title="Create Folder" hide-footer>
+        <VibeModal v-model="folderOpen" title="Create Folder" fullscreen hide-footer>
             <form @submit.prevent="submitFolder">
                 <VibeFormGroup
                     label="Folder Name"
@@ -1244,7 +1265,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Rename modal -->
-        <VibeModal v-model="renameOpen" title="Rename" hide-footer>
+        <VibeModal v-model="renameOpen" title="Rename" fullscreen hide-footer>
             <form @submit.prevent="submitRename">
                 <VibeFormGroup
                     label="New Name"
@@ -1260,7 +1281,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Move / Copy modal -->
-        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" hide-footer>
+        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" fullscreen hide-footer>
             <form @submit.prevent="submitTransfer">
                 <VibeFormGroup
                     label="Destination Folder"
