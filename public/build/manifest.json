@@ -32,7 +32,7 @@
     "isDynamicEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-D3-NrZLO.js",
+    "file": "assets/app-vWAQ3Acn.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -57,7 +57,7 @@
       "node_modules/bootstrap/dist/js/bootstrap.esm.js"
     ],
     "css": [
-      "assets/app-qr1ka2UX.css"
+      "assets/app-DCqe9Ii7.css"
     ],
     "assets": [
       "assets/bootstrap-icons-mSm7cUeB.woff2",

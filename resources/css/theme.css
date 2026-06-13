@@ -29,17 +29,22 @@
     --bs-btn-active-border-color: #6366f1;
 }
 
-.nav-pills {
-    --bs-nav-pills-link-active-bg: #6366f1;
+/* Soft, app-like active nav (tinted instead of solid fill) */
+.nav-pills .nav-link {
+    color: var(--bs-body-color);
+    border-radius: 0.5rem;
+}
+.nav-pills .nav-link.active {
+    background-color: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    font-weight: 600;
+}
+.nav-pills .nav-link:not(.active):hover {
+    background-color: rgba(99, 102, 241, 0.07);
 }
 
 /* Softer, app-like rows */
 .table > :not(caption) > * > * {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
-}
-
-/* Subtle hover for sidebar nav */
-.nav-pills .nav-link:not(.active):hover {
-    background-color: rgba(99, 102, 241, 0.08);
 }

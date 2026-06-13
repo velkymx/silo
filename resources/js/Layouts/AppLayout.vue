@@ -56,54 +56,54 @@ function onUserMenu({ item }) {
 </script>
 
 <template>
-    <div class="d-flex min-vh-100 bg-body-tertiary">
-        <!-- Sidebar -->
-        <aside class="d-none d-md-flex flex-column flex-shrink-0 border-end bg-body p-3" style="width: 250px">
-            <a class="d-flex align-items-center text-decoration-none mb-3" style="cursor: pointer" @click="router.visit('/')">
+    <div class="d-flex flex-column min-vh-100 bg-body-tertiary">
+        <!-- Full-width top bar -->
+        <header class="d-flex align-items-center gap-3 border-bottom bg-body px-3 py-2">
+            <VibeButton variant="secondary" size="sm" outline class="d-md-none" title="Menu" @click="mobileNavOpen = true">
+                <VibeIcon icon="list" />
+            </VibeButton>
+            <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; width: 218px" @click="router.visit('/')">
                 <VibeIcon icon="folder-fill" class="text-primary fs-4 me-2" />
-                <span class="fw-bold fs-5 text-body">File Manager</span>
+                <span class="fw-bold fs-5 text-body d-none d-md-inline">File Manager</span>
             </a>
+            <div class="flex-grow-1 min-vw-0">
+                <slot name="topbar" />
+            </div>
+            <VibeButton variant="secondary" size="sm" outline :title="`Theme: ${colorMode}`" @click="toggleColorMode">
+                <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
+            </VibeButton>
+            <VibeDropdown v-if="user" size="sm" variant="secondary" outline menu-end :items="userMenu" @item-click="onUserMenu">
+                <template #button><VibeIcon icon="person-circle" class="me-1" />{{ user.name }}</template>
+                <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+            </VibeDropdown>
+        </header>
 
-            <VibeNav pills vertical :items="baseNav" @item-click="onNav">
-                <template #item="{ item }">
-                    <VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}
-                </template>
-            </VibeNav>
-
-            <template v-if="adminNav.length">
-                <hr class="my-3" >
-                <div class="text-muted text-uppercase small fw-semibold px-3 mb-1">Admin</div>
-                <VibeNav pills vertical :items="adminNav" @item-click="onNav">
+        <div class="d-flex flex-grow-1" style="min-height: 0">
+            <!-- Sidebar -->
+            <aside class="d-none d-md-flex flex-column flex-shrink-0 border-end bg-body p-3" style="width: 250px">
+                <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}
                     </template>
                 </VibeNav>
-            </template>
 
-            <div class="pt-3 flex-grow-1 overflow-auto">
-                <slot name="sidebar" />
-            </div>
-        </aside>
+                <template v-if="adminNav.length">
+                    <hr class="my-3" >
+                    <div class="text-muted text-uppercase small fw-semibold px-3 mb-1">Admin</div>
+                    <VibeNav pills vertical :items="adminNav" @item-click="onNav">
+                        <template #item="{ item }">
+                            <VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}
+                        </template>
+                    </VibeNav>
+                </template>
 
-        <!-- Main column -->
-        <div class="flex-grow-1 d-flex flex-column min-vw-0">
-            <header class="d-flex align-items-center gap-2 border-bottom bg-body px-3 py-2">
-                <VibeButton variant="secondary" size="sm" outline class="d-md-none" title="Menu" @click="mobileNavOpen = true">
-                    <VibeIcon icon="list" />
-                </VibeButton>
-                <div class="flex-grow-1 min-vw-0">
-                    <slot name="topbar" />
+                <div class="pt-3 flex-grow-1 overflow-auto">
+                    <slot name="sidebar" />
                 </div>
-                <VibeButton variant="secondary" size="sm" outline :title="`Theme: ${colorMode}`" @click="toggleColorMode">
-                    <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
-                </VibeButton>
-                <VibeDropdown v-if="user" size="sm" variant="secondary" outline menu-end :items="userMenu" @item-click="onUserMenu">
-                    <template #button><VibeIcon icon="person-circle" class="me-1" />{{ user.name }}</template>
-                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                </VibeDropdown>
-            </header>
+            </aside>
 
-            <main class="p-3 p-lg-4 flex-grow-1">
+            <!-- Content -->
+            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
                 <VibeAlert v-if="flash.error" variant="danger" dismissible>{{ flash.error }}</VibeAlert>
                 <slot />
