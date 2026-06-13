@@ -16,6 +16,11 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user);
 const flash = computed(() => page.props.flash ?? {});
 
+// Footer legalese.
+const year = new Date().getFullYear();
+const appName = 'Laravel File Manager';
+const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
+
 const path = computed(() => page.url.split('?')[0]);
 const query = computed(() => page.url.split('?')[1] || '');
 
@@ -124,10 +129,24 @@ function onUserMenu({ item }) {
             </aside>
 
             <!-- Content -->
-            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0 bg-body">
+            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0 bg-body d-flex flex-column">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
                 <VibeAlert v-if="flash.error" variant="danger" dismissible>{{ flash.error }}</VibeAlert>
-                <slot />
+                <div class="flex-grow-1">
+                    <slot />
+                </div>
+
+                <footer class="border-top mt-4 pt-3 text-muted small d-flex flex-wrap align-items-center gap-1">
+                    <span>&copy; {{ year }} {{ appName }}.</span>
+                    <span>Released under the
+                        <a :href="`${repoUrl}/blob/main/LICENSE`" target="_blank" rel="noopener" class="text-decoration-none">MIT License</a>.
+                    </span>
+                    <span class="ms-auto d-inline-flex align-items-center gap-2">
+                        <a :href="repoUrl" target="_blank" rel="noopener" class="text-decoration-none">
+                            <VibeIcon icon="github" class="me-1" />Source on GitHub
+                        </a>
+                    </span>
+                </footer>
             </main>
         </div>
 
