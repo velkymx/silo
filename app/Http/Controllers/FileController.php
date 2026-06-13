@@ -164,16 +164,52 @@ class FileController extends Controller
             ->with('success', "Created “{$name}”.");
     }
 
-    // Save edited text content as a new version of a file.
+    // Open the full-screen editor page for an editable file (office docs, text).
+    public function edit(File $file)
+    {
+        $this->authorize('update', $file);
+        abort_if($file->is_dir, 404);
+
+        return Inertia::render('Files/Editor', [
+            'file' => [
+                'id' => $file->id,
+                'name' => $file->name,
+                'type' => strtolower(pathinfo($file->name, PATHINFO_EXTENSION)),
+                'mime' => $file->mime,
+                'version' => $file->version,
+                'parent_id' => $file->parent_id,
+                'raw_url' => route('files.raw', $file),
+            ],
+        ]);
+    }
+
+    // Save edited content as a new version of a file. Accepts either a binary
+    // upload ("file", for office docs) or raw text ("content"), plus an optional
+    // git-style note describing what changed.
     public function updateContent(Request $request, File $file)
     {
         $this->authorize('update', $file);
         abort_if($file->is_dir, 404);
 
-        $data = $request->validate(['content' => 'present|string']);
-        $content = $data['content'];
+        $request->validate([
+            'content' => 'nullable|string',
+            'file' => 'nullable|file|max:'.Uploads::maxKb(),
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $upload = $request->file('file');
+        if (! $upload && ! $request->has('content')) {
+            throw ValidationException::withMessages(['content' => 'Nothing to save.']);
+        }
+
+        $content = $upload ? $upload->get() : (string) $request->input('content');
+        $note = $request->filled('note') ? trim((string) $request->input('note')) : null;
         $userId = $file->owner_id;
         $disk = config('filemanager.disk');
+
+        if (app(QuotaService::class)->wouldExceed($userId, strlen($content) - (int) $file->size)) {
+            throw ValidationException::withMessages(['file' => 'This would exceed your storage quota.']);
+        }
 
         $newPath = "uploads/{$userId}/".Str::random(40);
         if ($ext = pathinfo($file->name, PATHINFO_EXTENSION)) {
@@ -181,8 +217,8 @@ class FileController extends Controller
         }
         Storage::disk($disk)->put($newPath, $content);
 
-        DB::transaction(function () use ($file, $newPath, $disk, $content) {
-            $this->snapshotVersion($file);
+        DB::transaction(function () use ($file, $newPath, $disk, $content, $note) {
+            $this->snapshotVersion($file, null, $note);
             $file->update([
                 'path' => $newPath,
                 'disk' => $disk,
@@ -197,7 +233,8 @@ class FileController extends Controller
         ProcessUploadedFile::dispatch($file->id);
         Audit::log('file.edit', $file);
 
-        return back()->with('success', 'Saved.');
+        return redirect()->route('files.index', ['folder' => $file->parent_id])
+            ->with('success', 'Saved.');
     }
 
     // Toggle a file's or folder's starred (favorite) flag.
@@ -287,6 +324,7 @@ class FileController extends Controller
                 ? $file->versions->map(fn (FileVersion $v) => [
                     'id' => $v->id,
                     'version' => $v->version,
+                    'note' => $v->note,
                     'size' => $v->size,
                     'created_at' => $v->created_at->format('Y-m-d H:i'),
                 ])->values()
@@ -565,11 +603,12 @@ class FileController extends Controller
     }
 
     // Archive the file's current blob as a historical version row.
-    protected function snapshotVersion(File $file, ?int $createdBy = null): void
+    protected function snapshotVersion(File $file, ?int $createdBy = null, ?string $note = null): void
     {
         FileVersion::create([
             'file_id' => $file->id,
             'version' => $file->version,
+            'note' => $note,
             'name' => $file->name,
             'path' => $file->path,
             'disk' => $file->disk,

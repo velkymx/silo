@@ -1,48 +1,76 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
-import EasyMDE from 'easymde';
-import 'easymde/dist/easymde.min.css';
+import { useColorMode } from '@velkymx/vibeui';
+import Editor from '@toast-ui/editor';
+import '@toast-ui/editor/dist/toastui-editor.css';
+import '@toast-ui/editor/dist/theme/toastui-editor-dark.css';
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
 });
 const emit = defineEmits(['update:modelValue']);
 
-const textarea = ref(null);
-let mde = null;
+const el = ref(null);
+let editor = null;
+const { colorMode } = useColorMode();
 
-onMounted(() => {
-    mde = new EasyMDE({
-        element: textarea.value,
+// Resolve the effective theme (handles 'auto' via the html data-bs-theme attr).
+function isDark() {
+    return document.documentElement.getAttribute('data-bs-theme') === 'dark';
+}
+
+function build() {
+    editor = new Editor({
+        el: el.value,
         initialValue: props.modelValue,
-        spellChecker: false,
-        status: ['lines', 'words'],
-        autoDownloadFontAwesome: true,
-        toolbar: [
-            'bold', 'italic', 'heading', '|',
-            'quote', 'unordered-list', 'ordered-list', '|',
-            'link', 'image', 'code', 'table', '|',
-            'preview', 'side-by-side', 'fullscreen', '|',
-            'guide',
+        initialEditType: 'wysiwyg',
+        previewStyle: 'tab',
+        height: '100%',
+        usageStatistics: false,
+        theme: isDark() ? 'dark' : 'light',
+        toolbarItems: [
+            ['heading', 'bold', 'italic', 'strike'],
+            ['hr', 'quote'],
+            ['ul', 'ol', 'task', 'indent', 'outdent'],
+            ['table', 'image', 'link'],
+            ['code', 'codeblock'],
         ],
     });
-    mde.codemirror.on('change', () => emit('update:modelValue', mde.value()));
-});
+    editor.on('change', () => emit('update:modelValue', editor.getMarkdown()));
+}
+
+onMounted(build);
 
 watch(
     () => props.modelValue,
     (val) => {
-        if (mde && val !== mde.value()) mde.value(val);
+        if (editor && val !== editor.getMarkdown()) editor.setMarkdown(val, false);
     }
 );
 
+// Toast UI bakes the theme in at construction — rebuild on color-mode flip.
+watch(colorMode, () => {
+    if (!editor) return;
+    const current = editor.getMarkdown();
+    editor.destroy();
+    editor = null;
+    build();
+    editor.setMarkdown(current, false);
+});
+
 onBeforeUnmount(() => {
-    mde?.toTextArea();
-    mde?.cleanup?.();
-    mde = null;
+    editor?.destroy();
+    editor = null;
 });
 </script>
 
 <template>
-    <textarea ref="textarea"></textarea>
+    <div ref="el" class="md-editor-fill"></div>
 </template>
+
+<style>
+.md-editor-fill {
+    height: calc(100vh - 170px);
+    min-height: 360px;
+}
+</style>

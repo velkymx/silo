@@ -19,6 +19,7 @@ class FileVersion extends Model
     protected $fillable = [
         'file_id',
         'version',
+        'note',
         'name',
         'path',
         'disk',

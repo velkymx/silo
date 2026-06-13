@@ -4,9 +4,13 @@ import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import FolderTree from '../../Components/FolderTree.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
+import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
+// Office formats edited on the full-screen editor page (binary, versioned).
+const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
+const previewMarkdownTypes = ['md', 'markdown'];
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
@@ -158,7 +162,11 @@ const editCreating = ref(false);
 const editName = ref('');
 
 function isEditable(item) {
-    return !item.is_dir && (markdownTypes.includes(item.type) || htmlTypes.includes(item.type));
+    return !item.is_dir && (
+        markdownTypes.includes(item.type) ||
+        htmlTypes.includes(item.type) ||
+        officeEditTypes.includes(item.type)
+    );
 }
 
 // File menu with Edit hidden for files that can't be edited as text.
@@ -168,6 +176,11 @@ function fileMenu(item) {
 
 async function openEditor(item) {
     if (!isEditable(item)) return;
+    // Office docs (docx/xlsx/xls/csv/ods) open in the full-screen editor page.
+    if (officeEditTypes.includes(item.type)) {
+        router.get(`/files/${item.id}/edit`);
+        return;
+    }
     editItem.value = item;
     editCreating.value = false;
     editKind.value = htmlTypes.includes(item.type) ? 'html' : 'markdown';
@@ -1128,11 +1141,15 @@ onBeforeUnmount(() => {
             </p>
             <table v-if="versionsItem?.versions?.length" class="table table-sm align-middle mb-0">
                 <thead>
-                    <tr><th>Version</th><th>Size</th><th>Saved</th><th class="text-end">Actions</th></tr>
+                    <tr><th>Version</th><th>What changed</th><th>Size</th><th>Saved</th><th class="text-end">Actions</th></tr>
                 </thead>
                 <tbody>
                     <tr v-for="v in versionsItem.versions" :key="v.id">
                         <td>v{{ v.version }}</td>
+                        <td class="small">
+                            <span v-if="v.note">{{ v.note }}</span>
+                            <span v-else class="text-muted fst-italic">—</span>
+                        </td>
                         <td>{{ (v.size / 1024).toFixed(2) }} KB</td>
                         <td class="small">{{ v.created_at }}</td>
                         <td class="text-end">
@@ -1196,6 +1213,11 @@ onBeforeUnmount(() => {
                     controls
                     class="img-fluid rounded"
                     style="max-height: 72vh"
+                />
+                <MarkdownViewer
+                    v-else-if="previewMarkdownTypes.includes(quickFile.type)"
+                    :key="quickFile.id"
+                    :url="`/raw/${quickFile.id}`"
                 />
                 <DocViewer
                     v-else-if="officeTypes.includes(quickFile.type)"

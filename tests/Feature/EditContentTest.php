@@ -80,6 +80,68 @@ class EditContentTest extends TestCase
         ])->assertSessionHasErrors('name');
     }
 
+    public function test_saving_records_a_commit_note_on_the_archived_version(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        Storage::disk('public')->put($path = 'uploads/'.$user->id.'/note.md', 'old');
+        $file = File::factory()->for($user, 'owner')->create([
+            'name' => 'note.md', 'path' => $path, 'mime' => 'text/markdown', 'version' => 3,
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('files.content', $file), ['content' => 'new', 'note' => 'Fixed the intro'])
+            ->assertRedirect();
+
+        $this->assertSame('Fixed the intro', FileVersion::where('file_id', $file->id)->where('version', 3)->value('note'));
+    }
+
+    public function test_saving_a_binary_upload_versions_the_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        Storage::disk('public')->put($path = 'uploads/'.$user->id.'/sheet.xlsx', 'OLDXLSX');
+        $file = File::factory()->for($user, 'owner')->create([
+            'name' => 'sheet.xlsx', 'path' => $path, 'version' => 1,
+            'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+
+        $upload = \Illuminate\Http\UploadedFile::fake()->createWithContent('sheet.xlsx', 'NEWXLSXBYTES');
+
+        $this->actingAs($user)
+            ->put(route('files.content', $file), ['file' => $upload, 'note' => 'recalc'])
+            ->assertRedirect();
+
+        $file->refresh();
+        $this->assertSame(2, $file->version);
+        $this->assertSame('NEWXLSXBYTES', Storage::disk('public')->get($file->path));
+    }
+
+    public function test_editor_page_renders_for_an_office_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $file = File::factory()->for($user, 'owner')->create([
+            'name' => 'budget.xlsx', 'version' => 2,
+            'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+
+        $this->actingAs($user)->get(route('files.edit', $file))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Files/Editor')
+                ->where('file.type', 'xlsx')
+                ->where('file.version', 2)
+                ->has('file.raw_url'));
+    }
+
+    public function test_cannot_open_editor_for_a_folder(): void
+    {
+        $user = User::factory()->create();
+        $folder = File::factory()->for($user, 'owner')->folder()->create();
+        $this->actingAs($user)->get(route('files.edit', $folder))->assertNotFound();
+    }
+
     public function test_cannot_edit_a_folder_or_another_users_file(): void
     {
         Storage::fake('public');

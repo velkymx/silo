@@ -48,7 +48,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/files/{file}/copy', [FileController::class, 'copy'])->name('files.copy');
     Route::put('/files/{file}/tags', [FileController::class, 'syncTags'])->name('files.tags');
     Route::post('/files/{file}/star', [FileController::class, 'star'])->name('files.star');
+    Route::get('/files/{file}/edit', [FileController::class, 'edit'])->name('files.edit');
     Route::put('/files/{file}/content', [FileController::class, 'updateContent'])->name('files.content');
+    Route::post('/files/{file}/content', [FileController::class, 'updateContent'])->name('files.content.post');
     Route::get('/files/{file}/permissions', [FilePermissionController::class, 'index'])->name('files.permissions.index');
     Route::post('/files/{file}/permissions', [FilePermissionController::class, 'store'])->name('files.permissions.store');
     Route::delete('/files/{file}/permissions/{permission}', [FilePermissionController::class, 'destroy'])->name('files.permissions.destroy');
