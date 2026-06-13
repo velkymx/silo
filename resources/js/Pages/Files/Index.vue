@@ -788,6 +788,7 @@ onBeforeUnmount(() => {
             hover
             :searchable="false"
             :paginated="false"
+            :per-page="9999"
             :responsive="false"
             :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
             @row-clicked="selectFile"

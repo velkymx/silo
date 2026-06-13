@@ -1,16 +1,4 @@
 {
-  "__vite-optional-peer-dep:quill/dist/quill.snow.css:@velkymx/vibeui": {
-    "file": "assets/vibeui-Df6KNeSA.js",
-    "name": "vibeui",
-    "src": "__vite-optional-peer-dep:quill/dist/quill.snow.css:@velkymx/vibeui",
-    "isDynamicEntry": true
-  },
-  "__vite-optional-peer-dep:quill:@velkymx/vibeui": {
-    "file": "assets/vibeui-BIHI7g3E.js",
-    "name": "vibeui",
-    "src": "__vite-optional-peer-dep:quill:@velkymx/vibeui",
-    "isDynamicEntry": true
-  },
   "node_modules/@velkymx/vibeui/dist/purify.es-1D-VntFD.mjs": {
     "file": "assets/purify.es-1D-VntFD-DMYGt7zR.js",
     "name": "purify.es-1D-VntFD",
@@ -31,8 +19,12 @@
     "src": "node_modules/bootstrap/dist/js/bootstrap.esm.js",
     "isDynamicEntry": true
   },
+  "node_modules/quill/dist/quill.snow.css": {
+    "file": "assets/quill-BzY4kI8E.css",
+    "src": "node_modules/quill/dist/quill.snow.css"
+  },
   "resources/js/app.js": {
-    "file": "assets/app-CqVCBPjn.js",
+    "file": "assets/app-_DTY5Gki.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -52,8 +44,6 @@
       "node_modules/bootstrap/dist/js/bootstrap.esm.js",
       "node_modules/bootstrap/dist/js/bootstrap.esm.js",
       "node_modules/@velkymx/vibeui/dist/purify.es-1D-VntFD.mjs",
-      "__vite-optional-peer-dep:quill:@velkymx/vibeui",
-      "__vite-optional-peer-dep:quill/dist/quill.snow.css:@velkymx/vibeui",
       "node_modules/bootstrap/dist/js/bootstrap.esm.js"
     ],
     "css": [
