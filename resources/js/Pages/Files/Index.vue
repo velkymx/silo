@@ -276,6 +276,13 @@ function quickStep(delta) {
 const selectedIndex = ref(0);
 
 function onKey(e) {
+    // Cmd/Ctrl-K focuses the search box from anywhere.
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        document.getElementById('global-search')?.focus();
+        return;
+    }
+
     const tag = (e.target?.tagName || '').toLowerCase();
     if (['input', 'textarea', 'select'].includes(tag) || e.target?.isContentEditable) return;
 
@@ -578,9 +585,10 @@ onBeforeUnmount(() => {
         <template #topbar>
             <VibeInputGroup>
                 <VibeFormInput
+                    id="global-search"
                     v-model="search"
                     type="search"
-                    placeholder="Search files, folders, tags…"
+                    placeholder="Search files, folders, tags…   (⌘K)"
                     no-wrapper
                     @keyup.enter="runSearch"
                 />

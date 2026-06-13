@@ -1,7 +1,9 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@velkymx/vibeui';
+
+const mobileNavOpen = ref(false);
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
@@ -43,6 +45,7 @@ const userMenu = [
 
 function onNav({ item, event }) {
     event?.preventDefault?.();
+    mobileNavOpen.value = false;
     router.visit(item.href);
 }
 
@@ -85,6 +88,9 @@ function onUserMenu({ item }) {
         <!-- Main column -->
         <div class="flex-grow-1 d-flex flex-column min-vw-0">
             <header class="d-flex align-items-center gap-2 border-bottom bg-body px-3 py-2">
+                <VibeButton variant="secondary" size="sm" outline class="d-md-none" title="Menu" @click="mobileNavOpen = true">
+                    <VibeIcon icon="list" />
+                </VibeButton>
                 <div class="flex-grow-1 min-vw-0">
                     <slot name="topbar" />
                 </div>
@@ -103,5 +109,19 @@ function onUserMenu({ item }) {
                 <slot />
             </main>
         </div>
+
+        <!-- Mobile navigation drawer -->
+        <VibeOffcanvas v-model="mobileNavOpen" placement="start" title="File Manager">
+            <VibeNav pills vertical :items="baseNav" @item-click="onNav">
+                <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+            </VibeNav>
+            <template v-if="adminNav.length">
+                <hr class="my-3" >
+                <div class="text-muted text-uppercase small fw-semibold px-3 mb-1">Admin</div>
+                <VibeNav pills vertical :items="adminNav" @item-click="onNav">
+                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                </VibeNav>
+            </template>
+        </VibeOffcanvas>
     </div>
 </template>

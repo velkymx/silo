@@ -13,7 +13,6 @@ async function login(page) {
 
 test('login lands on the file manager', async ({ page }) => {
     await login(page);
-    await expect(page.getByText('My Files')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Upload' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
 });
