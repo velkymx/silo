@@ -1,7 +1,9 @@
 <script setup>
-import { computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import { Cropper } from 'vue-advanced-cropper';
+import 'vue-advanced-cropper/dist/style.css';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -9,6 +11,7 @@ const props = defineProps({
 });
 
 const groupOptions = computed(() => props.groups.map((g) => ({ value: g.id, text: g.name })));
+const initial = computed(() => (props.user.name || '?').charAt(0).toUpperCase());
 
 const form = useForm({
     name: props.user.name,
@@ -21,6 +24,47 @@ const form = useForm({
 function submit() {
     form.post('/profile', { onFinish: () => form.reset('password', 'password_confirmation') });
 }
+
+// ----- Avatar upload + crop -----
+const fileInput = ref(null);
+const cropOpen = ref(false);
+const cropSrc = ref('');
+const cropper = ref(null);
+const avatarSaving = ref(false);
+
+function pickPhoto() {
+    fileInput.value?.click();
+}
+
+function onFileChosen(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        cropSrc.value = reader.result;
+        cropOpen.value = true;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+}
+
+function applyCrop() {
+    const { canvas } = cropper.value.getResult();
+    if (!canvas) return;
+    avatarSaving.value = true;
+    canvas.toBlob((blob) => {
+        router.post('/profile/avatar', { avatar: new File([blob], 'avatar.jpg', { type: 'image/jpeg' }) }, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                cropOpen.value = false;
+            },
+            onFinish: () => {
+                avatarSaving.value = false;
+            },
+        });
+    }, 'image/jpeg', 0.9);
+}
 </script>
 
 <template>
@@ -28,6 +72,28 @@ function submit() {
         <VibeRow class="justify-content-center">
             <VibeCol :md="8" :lg="6">
                 <VibeCard header="Edit Profile">
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <img
+                            v-if="user.avatar_url"
+                            :src="user.avatar_url"
+                            alt="Avatar"
+                            class="rounded-circle border"
+                            style="width: 72px; height: 72px; object-fit: cover"
+                        >
+                        <span
+                            v-else
+                            class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center fs-3"
+                            style="width: 72px; height: 72px"
+                        >{{ initial }}</span>
+                        <div>
+                            <VibeButton variant="secondary" outline size="sm" @click="pickPhoto">
+                                <VibeIcon icon="camera" class="me-1" />Change photo
+                            </VibeButton>
+                            <div class="small text-muted mt-1">JPG/PNG, square crop.</div>
+                        </div>
+                        <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="onFileChosen">
+                    </div>
+
                     <form @submit.prevent="submit">
                         <VibeFormGroup
                             label="Name"
@@ -80,5 +146,20 @@ function submit() {
                 </VibeCard>
             </VibeCol>
         </VibeRow>
+
+        <!-- Crop modal -->
+        <VibeModal v-model="cropOpen" title="Crop photo" hide-footer>
+            <Cropper
+                ref="cropper"
+                :src="cropSrc"
+                :stencil-props="{ aspectRatio: 1 }"
+                class="bg-body-tertiary"
+                style="height: 360px"
+            />
+            <div class="text-end mt-3">
+                <VibeButton variant="secondary" outline class="me-2" @click="cropOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</VibeButton>
+            </div>
+        </VibeModal>
     </AppLayout>
 </template>

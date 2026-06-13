@@ -27,6 +27,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/profile', [UserController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [UserController::class, 'update'])->name('profile.update');
+    Route::post('/profile/avatar', [UserController::class, 'updateAvatar'])->name('profile.avatar');
+    Route::get('/avatars/{user}', [UserController::class, 'avatar'])->name('users.avatar');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
     Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');

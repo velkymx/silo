@@ -39,7 +39,10 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user()
-                    ? $request->user()->only('id', 'name', 'email', 'is_admin', 'group_id')
+                    ? array_merge(
+                        $request->user()->only('id', 'name', 'email', 'is_admin', 'group_id'),
+                        ['avatar_url' => $request->user()->avatar_path ? route('users.avatar', $request->user()) : null],
+                    )
                     : null,
             ],
             'flash' => [

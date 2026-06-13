@@ -30,6 +30,7 @@
         "easymde": "^2.21.0",
         "quill": "^2.0.3",
         "vue": "^3.5.38",
+        "vue-advanced-cropper": "^2.8.9",
         "xlsx": "^0.18.5"
     }
 }

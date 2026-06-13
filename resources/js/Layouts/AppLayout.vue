@@ -81,7 +81,15 @@ function onUserMenu({ item }) {
             </VibeButton>
             <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
+                    <img
+                        v-if="user.avatar_url"
+                        :src="user.avatar_url"
+                        alt=""
+                        class="rounded-circle me-2"
+                        style="width: 22px; height: 22px; object-fit: cover"
+                    >
                     <span
+                        v-else
                         class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white me-2"
                         style="width: 22px; height: 22px; font-size: 0.72rem"
                     >{{ user.name.charAt(0).toUpperCase() }}</span>{{ user.name }}
