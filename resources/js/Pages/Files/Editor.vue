@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import SpreadsheetEditor from '../../Components/SpreadsheetEditor.vue';
 import DocxEditor from '../../Components/DocxEditor.vue';
@@ -16,8 +16,25 @@ const kind = computed(() => {
 });
 
 const editorRef = ref(null);
+const surfaceRef = ref(null);
 const loadError = ref('');
 const ready = ref(false);
+const isFullscreen = ref(false);
+
+function toggleFullscreen() {
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        surfaceRef.value?.requestFullscreen?.();
+    }
+}
+
+function onFsChange() {
+    isFullscreen.value = !!document.fullscreenElement;
+}
+
+onMounted(() => document.addEventListener('fullscreenchange', onFsChange));
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChange));
 
 const noteOpen = ref(false);
 const note = ref('');
@@ -63,6 +80,10 @@ async function commitSave() {
             </div>
             <VibeBadge variant="secondary" class="ms-1">v{{ file.version }}</VibeBadge>
             <div class="ms-auto d-flex gap-2">
+                <VibeButton variant="light" size="sm" :title="isFullscreen ? 'Exit full screen' : 'Full screen'" @click="toggleFullscreen">
+                    <VibeIcon :icon="isFullscreen ? 'fullscreen-exit' : 'arrows-fullscreen'" class="me-1" />
+                    {{ isFullscreen ? 'Exit' : 'Full screen' }}
+                </VibeButton>
                 <VibeButton variant="light" size="sm" @click="back">Cancel</VibeButton>
                 <VibeButton variant="primary" size="sm" :disabled="!ready || kind === 'unsupported'" @click="noteOpen = true">
                     <VibeIcon icon="check2" class="me-1" />Save
@@ -71,7 +92,7 @@ async function commitSave() {
         </div>
 
         <!-- Editor surface -->
-        <div class="flex-grow-1 overflow-auto p-2 bg-body-tertiary">
+        <div ref="surfaceRef" class="editor-surface flex-grow-1 overflow-auto p-2 bg-body-tertiary">
             <VibeAlert v-if="loadError" variant="danger">{{ loadError }}</VibeAlert>
 
             <SpreadsheetEditor
@@ -118,3 +139,13 @@ async function commitSave() {
         </VibeModal>
     </div>
 </template>
+
+<style scoped>
+.editor-surface:fullscreen {
+    padding: 0.5rem;
+    background: var(--bs-body-bg);
+}
+.editor-surface:fullscreen > * {
+    height: 100%;
+}
+</style>

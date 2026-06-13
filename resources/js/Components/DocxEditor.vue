@@ -26,6 +26,9 @@ async function load() {
             documentMode: 'editing',
             document: file,
             pagination: true,
+            rulers: true,
+            // Continuously fit the page to the available canvas width.
+            zoom: { mode: 'fit-width' },
             onReady: () => emit('ready'),
         });
     } catch (e) {
@@ -55,9 +58,20 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
+.docx-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
 .docx-canvas {
+    flex: 1 1 auto;
     overflow: auto;
-    max-height: calc(100vh - 210px);
+    min-height: 0;
     background: var(--bs-tertiary-bg);
+}
+/* In native fullscreen the editor surface owns the whole viewport. */
+.docx-editor:fullscreen {
+    background: var(--bs-body-bg);
+    padding: 0.5rem;
 }
 </style>
