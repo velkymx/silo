@@ -75,6 +75,34 @@ class ThumbnailTest extends TestCase
         $this->actingAs($user)->get(route('files.thumbnail', $file))->assertNotFound();
     }
 
+    public function test_pdf_gets_a_first_page_thumbnail_when_supported(): void
+    {
+        if (! \App\Services\ThumbnailGenerator::supportsPdf()) {
+            $this->markTestSkipped('Imagick + Ghostscript not available for PDF rasterization.');
+        }
+
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $path = 'uploads/'.$user->id.'/doc.pdf';
+        Storage::disk('public')->put($path, $this->minimalPdf());
+        $file = File::factory()->for($user, 'owner')->create([
+            'name' => 'doc.pdf', 'path' => $path, 'mime' => 'application/pdf', 'status' => File::STATUS_PENDING,
+        ]);
+
+        ProcessUploadedFile::dispatchSync($file->id);
+
+        $this->assertNotNull($file->fresh()->thumbnail_path);
+        Storage::disk('public')->assertExists($file->fresh()->thumbnail_path);
+    }
+
+    private function minimalPdf(): string
+    {
+        return "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            ."2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            ."3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n"
+            ."trailer<</Root 1 0 R>>\n%%EOF";
+    }
+
     public function test_text_file_gets_preview_snippet(): void
     {
         Storage::fake('public');
