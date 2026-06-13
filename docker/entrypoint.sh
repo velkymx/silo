@@ -38,7 +38,16 @@ php artisan app:create-admin \
     --password="${ADMIN_PASSWORD:-}" \
     --name="${ADMIN_NAME:-Administrator}" || true
 
-# 7. Cache config/routes/views for speed.
+# 7. Optional: index a mounted host folder in place (referenced — never copied
+#    or deleted). Idempotent, so new files appear on each boot. Off by default.
+if [ "${IMPORT_ENABLED:-false}" = "true" ]; then
+    php artisan files:import \
+        --disk=import \
+        --owner="${IMPORT_OWNER:-${ADMIN_EMAIL:-admin@example.com}}" \
+        --name="${IMPORT_NAME:-Imported}" || true
+fi
+
+# 8. Cache config/routes/views for speed.
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache

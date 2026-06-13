@@ -11,9 +11,17 @@ services:
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@example.com}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-changeme}"
       ADMIN_NAME: "${ADMIN_NAME:-Administrator}"
+      # Index a mounted host folder in place on boot (see the volume below).
+      IMPORT_ENABLED: "${IMPORT_ENABLED:-false}"
+      IMPORT_PATH: /import
+      IMPORT_OWNER: "${IMPORT_OWNER:-${ADMIN_EMAIL:-admin@example.com}}"
+      IMPORT_NAME: "${IMPORT_NAME:-Imported}"
     volumes:
       # Persist uploads + the SQLite database + framework storage.
       - app_storage:/var/www/storage/app
+      # Index an existing host folder in place: set IMPORT_ENABLED=true and
+      # uncomment. Files are referenced (read-only here), never copied/deleted.
+      # - /path/on/host:/import:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/up') ? 0 : 1);"]
