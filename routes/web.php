@@ -37,7 +37,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/trash/empty', [TrashController::class, 'empty'])->name('trash.empty');
     Route::post('/trash/{file}/restore', [TrashController::class, 'restore'])->withTrashed()->name('trash.restore');
     Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
-    Route::post('/upload', [FileController::class, 'upload'])->name('files.upload');
+    Route::post('/upload', [FileController::class, 'upload'])
+        ->middleware('throttle:60,1')->name('files.upload');
     Route::post('/files/text', [FileController::class, 'createText'])->name('files.text');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/raw/{file}', [FileController::class, 'raw'])->name('files.raw');
@@ -64,11 +65,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
 });
 
-// Public share links (no authentication).
+// Public share links (no authentication). Rate-limited: the unlock endpoint
+// is the brute-force surface for password-protected links.
 Route::get('/s/{token}', [PublicShareController::class, 'show'])->name('shares.public.show');
-Route::post('/s/{token}/unlock', [PublicShareController::class, 'unlock'])->name('shares.public.unlock');
-Route::get('/s/{token}/raw', [PublicShareController::class, 'raw'])->name('shares.public.raw');
-Route::get('/s/{token}/download', [PublicShareController::class, 'download'])->name('shares.public.download');
+Route::post('/s/{token}/unlock', [PublicShareController::class, 'unlock'])
+    ->middleware('throttle:10,1')->name('shares.public.unlock');
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/s/{token}/raw', [PublicShareController::class, 'raw'])->name('shares.public.raw');
+    Route::get('/s/{token}/download', [PublicShareController::class, 'download'])->name('shares.public.download');
+});
 
 Auth::routes(['verify' => false]);
 

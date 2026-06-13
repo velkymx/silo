@@ -47,6 +47,11 @@ class PublicShareController extends Controller
         $request->validate(['password' => 'required|string']);
 
         if (! $link->isProtected() || ! Hash::check($request->input('password'), $link->password)) {
+            \Illuminate\Support\Facades\Log::warning('share.unlock.failed', [
+                'link_id' => $link->id,
+                'ip' => $request->ip(),
+            ]);
+
             return back()->withErrors(['password' => 'Incorrect password.']);
         }
 
