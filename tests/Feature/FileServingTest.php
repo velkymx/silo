@@ -33,21 +33,14 @@ class FileServingTest extends TestCase
         $this->get(route('files.raw', $file))->assertRedirect(route('login'));
     }
 
-    public function test_file_listing_is_paginated(): void
+    public function test_file_listing_sends_all_rows_for_client_pagination(): void
     {
+        // The DataTable paginates client-side; the server sends the rows (capped).
         $user = User::factory()->create();
         File::factory()->count(60)->for($user, 'owner')->create();
 
         $this->actingAs($user)->get('/')->assertInertia(
-            fn (Assert $page) => $page
-                ->where('pagination.total', 60)
-                ->where('pagination.per_page', 50)
-                ->where('pagination.last_page', 2)
-                ->has('files', 50)
-        );
-
-        $this->actingAs($user)->get('/?page=2')->assertInertia(
-            fn (Assert $page) => $page->where('pagination.current_page', 2)->has('files', 10)
+            fn (Assert $page) => $page->has('files', 60)
         );
     }
 }

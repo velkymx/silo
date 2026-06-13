@@ -40,48 +40,44 @@ class FileController extends Controller
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
 
-        $perPage = 50;
-
         // One query for every folder the user owns: powers the tree, the move/copy
         // picker, and search/tag location labels (no per-file parent walking).
         $allFolders = File::folders()->where('owner_id', $userId)
             ->orderBy('name')->get(['id', 'name', 'parent_id']);
         $folderById = $allFolders->keyBy('id');
 
+        // The VibeUI DataTable paginates client-side; a safety cap keeps the
+        // payload bounded on very large result sets.
+        $cap = 1000;
+
         if ($searching) {
             // Full-text search (Scout) spans every folder the user owns.
             $folders = collect();
-            $paginator = File::search($request->string('search')->toString())
-                ->where('owner_id', $userId)
-                ->where('is_dir', false)
-                ->paginate($perPage)->withQueryString();
-            $paginator->getCollection()->load(['versions', 'tags']);
-            $files = collect($paginator->items())
+            $files = File::search($request->string('search')->toString())
+                ->where('owner_id', $userId)->where('is_dir', false)
+                ->take($cap)->get()->load(['versions', 'tags'])
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($activeTag) {
             // Tag filter spans every folder the user owns (folders + files).
             $folders = $activeTag->files()->where('owner_id', $userId)->where('is_dir', true)
                 ->withCount('children')->with('tags')->orderBy('name')->get()
                 ->map(fn (File $folder) => $this->folderShape($folder));
-            $paginator = $activeTag->files()->where('owner_id', $userId)->where('is_dir', false)
-                ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
-            $files = collect($paginator->items())
+            $files = $activeTag->files()->where('owner_id', $userId)->where('is_dir', false)
+                ->with(['versions', 'tags'])->orderBy('name')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($starredOnly) {
             // Starred items across every folder the user owns.
             $folders = File::query()->where('owner_id', $userId)->where('starred', true)->folders()
                 ->withCount('children')->with('tags')->orderBy('name')->get()
                 ->map(fn (File $folder) => $this->folderShape($folder));
-            $paginator = File::query()->where('owner_id', $userId)->where('starred', true)->files()
-                ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
-            $files = collect($paginator->items())
+            $files = File::query()->where('owner_id', $userId)->where('starred', true)->files()
+                ->with(['versions', 'tags'])->orderBy('name')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($recentOnly) {
             // Most recently uploaded files across every folder.
             $folders = collect();
-            $paginator = File::query()->where('owner_id', $userId)->files()
-                ->with(['versions', 'tags'])->latest('created_at')->paginate($perPage)->withQueryString();
-            $files = collect($paginator->items())
+            $files = File::query()->where('owner_id', $userId)->files()
+                ->with(['versions', 'tags'])->latest('created_at')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } else {
             $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
@@ -90,20 +86,14 @@ class FileController extends Controller
                 ->orderBy($sort, $direction)->get()
                 ->map(fn (File $folder) => $this->folderShape($folder));
 
-            $paginator = (clone $query)->files()->with(['versions', 'tags'])
-                ->orderBy($sort, $direction)->paginate($perPage)->withQueryString();
-            $files = collect($paginator->items())->map(fn (File $file) => $this->transform($file));
+            $files = (clone $query)->files()->with(['versions', 'tags'])
+                ->orderBy($sort, $direction)->limit($cap)->get()
+                ->map(fn (File $file) => $this->transform($file));
         }
 
         return Inertia::render('Files/Index', [
             'folders' => $folders->values(),
             'files' => $files->values(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-            ],
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $searching,

@@ -20,7 +20,6 @@ const props = defineProps({
     recentOnly: { type: Boolean, default: false },
     flat: { type: Boolean, default: false },
     activeTag: { type: Object, default: null },
-    pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0, per_page: 50 }) },
     storage: { type: Object, default: () => ({ used: 0, quota: 0 }) },
     maxUploadKb: { type: Number, default: 0 },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
@@ -47,14 +46,6 @@ const storageBars = computed(() => [{
     value: storagePct.value,
     variant: storagePct.value > 90 ? 'danger' : storagePct.value > 75 ? 'warning' : 'success',
 }]);
-
-function goToPage(page) {
-    const params = { page };
-    if (props.searching) params.search = props.filters.search;
-    else if (props.activeTag) params.tag = props.activeTag.id;
-    else if (currentId.value) params.folder = currentId.value;
-    router.get('/', params, { preserveScroll: true, preserveState: true });
-}
 
 const currentId = computed(() => props.current?.id ?? null);
 
@@ -840,8 +831,7 @@ onBeforeUnmount(() => {
             row-key="id"
             hover
             :searchable="false"
-            :paginated="false"
-            :per-page="9999"
+            :per-page="10"
             :responsive="false"
             :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
             @row-clicked="selectFile"
@@ -925,15 +915,6 @@ onBeforeUnmount(() => {
                 </div>
             </template>
         </VibeDataTable>
-
-        <div v-if="pagination.last_page > 1" class="d-flex justify-content-between align-items-center mt-3">
-            <small class="text-muted">{{ pagination.total }} files</small>
-            <VibePagination
-                :total-pages="pagination.last_page"
-                :current-page="pagination.current_page"
-                @page-click="goToPage"
-            />
-        </div>
 
         <!-- Editor modal -->
         <VibeModal v-model="editOpen" :title="`Edit — ${editItem?.name || ''}`" size="xl" hide-footer>
