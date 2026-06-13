@@ -97,9 +97,16 @@ function mergeMap(ws) {
 
 async function load() {
     try {
-        const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
         XLSX = await import('xlsx');
-        const wb = XLSX.read(res.data, { type: 'array', cellFormula: true, cellStyles: true });
+        let wb;
+        if (props.url) {
+            const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
+            wb = XLSX.read(res.data, { type: 'array', cellFormula: true, cellStyles: true });
+        } else {
+            // New blank document.
+            wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['']]), 'Sheet1');
+        }
         originalWb = wb;
 
         const worksheets = wb.SheetNames.map((name) => {

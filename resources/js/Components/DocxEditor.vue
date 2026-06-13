@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 
 const props = defineProps({
-    url: { type: String, required: true },
+    url: { type: String, default: null },
     name: { type: String, default: 'document.docx' },
 });
 const emit = defineEmits(['ready', 'error']);
@@ -14,23 +14,27 @@ let superdoc = null;
 
 async function load() {
     try {
-        const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
-        const file = new File([res.data], props.name, { type: DOCX_MIME });
-
         const { SuperDoc } = await import('@harbour-enterprises/superdoc');
         await import('@harbour-enterprises/superdoc/style.css');
 
-        superdoc = new SuperDoc({
+        const config = {
             selector: editorEl.value,
             toolbar: `#${toolbarId}`,
             documentMode: 'editing',
-            document: file,
             pagination: true,
             rulers: true,
             // Continuously fit the page to the available canvas width.
             zoom: { mode: 'fit-width' },
             onReady: () => emit('ready'),
-        });
+        };
+
+        // Load existing bytes, or start a blank document when creating.
+        if (props.url) {
+            const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
+            config.document = new File([res.data], props.name, { type: DOCX_MIME });
+        }
+
+        superdoc = new SuperDoc(config);
     } catch (e) {
         emit('error', 'Could not open this document.');
     }

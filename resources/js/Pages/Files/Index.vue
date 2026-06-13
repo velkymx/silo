@@ -222,6 +222,8 @@ function saveEdit() {
 const newMenu = [
     { text: 'New Folder', action: 'folder', icon: 'folder-plus' },
     { text: 'Markdown file', action: 'markdown', icon: 'markdown' },
+    { text: 'Spreadsheet', action: 'xlsx', icon: 'file-earmark-spreadsheet' },
+    { text: 'Word document', action: 'docx', icon: 'file-earmark-word' },
     { text: 'Upload files', action: 'upload', icon: 'upload' },
 ];
 
@@ -229,6 +231,10 @@ function onNewMenu({ item }) {
     if (item.action === 'folder') folderOpen.value = true;
     if (item.action === 'upload') uploadOpen.value = true;
     if (item.action === 'markdown') openNewMarkdown();
+    // Blank office docs open the full-screen editor; the file is created on first save.
+    if (item.action === 'xlsx' || item.action === 'docx') {
+        router.get(`/files/new/${item.action}`, currentId.value ? { folder: currentId.value } : {});
+    }
 }
 
 function openItem(item) {

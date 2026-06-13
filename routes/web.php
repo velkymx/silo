@@ -49,6 +49,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/upload', [FileController::class, 'upload'])
         ->middleware('throttle:60,1')->name('files.upload');
     Route::post('/files/text', [FileController::class, 'createText'])->name('files.text');
+    Route::get('/files/new/{type}', [FileController::class, 'newDocument'])->name('files.new');
+    Route::post('/files/document', [FileController::class, 'storeDocument'])->name('files.document');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/raw/{file}', [FileController::class, 'raw'])->name('files.raw');
     Route::get('/thumbnail/{file}', [FileController::class, 'thumbnail'])->name('files.thumbnail');

@@ -165,6 +165,79 @@ class FileController extends Controller
             ->with('success', "Created “{$name}”.");
     }
 
+    // Office document types that can be created blank and edited in the browser.
+    private const NEW_DOC_TYPES = [
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'csv' => 'text/csv',
+        'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+
+    // Open the editor on a blank document of the given type (the file is not
+    // created until the first Save).
+    public function newDocument(Request $request, string $type)
+    {
+        abort_unless(isset(self::NEW_DOC_TYPES[$type]), 404);
+
+        return Inertia::render('Files/Editor', [
+            'file' => null,
+            'create' => [
+                'type' => $type,
+                'name' => 'Untitled.'.$type,
+                'parent_id' => $request->integer('folder') ?: null,
+            ],
+        ]);
+    }
+
+    // Persist a freshly created office document (binary blob from the editor).
+    public function storeDocument(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:'.implode(',', array_keys(self::NEW_DOC_TYPES)),
+            'parent_id' => 'nullable|integer|exists:files,id',
+            'file' => 'required|file|max:'.Uploads::maxKb(),
+        ]);
+
+        $userId = auth()->id();
+        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
+        $disk = config('filemanager.disk');
+        $type = $request->input('type');
+
+        $name = trim((string) $request->string('name'));
+        if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== $type) {
+            $name .= '.'.$type;
+        }
+        $this->assertNoCollision($parent?->id, $name, $userId);
+
+        $bytes = $request->file('file')->get();
+        if (app(QuotaService::class)->wouldExceed($userId, strlen($bytes))) {
+            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
+        }
+
+        $path = "uploads/{$userId}/".Str::random(40).'.'.$type;
+        Storage::disk($disk)->put($path, $bytes);
+
+        $file = File::create([
+            'name' => $name,
+            'path' => $path,
+            'disk' => $disk,
+            'is_dir' => false,
+            'mime' => self::NEW_DOC_TYPES[$type],
+            'size' => strlen($bytes),
+            'hash' => hash('sha256', $bytes),
+            'status' => File::STATUS_PENDING,
+            'parent_id' => $parent?->id,
+            'owner_id' => $userId,
+        ]);
+
+        ProcessUploadedFile::dispatch($file->id);
+        Audit::log('file.create', $file);
+
+        return redirect()->route('files.index', ['folder' => $parent?->id])
+            ->with('success', "Created “{$name}”.");
+    }
+
     // Open the full-screen editor page for an editable file (office docs, text).
     public function edit(File $file)
     {
