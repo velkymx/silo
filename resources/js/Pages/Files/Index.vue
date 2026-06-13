@@ -949,7 +949,6 @@ onBeforeUnmount(() => {
             v-model="editOpen"
             :title="editCreating ? 'New Markdown file' : `Edit — ${editItem?.name || ''}`"
             fullscreen
-            hide-footer
         >
             <div v-if="editLoading" class="text-center py-5 text-muted">
                 <VibeSpinner class="me-2" />Loading…
@@ -960,12 +959,12 @@ onBeforeUnmount(() => {
                 </VibeFormGroup>
                 <MarkdownEditor v-if="editKind === 'markdown'" v-model="editContent" />
                 <VibeFormWysiwyg v-else v-model="editContent" height="60vh" />
-                <div class="text-end mt-3">
-                    <VibeButton variant="secondary" outline class="me-2" @click="editOpen = false">Cancel</VibeButton>
-                    <VibeButton variant="primary" :disabled="editSaving" @click="saveEdit">
-                        <VibeIcon icon="save" class="me-1" />{{ editCreating ? 'Create' : 'Save' }}
-                    </VibeButton>
-                </div>
+            </template>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="editOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="editSaving || editLoading" @click="saveEdit">
+                    <VibeIcon icon="save" class="me-1" />{{ editCreating ? 'Create' : 'Save' }}
+                </VibeButton>
             </template>
         </VibeModal>
 
@@ -1107,7 +1106,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Tags modal -->
-        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" fullscreen hide-footer>
+        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" fullscreen>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <VibeBadge v-for="name in tagList" :key="name" variant="primary" class="d-flex align-items-center">
                     {{ name }}
@@ -1128,9 +1127,10 @@ onBeforeUnmount(() => {
                 </div>
                 <VibeButton variant="secondary" @click="addTag()">Add</VibeButton>
             </div>
-            <div class="text-end mt-3">
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags">Save</VibeButton>
-            </div>
+            </template>
         </VibeModal>
 
         <!-- Versions modal -->
@@ -1240,7 +1240,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Upload modal -->
-        <VibeModal v-model="uploadOpen" title="Upload Files" fullscreen hide-footer>
+        <VibeModal v-model="uploadOpen" title="Upload Files" fullscreen>
             <form @submit.prevent="submitUpload">
                 <VibeFileInput
                     v-model="uploadFiles"
@@ -1258,20 +1258,21 @@ onBeforeUnmount(() => {
                     :bars="[{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }]"
                     class="my-3"
                 />
-                <div class="text-end mt-3">
-                    <VibeButton
-                        type="submit"
-                        variant="success"
-                        :disabled="uploadForm.processing || !uploadFiles.length"
-                    >
-                        Upload
-                    </VibeButton>
-                </div>
             </form>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
+                <VibeButton
+                    variant="success"
+                    :disabled="uploadForm.processing || !uploadFiles.length"
+                    @click="submitUpload"
+                >
+                    Upload
+                </VibeButton>
+            </template>
         </VibeModal>
 
         <!-- Create folder modal -->
-        <VibeModal v-model="folderOpen" title="Create Folder" fullscreen hide-footer>
+        <VibeModal v-model="folderOpen" title="Create Folder" fullscreen>
             <form @submit.prevent="submitFolder">
                 <VibeFormGroup
                     label="Folder Name"
@@ -1280,14 +1281,15 @@ onBeforeUnmount(() => {
                 >
                     <VibeFormInput v-model="folderForm.folder_name" required />
                 </VibeFormGroup>
-                <div class="text-end mt-3">
-                    <VibeButton type="submit" variant="primary" :disabled="folderForm.processing">Create</VibeButton>
-                </div>
             </form>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder">Create</VibeButton>
+            </template>
         </VibeModal>
 
         <!-- Rename modal -->
-        <VibeModal v-model="renameOpen" title="Rename" fullscreen hide-footer>
+        <VibeModal v-model="renameOpen" title="Rename" fullscreen>
             <form @submit.prevent="submitRename">
                 <VibeFormGroup
                     label="New Name"
@@ -1296,14 +1298,15 @@ onBeforeUnmount(() => {
                 >
                     <VibeFormInput v-model="renameForm.name" required />
                 </VibeFormGroup>
-                <div class="text-end mt-3">
-                    <VibeButton type="submit" variant="primary" :disabled="renameForm.processing">Rename</VibeButton>
-                </div>
             </form>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="renameOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="renameForm.processing" @click="submitRename">Rename</VibeButton>
+            </template>
         </VibeModal>
 
         <!-- Move / Copy modal -->
-        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" fullscreen hide-footer>
+        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" fullscreen>
             <form @submit.prevent="submitTransfer">
                 <VibeFormGroup
                     label="Destination Folder"
@@ -1312,12 +1315,13 @@ onBeforeUnmount(() => {
                 >
                     <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
                 </VibeFormGroup>
-                <div class="text-end mt-3">
-                    <VibeButton type="submit" variant="primary" :disabled="transferForm.processing">
-                        {{ transferMode === 'move' ? 'Move' : 'Copy' }}
-                    </VibeButton>
-                </div>
             </form>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
+                    {{ transferMode === 'move' ? 'Move' : 'Copy' }}
+                </VibeButton>
+            </template>
         </VibeModal>
     </AppLayout>
 </template>

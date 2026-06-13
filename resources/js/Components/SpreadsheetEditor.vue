@@ -12,21 +12,44 @@ const emit = defineEmits(['ready', 'error']);
 
 const el = ref(null);
 let instance = null;
+let XLSX = null;
 
 const bookType = { xlsx: 'xlsx', xls: 'xls', csv: 'csv', ods: 'ods' };
+
+// Build a formula-aware array-of-arrays from a SheetJS worksheet.
+// Formula cells become "=EXPR" strings so jspreadsheet's engine evaluates them.
+function sheetToAoa(ws) {
+    if (!ws['!ref']) return [['']];
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const aoa = [];
+    for (let r = range.s.r; r <= range.e.r; r++) {
+        const row = [];
+        for (let c = range.s.c; c <= range.e.c; c++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c })];
+            if (!cell) { row.push(''); continue; }
+            row.push(cell.f ? `=${cell.f}` : (cell.v ?? ''));
+        }
+        aoa.push(row);
+    }
+    return aoa.length ? aoa : [['']];
+}
 
 async function load() {
     try {
         const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
-        const XLSX = await import('xlsx');
-        const wb = XLSX.read(res.data, { type: 'array' });
+        XLSX = await import('xlsx');
+        const wb = XLSX.read(res.data, { type: 'array', cellFormula: true });
 
         const worksheets = wb.SheetNames.map((name) => {
-            const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' });
+            const aoa = sheetToAoa(wb.Sheets[name]);
             return {
                 worksheetName: name,
-                data: aoa.length ? aoa : [['']],
-                minDimensions: [Math.max(8, (aoa[0]?.length || 0)), Math.max(20, aoa.length)],
+                data: aoa,
+                minDimensions: [Math.max(12, aoa[0]?.length || 0), Math.max(40, aoa.length)],
+                tableOverflow: true,
+                tableHeight: 'calc(100vh - 170px)',
+                tableWidth: '100%',
+                defaultColWidth: 120,
             };
         });
 
@@ -37,20 +60,36 @@ async function load() {
     }
 }
 
-// Serialize the live grid back to a Blob of the original format.
+// Serialize the live grid back to a Blob, preserving formulas.
 async function serialize() {
-    const XLSX = await import('xlsx');
-    const wb = XLSX.utils.book_new();
+    const out = XLSX.utils.book_new();
     const sheets = instance?.worksheets ?? [instance];
     sheets.forEach((ws, i) => {
-        const data = ws.getData();
-        const sheet = XLSX.utils.aoa_to_sheet(data);
-        const name = ws.options?.worksheetName || `Sheet${i + 1}`;
-        XLSX.utils.book_append_sheet(wb, sheet, name.slice(0, 31));
+        const raw = ws.getData(false); // false = raw values incl. "=FORMULA" strings
+        const sheet = {};
+        let maxR = 0;
+        let maxC = 0;
+        raw.forEach((row, r) => {
+            row.forEach((val, c) => {
+                if (val === '' || val === null || val === undefined) return;
+                const ref = XLSX.utils.encode_cell({ r, c });
+                if (typeof val === 'string' && val.startsWith('=')) {
+                    sheet[ref] = { t: 'n', f: val.slice(1) };
+                } else if (typeof val === 'number' || (typeof val === 'string' && val !== '' && !isNaN(val))) {
+                    sheet[ref] = { t: 'n', v: Number(val) };
+                } else {
+                    sheet[ref] = { t: 's', v: String(val) };
+                }
+                if (r > maxR) maxR = r;
+                if (c > maxC) maxC = c;
+            });
+        });
+        sheet['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
+        const name = (ws.options?.worksheetName || `Sheet${i + 1}`).slice(0, 31);
+        XLSX.utils.book_append_sheet(out, sheet, name);
     });
     const type = bookType[props.type] || 'xlsx';
-    const out = XLSX.write(wb, { bookType: type, type: 'array' });
-    return new Blob([out]);
+    return new Blob([XLSX.write(out, { bookType: type, type: 'array' })]);
 }
 
 defineExpose({ serialize });
@@ -71,8 +110,13 @@ onBeforeUnmount(() => {
 
 <style>
 .sheet-editor {
-    overflow: auto;
-    max-height: calc(100vh - 170px);
+    width: 100%;
+    height: 100%;
+}
+.sheet-editor .jss_container,
+.sheet-editor .jtabs,
+.sheet-editor .jtabs-content {
+    width: 100% !important;
 }
 
 /* Force readable grid contrast regardless of app color mode. */
