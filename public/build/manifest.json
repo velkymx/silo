@@ -20,7 +20,7 @@
     "isDynamicEntry": true
   },
   "node_modules/docx-preview/dist/docx-preview.mjs": {
-    "file": "assets/docx-preview-yDJ1EE2z.js",
+    "file": "assets/docx-preview-C99T_KV7.js",
     "name": "docx-preview",
     "src": "node_modules/docx-preview/dist/docx-preview.mjs",
     "isDynamicEntry": true,
@@ -39,7 +39,7 @@
     "isDynamicEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-D4IDYOy3.js",
+    "file": "assets/app-44qSG_iL.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

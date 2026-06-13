@@ -168,6 +168,11 @@ function isEditable(item) {
     return !item.is_dir && (markdownTypes.includes(item.type) || htmlTypes.includes(item.type));
 }
 
+// File menu with Edit hidden for files that can't be edited as text.
+function fileMenu(item) {
+    return fileActions.filter((a) => a.action !== 'edit' || isEditable(item));
+}
+
 async function openEditor(item) {
     if (!isEditable(item)) return;
     editItem.value = item;
@@ -791,7 +796,7 @@ onBeforeUnmount(() => {
                             size="sm"
                             variant="light"
                             menu-end
-                            :items="item.is_dir ? folderActions : fileActions"
+                            :items="item.is_dir ? folderActions : fileMenu(item)"
                             @item-click="onAction(item, $event)"
                         >
                             <template #button><VibeIcon icon="three-dots-vertical" /></template>
@@ -909,7 +914,7 @@ onBeforeUnmount(() => {
                         variant="secondary"
                         outline
                         menu-end
-                        :items="item.is_dir ? folderActions : fileActions"
+                        :items="item.is_dir ? folderActions : fileMenu(item)"
                         @item-click="onAction(item, $event)"
                     >
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>
