@@ -98,23 +98,36 @@ function clearSearch() {
     router.get('/', currentId.value ? { folder: currentId.value } : {}, { preserveScroll: true });
 }
 
-// ----- Tables -----
-const folderColumns = [
-    { key: 'name', label: 'Folder' },
-    { key: 'item_count', label: 'Items' },
-    { key: 'updated_at', label: 'Modified' },
-    { key: 'actions', label: '', sortable: false, searchable: false },
-];
+// ----- Unified Finder/Dropbox-style listing -----
+// Folders and files share one list; folders sort ahead of files by default.
+const items = computed(() => [
+    ...props.folders.map((f) => ({ ...f, is_dir: true, modified: f.updated_at, _sort: 0 })),
+    ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1 })),
+]);
 
-const fileColumns = computed(() => [
-    { key: 'name', label: 'File Name' },
+const columns = computed(() => [
+    { key: 'name', label: 'Name' },
     ...(props.flat ? [{ key: 'location', label: 'Location', sortable: false }] : []),
-    { key: 'size', label: 'Size', formatter: (v) => `${(v / 1024).toFixed(2)} KB` },
-    { key: 'created_at', label: 'Uploaded' },
+    { key: 'modified', label: 'Modified' },
+    { key: 'size', label: 'Size' },
     { key: 'actions', label: '', sortable: false, searchable: false },
 ]);
 
 const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+function openItem(item) {
+    if (item.is_dir) {
+        visitFolder(item.id);
+    } else {
+        quickLook(item);
+    }
+}
+
+function selectFile(item) {
+    if (item.is_dir) return;
+    const idx = props.files.findIndex((f) => f.id === item.id);
+    if (idx >= 0) selectedIndex.value = idx;
+}
 
 function iconFor(type) {
     if (imageTypes.includes(type)) return 'file-earmark-image';
@@ -617,108 +630,84 @@ onBeforeUnmount(() => {
             <VibeButton variant="primary" size="sm" outline @click="filterByTag(null)">Clear</VibeButton>
         </VibeAlert>
 
-        <template v-if="!searching">
-            <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="folder" />Folders</h5>
-            <VibeDataTable
-                :items="folders"
-                :columns="folderColumns"
-                row-key="id"
-                hover
-                :searchable="false"
-                :paginated="false"
-                empty-text="No folders here."
-                class="mb-4"
-            >
-            <template #cell(name)="{ item }">
-                <VibeButton variant="link" class="p-0 text-decoration-none" @click="visitFolder(item.id)">
-                    <VibeIcon icon="folder-fill" class="me-1 text-warning" />{{ item.name }}
-                </VibeButton>
-                <span
-                    v-for="tag in item.tags"
-                    :key="tag.id"
-                    class="badge rounded-pill ms-1"
-                    :style="{ backgroundColor: tag.color || '#6c757d', cursor: 'pointer' }"
-                    @click="filterByTag(tag.id)"
-                >{{ tag.name }}</span>
-            </template>
-            <template #cell(actions)="{ item }">
-                <div class="d-flex justify-content-end gap-1">
-                    <VibeButton variant="info" size="sm" @click="visitFolder(item.id)">
-                        <VibeIcon icon="box-arrow-in-right" />
-                    </VibeButton>
-                    <VibeDropdown
-                        size="sm"
-                        variant="secondary"
-                        menu-end
-                        :items="folderActions"
-                        @item-click="onAction(item, $event)"
-                    >
-                        <template #button><VibeIcon icon="three-dots-vertical" /></template>
-                        <template #item="{ item: a }">
-                            <VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}
-                        </template>
-                    </VibeDropdown>
-                </div>
-            </template>
-            </VibeDataTable>
-        </template>
-
-        <h5 class="d-flex align-items-center gap-2"><VibeIcon icon="file-earmark" />Files</h5>
         <VibeDataTable
-            :items="files"
-            :columns="fileColumns"
+            :items="items"
+            :columns="columns"
             row-key="id"
             hover
-            striped
             :searchable="false"
             :paginated="false"
-            empty-text="No files here."
-            @row-clicked="(item, i) => (selectedIndex = i)"
+            :responsive="false"
+            :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
+            @row-clicked="selectFile"
         >
             <template v-if="flat" #cell(location)="{ item }">
-                <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location.folder_id)">
-                    {{ item.location.path }}
+                <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
+                    {{ item.location?.path }}
                 </VibeButton>
             </template>
+
             <template #cell(name)="{ item }">
-                <img
-                    v-if="item.thumb_url"
-                    :src="item.thumb_url"
-                    :alt="item.name"
-                    class="rounded border me-2"
-                    style="width: 32px; height: 32px; object-fit: cover; cursor: pointer"
-                    @click="quickLook(item)"
-                >
-                <VibeIcon v-else :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
-                <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
-                    <VibeSpinner size="sm" class="me-1" />Processing
-                </VibeBadge>
-                <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
-                <span v-else-if="item.metadata?.width" class="text-muted small ms-2">
-                    {{ item.metadata.width }}×{{ item.metadata.height }}
-                </span>
-                <VibeBadge v-if="item.version > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
-                <span
-                    v-for="tag in item.tags"
-                    :key="tag.id"
-                    class="badge rounded-pill ms-1"
-                    :style="{ backgroundColor: tag.color || '#6c757d', cursor: 'pointer' }"
-                    @click="filterByTag(tag.id)"
-                >{{ tag.name }}</span>
+                <div class="d-flex align-items-center" style="cursor: pointer" @click="openItem(item)">
+                    <img
+                        v-if="item.thumb_url"
+                        :src="item.thumb_url"
+                        :alt="item.name"
+                        class="rounded border me-2 flex-shrink-0"
+                        style="width: 36px; height: 36px; object-fit: cover"
+                    >
+                    <VibeIcon
+                        v-else
+                        :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)"
+                        class="me-2 fs-4 flex-shrink-0"
+                        :class="item.is_dir ? 'text-warning' : 'text-secondary'"
+                    />
+                    <span class="text-truncate">{{ item.name }}</span>
+                    <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
+                        <VibeSpinner size="sm" class="me-1" />Processing
+                    </VibeBadge>
+                    <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
+                    <VibeBadge v-if="item.version > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
+                </div>
+                <div v-if="item.tags?.length" class="mt-1" style="padding-left: 2.75rem">
+                    <span
+                        v-for="tag in item.tags"
+                        :key="tag.id"
+                        class="badge rounded-pill me-1"
+                        :style="{ backgroundColor: tag.color || '#6c757d', cursor: 'pointer' }"
+                        @click.stop="filterByTag(tag.id)"
+                    >{{ tag.name }}</span>
+                </div>
             </template>
+
+            <template #cell(modified)="{ item }">
+                <span class="text-muted small">{{ item.modified }}</span>
+            </template>
+
+            <template #cell(size)="{ item }">
+                <span class="text-muted small">
+                    {{ item.is_dir ? `${item.item_count} item${item.item_count === 1 ? '' : 's'}` : `${(item.size / 1024).toFixed(1)} KB` }}
+                </span>
+            </template>
+
             <template #cell(actions)="{ item }">
-                <div class="d-flex justify-content-end gap-1">
-                    <VibeButton variant="primary" size="sm" outline title="Quick Look (Space)" @click="quickLook(item)">
-                        <VibeIcon icon="eye" />
-                    </VibeButton>
-                    <VibeButton variant="success" size="sm" :href="`/download/${item.id}`">
+                <div class="d-flex justify-content-end gap-1" @click.stop>
+                    <VibeButton
+                        v-if="!item.is_dir"
+                        variant="secondary"
+                        size="sm"
+                        outline
+                        :href="`/download/${item.id}`"
+                        title="Download"
+                    >
                         <VibeIcon icon="download" />
                     </VibeButton>
                     <VibeDropdown
                         size="sm"
                         variant="secondary"
+                        outline
                         menu-end
-                        :items="fileActions"
+                        :items="item.is_dir ? folderActions : fileActions"
                         @item-click="onAction(item, $event)"
                     >
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>

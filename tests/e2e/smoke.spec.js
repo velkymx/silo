@@ -14,7 +14,8 @@ async function login(page) {
 test('login lands on the file manager', async ({ page }) => {
     await login(page);
     await expect(page.getByText('My Files')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Files' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Upload' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
 });
 
 test('upload, preview, and trash round-trip', async ({ page }) => {
@@ -37,8 +38,8 @@ test('upload, preview, and trash round-trip', async ({ page }) => {
     const row = page.locator('tr', { hasText: 'e2e.png' });
     await expect(row).toBeVisible();
 
-    // Quick Look opens and shows the preview image.
-    await row.getByTitle('Quick Look (Space)').click();
+    // Quick Look opens (click the file name) and shows the preview image.
+    await row.getByText('e2e.png').click();
     const preview = page.locator('.modal.show img');
     await expect(preview).toBeVisible();
     await page.locator('.modal.show').getByTitle('Close').click();
