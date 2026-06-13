@@ -43,11 +43,10 @@ class SecurityHeaders
     {
         // 'unsafe-eval' is required by jspreadsheet-ce's formula engine.
         // 'unsafe-inline' (style) covers Bootstrap/Vue injected styles.
-        // Google Fonts hosts the Material Icons used by the spreadsheet toolbar
-        // (tracked for removal in H8 — drop these once fonts are bundled).
+        // All fonts/icons are bundled locally — no external origins (air-gap safe).
         $script = ["'self'", "'unsafe-eval'"];
-        $style = ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'];
-        $font = ["'self'", 'data:', 'https://fonts.gstatic.com'];
+        $style = ["'self'", "'unsafe-inline'"];
+        $font = ["'self'", 'data:'];
         $connect = ["'self'"];
 
         // Vite dev server (HMR) only in local.
