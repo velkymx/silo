@@ -14,7 +14,45 @@ const el = ref(null);
 let instance = null;
 let XLSX = null;
 
+// Formula bar state.
+const cellRef = ref('');
+const cellValue = ref('');
+let activeWs = null;
+let activeX = null;
+let activeY = null;
+
 const bookType = { xlsx: 'xlsx', xls: 'xls', csv: 'csv', ods: 'ods' };
+
+function colName(x) {
+    let s = '';
+    x += 1;
+    while (x > 0) {
+        const m = (x - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        x = Math.floor((x - 1) / 26);
+    }
+    return s;
+}
+
+// jspreadsheet selection event → sync the formula bar to the active cell.
+function onSelection(worksheet, x1, y1) {
+    activeWs = worksheet;
+    activeX = x1;
+    activeY = y1;
+    cellRef.value = `${colName(x1)}${y1 + 1}`;
+    try {
+        const raw = worksheet.getValueFromCoords(x1, y1, false);
+        cellValue.value = raw == null ? '' : String(raw);
+    } catch (e) {
+        cellValue.value = '';
+    }
+}
+
+// Commit the formula bar back into the active cell (triggers recalculation).
+function commitCell() {
+    if (!activeWs || activeX == null) return;
+    activeWs.setValueFromCoords(activeX, activeY, cellValue.value, false);
+}
 
 // Build a formula-aware array-of-arrays from a SheetJS worksheet.
 // Formula cells become "=EXPR" strings so jspreadsheet's engine evaluates them.
@@ -47,13 +85,17 @@ async function load() {
                 data: aoa,
                 minDimensions: [Math.max(12, aoa[0]?.length || 0), Math.max(40, aoa.length)],
                 tableOverflow: true,
-                tableHeight: 'calc(100vh - 170px)',
+                tableHeight: 'calc(100vh - 215px)',
                 tableWidth: '100%',
                 defaultColWidth: 120,
             };
         });
 
-        instance = jspreadsheet(el.value, { worksheets, tabs: worksheets.length > 1 });
+        instance = jspreadsheet(el.value, {
+            worksheets,
+            tabs: worksheets.length > 1,
+            onselection: onSelection,
+        });
         emit('ready');
     } catch (e) {
         emit('error', 'Could not open this spreadsheet.');
@@ -105,10 +147,52 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="el" class="sheet-editor"></div>
+    <div class="sheet-wrap">
+        <div class="formula-bar d-flex align-items-center gap-2 mb-1">
+            <span class="cell-ref">{{ cellRef || '—' }}</span>
+            <span class="fx text-muted">fx</span>
+            <input
+                v-model="cellValue"
+                class="formula-input flex-grow-1"
+                placeholder="Value or =FORMULA (e.g. =SUM(A1:A5))"
+                @keyup.enter="commitCell"
+                @blur="commitCell"
+            >
+        </div>
+        <div ref="el" class="sheet-editor"></div>
+    </div>
 </template>
 
 <style>
+.sheet-wrap {
+    width: 100%;
+    height: 100%;
+}
+.formula-bar {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+}
+.formula-bar .cell-ref {
+    min-width: 64px;
+    font-family: var(--bs-font-monospace);
+    font-weight: 600;
+    text-align: center;
+    border-right: 1px solid var(--bs-border-color);
+    padding-right: 0.5rem;
+}
+.formula-bar .fx {
+    font-style: italic;
+    font-family: serif;
+}
+.formula-bar .formula-input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--bs-body-color);
+    font-family: var(--bs-font-monospace);
+}
 .sheet-editor {
     width: 100%;
     height: 100%;
