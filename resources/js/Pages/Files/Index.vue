@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import FolderTree from '../../Components/FolderTree.vue';
+import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
@@ -150,6 +151,48 @@ function toggleStar(item) {
     router.post(`/files/${item.id}/star`, {}, { preserveScroll: true });
 }
 
+// ----- Text / Markdown / HTML editor -----
+const markdownTypes = ['md', 'markdown', 'txt', 'text', 'log', 'csv'];
+const htmlTypes = ['html', 'htm'];
+const editOpen = ref(false);
+const editItem = ref(null);
+const editKind = ref('markdown');
+const editContent = ref('');
+const editLoading = ref(false);
+const editSaving = ref(false);
+
+function isEditable(item) {
+    return !item.is_dir && (markdownTypes.includes(item.type) || htmlTypes.includes(item.type));
+}
+
+async function openEditor(item) {
+    if (!isEditable(item)) return;
+    editItem.value = item;
+    editKind.value = htmlTypes.includes(item.type) ? 'html' : 'markdown';
+    editContent.value = '';
+    editLoading.value = true;
+    editOpen.value = true;
+    try {
+        const { data } = await window.axios.get(`/raw/${item.id}`, { responseType: 'text', transformResponse: [(d) => d] });
+        editContent.value = typeof data === 'string' ? data : String(data ?? '');
+    } finally {
+        editLoading.value = false;
+    }
+}
+
+function saveEdit() {
+    editSaving.value = true;
+    router.put(`/files/${editItem.value.id}/content`, { content: editContent.value }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            editOpen.value = false;
+        },
+        onFinish: () => {
+            editSaving.value = false;
+        },
+    });
+}
+
 const newMenu = [
     { text: 'New Folder', action: 'folder', icon: 'folder-plus' },
     { text: 'Upload files', action: 'upload', icon: 'upload' },
@@ -188,6 +231,7 @@ function iconFor(type) {
 
 const fileActions = [
     { text: 'Download', action: 'download', icon: 'download' },
+    { text: 'Edit', action: 'edit', icon: 'pencil-square' },
     { text: 'Details', action: 'details', icon: 'info-circle' },
     { text: 'Share', action: 'share', icon: 'person-plus' },
     { text: 'Tags', action: 'tags', icon: 'tags' },
@@ -211,6 +255,7 @@ const folderActions = [
 
 function onAction(item, { item: action }) {
     if (action.action === 'download') window.location.href = `/download/${item.id}`;
+    if (action.action === 'edit') openEditor(item);
     if (action.action === 'details') openDetails(item);
     if (action.action === 'share') openShare(item);
     if (action.action === 'tags') openTags(item);
@@ -881,6 +926,23 @@ onBeforeUnmount(() => {
                 @page-click="goToPage"
             />
         </div>
+
+        <!-- Editor modal -->
+        <VibeModal v-model="editOpen" :title="`Edit — ${editItem?.name || ''}`" size="xl" hide-footer>
+            <div v-if="editLoading" class="text-center py-5 text-muted">
+                <VibeSpinner class="me-2" />Loading…
+            </div>
+            <template v-else>
+                <MarkdownEditor v-if="editKind === 'markdown'" v-model="editContent" />
+                <VibeFormWysiwyg v-else v-model="editContent" height="60vh" />
+                <div class="text-end mt-3">
+                    <VibeButton variant="secondary" outline class="me-2" @click="editOpen = false">Cancel</VibeButton>
+                    <VibeButton variant="primary" :disabled="editSaving" @click="saveEdit">
+                        <VibeIcon icon="save" class="me-1" />Save
+                    </VibeButton>
+                </div>
+            </template>
+        </VibeModal>
 
         <!-- Details modal -->
         <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered hide-footer>

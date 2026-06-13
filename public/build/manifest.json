@@ -24,7 +24,7 @@
     "src": "node_modules/quill/dist/quill.snow.css"
   },
   "resources/js/app.js": {
-    "file": "assets/app-_DTY5Gki.js",
+    "file": "assets/app-i7COFL6K.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -47,7 +47,7 @@
       "node_modules/bootstrap/dist/js/bootstrap.esm.js"
     ],
     "css": [
-      "assets/app-DCqe9Ii7.css"
+      "assets/app-JMPvzrX2.css"
     ],
     "assets": [
       "assets/bootstrap-icons-mSm7cUeB.woff2",

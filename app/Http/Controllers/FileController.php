@@ -124,6 +124,42 @@ class FileController extends Controller
         ]);
     }
 
+    // Save edited text content as a new version of a file.
+    public function updateContent(Request $request, File $file)
+    {
+        $this->authorize('update', $file);
+        abort_if($file->is_dir, 404);
+
+        $data = $request->validate(['content' => 'present|string']);
+        $content = $data['content'];
+        $userId = $file->owner_id;
+        $disk = config('filemanager.disk');
+
+        $newPath = "uploads/{$userId}/".Str::random(40);
+        if ($ext = pathinfo($file->name, PATHINFO_EXTENSION)) {
+            $newPath .= ".{$ext}";
+        }
+        Storage::disk($disk)->put($newPath, $content);
+
+        DB::transaction(function () use ($file, $newPath, $disk, $content) {
+            $this->snapshotVersion($file);
+            $file->update([
+                'path' => $newPath,
+                'disk' => $disk,
+                'size' => strlen($content),
+                'hash' => hash('sha256', $content),
+                'version' => $file->version + 1,
+                'status' => File::STATUS_PENDING,
+                'referenced' => false, // edited content is now app-owned
+            ]);
+        });
+
+        ProcessUploadedFile::dispatch($file->id);
+        Audit::log('file.edit', $file);
+
+        return back()->with('success', 'Saved.');
+    }
+
     // Toggle a file's or folder's starred (favorite) flag.
     public function star(File $file)
     {
