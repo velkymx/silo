@@ -13,6 +13,7 @@ const props = defineProps({
     allTags: { type: Array, default: () => [] },
     searching: { type: Boolean, default: false },
     starredOnly: { type: Boolean, default: false },
+    recentOnly: { type: Boolean, default: false },
     flat: { type: Boolean, default: false },
     activeTag: { type: Object, default: null },
     pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0, per_page: 50 }) },
@@ -574,32 +575,50 @@ onBeforeUnmount(() => {
 
 <template>
     <AppLayout>
-      <VibeRow>
-        <VibeCol :md="3" :lg="3" class="mb-3">
-            <VibeCard header="Folders">
-                <VibeButton
-                    variant="link"
-                    class="p-0 text-decoration-none mb-1 d-block"
-                    :class="!current ? 'fw-bold' : 'text-body'"
-                    @click="visitFolder(null)"
-                >
-                    <VibeIcon icon="house-door-fill" class="me-1" />Home
-                </VibeButton>
-                <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
-            </VibeCard>
+        <template #topbar>
+            <VibeInputGroup>
+                <VibeFormInput
+                    v-model="search"
+                    type="search"
+                    placeholder="Search files, folders, tags…"
+                    no-wrapper
+                    @keyup.enter="runSearch"
+                />
+                <template #append>
+                    <VibeButton variant="primary" @click="runSearch"><VibeIcon icon="search" /></VibeButton>
+                    <VibeButton v-if="searching" variant="secondary" outline @click="clearSearch">
+                        <VibeIcon icon="x-lg" />
+                    </VibeButton>
+                </template>
+            </VibeInputGroup>
+        </template>
 
-            <VibeCard header="Storage" class="mt-3">
+        <template #sidebar>
+            <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Folders</div>
+            <VibeButton
+                variant="link"
+                class="p-0 text-decoration-none mb-1 d-block px-1"
+                :class="!current ? 'fw-bold' : 'text-body'"
+                @click="visitFolder(null)"
+            >
+                <VibeIcon icon="house-door-fill" class="me-1" />Home
+            </VibeButton>
+            <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
+
+            <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Storage</div>
+            <div class="px-1">
                 <template v-if="storage.quota > 0">
-                    <VibeProgress :bars="storageBars" class="mb-2" />
+                    <VibeProgress :bars="storageBars" class="mb-1" />
                     <div class="small text-muted">
                         {{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)
                     </div>
                 </template>
                 <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
-            </VibeCard>
+            </div>
 
-            <VibeCard v-if="allTags.length" header="Tags" class="mt-3">
-                <div class="d-flex flex-wrap gap-1">
+            <template v-if="allTags.length">
+                <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Tags</div>
+                <div class="d-flex flex-wrap gap-1 px-1">
                     <span
                         v-for="tag in allTags"
                         :key="tag.id"
@@ -612,9 +631,9 @@ onBeforeUnmount(() => {
                         @click="filterByTag(tag.id)"
                     >{{ tag.name }}</span>
                 </div>
-            </VibeCard>
-        </VibeCol>
-        <VibeCol :md="9" :lg="9">
+            </template>
+        </template>
+
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <VibeBreadcrumb :items="breadcrumbItems" class="mb-0" @item-click="onBreadcrumb" />
             <div class="d-flex gap-2">
@@ -626,24 +645,6 @@ onBeforeUnmount(() => {
                 </VibeButton>
             </div>
         </div>
-
-        <VibeInputGroup class="mb-4">
-            <VibeFormInput
-                v-model="search"
-                type="search"
-                placeholder="Search files..."
-                no-wrapper
-                @keyup.enter="runSearch"
-            />
-            <template #append>
-                <VibeButton variant="primary" @click="runSearch">
-                    <VibeIcon icon="search" class="me-1" />Search
-                </VibeButton>
-                <VibeButton v-if="searching" variant="secondary" outline @click="clearSearch">
-                    <VibeIcon icon="x-lg" />
-                </VibeButton>
-            </template>
-        </VibeInputGroup>
 
         <VibeAlert v-if="searching" variant="info" class="d-flex align-items-center justify-content-between">
             <span><VibeIcon icon="search" class="me-1" />Results for "{{ filters.search }}" across all folders.</span>
@@ -658,6 +659,11 @@ onBeforeUnmount(() => {
         <VibeAlert v-if="starredOnly" variant="warning" class="d-flex align-items-center justify-content-between">
             <span><VibeIcon icon="star-fill" class="me-1" />Starred items.</span>
             <VibeButton variant="warning" size="sm" outline @click="router.get('/', {}, { preserveScroll: true })">Clear</VibeButton>
+        </VibeAlert>
+
+        <VibeAlert v-if="recentOnly" variant="secondary" class="d-flex align-items-center justify-content-between">
+            <span><VibeIcon icon="clock-history" class="me-1" />Recent uploads.</span>
+            <VibeButton variant="secondary" size="sm" outline @click="router.get('/', {}, { preserveScroll: true })">Clear</VibeButton>
         </VibeAlert>
 
         <div class="d-flex justify-content-end mb-2">
@@ -1183,7 +1189,5 @@ onBeforeUnmount(() => {
                 </div>
             </form>
         </VibeModal>
-        </VibeCol>
-      </VibeRow>
     </AppLayout>
 </template>

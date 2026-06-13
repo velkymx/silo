@@ -60,4 +60,18 @@ class StarredTest extends TestCase
             fn (Assert $p) => $p->where('files.0.starred', true)
         );
     }
+
+    public function test_recent_filter_lists_newest_files_first(): void
+    {
+        $user = User::factory()->create();
+        File::factory()->for($user, 'owner')->create(['name' => 'old.txt', 'created_at' => now()->subDays(5)]);
+        File::factory()->for($user, 'owner')->create(['name' => 'new.txt', 'created_at' => now()]);
+
+        $this->actingAs($user)->get('/?recent=1')->assertInertia(
+            fn (Assert $p) => $p
+                ->where('recentOnly', true)
+                ->where('flat', true)
+                ->where('files.0.name', 'new.txt')
+        );
+    }
 }

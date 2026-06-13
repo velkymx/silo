@@ -35,6 +35,7 @@ class FileController extends Controller
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
         $searching = $request->filled('search');
         $starredOnly = $request->boolean('starred');
+        $recentOnly = $request->boolean('recent');
         $activeTag = $request->filled('tag')
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
@@ -75,6 +76,13 @@ class FileController extends Controller
                 ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
             $files = collect($paginator->items())
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
+        } elseif ($recentOnly) {
+            // Most recently uploaded files across every folder.
+            $folders = collect();
+            $paginator = File::query()->where('owner_id', $userId)->files()
+                ->with(['versions', 'tags'])->latest('created_at')->paginate($perPage)->withQueryString();
+            $files = collect($paginator->items())
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } else {
             $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
 
@@ -100,7 +108,8 @@ class FileController extends Controller
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $searching,
             'starredOnly' => $starredOnly,
-            'flat' => $searching || (bool) $activeTag || $starredOnly,
+            'recentOnly' => $recentOnly,
+            'flat' => $searching || (bool) $activeTag || $starredOnly || $recentOnly,
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
             // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
