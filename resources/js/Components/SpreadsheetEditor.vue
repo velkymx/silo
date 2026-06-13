@@ -13,6 +13,9 @@ const emit = defineEmits(['ready', 'error']);
 const el = ref(null);
 let instance = null;
 let XLSX = null;
+// The workbook exactly as read, kept so save patches it in place (preserving
+// number formats, styles, merged cells, column widths) instead of rebuilding.
+let originalWb = null;
 
 // Formula bar state.
 const cellRef = ref('');
@@ -63,20 +66,41 @@ function sheetToAoa(ws) {
     for (let r = range.s.r; r <= range.e.r; r++) {
         const row = [];
         for (let c = range.s.c; c <= range.e.c; c++) {
-            const cell = ws[XLSX.utils.encode_cell({ r, c })];
-            if (!cell) { row.push(''); continue; }
-            row.push(cell.f ? `=${cell.f}` : (cell.v ?? ''));
+            row.push(cellDisplay(ws[XLSX.utils.encode_cell({ r, c })]));
         }
         aoa.push(row);
     }
     return aoa.length ? aoa : [['']];
 }
 
+// What a cell shows in the grid: its formula, else its formatted text (so
+// dates/currency read naturally), else its raw value.
+function cellDisplay(cell) {
+    if (!cell) return '';
+    if (cell.f) return `=${cell.f}`;
+    if (cell.w != null) return cell.w;
+    return cell.v ?? '';
+}
+
+// Convert a sheet's "!merges" into jspreadsheet's mergeCells map so merged
+// regions render and round-trip.
+function mergeMap(ws) {
+    const merges = ws['!merges'];
+    if (!merges?.length) return undefined;
+    const map = {};
+    merges.forEach((m) => {
+        const ref = XLSX.utils.encode_cell({ r: m.s.r, c: m.s.c });
+        map[ref] = [m.e.c - m.s.c + 1, m.e.r - m.s.r + 1];
+    });
+    return map;
+}
+
 async function load() {
     try {
         const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
         XLSX = await import('xlsx');
-        const wb = XLSX.read(res.data, { type: 'array', cellFormula: true });
+        const wb = XLSX.read(res.data, { type: 'array', cellFormula: true, cellStyles: true });
+        originalWb = wb;
 
         const worksheets = wb.SheetNames.map((name) => {
             const aoa = sheetToAoa(wb.Sheets[name]);
@@ -84,6 +108,7 @@ async function load() {
                 worksheetName: name,
                 data: aoa,
                 minDimensions: [Math.max(12, aoa[0]?.length || 0), Math.max(40, aoa.length)],
+                mergeCells: mergeMap(wb.Sheets[name]),
                 // Layout
                 tableOverflow: true,
                 tableHeight: 'calc(100vh - 260px)',
@@ -105,7 +130,6 @@ async function load() {
                 allowManualInsertColumn: true,
                 allowRenameWorksheet: true,
                 allowComments: true,
-                mergeCells: true,
                 wordWrap: true,
                 selectionCopy: true,
                 autoCasting: true,
@@ -127,36 +151,62 @@ async function load() {
     }
 }
 
-// Serialize the live grid back to a Blob, preserving formulas.
+// Apply one grid value onto a cell, preserving its number format (z) and style
+// (s). Untouched cells keep their original formula/value/format verbatim.
+function patchCell(sheet, ref, val) {
+    const orig = sheet[ref];
+    const unchanged = cellDisplay(orig) === (val == null ? '' : val);
+    if (unchanged) return;
+
+    if (val === '' || val === null || val === undefined) {
+        if (orig) { delete orig.v; delete orig.f; delete orig.w; orig.t = 'z'; }
+        return;
+    }
+    const cell = orig || (sheet[ref] = {});
+    delete cell.w; // stale formatted text
+    if (typeof val === 'string' && val.startsWith('=')) {
+        cell.f = val.slice(1);
+        delete cell.v;
+        if (cell.t !== 'n' && cell.t !== 's') cell.t = 'n';
+    } else if (typeof val === 'number' || (typeof val === 'string' && val.trim() !== '' && !isNaN(val))) {
+        cell.v = Number(val);
+        delete cell.f;
+        cell.t = 'n';
+    } else {
+        cell.v = String(val);
+        delete cell.f;
+        cell.t = 's';
+    }
+}
+
+// Serialize back to a Blob by patching the ORIGINAL workbook in place, so
+// number formats, styles, merged cells and column widths survive the edit.
 async function serialize() {
-    const out = XLSX.utils.book_new();
     const sheets = instance?.worksheets ?? [instance];
     sheets.forEach((ws, i) => {
-        const raw = ws.getData(false); // false = raw values incl. "=FORMULA" strings
-        const sheet = {};
+        const name = ws.options?.worksheetName || originalWb?.SheetNames?.[i];
+        const sheet = (name && originalWb?.Sheets?.[name]) || (originalWb.Sheets[originalWb.SheetNames[i]] = {});
+        const raw = ws.getData(false);
+
         let maxR = 0;
         let maxC = 0;
         raw.forEach((row, r) => {
             row.forEach((val, c) => {
-                if (val === '' || val === null || val === undefined) return;
-                const ref = XLSX.utils.encode_cell({ r, c });
-                if (typeof val === 'string' && val.startsWith('=')) {
-                    sheet[ref] = { t: 'n', f: val.slice(1) };
-                } else if (typeof val === 'number' || (typeof val === 'string' && val !== '' && !isNaN(val))) {
-                    sheet[ref] = { t: 'n', v: Number(val) };
-                } else {
-                    sheet[ref] = { t: 's', v: String(val) };
-                }
-                if (r > maxR) maxR = r;
-                if (c > maxC) maxC = c;
+                patchCell(sheet, XLSX.utils.encode_cell({ r, c }), val);
+                if (sheet[XLSX.utils.encode_cell({ r, c })]) { maxR = Math.max(maxR, r); maxC = Math.max(maxC, c); }
             });
         });
-        sheet['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
-        const name = (ws.options?.worksheetName || `Sheet${i + 1}`).slice(0, 31);
-        XLSX.utils.book_append_sheet(out, sheet, name);
+
+        // Grow the range if the grid extended beyond the original bounds.
+        const origRange = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+        sheet['!ref'] = XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: Math.max(origRange.e.r, maxR), c: Math.max(origRange.e.c, maxC) },
+        });
     });
+
     const type = bookType[props.type] || 'xlsx';
-    return new Blob([XLSX.write(out, { bookType: type, type: 'array' })]);
+    return new Blob([XLSX.write(originalWb, { bookType: type, type: 'array', cellStyles: true })]);
 }
 
 defineExpose({ serialize });
