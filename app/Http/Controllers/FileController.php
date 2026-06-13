@@ -8,6 +8,7 @@ use App\Models\FileVersion;
 use App\Models\Tag;
 use App\Services\Audit;
 use App\Services\QuotaService;
+use App\Support\FileResponse;
 use App\Support\Uploads;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -419,9 +420,7 @@ class FileController extends Controller
         abort_if($file->is_dir, 404);
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
-        return Storage::disk($file->disk)->response($file->path, $file->name, [
-            'Content-Type' => $file->mime ?: 'application/octet-stream',
-        ]);
+        return FileResponse::serve(Storage::disk($file->disk), $file->path, $file->name, $file->mime);
     }
 
     // Stream a file's cached thumbnail (policy-gated, not a public URL).
@@ -435,7 +434,8 @@ class FileController extends Controller
             404
         );
 
-        return Storage::disk($disk)->response($file->thumbnail_path);
+        // Thumbnails are app-generated JPEGs — safe to render inline.
+        return FileResponse::serve(Storage::disk($disk), $file->thumbnail_path, 'thumbnail.jpg', 'image/jpeg');
     }
 
     // Soft-delete a file or folder (and its contents) into the trash.

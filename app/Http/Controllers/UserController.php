@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\User;
 use App\Services\ThumbnailGenerator;
+use App\Support\FileResponse;
 use Inertia\Inertia;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
@@ -58,7 +59,8 @@ class UserController extends Controller
         $disk = ThumbnailGenerator::disk();
         abort_unless($user->avatar_path && Storage::disk($disk)->exists($user->avatar_path), 404);
 
-        return Storage::disk($disk)->response($user->avatar_path);
+        // Avatars are app-generated JPEGs — safe inline.
+        return FileResponse::serve(Storage::disk($disk), $user->avatar_path, 'avatar.jpg', 'image/jpeg');
     }
 
     // Handle profile update

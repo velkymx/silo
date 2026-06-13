@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ShareLink;
 use App\Services\Audit;
+use App\Support\FileResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -62,9 +63,12 @@ class PublicShareController extends Controller
 
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
 
-        return Storage::disk($link->file->disk)->response($link->file->path, $link->file->name, [
-            'Content-Type' => $link->file->mime ?: 'application/octet-stream',
-        ]);
+        return FileResponse::serve(
+            Storage::disk($link->file->disk),
+            $link->file->path,
+            $link->file->name,
+            $link->file->mime,
+        );
     }
 
     // Download the file (only when the link allows it).
