@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilePermissionController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PublicShareController;
 use App\Http\Controllers\ShareLinkController;
 use App\Http\Controllers\SharedController;
@@ -27,6 +28,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/audit', [AuditController::class, 'index'])->name('admin.audit.index');
 
     Route::middleware('admin')->group(function () {
+        Route::get('/import', [ImportController::class, 'index'])->name('admin.import.index');
+        Route::post('/import/rescan', [ImportController::class, 'rescan'])->name('admin.import.rescan');
+
         Route::get('/backups', [BackupController::class, 'index'])->name('admin.backups.index');
         Route::post('/backups', [BackupController::class, 'run'])->name('admin.backups.run');
         Route::put('/backups/schedule', [BackupController::class, 'updateSchedule'])->name('admin.backups.schedule');
