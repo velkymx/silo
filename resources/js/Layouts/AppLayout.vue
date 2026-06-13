@@ -18,7 +18,7 @@ const flash = computed(() => page.props.flash ?? {});
 
 // Footer legalese.
 const year = new Date().getFullYear();
-const appName = 'Laravel File Manager';
+const appName = 'File Manager by AJBApps';
 const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 
 const path = computed(() => page.url.split('?')[0]);

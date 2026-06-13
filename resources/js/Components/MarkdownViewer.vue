@@ -53,7 +53,7 @@ onBeforeUnmount(() => {
 
 <style>
 .md-viewer {
-    max-height: 72vh;
+    max-height: 100%;
     overflow: auto;
 }
 </style>

@@ -1,10 +1,8 @@
 <script setup>
-import { router } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 
 const props = defineProps({
     logs: { type: Array, default: () => [] },
-    pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0 }) },
 });
 
 const columns = [
@@ -22,16 +20,12 @@ const variant = (action) => {
     if (action.includes('download')) return 'info';
     return 'secondary';
 };
-
-function goToPage(page) {
-    router.get('/audit', { page }, { preserveScroll: true, preserveState: true });
-}
 </script>
 
 <template>
     <AppLayout>
         <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
-        <p class="text-muted small">{{ pagination.total }} recorded events.</p>
+        <p class="text-muted small">{{ logs.length }} recent events.</p>
 
         <VibeDataTable
             :items="logs"
@@ -40,7 +34,8 @@ function goToPage(page) {
             hover
             striped
             small
-            :paginated="false"
+            searchable
+            :per-page="25"
             empty-text="No audit events yet."
         >
             <template #cell(action)="{ item }">
@@ -50,13 +45,5 @@ function goToPage(page) {
                 <code v-if="item.meta" class="small">{{ JSON.stringify(item.meta) }}</code>
             </template>
         </VibeDataTable>
-
-        <div v-if="pagination.last_page > 1" class="mt-3">
-            <VibePagination
-                :total-pages="pagination.last_page"
-                :current-page="pagination.current_page"
-                @page-click="goToPage"
-            />
-        </div>
     </AppLayout>
 </template>

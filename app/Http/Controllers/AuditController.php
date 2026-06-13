@@ -18,10 +18,11 @@ class AuditController extends Controller
 
     public function index()
     {
-        $logs = AuditLog::with('user:id,name')->latest('id')->paginate(50);
+        // The VibeDataTable paginates client-side; hand it a capped recent window.
+        $logs = AuditLog::with('user:id,name')->latest('id')->limit(2000)->get();
 
         return Inertia::render('Admin/Audit/Index', [
-            'logs' => collect($logs->items())->map(fn (AuditLog $log) => [
+            'logs' => $logs->map(fn (AuditLog $log) => [
                 'id' => $log->id,
                 'user' => $log->user?->name ?? 'guest',
                 'action' => $log->action,
@@ -30,11 +31,6 @@ class AuditController extends Controller
                 'ip' => $log->ip,
                 'at' => $log->created_at?->format('Y-m-d H:i:s'),
             ]),
-            'pagination' => [
-                'current_page' => $logs->currentPage(),
-                'last_page' => $logs->lastPage(),
-                'total' => $logs->total(),
-            ],
         ]);
     }
 }

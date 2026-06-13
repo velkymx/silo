@@ -51,6 +51,6 @@ watch(() => props.url, render);
     <div>
         <div v-if="loading" class="text-center text-muted py-5"><VibeSpinner class="me-2" />Rendering…</div>
         <div v-if="error" class="text-center text-muted py-5">{{ error }}</div>
-        <div ref="container" class="doc-viewer" :style="{ maxHeight: '72vh', overflow: 'auto' }"></div>
+        <div ref="container" class="doc-viewer" :style="{ maxHeight: '100%', overflow: 'auto' }"></div>
     </div>
 </template>

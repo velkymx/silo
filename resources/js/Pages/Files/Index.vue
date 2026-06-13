@@ -1216,44 +1216,44 @@ onBeforeUnmount(() => {
                 </div>
             </template>
 
-            <div v-if="quickFile" class="text-center" style="min-height: 50vh">
+            <div v-if="quickFile" class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center" style="height: calc(100vh - 130px)">
                 <img
                     v-if="imageMime(quickFile)"
                     :src="quickFile.url"
                     :alt="quickFile.name"
                     class="img-fluid rounded"
-                    style="max-height: 72vh"
+                    style="max-height: 100%; object-fit: contain"
                 >
                 <iframe
                     v-else-if="quickFile.type === 'pdf'"
                     :src="quickFile.url"
-                    class="w-100 border rounded"
-                    style="height: 72vh"
+                    class="w-100 h-100 border rounded"
                 ></iframe>
-                <audio v-else-if="quickFile.mime?.startsWith('audio/')" :src="quickFile.url" controls class="w-100 mt-5" />
+                <audio v-else-if="quickFile.mime?.startsWith('audio/')" :src="quickFile.url" controls class="w-100" />
                 <video
                     v-else-if="quickFile.mime?.startsWith('video/')"
                     :src="quickFile.url"
                     controls
                     class="img-fluid rounded"
-                    style="max-height: 72vh"
+                    style="max-height: 100%"
                 />
                 <MarkdownViewer
                     v-else-if="previewMarkdownTypes.includes(quickFile.type)"
                     :key="quickFile.id"
                     :url="`/raw/${quickFile.id}`"
+                    class="w-100 h-100 overflow-auto text-start"
                 />
                 <DocViewer
                     v-else-if="officeTypes.includes(quickFile.type)"
                     :key="quickFile.id"
                     :url="quickFile.url"
                     :type="quickFile.type"
-                    class="text-start"
+                    class="w-100 h-100 overflow-auto text-start"
                 />
                 <pre
                     v-else-if="quickFile.metadata?.preview"
-                    class="text-start p-3 bg-body-tertiary rounded border"
-                    style="max-height: 72vh; overflow: auto; white-space: pre-wrap"
+                    class="text-start p-3 bg-body-tertiary rounded border w-100 h-100"
+                    style="overflow: auto; white-space: pre-wrap"
                 >{{ quickFile.metadata.preview }}</pre>
                 <div v-else class="text-muted py-5">
                     <VibeIcon :icon="iconFor(quickFile.type)" class="display-1 d-block mb-3" />
