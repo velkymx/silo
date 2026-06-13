@@ -676,7 +676,7 @@ onBeforeUnmount(() => {
 
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <VibeBreadcrumb :items="breadcrumbItems" class="mb-0" @item-click="onBreadcrumb" />
-            <div class="d-flex gap-2">
+            <div class="d-flex align-items-center gap-2">
                 <VibeButton variant="primary" @click="uploadOpen = true">
                     <VibeIcon icon="upload" class="me-1" />Upload
                 </VibeButton>
@@ -684,6 +684,25 @@ onBeforeUnmount(() => {
                     <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
+                <div class="vr mx-1 d-none d-sm-block"></div>
+                <VibeButtonGroup>
+                    <VibeButton
+                        :variant="viewMode === 'list' ? 'primary' : 'secondary'"
+                        :outline="viewMode !== 'list'"
+                        title="List view"
+                        @click="viewMode = 'list'"
+                    >
+                        <VibeIcon icon="list-ul" />
+                    </VibeButton>
+                    <VibeButton
+                        :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
+                        :outline="viewMode !== 'grid'"
+                        title="Thumbnail view"
+                        @click="viewMode = 'grid'"
+                    >
+                        <VibeIcon icon="grid-3x3-gap-fill" />
+                    </VibeButton>
+                </VibeButtonGroup>
             </div>
         </div>
 
@@ -706,27 +725,6 @@ onBeforeUnmount(() => {
             <span><VibeIcon icon="clock-history" class="me-1" />Recent uploads.</span>
             <VibeButton variant="secondary" size="sm" outline @click="router.get('/', {}, { preserveScroll: true })">Clear</VibeButton>
         </VibeAlert>
-
-        <div class="d-flex justify-content-end mb-2">
-            <VibeButtonGroup size="sm">
-                <VibeButton
-                    :variant="viewMode === 'list' ? 'primary' : 'secondary'"
-                    :outline="viewMode !== 'list'"
-                    title="List view"
-                    @click="viewMode = 'list'"
-                >
-                    <VibeIcon icon="list-ul" />
-                </VibeButton>
-                <VibeButton
-                    :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
-                    :outline="viewMode !== 'grid'"
-                    title="Thumbnail view"
-                    @click="viewMode = 'grid'"
-                >
-                    <VibeIcon icon="grid-3x3-gap-fill" />
-                </VibeButton>
-            </VibeButtonGroup>
-        </div>
 
         <!-- Thumbnail / grid view -->
         <VibeRow v-if="viewMode === 'grid'" class="g-3">
