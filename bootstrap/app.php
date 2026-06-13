@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             SecurityHeaders::class,
         ]);
+
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

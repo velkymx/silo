@@ -42,6 +42,7 @@ const adminNav = computed(() => (user.value?.is_admin ? [
     { text: 'Users', href: '/users', icon: 'person-gear', active: active((p) => p.startsWith('/users')) },
     { text: 'Groups', href: '/groups', icon: 'diagram-3-fill', active: active((p) => p.startsWith('/groups')) },
     { text: 'Audit', href: '/audit', icon: 'clipboard-check', active: active((p) => p.startsWith('/audit')) },
+    { text: 'Backups', href: '/backups', icon: 'archive', active: active((p) => p.startsWith('/backups')) },
 ] : []));
 
 const userMenu = [

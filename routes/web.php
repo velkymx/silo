@@ -11,6 +11,7 @@ use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\BackupController;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
@@ -24,6 +25,14 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('admin.groups.destroy');
 
     Route::get('/audit', [AuditController::class, 'index'])->name('admin.audit.index');
+
+    Route::middleware('admin')->group(function () {
+        Route::get('/backups', [BackupController::class, 'index'])->name('admin.backups.index');
+        Route::post('/backups', [BackupController::class, 'run'])->name('admin.backups.run');
+        Route::put('/backups/schedule', [BackupController::class, 'updateSchedule'])->name('admin.backups.schedule');
+        Route::get('/backups/{backup}/download', [BackupController::class, 'download'])->name('admin.backups.download');
+        Route::delete('/backups/{backup}', [BackupController::class, 'destroy'])->name('admin.backups.destroy');
+    });
 
     Route::get('/profile', [UserController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [UserController::class, 'update'])->name('profile.update');
