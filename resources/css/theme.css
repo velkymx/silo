@@ -29,6 +29,21 @@
     --bs-btn-active-border-color: #6366f1;
 }
 
+/* Make "light" buttons follow the color mode (Bootstrap's btn-light is a fixed
+   color and stays white in dark mode). Used for the theme pill, user menu,
+   and row kebabs. */
+.btn-light {
+    --bs-btn-color: var(--bs-body-color);
+    --bs-btn-bg: var(--bs-tertiary-bg);
+    --bs-btn-border-color: var(--bs-border-color);
+    --bs-btn-hover-color: var(--bs-body-color);
+    --bs-btn-hover-bg: var(--bs-secondary-bg);
+    --bs-btn-hover-border-color: var(--bs-border-color);
+    --bs-btn-active-color: var(--bs-body-color);
+    --bs-btn-active-bg: var(--bs-secondary-bg);
+    --bs-btn-active-border-color: var(--bs-border-color);
+}
+
 /* Soft, app-like active nav (tinted instead of solid fill) */
 .nav-pills .nav-link {
     color: var(--bs-body-color);
