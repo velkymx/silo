@@ -73,7 +73,12 @@ function onUserMenu({ item }) {
                 <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
             </VibeButton>
             <VibeDropdown v-if="user" size="sm" variant="secondary" outline menu-end :items="userMenu" @item-click="onUserMenu">
-                <template #button><VibeIcon icon="person-circle" class="me-1" />{{ user.name }}</template>
+                <template #button>
+                    <span
+                        class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white me-2"
+                        style="width: 22px; height: 22px; font-size: 0.72rem"
+                    >{{ user.name.charAt(0).toUpperCase() }}</span>{{ user.name }}
+                </template>
                 <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
             </VibeDropdown>
         </header>
@@ -103,7 +108,7 @@ function onUserMenu({ item }) {
             </aside>
 
             <!-- Content -->
-            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0">
+            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0 bg-body">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
                 <VibeAlert v-if="flash.error" variant="danger" dismissible>{{ flash.error }}</VibeAlert>
                 <slot />

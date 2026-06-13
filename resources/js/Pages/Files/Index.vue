@@ -68,7 +68,7 @@ const ancestorIds = computed(() => {
 
 // ----- Breadcrumb -----
 const breadcrumbItems = computed(() => [
-    { text: 'Home', folder: null, active: !props.current },
+    { text: 'My Files', folder: null, active: !props.current },
     ...props.breadcrumbs.map((b, i) => ({
         text: b.name,
         folder: b.id,
@@ -653,6 +653,7 @@ onBeforeUnmount(() => {
                     </div>
                 </template>
                 <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
+                <a href="/profile" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/profile')">Manage storage</a>
             </div>
 
             <template v-if="allTags.length">
