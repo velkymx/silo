@@ -1,5 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import '../css/theme.css';
 import './bootstrap';
 
 import { createApp, h } from 'vue';

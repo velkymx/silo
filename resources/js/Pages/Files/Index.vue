@@ -133,8 +133,31 @@ function typeLabel(item) {
     return t ? t.toUpperCase() : 'File';
 }
 
+function colorFor(item) {
+    if (item.is_dir) return '#f59e0b';
+    const t = item.type;
+    if (imageTypes.includes(t)) return '#10b981';
+    if (t === 'pdf') return '#ef4444';
+    if (videoTypes.includes(t)) return '#6366f1';
+    if (audioTypes.includes(t)) return '#ec4899';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(t)) return '#f59e0b';
+    if (['xls', 'xlsx', 'csv'].includes(t)) return '#22c55e';
+    if (['doc', 'docx', 'rtf', 'txt', 'md'].includes(t)) return '#3b82f6';
+    return '#6b7280';
+}
+
 function toggleStar(item) {
     router.post(`/files/${item.id}/star`, {}, { preserveScroll: true });
+}
+
+const newMenu = [
+    { text: 'New Folder', action: 'folder', icon: 'folder-plus' },
+    { text: 'Upload files', action: 'upload', icon: 'upload' },
+];
+
+function onNewMenu({ item }) {
+    if (item.action === 'folder') folderOpen.value = true;
+    if (item.action === 'upload') uploadOpen.value = true;
 }
 
 function openItem(item) {
@@ -584,19 +607,25 @@ onBeforeUnmount(() => {
     <AppLayout>
         <template #topbar>
             <VibeInputGroup>
+                <template #prepend>
+                    <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
+                </template>
                 <VibeFormInput
                     id="global-search"
                     v-model="search"
                     type="search"
-                    placeholder="Search files, folders, tags…   (⌘K)"
+                    class="border-start-0"
+                    placeholder="Search files, folders, tags…"
                     no-wrapper
                     @keyup.enter="runSearch"
                 />
                 <template #append>
-                    <VibeButton variant="primary" @click="runSearch"><VibeIcon icon="search" /></VibeButton>
                     <VibeButton v-if="searching" variant="secondary" outline @click="clearSearch">
                         <VibeIcon icon="x-lg" />
                     </VibeButton>
+                    <span v-else class="input-group-text bg-body text-muted">
+                        <kbd class="bg-body-secondary text-body-secondary border" style="font-size: 0.7rem">⌘K</kbd>
+                    </span>
                 </template>
             </VibeInputGroup>
         </template>
@@ -645,12 +674,13 @@ onBeforeUnmount(() => {
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <VibeBreadcrumb :items="breadcrumbItems" class="mb-0" @item-click="onBreadcrumb" />
             <div class="d-flex gap-2">
-                <VibeButton variant="success" @click="uploadOpen = true">
+                <VibeButton variant="primary" @click="uploadOpen = true">
                     <VibeIcon icon="upload" class="me-1" />Upload
                 </VibeButton>
-                <VibeButton variant="primary" @click="folderOpen = true">
-                    <VibeIcon icon="folder-plus" class="me-1" />New Folder
-                </VibeButton>
+                <VibeDropdown variant="primary" outline :items="newMenu" @item-click="onNewMenu">
+                    <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
+                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                </VibeDropdown>
             </div>
         </div>
 
@@ -731,7 +761,7 @@ onBeforeUnmount(() => {
                             v-else
                             :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)"
                             class="display-4"
-                            :class="item.is_dir ? 'text-warning' : 'text-secondary'"
+                            :style="{ color: colorFor(item) }"
                         />
                     </div>
                     <div class="p-2">
@@ -780,7 +810,7 @@ onBeforeUnmount(() => {
                         v-else
                         :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)"
                         class="me-2 fs-4 flex-shrink-0"
-                        :class="item.is_dir ? 'text-warning' : 'text-secondary'"
+                        :style="{ color: colorFor(item) }"
                     />
                     <span class="text-truncate">{{ item.name }}</span>
                     <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">

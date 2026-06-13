@@ -1,0 +1,45 @@
+/* App accent: indigo (matches the product design). Layered over Bootstrap 5.3. */
+:root,
+[data-bs-theme='light'],
+[data-bs-theme='dark'] {
+    --bs-primary: #6366f1;
+    --bs-primary-rgb: 99, 102, 241;
+    --bs-link-color: #6366f1;
+    --bs-link-color-rgb: 99, 102, 241;
+    --bs-link-hover-color: #4f46e5;
+}
+
+.btn-primary {
+    --bs-btn-bg: #6366f1;
+    --bs-btn-border-color: #6366f1;
+    --bs-btn-hover-bg: #4f46e5;
+    --bs-btn-hover-border-color: #4f46e5;
+    --bs-btn-active-bg: #4338ca;
+    --bs-btn-active-border-color: #4338ca;
+    --bs-btn-disabled-bg: #6366f1;
+    --bs-btn-disabled-border-color: #6366f1;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #6366f1;
+    --bs-btn-border-color: #6366f1;
+    --bs-btn-hover-bg: #6366f1;
+    --bs-btn-hover-border-color: #6366f1;
+    --bs-btn-active-bg: #6366f1;
+    --bs-btn-active-border-color: #6366f1;
+}
+
+.nav-pills {
+    --bs-nav-pills-link-active-bg: #6366f1;
+}
+
+/* Softer, app-like rows */
+.table > :not(caption) > * > * {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+/* Subtle hover for sidebar nav */
+.nav-pills .nav-link:not(.active):hover {
+    background-color: rgba(99, 102, 241, 0.08);
+}
