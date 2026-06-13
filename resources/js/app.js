@@ -4,7 +4,10 @@ import './bootstrap';
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
-import VibeUI from '@velkymx/vibeui';
+import VibeUI, { useColorMode } from '@velkymx/vibeui';
+
+// Restore the saved theme and follow the OS in "auto" mode.
+useColorMode().initColorMode();
 
 createInertiaApp({
     resolve: (name) => {

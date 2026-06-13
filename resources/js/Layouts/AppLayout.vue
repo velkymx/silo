@@ -1,10 +1,19 @@
 <script setup>
 import { computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import { useColorMode } from '@velkymx/vibeui';
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
 const flash = computed(() => page.props.flash ?? {});
+
+const { colorMode, toggleColorMode } = useColorMode();
+const themeIcon = computed(() => ({
+    light: 'sun-fill',
+    dark: 'moon-stars-fill',
+    auto: 'circle-half',
+}[colorMode.value] ?? 'circle-half'));
+const themeLabel = computed(() => `Theme: ${colorMode.value}`);
 
 const navItems = computed(() => {
     const items = [];
@@ -37,7 +46,17 @@ function logout() {
             <VibeNavbarToggle target="mainNav" />
             <VibeCollapse id="mainNav" is-nav>
                 <VibeNavbarNav class="ms-auto align-items-md-center" :items="navItems" @item-click="onNav" />
-                <VibeButton v-if="user" variant="light" size="sm" outline class="ms-md-3" @click="logout">
+                <VibeButton
+                    variant="light"
+                    size="sm"
+                    outline
+                    class="ms-md-3"
+                    :title="themeLabel"
+                    @click="toggleColorMode"
+                >
+                    <VibeIcon :icon="themeIcon" />
+                </VibeButton>
+                <VibeButton v-if="user" variant="light" size="sm" outline class="ms-2" @click="logout">
                     <VibeIcon icon="box-arrow-right" class="me-1" />Logout
                 </VibeButton>
             </VibeCollapse>
