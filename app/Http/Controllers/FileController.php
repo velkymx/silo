@@ -34,6 +34,7 @@ class FileController extends Controller
             : 'name';
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
         $searching = $request->filled('search');
+        $starredOnly = $request->boolean('starred');
         $activeTag = $request->filled('tag')
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
@@ -65,6 +66,15 @@ class FileController extends Controller
                 ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
             $files = collect($paginator->items())
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
+        } elseif ($starredOnly) {
+            // Starred items across every folder the user owns.
+            $folders = File::query()->where('owner_id', $userId)->where('starred', true)->folders()
+                ->withCount('children')->with('tags')->orderBy('name')->get()
+                ->map(fn (File $folder) => $this->folderShape($folder));
+            $paginator = File::query()->where('owner_id', $userId)->where('starred', true)->files()
+                ->with(['versions', 'tags'])->orderBy('name')->paginate($perPage)->withQueryString();
+            $files = collect($paginator->items())
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } else {
             $query = File::query()->where('owner_id', $userId)->where('parent_id', $current?->id);
 
@@ -89,7 +99,8 @@ class FileController extends Controller
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $searching,
-            'flat' => $searching || (bool) $activeTag,
+            'starredOnly' => $starredOnly,
+            'flat' => $searching || (bool) $activeTag || $starredOnly,
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
             // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
@@ -102,6 +113,15 @@ class FileController extends Controller
                 'direction' => $direction,
             ],
         ]);
+    }
+
+    // Toggle a file's or folder's starred (favorite) flag.
+    public function star(File $file)
+    {
+        $this->authorize('update', $file);
+        $file->update(['starred' => ! $file->starred]);
+
+        return back()->with('success', $file->starred ? 'Added to starred.' : 'Removed from starred.');
     }
 
     // Replace a file's tags from a list of names (creating tags as needed).
@@ -149,6 +169,7 @@ class FileController extends Controller
             'id' => $folder->id,
             'name' => $folder->name,
             'is_dir' => true,
+            'starred' => (bool) $folder->starred,
             'item_count' => $folder->children_count ?? $folder->children()->count(),
             'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
             'tags' => $folder->relationLoaded('tags')
@@ -176,6 +197,7 @@ class FileController extends Controller
                 : [],
             'hash' => $file->hash,
             'version' => $file->version,
+            'starred' => (bool) $file->starred,
             'versions' => $file->relationLoaded('versions')
                 ? $file->versions->map(fn (FileVersion $v) => [
                     'id' => $v->id,

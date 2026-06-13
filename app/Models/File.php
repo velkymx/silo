@@ -38,6 +38,7 @@ class File extends Model
         'metadata',
         'thumbnail_path',
         'version',
+        'starred',
         'parent_id',
         'owner_id',
     ];
@@ -54,6 +55,7 @@ class File extends Model
             'size' => 'integer',
             'metadata' => 'array',
             'version' => 'integer',
+            'starred' => 'boolean',
         ];
     }
 

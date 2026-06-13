@@ -12,6 +12,7 @@ const props = defineProps({
     allFolders: { type: Array, default: () => [] },
     allTags: { type: Array, default: () => [] },
     searching: { type: Boolean, default: false },
+    starredOnly: { type: Boolean, default: false },
     flat: { type: Boolean, default: false },
     activeTag: { type: Object, default: null },
     pagination: { type: Object, default: () => ({ current_page: 1, last_page: 1, total: 0, per_page: 50 }) },
@@ -110,10 +111,30 @@ const columns = computed(() => [
     ...(props.flat ? [{ key: 'location', label: 'Location', sortable: false }] : []),
     { key: 'modified', label: 'Modified' },
     { key: 'size', label: 'Size' },
+    { key: 'type', label: 'Type', sortable: false },
     { key: 'actions', label: '', sortable: false, searchable: false },
 ]);
 
 const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+const videoTypes = ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'];
+const audioTypes = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
+
+function typeLabel(item) {
+    if (item.is_dir) return 'Folder';
+    const t = item.type;
+    if (imageTypes.includes(t)) return 'Image';
+    if (t === 'pdf') return 'PDF';
+    if (videoTypes.includes(t)) return 'Video';
+    if (audioTypes.includes(t)) return 'Audio';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(t)) return 'Archive';
+    if (['doc', 'docx', 'rtf', 'txt', 'md'].includes(t)) return 'Document';
+    if (['xls', 'xlsx', 'csv'].includes(t)) return 'Spreadsheet';
+    return t ? t.toUpperCase() : 'File';
+}
+
+function toggleStar(item) {
+    router.post(`/files/${item.id}/star`, {}, { preserveScroll: true });
+}
 
 function openItem(item) {
     if (item.is_dir) {
@@ -634,6 +655,11 @@ onBeforeUnmount(() => {
             <VibeButton variant="primary" size="sm" outline @click="filterByTag(null)">Clear</VibeButton>
         </VibeAlert>
 
+        <VibeAlert v-if="starredOnly" variant="warning" class="d-flex align-items-center justify-content-between">
+            <span><VibeIcon icon="star-fill" class="me-1" />Starred items.</span>
+            <VibeButton variant="warning" size="sm" outline @click="router.get('/', {}, { preserveScroll: true })">Clear</VibeButton>
+        </VibeAlert>
+
         <div class="d-flex justify-content-end mb-2">
             <VibeButtonGroup size="sm">
                 <VibeButton
@@ -659,6 +685,14 @@ onBeforeUnmount(() => {
         <VibeRow v-if="viewMode === 'grid'" class="g-3">
             <VibeCol v-for="item in items" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
                 <div class="card h-100 text-center border position-relative" style="cursor: pointer" @click="openItem(item)">
+                    <VibeButton
+                        variant="link"
+                        class="position-absolute top-0 start-0 m-1 p-1"
+                        :title="item.starred ? 'Unstar' : 'Star'"
+                        @click.stop="toggleStar(item)"
+                    >
+                        <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
+                    </VibeButton>
                     <div class="position-absolute top-0 end-0 m-1" @click.stop>
                         <VibeDropdown
                             size="sm"
@@ -762,8 +796,20 @@ onBeforeUnmount(() => {
                 </span>
             </template>
 
+            <template #cell(type)="{ item }">
+                <span class="text-muted small">{{ typeLabel(item) }}</span>
+            </template>
+
             <template #cell(actions)="{ item }">
-                <div class="d-flex justify-content-end gap-1" @click.stop>
+                <div class="d-flex justify-content-end gap-1 align-items-center" @click.stop>
+                    <VibeButton
+                        variant="link"
+                        class="p-0 me-1"
+                        :title="item.starred ? 'Unstar' : 'Star'"
+                        @click="toggleStar(item)"
+                    >
+                        <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
+                    </VibeButton>
                     <VibeButton
                         v-if="!item.is_dir"
                         variant="secondary"
