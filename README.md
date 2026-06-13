@@ -1,161 +1,123 @@
-# **File Manager Application**
+# File Manager
 
-This is a Laravel-based file management system that supports user authentication, folder navigation, file uploads, previews, and admin-specific functionality for managing users and groups.
+A self-hosted file manager built with Laravel 13 and an Inertia + Vue 3 single-page UI on [VibeUI](https://www.npmjs.com/package/@velkymx/vibeui) (Bootstrap 5.3). Files and folders are modelled in the database, every action is authorized by policy, and uploads are processed asynchronously for metadata and thumbnails.
 
 ---
 
-### **Screenshot**
+## Features
+
+- **Unified file browser** — a single Finder/Dropbox-style list (folders first, then files) with name/modified/size columns, icons and image thumbnails, breadcrumb navigation, and a lazy folder tree sidebar.
+- **Light / dark / auto theme** — follows the operating system in auto mode, with a one-click toggle that persists.
+- **Upload, download, copy, move, rename, delete** — DB + disk operations in transactions; storage is flat per user with the hierarchy held entirely in the database.
+- **Quick Look** — inline preview for images, PDFs, audio, video, and text (spacebar or click), with keyboard paging.
+- **Search** — full-text search (Laravel Scout) across every folder you own, over file name, MIME type, and extracted metadata.
+- **Tags** — colored tags on files and folders, with one-click tag filtering.
+- **Sharing** — per-file and per-folder access control for users (by email) or groups, with permission **inheritance** down the folder tree, a "Shared with me" view, and **public share links** (optional expiry, optional password, view-only or download).
+- **Versioning** — re-uploading a file keeps the previous content as a version; download or restore any prior version.
+- **Trash & restore** — soft-deleted items go to a Trash view and can be restored; a scheduled job permanently purges them after a retention window.
+- **Metadata & thumbnails** — background jobs refine the MIME type, extract EXIF / image dimensions / audio (ID3) tags / text snippets, and generate image thumbnails.
+- **Quotas** — per-user storage limit with a usage indicator.
+- **Admin** — manage users, groups, and view an audit log of security-relevant actions.
 
 ![File Manager Screenshot](screenshot.png)
 
 ---
 
-### **Requirements**
+## Requirements
 
-- PHP 8.1 or higher
+- PHP **8.3+** with the `gd`, `exif`, and `fileinfo` extensions (for thumbnails and metadata)
 - Composer 2.x
-- Node.js 16.x or higher
-- NPM 7.x or higher
-- MariaDB or MySQL database
+- Node.js **20+** and npm
+- MySQL 8 / MariaDB
+- A queue worker process (see [Background processing](#background-processing))
 
 ---
 
-### **Setup Instructions**
-
-#### **1. Clone the Repository**
+## Setup
 
 ```bash
-git clone <repository-url>
-cd file-manager
-```
-
-Replace `<repository-url>` with your repository URL.
-
----
-
-#### **2. Install PHP Dependencies**
-
-Ensure Composer is installed on your system, then run:
-
-```bash
+# 1. Dependencies
 composer install
-```
-
----
-
-#### **3. Install JavaScript Dependencies**
-
-Ensure Node.js and NPM are installed on your system, then run:
-
-```bash
 npm install
-```
 
----
+# 2. Environment
+cp .env.example .env
+php artisan key:generate
+#   edit .env: database credentials, FILESYSTEM_DISK, and the FILEMANAGER_* options
 
-#### **4. Configure Environment**
+# 3. Database
+php artisan migrate
 
-1. Copy the `.env.example` file to create a `.env` file:
+# 4. Public storage symlink (so the configured disk is reachable)
+php artisan storage:link
 
-   ```bash
-   cp .env.example .env
-   ```
+# 5. Build the front end
+npm run build      # or: npm run dev   (during development)
 
-2. Update the `.env` file with your database credentials and other environment settings. For example:
-
-   ```plaintext
-   DB_CONNECTION=mysql
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_DATABASE=file_manager
-   DB_USERNAME=root
-   DB_PASSWORD=your_password
-   ```
-
-3. Set the application key:
-
-   ```bash
-   php artisan key:generate
-   ```
-
----
-
-#### **5. Run Migrations and Seeders**
-
-Set up the database schema and seed initial data:
-
-```bash
-php artisan migrate --seed
-```
-
----
-
-#### **6. Compile Frontend Assets**
-
-Build CSS and JavaScript assets:
-
-```bash
-npm run dev
-```
-
-For production builds, use:
-
-```bash
-npm run build
-```
-
----
-
-#### **7. Start the Development Server**
-
-Run the Laravel development server:
-
-```bash
+# 6. Serve
 php artisan serve
 ```
 
-By default, the application will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000).
+The app is then available at http://127.0.0.1:8000.
 
----
-
-### **Additional Notes**
-
-#### **Admin Access**
-To access admin features, create an admin user or update an existing user in the database:
-
-1. Log in to your database management tool (e.g., phpMyAdmin, MySQL CLI).
-2. Update the `is_admin` field of a user in the `users` table:
-
-   ```sql
-   UPDATE users SET is_admin = 1 WHERE email = 'admin@example.com';
-   ```
-
-#### **Run Tests**
-To ensure everything is working, you can run the test suite:
+### Create an admin
 
 ```bash
-php artisan test
-```
-
-#### **Clear Caches**
-If you encounter any issues, clear the application cache:
-
-```bash
-php artisan optimize:clear
+php artisan tinker
+>>> \App\Models\User::where('email', 'you@example.com')->update(['is_admin' => true]);
 ```
 
 ---
 
-### **Common Commands**
+## Background processing
 
-- **Run migrations**: `php artisan migrate`
-- **Rollback migrations**: `php artisan migrate:rollback`
-- **Seed the database**: `php artisan db:seed`
-- **Run the server**: `php artisan serve`
-- **Compile assets**: `npm run dev` or `npm run build`
+Uploaded files are processed off the request cycle (MIME refinement, metadata extraction, thumbnails). **A queue worker must be running**, or files stay in the "Processing" state:
+
+```bash
+php artisan queue:work
+```
+
+For production, run the worker under a supervisor (`deploy/supervisor-worker.conf`) and run the scheduler so the trash-retention purge executes (`deploy/crontab`):
+
+```cron
+* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Password reset and verification email require a real mailer — set `MAIL_MAILER=smtp` (and credentials) in `.env`, otherwise mail is written to the log.
 
 ---
 
-### **License**
+## Configuration
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
+Key options in `config/filemanager.php` (overridable via `.env`):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `FILEMANAGER_DISK` | `public` | Storage disk for uploads (any disk in `config/filesystems.php`). |
+| `FILEMANAGER_MAX_UPLOAD_KB` | _(unset)_ | Max KB per file. When unset, falls back to PHP's `upload_max_filesize` / `post_max_size`. |
+| `FILEMANAGER_USER_QUOTA_MB` | `1024` | Per-user storage quota in MB (`0` = unlimited). |
+| `FILEMANAGER_TRASH_RETENTION_DAYS` | `30` | Days an item stays in the trash before `trash:purge` removes it. |
+| `SCOUT_DRIVER` | `database` | Search engine (`database`, `meilisearch`, `typesense`, …). |
+
+---
+
+## Testing
+
+```bash
+php artisan test       # backend feature + unit tests
+npm run test:e2e       # Playwright browser end-to-end suite
+```
+
+The end-to-end suite boots the app, seeds a deterministic admin, and drives the real UI in a headless browser.
+
+---
+
+## Stack
+
+Laravel 13 · Inertia.js · Vue 3 · VibeUI (Bootstrap 5.3) · Laravel Scout · Intervention Image · getID3.
+
+---
+
+## License
+
+Licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
