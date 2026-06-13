@@ -84,16 +84,41 @@ async function load() {
                 worksheetName: name,
                 data: aoa,
                 minDimensions: [Math.max(12, aoa[0]?.length || 0), Math.max(40, aoa.length)],
+                // Layout
                 tableOverflow: true,
-                tableHeight: 'calc(100vh - 215px)',
+                tableHeight: 'calc(100vh - 260px)',
                 tableWidth: '100%',
                 defaultColWidth: 120,
+                // Every editing/interaction feature jspreadsheet-ce offers, on.
+                search: true,
+                filters: true,
+                columnSorting: true,
+                columnDrag: true,
+                columnResize: true,
+                rowResize: true,
+                rowDrag: true,
+                allowInsertRow: true,
+                allowInsertColumn: true,
+                allowDeleteRow: true,
+                allowDeleteColumn: true,
+                allowManualInsertRow: true,
+                allowManualInsertColumn: true,
+                allowRenameWorksheet: true,
+                allowComments: true,
+                mergeCells: true,
+                wordWrap: true,
+                selectionCopy: true,
+                autoCasting: true,
+                parseFormulas: true,
+                autoIncrement: true,
+                includeHeadersOnDownload: true,
             };
         });
 
         instance = jspreadsheet(el.value, {
             worksheets,
-            tabs: worksheets.length > 1,
+            tabs: true,
+            toolbar: true,
             onselection: onSelection,
         });
         emit('ready');
