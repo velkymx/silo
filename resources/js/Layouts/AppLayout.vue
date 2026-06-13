@@ -76,10 +76,10 @@ function onUserMenu({ item }) {
             <div class="flex-grow-1 min-vw-0">
                 <slot name="topbar" />
             </div>
-            <VibeButton variant="secondary" size="sm" outline :title="`Theme: ${colorMode}`" @click="toggleColorMode">
+            <VibeButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
                 <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
             </VibeButton>
-            <VibeDropdown v-if="user" size="sm" variant="secondary" outline menu-end :items="userMenu" @item-click="onUserMenu">
+            <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
                     <span
                         class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white me-2"
