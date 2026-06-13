@@ -129,6 +129,10 @@ function selectFile(item) {
     if (idx >= 0) selectedIndex.value = idx;
 }
 
+// List vs thumbnail grid view, remembered across visits.
+const viewMode = ref(localStorage.getItem('fm-view') === 'grid' ? 'grid' : 'list');
+watch(viewMode, (v) => localStorage.setItem('fm-view', v));
+
 function iconFor(type) {
     if (imageTypes.includes(type)) return 'file-earmark-image';
     if (type === 'pdf') return 'file-earmark-pdf';
@@ -630,7 +634,75 @@ onBeforeUnmount(() => {
             <VibeButton variant="primary" size="sm" outline @click="filterByTag(null)">Clear</VibeButton>
         </VibeAlert>
 
+        <div class="d-flex justify-content-end mb-2">
+            <VibeButtonGroup size="sm">
+                <VibeButton
+                    :variant="viewMode === 'list' ? 'primary' : 'secondary'"
+                    :outline="viewMode !== 'list'"
+                    title="List view"
+                    @click="viewMode = 'list'"
+                >
+                    <VibeIcon icon="list-ul" />
+                </VibeButton>
+                <VibeButton
+                    :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
+                    :outline="viewMode !== 'grid'"
+                    title="Thumbnail view"
+                    @click="viewMode = 'grid'"
+                >
+                    <VibeIcon icon="grid-3x3-gap-fill" />
+                </VibeButton>
+            </VibeButtonGroup>
+        </div>
+
+        <!-- Thumbnail / grid view -->
+        <VibeRow v-if="viewMode === 'grid'" class="g-3">
+            <VibeCol v-for="item in items" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
+                <div class="card h-100 text-center border position-relative" style="cursor: pointer" @click="openItem(item)">
+                    <div class="position-absolute top-0 end-0 m-1" @click.stop>
+                        <VibeDropdown
+                            size="sm"
+                            variant="light"
+                            menu-end
+                            :items="item.is_dir ? folderActions : fileActions"
+                            @item-click="onAction(item, $event)"
+                        >
+                            <template #button><VibeIcon icon="three-dots-vertical" /></template>
+                            <template #item="{ item: a }"><VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}</template>
+                        </VibeDropdown>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
+                        <img
+                            v-if="item.thumb_url"
+                            :src="item.thumb_url"
+                            :alt="item.name"
+                            class="w-100 h-100"
+                            style="object-fit: cover"
+                        >
+                        <VibeIcon
+                            v-else
+                            :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)"
+                            class="display-4"
+                            :class="item.is_dir ? 'text-warning' : 'text-secondary'"
+                        />
+                    </div>
+                    <div class="p-2">
+                        <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
+                        <div class="text-muted" style="font-size: 0.7rem">
+                            {{ item.is_dir ? `${item.item_count} items` : `${(item.size / 1024).toFixed(1)} KB` }}
+                        </div>
+                        <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
+                        <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
+                    </div>
+                </div>
+            </VibeCol>
+            <VibeCol v-if="!items.length" :cols="12">
+                <p class="text-muted text-center py-4">{{ flat ? 'No matching files.' : 'This folder is empty.' }}</p>
+            </VibeCol>
+        </VibeRow>
+
         <VibeDataTable
+            v-else
             :items="items"
             :columns="columns"
             row-key="id"
