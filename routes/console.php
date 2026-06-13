@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Permanently remove items that have sat in the trash past the retention window.
 Schedule::command('trash:purge')->daily();
+
+// Safety net: re-queue uploads whose processing stalled (dead/restarted worker).
+Schedule::command('files:reconcile')->everyTenMinutes();
