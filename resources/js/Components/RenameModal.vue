@@ -24,7 +24,7 @@ function submit(): void {
 </script>
 
 <template>
-    <VibeModal v-model="open" title="Rename" fullscreen>
+    <VibeModal v-model="open" title="Rename" centered>
         <form @submit.prevent="submit">
             <VibeFormGroup
                 label="New Name"

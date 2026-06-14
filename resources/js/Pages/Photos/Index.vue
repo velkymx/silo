@@ -336,7 +336,7 @@ function saveEdit() {
         </VibeModal>
 
         <!-- Upload -->
-        <VibeModal v-model="uploadOpen" title="Upload Photos" fullscreen>
+        <VibeModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
             <VibeFileInput v-model="uploadForm.files" label="Choose images" multiple drag-drop accept="image/*" />
             <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">{{ uploadForm.errors['files.0'] }}</p>
             <template #footer>
@@ -346,7 +346,7 @@ function saveEdit() {
         </VibeModal>
 
         <!-- New album -->
-        <VibeModal v-model="albumOpen" title="New Album" fullscreen>
+        <VibeModal v-model="albumOpen" title="New Album" centered>
             <VibeFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
             </VibeFormGroup>

@@ -754,7 +754,7 @@ onBeforeUnmount(() => {
         <ShareModal v-model="shareOpen" :item="shareTarget" />
 
         <!-- Tags modal -->
-        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" fullscreen>
+        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <VibeBadge v-for="name in tagList" :key="name" variant="primary" class="d-flex align-items-center">
                     {{ name }}
@@ -900,7 +900,7 @@ onBeforeUnmount(() => {
         <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" />
 
         <!-- Create folder modal -->
-        <VibeModal v-model="folderOpen" title="Create Folder" fullscreen>
+        <VibeModal v-model="folderOpen" title="Create Folder" centered>
             <form @submit.prevent="submitFolder">
                 <VibeFormGroup
                     label="Folder Name"
@@ -920,7 +920,7 @@ onBeforeUnmount(() => {
         <RenameModal v-model="renameOpen" :item="renameTarget" />
 
         <!-- Move / Copy modal -->
-        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" fullscreen>
+        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
             <form @submit.prevent="submitTransfer">
                 <VibeFormGroup
                     label="Destination Folder"
@@ -939,7 +939,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- New Folder from Selection -->
-        <VibeModal v-model="batchFolderOpen" title="New Folder from Selection" fullscreen>
+        <VibeModal v-model="batchFolderOpen" title="New Folder from Selection" centered>
             <div class="mx-auto" style="max-width: 520px">
                 <VibeFormGroup label="Folder name">
                     <VibeFormInput v-model="batchFolderName" />
@@ -953,7 +953,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Batch move -->
-        <VibeModal v-model="batchMoveOpen" title="Move Selection To" fullscreen>
+        <VibeModal v-model="batchMoveOpen" title="Move Selection To" centered>
             <div class="mx-auto" style="max-width: 520px">
                 <VibeFormGroup label="Destination folder">
                     <VibeFormSelect v-model="batchMoveTarget" :options="destinationOptions" />
@@ -966,7 +966,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Batch rename -->
-        <VibeModal v-model="batchRenameOpen" title="Batch Rename" fullscreen>
+        <VibeModal v-model="batchRenameOpen" title="Batch Rename" size="lg" centered scrollable>
             <div class="mx-auto" style="max-width: 760px">
                 <VibeButtonGroup class="mb-3">
                     <VibeButton :variant="renameOpts.mode === 'replace' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'replace'" @click="renameOpts.mode = 'replace'">Find &amp; Replace</VibeButton>

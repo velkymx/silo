@@ -36,7 +36,7 @@ async function saveSmartFolder(): Promise<void> {
 </script>
 
 <template>
-    <VibeModal v-model="open" title="Advanced Search" fullscreen>
+    <VibeModal v-model="open" title="Advanced Search" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 640px">
             <VibeFormGroup label="Contains text">
                 <VibeFormInput v-model="adv.search" placeholder="Name or content…" />

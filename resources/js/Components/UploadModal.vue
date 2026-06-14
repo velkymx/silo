@@ -93,7 +93,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
 </script>
 
 <template>
-    <VibeModal v-model="open" title="Upload Files" fullscreen>
+    <VibeModal v-model="open" title="Upload Files" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 720px">
             <div
                 class="upload-dropzone"
