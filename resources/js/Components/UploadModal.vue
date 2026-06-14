@@ -6,10 +6,13 @@ const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ parentId: number | null; maxUploadKb: number }>();
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type UFile = File & { __url?: string | null };
 
-const uploadFiles = ref<UFile[]>([]);
-const uploadForm = useForm<{ files: UFile[]; parent_id: number | null }>({ files: [], parent_id: props.parentId });
+// Blob preview URLs are keyed off the File itself (a WeakMap-style Map) instead
+// of mutating the native File with a `__url` property.
+const blobUrls = new Map<File, string>();
+
+const uploadFiles = ref<File[]>([]);
+const uploadForm = useForm<{ files: File[]; parent_id: number | null }>({ files: [], parent_id: props.parentId });
 const uploadInput = ref<HTMLInputElement | null>(null);
 const uploadDragOver = ref(false);
 
@@ -26,30 +29,33 @@ function fmtBytes(n: number): string {
     return `${v.toFixed(i ? 1 : 0)} ${u[i]}`;
 }
 
-function blobUrlFor(f: UFile): string | null {
+function blobUrlFor(f: File): string | null {
     if (!f || typeof f.type !== 'string' || !f.type.startsWith('image/')) return null;
     const Url = (globalThis as any).URL;
     if (!Url?.createObjectURL) return null;
-    if (f.__url) return f.__url;
+    const existing = blobUrls.get(f);
+    if (existing) return existing;
     try {
-        f.__url = Url.createObjectURL(f);
+        const url = Url.createObjectURL(f);
+        blobUrls.set(f, url);
+        return url;
     } catch {
         return null;
     }
-    return f.__url ?? null;
 }
 
-function revokeBlobUrl(f: UFile): void {
-    if (f?.__url) {
-        try { (globalThis as any).URL?.revokeObjectURL(f.__url); } catch { /* ignore */ }
-        f.__url = null;
+function revokeBlobUrl(f: File): void {
+    const url = blobUrls.get(f);
+    if (url) {
+        try { (globalThis as any).URL?.revokeObjectURL(url); } catch { /* ignore */ }
+        blobUrls.delete(f);
     }
 }
 
 watch(uploadFiles, (val) => { uploadForm.files = val; });
 
 function addUploadFiles(list: FileList | File[]): void {
-    const incoming = Array.from(list) as UFile[];
+    const incoming = Array.from(list);
     for (const f of incoming) blobUrlFor(f);
     uploadFiles.value = [...uploadFiles.value, ...incoming];
 }
@@ -65,9 +71,6 @@ function onUploadPick(e: Event): void {
 function removeUploadFile(i: number): void {
     revokeBlobUrl(uploadFiles.value[i]);
     uploadFiles.value = uploadFiles.value.filter((_, idx) => idx !== i);
-}
-function isImageFile(f: UFile): boolean {
-    return typeof f?.type === 'string' && f.type.startsWith('image/');
 }
 function clearAllUploads(): void {
     uploadFiles.value.forEach(revokeBlobUrl);
@@ -118,7 +121,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                 </div>
                 <div class="border rounded" style="max-height: 40vh; overflow: auto">
                     <div v-for="(f, i) in uploadFiles" :key="i" class="d-flex align-items-center gap-2 p-2 border-bottom">
-                        <img v-if="isImageFile(f) && blobUrlFor(f)" :src="f.__url!" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
+                        <img v-if="blobUrlFor(f)" :src="blobUrlFor(f)!" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
                         <VibeIcon v-else icon="file-earmark" class="fs-4 text-secondary flex-shrink-0" />
                         <div class="flex-grow-1 min-w-0">
                             <div class="text-truncate small">{{ f.name }}</div>

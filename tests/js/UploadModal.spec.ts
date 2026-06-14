@@ -35,6 +35,14 @@ describe('UploadModal', () => {
         expect(wrapper.text()).not.toContain('pic.png');
     });
 
+    it('does not mutate the native File object with a __url property', async () => {
+        const file = png();
+        const wrapper = mount(UploadModal, { props: { modelValue: true, parentId: null, maxUploadKb: 1024 } });
+        await wrapper.find('.upload-dropzone').trigger('drop', { dataTransfer: { files: [file] } });
+        expect('__url' in file).toBe(false);
+        expect((file as unknown as Record<string, unknown>).__url).toBeUndefined();
+    });
+
     it('submit posts to /upload with the parent id', async () => {
         const wrapper = mount(UploadModal, { props: { modelValue: true, parentId: 42, maxUploadKb: 1024 } });
         await wrapper.find('.upload-dropzone').trigger('drop', { dataTransfer: { files: [png()] } });
