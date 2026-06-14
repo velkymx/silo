@@ -7,6 +7,7 @@ import FileItem from '../../Components/FileItem.vue';
 import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
 import UploadModal from '../../Components/UploadModal.vue';
+import ShareModal from '../../Components/ShareModal.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
@@ -513,92 +514,11 @@ function submitTransfer() {
 
 // ----- Share / permissions -----
 const shareOpen = ref(false);
-const shareItem = ref(null);
-const shareGrants = ref([]);
-const shareInherited = ref([]);
-const shareGroups = ref([]);
-const shareError = ref('');
-const shareBusy = ref(false);
-const grant = ref({ subject_type: 'user', email: '', group_id: null, abilities: ['read'] });
-const abilityOptions = ['read', 'write', 'delete', 'share'];
+const shareTarget = ref(null);
 
-const subjectTypeOptions = [
-    { value: 'user', text: 'User (email)' },
-    { value: 'group', text: 'Group' },
-];
-
-function resetGrant() {
-    grant.value = { subject_type: 'user', email: '', group_id: null, abilities: ['read'] };
-    shareError.value = '';
-}
-
-const shareLinks = ref([]);
-const linkForm = ref({ allow_download: true, expires_in_days: null, password: '' });
-const linkCopied = ref(null);
-
-async function openShare(item) {
-    shareItem.value = item;
-    resetGrant();
-    shareGrants.value = [];
-    shareLinks.value = [];
-    linkForm.value = { allow_download: true, expires_in_days: null, password: '' };
+function openShare(item) {
+    shareTarget.value = item;
     shareOpen.value = true;
-    const [{ data: perms }, { data: links }] = await Promise.all([
-        window.axios.get(`/files/${item.id}/permissions`),
-        window.axios.get(`/files/${item.id}/links`),
-    ]);
-    shareGrants.value = perms.permissions;
-    shareInherited.value = perms.inherited ?? [];
-    shareGroups.value = perms.groups.map((g) => ({ value: g.id, text: g.name }));
-    shareLinks.value = links.links;
-}
-
-async function createLink() {
-    const payload = {
-        allow_download: linkForm.value.allow_download,
-        expires_in_days: linkForm.value.expires_in_days || null,
-        password: linkForm.value.password || null,
-    };
-    const { data } = await window.axios.post(`/files/${shareItem.value.id}/links`, payload);
-    shareLinks.value = data.links;
-    linkForm.value = { allow_download: true, expires_in_days: null, password: '' };
-}
-
-async function revokeLink(id) {
-    const { data } = await window.axios.delete(`/files/${shareItem.value.id}/links/${id}`);
-    shareLinks.value = data.links;
-}
-
-function copyLink(url, id) {
-    navigator.clipboard?.writeText(url);
-    linkCopied.value = id;
-    setTimeout(() => (linkCopied.value = null), 1500);
-}
-
-function toggleAbility(ability) {
-    const set = new Set(grant.value.abilities);
-    set.has(ability) ? set.delete(ability) : set.add(ability);
-    grant.value.abilities = [...set];
-}
-
-async function addGrant() {
-    shareError.value = '';
-    shareBusy.value = true;
-    try {
-        const { data } = await window.axios.post(`/files/${shareItem.value.id}/permissions`, grant.value);
-        shareGrants.value = data.permissions;
-        resetGrant();
-    } catch (e) {
-        const errs = e.response?.data?.errors;
-        shareError.value = errs ? Object.values(errs).flat().join(' ') : 'Could not add grant.';
-    } finally {
-        shareBusy.value = false;
-    }
-}
-
-async function removeGrant(id) {
-    const { data } = await window.axios.delete(`/files/${shareItem.value.id}/permissions/${id}`);
-    shareGrants.value = data.permissions;
 }
 
 // ----- Tags -----
@@ -902,129 +822,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Share modal -->
-        <VibeModal v-model="shareOpen" :title="`Share — ${shareItem?.name || ''}`" fullscreen hide-footer>
-            <h6 class="text-muted">People &amp; groups with access</h6>
-            <table v-if="shareGrants.length" class="table table-sm align-middle">
-                <tbody>
-                    <tr v-for="g in shareGrants" :key="g.id">
-                        <td>
-                            <VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />
-                            {{ g.subject_label }}
-                        </td>
-                        <td><VibeBadge variant="secondary">{{ g.ability }}</VibeBadge></td>
-                        <td class="text-end">
-                            <VibeButton variant="danger" size="sm" outline @click="removeGrant(g.id)">
-                                <VibeIcon icon="x" />
-                            </VibeButton>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <p v-else class="text-muted small">No direct grants on this item.</p>
-
-            <template v-if="shareInherited.length">
-                <h6 class="text-muted">Inherited from parent folders</h6>
-                <table class="table table-sm align-middle">
-                    <tbody>
-                        <tr v-for="(g, i) in shareInherited" :key="i" class="text-muted">
-                            <td>
-                                <VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />
-                                {{ g.subject_label }}
-                            </td>
-                            <td><VibeBadge variant="light" class="text-dark border">{{ g.ability }}</VibeBadge></td>
-                            <td class="small"><VibeIcon icon="folder" class="me-1" />{{ g.source }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </template>
-
-            <hr>
-            <h6 class="text-muted">Grant access</h6>
-            <VibeAlert v-if="shareError" variant="danger">{{ shareError }}</VibeAlert>
-            <div class="row g-2">
-                <div class="col-5">
-                    <VibeFormSelect v-model="grant.subject_type" :options="subjectTypeOptions" />
-                </div>
-                <div class="col-7">
-                    <VibeFormInput
-                        v-if="grant.subject_type === 'user'"
-                        v-model="grant.email"
-                        type="email"
-                        placeholder="person@example.com"
-                    />
-                    <VibeFormSelect
-                        v-else
-                        v-model="grant.group_id"
-                        :options="shareGroups"
-                        placeholder="Choose a group…"
-                    />
-                </div>
-            </div>
-            <div class="d-flex flex-wrap gap-3 mt-3">
-                <VibeFormCheckbox
-                    v-for="a in abilityOptions"
-                    :key="a"
-                    :model-value="grant.abilities.includes(a)"
-                    :label="a"
-                    @update:model-value="toggleAbility(a)"
-                />
-            </div>
-            <div class="text-end mt-3">
-                <VibeButton variant="primary" :disabled="shareBusy" @click="addGrant">Grant</VibeButton>
-            </div>
-
-            <template v-if="!shareItem?.is_dir">
-            <hr>
-            <h6 class="text-muted">Public links</h6>
-            <table v-if="shareLinks.length" class="table table-sm align-middle">
-                <tbody>
-                    <tr v-for="link in shareLinks" :key="link.id">
-                        <td class="text-truncate" style="max-width: 220px">
-                            <a :href="link.url" target="_blank" class="small">{{ link.url }}</a>
-                            <div class="small text-muted">
-                                <span v-if="link.protected"><VibeIcon icon="lock" /> password · </span>
-                                <span>{{ link.allow_download ? 'download' : 'view only' }}</span>
-                                <span v-if="link.expires_at"> · expires {{ link.expires_at }}</span>
-                                <span v-if="link.expired" class="text-danger"> · expired</span>
-                            </div>
-                        </td>
-                        <td class="text-end text-nowrap">
-                            <VibeButton variant="secondary" size="sm" outline @click="copyLink(link.url, link.id)">
-                                <VibeIcon :icon="linkCopied === link.id ? 'check' : 'clipboard'" />
-                            </VibeButton>
-                            <VibeButton variant="danger" size="sm" outline class="ms-1" @click="revokeLink(link.id)">
-                                <VibeIcon icon="x" />
-                            </VibeButton>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <p v-else class="text-muted small">No public links.</p>
-
-            <div class="row g-2 align-items-center">
-                <div class="col-auto">
-                    <VibeFormCheckbox v-model="linkForm.allow_download" label="Allow download" />
-                </div>
-                <div class="col">
-                    <VibeFormInput
-                        v-model="linkForm.expires_in_days"
-                        type="number"
-                        placeholder="Expires in N days (optional)"
-                    />
-                </div>
-                <div class="col">
-                    <VibeFormInput
-                        v-model="linkForm.password"
-                        type="password"
-                        placeholder="Password (optional)"
-                    />
-                </div>
-                <div class="col-auto">
-                    <VibeButton variant="primary" @click="createLink">Create link</VibeButton>
-                </div>
-            </div>
-            </template>
-        </VibeModal>
+        <ShareModal v-model="shareOpen" :item="shareTarget" />
 
         <!-- Tags modal -->
         <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" fullscreen>
