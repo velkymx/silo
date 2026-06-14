@@ -22,7 +22,7 @@ function submit() {
             </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
-                Confirm
+                <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Confirming…' : 'Confirm' }}
             </VibeButton>
         </form>
     </GuestLayout>

@@ -49,7 +49,7 @@ function submit() {
             </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
-                Reset password
+                <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Resetting…' : 'Reset password' }}
             </VibeButton>
         </form>
     </GuestLayout>

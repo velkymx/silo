@@ -48,7 +48,7 @@ function submit() {
             </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
-                Register
+                <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Creating account…' : 'Register' }}
             </VibeButton>
 
             <div class="text-center mt-3 small">

@@ -79,7 +79,7 @@ function submit() {
                         </VibeFormGroup>
 
                         <div class="mt-4 d-flex gap-2">
-                            <VibeButton type="submit" variant="primary" :disabled="form.processing">Save</VibeButton>
+                            <VibeButton type="submit" variant="primary" :disabled="form.processing"><VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save' }}</VibeButton>
                             <VibeButton variant="secondary" outline href="/users">Cancel</VibeButton>
                         </div>
                     </form>

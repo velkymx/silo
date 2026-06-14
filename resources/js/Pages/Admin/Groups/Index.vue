@@ -63,7 +63,7 @@ async function destroy(group) {
                 </VibeFormGroup>
             </VibeCol>
             <VibeCol :md="2">
-                <VibeButton variant="primary" :disabled="createForm.processing" @click="create">Add group</VibeButton>
+                <VibeButton variant="primary" :disabled="createForm.processing" @click="create"><VibeSpinner v-if="createForm.processing" size="sm" class="me-1" />{{ createForm.processing ? 'Adding…' : 'Add group' }}</VibeButton>
             </VibeCol>
         </VibeRow>
 
@@ -82,7 +82,7 @@ async function destroy(group) {
                 <template v-if="editingId === item.id">
                     <div class="d-flex gap-2">
                         <VibeFormInput v-model="editForm.name" no-wrapper @keyup.enter="saveEdit" />
-                        <VibeButton variant="success" size="sm" @click="saveEdit">Save</VibeButton>
+                        <VibeButton variant="success" size="sm" :disabled="editForm.processing" @click="saveEdit"><VibeSpinner v-if="editForm.processing" size="sm" class="me-1" />{{ editForm.processing ? 'Saving…' : 'Save' }}</VibeButton>
                         <VibeButton variant="secondary" size="sm" outline @click="editingId = null">Cancel</VibeButton>
                     </div>
                 </template>

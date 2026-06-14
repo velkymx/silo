@@ -106,7 +106,7 @@ onBeforeUnmount(() => clearInterval(poll));
                         :disabled="scheduleForm.processing"
                         @click="saveSchedule"
                     >
-                        Save schedule
+                        <VibeSpinner v-if="scheduleForm.processing" size="sm" class="me-1" />{{ scheduleForm.processing ? 'Saving…' : 'Save schedule' }}
                     </VibeButton>
                     <VibeAlert variant="info" class="mt-3 mb-0 small">
                         Archives use <strong>ultra</strong> compression (bzip2 when available,

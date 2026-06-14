@@ -32,7 +32,7 @@ function submit() {
             <VibeFormCheckbox v-model="form.remember" label="Remember me" class="mt-3" />
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
-                Sign in
+                <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Signing in…' : 'Sign in' }}
             </VibeButton>
 
             <div class="d-flex justify-content-between mt-3 small">

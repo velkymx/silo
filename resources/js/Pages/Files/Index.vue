@@ -777,7 +777,7 @@ onBeforeUnmount(() => {
             </div>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags">Save</VibeButton>
+                <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</VibeButton>
             </template>
         </VibeModal>
 
@@ -912,7 +912,7 @@ onBeforeUnmount(() => {
             </form>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder">Create</VibeButton>
+                <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</VibeButton>
             </template>
         </VibeModal>
 
@@ -933,7 +933,7 @@ onBeforeUnmount(() => {
             <template #footer>
                 <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
-                    {{ transferMode === 'move' ? 'Move' : 'Copy' }}
+                    <VibeSpinner v-if="transferForm.processing" size="sm" class="me-1" />{{ transferForm.processing ? (transferMode === 'move' ? 'Moving…' : 'Copying…') : (transferMode === 'move' ? 'Move' : 'Copy') }}
                 </VibeButton>
             </template>
         </VibeModal>
