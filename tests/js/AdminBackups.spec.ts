@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 
 const { routerPost } = vi.hoisted(() => ({ routerPost: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
-    router: { post: routerPost, get: vi.fn(), put: vi.fn(), delete: vi.fn(), visit: vi.fn(), reload: vi.fn() },
+    router: { post: routerPost, get: vi.fn(), put: vi.fn(), delete: vi.fn(), visit: vi.fn(), reload: vi.fn(), on: vi.fn(() => () => {}) },
     usePage: () => ({ props: { auth: { user: { name: 'T', is_admin: true } }, flash: {}, storage: null, folders: [], savedSearches: [], currentFolder: null } }),
     useForm: (data: Record<string, unknown>) => ({ ...data, processing: false, errors: {}, post: vi.fn(), put: vi.fn(), delete: vi.fn(), reset: vi.fn() }),
     Link: { name: 'Link', template: '<a><slot /></a>' },

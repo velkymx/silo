@@ -3,6 +3,10 @@ import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import SharedListing from '../../Components/SharedListing.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../composables/usePageLoading';
+
+const { loading } = usePageLoading();
 
 const props = defineProps({
     current: { type: Object, required: true },
@@ -26,6 +30,7 @@ function onCrumb({ item }) {
 <template>
     <AppLayout>
         <VibeBreadcrumb :items="crumbs" class="mb-3" @item-click="onCrumb" />
-        <SharedListing :folders="folders" :files="files" />
+        <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />
+        <SharedListing v-else :folders="folders" :files="files" />
     </AppLayout>
 </template>

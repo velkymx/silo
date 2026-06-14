@@ -1,9 +1,12 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../composables/useConfirm';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const { loading } = usePageLoading();
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -47,7 +50,9 @@ async function emptyTrash() {
         </div>
         <p class="text-muted small">Items are permanently removed after the retention period.</p>
 
+        <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />
         <VibeDataTable
+            v-else
             :items="items"
             :columns="columns"
             row-key="id"

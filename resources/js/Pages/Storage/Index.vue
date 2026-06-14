@@ -2,7 +2,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { readableTextColor } from '../../lib/contrast';
+import { usePageLoading } from '../../composables/usePageLoading';
+
+const { loading } = usePageLoading();
 
 const props = defineProps({
     summary: { type: Object, default: () => ({ used: 0, quota: 0 }) },
@@ -141,7 +145,8 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
             </span>
         </div>
 
-        <VibeRow class="g-3">
+        <LoadingSkeleton v-if="loading" :rows="8" :cols="4" />
+        <VibeRow v-show="!loading" class="g-3">
             <VibeCol :lg="8">
                 <div ref="box" class="treemap-box border rounded">
                     <template v-for="t in tiles" :key="t.node.id">

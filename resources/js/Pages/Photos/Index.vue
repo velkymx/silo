@@ -6,8 +6,11 @@ import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
 import { useConfirm } from '../../composables/useConfirm';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const { loading } = usePageLoading();
 
 const props = defineProps({
     photos: { type: Array, default: () => [] },
@@ -232,9 +235,10 @@ function saveEdit() {
         </VibeAlert>
 
         <!-- Timeline -->
-        <p v-if="!photos.length" class="text-muted text-center py-5">No photos yet. Upload some to get started.</p>
+        <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
+        <p v-else-if="!photos.length" class="text-muted text-center py-5">No photos yet. Upload some to get started.</p>
 
-        <div v-for="g in groups" :key="g.key" class="mb-4">
+        <div v-for="g in groups" v-show="!loading" :key="g.key" class="mb-4">
             <h6 class="text-muted border-bottom pb-1 mb-2">{{ g.label }}</h6>
             <div class="photo-grid">
                 <div

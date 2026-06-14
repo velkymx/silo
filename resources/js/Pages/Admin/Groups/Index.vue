@@ -2,9 +2,12 @@
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
+import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../../composables/useConfirm';
+import { usePageLoading } from '../../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const { loading } = usePageLoading();
 
 defineProps({
     groups: { type: Array, default: () => [] },
@@ -62,7 +65,9 @@ async function destroy(group) {
             </VibeCol>
         </VibeRow>
 
+        <LoadingSkeleton v-if="loading" :rows="5" :cols="3" />
         <VibeDataTable
+            v-else
             :items="groups"
             :columns="columns"
             row-key="id"

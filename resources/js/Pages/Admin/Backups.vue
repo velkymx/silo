@@ -2,9 +2,12 @@
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../composables/useConfirm';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const { loading } = usePageLoading();
 
 const props = defineProps({
     backups: { type: Array, default: () => [] },
@@ -112,7 +115,9 @@ onBeforeUnmount(() => clearInterval(poll));
 
             <VibeCol :lg="8">
                 <VibeCard header="Available backups">
+                    <LoadingSkeleton v-if="loading" :rows="5" :cols="4" />
                     <VibeDataTable
+                        v-else
                         :items="backups"
                         :columns="columns"
                         row-key="id"

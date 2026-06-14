@@ -1,9 +1,13 @@
 <script setup>
 import AppLayout from '../../../Layouts/AppLayout.vue';
+import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../../composables/usePageLoading';
 
 const props = defineProps({
     logs: { type: Array, default: () => [] },
 });
+
+const { loading } = usePageLoading();
 
 const columns = [
     { key: 'at', label: 'When' },
@@ -27,7 +31,9 @@ const variant = (action) => {
         <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
         <p class="text-muted small">{{ logs.length }} recent events.</p>
 
+        <LoadingSkeleton v-if="loading" :rows="8" :cols="6" />
         <VibeDataTable
+            v-else
             :items="logs"
             :columns="columns"
             row-key="id"
