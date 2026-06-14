@@ -16,6 +16,7 @@ function fakeTree(byUrl: Record<string, Node[]>) {
 describe('FolderTree (VSCode-style sidebar tree)', () => {
     beforeEach(() => {
         routerGet.mockClear();
+        httpGet.mockClear();
     });
 
     it('loads the root level and renders folders + files', async () => {
@@ -49,6 +50,42 @@ describe('FolderTree (VSCode-style sidebar tree)', () => {
 
         expect(httpGet).toHaveBeenCalledWith('/tree/1');
         expect(wrapper.text()).toContain('inside.pdf');
+    });
+
+    it('folder rows are keyboard-navigable treeitems', async () => {
+        fakeTree({
+            '/tree': [{ id: 1, name: 'Docs', parent_id: null, is_dir: true, type: '' }],
+            '/tree/1': [{ id: 3, name: 'inside.pdf', parent_id: 1, is_dir: false, type: 'pdf' }],
+        });
+        const wrapper = mount(FolderTree, { props: { folder: null } as any });
+        await flushPromises();
+
+        const row = wrapper.find('.vs-row.folder');
+        expect(row.attributes('role')).toBe('treeitem');
+        expect(row.attributes('tabindex')).toBe('0');
+        expect(row.attributes('aria-expanded')).toBe('false');
+
+        // Enter navigates into the folder.
+        await row.trigger('keydown.enter');
+        expect(routerGet).toHaveBeenCalledWith('/', { folder: 1 }, expect.anything());
+
+        // The twisty is a real focusable button.
+        expect(wrapper.find('button.vs-twisty').exists()).toBe(true);
+    });
+
+    it('Space toggles a folder open and lazily loads it', async () => {
+        fakeTree({
+            '/tree': [{ id: 1, name: 'Docs', parent_id: null, is_dir: true, type: '' }],
+            '/tree/1': [{ id: 3, name: 'inside.pdf', parent_id: 1, is_dir: false, type: 'pdf' }],
+        });
+        const wrapper = mount(FolderTree, { props: { folder: null } as any });
+        await flushPromises();
+
+        await wrapper.find('.vs-row.folder').trigger('keydown.space');
+        await flushPromises();
+        expect(httpGet).toHaveBeenCalledWith('/tree/1');
+        expect(wrapper.text()).toContain('inside.pdf');
+        expect(wrapper.find('.vs-row.folder').attributes('aria-expanded')).toBe('true');
     });
 
     it('clicking a file navigates with ?open=id', async () => {

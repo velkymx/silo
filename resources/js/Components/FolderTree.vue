@@ -112,11 +112,23 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
         class="vs-row folder"
         :class="{ active: folder.id === currentId }"
         :style="padFor(level, false)"
+        role="treeitem"
+        tabindex="0"
+        :aria-expanded="expanded"
+        :aria-label="folder.name"
         @click="onRow"
+        @keydown.enter.prevent="onRow"
+        @keydown.space.prevent="toggle()"
     >
-        <span class="vs-twisty" @click="toggle">
+        <button
+            type="button"
+            class="vs-twisty"
+            :aria-label="(expanded ? 'Collapse ' : 'Expand ') + folder.name"
+            @click="toggle"
+            @keydown.enter.stop.prevent="toggle()"
+        >
             <VibeIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" />
-        </span>
+        </button>
         <VibeIcon :icon="expanded ? 'folder2-open' : 'folder-fill'" class="vs-icon" :style="{ color: '#f59e0b' }" />
         <span class="text-truncate" :title="folder.name">{{ folder.name }}</span>
     </div>
@@ -136,7 +148,11 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
             :key="'f' + f.id"
             class="vs-row file"
             :style="padFor(isRoot ? 0 : level + 1, true)"
+            role="treeitem"
+            tabindex="0"
+            :aria-label="f.name"
             @click="openFile(f)"
+            @keydown.enter.prevent="openFile(f)"
         >
             <VibeIcon :icon="fileIcon(f.type)" class="vs-icon" :style="{ color: fileColor(f.type) }" />
             <span class="text-truncate" :title="f.name">{{ f.name }}</span>
@@ -171,10 +187,15 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
 .vs-twisty {
     width: 1rem;
     display: inline-flex;
+    align-items: center;
     justify-content: center;
     color: var(--bs-secondary-color);
     font-size: 0.7rem;
     flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    line-height: 1;
 }
 .vs-icon {
     flex-shrink: 0;
