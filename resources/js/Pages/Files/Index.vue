@@ -7,6 +7,7 @@ import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
+import { useBatchRename } from '../../composables/useBatchRename';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -285,30 +286,8 @@ function submitBatchMove() {
 
 // Batch rename (find/replace, prefix/suffix, sequential numbering).
 const batchRenameOpen = ref(false);
-const renameOpts = ref({ mode: 'replace', find: '', replace: '', text: '', position: 'before', base: '', start: 1, pad: 2 });
+const { renameOpts, renamePreview } = useBatchRename(selectedItems);
 
-function splitExt(name) {
-    const i = name.lastIndexOf('.');
-    return i > 0 ? [name.slice(0, i), name.slice(i)] : [name, ''];
-}
-function computeName(item, seq) {
-    const o = renameOpts.value;
-    const [stem, ext] = splitExt(item.name);
-    if (o.mode === 'replace') {
-        if (!o.find) return item.name;
-        return stem.split(o.find).join(o.replace) + ext;
-    }
-    if (o.mode === 'add') {
-        return (o.position === 'before' ? o.text + stem : stem + o.text) + ext;
-    }
-    // number
-    const n = String(o.start + seq).padStart(Math.max(1, o.pad), '0');
-    const base = o.base || stem;
-    return `${base}${n}${ext}`;
-}
-const renamePreview = computed(() =>
-    selectedItems.value.map((item, i) => ({ id: item.id, from: item.name, to: computeName(item, i) }))
-);
 function submitBatchRename() {
     const renames = renamePreview.value.map(({ id, to }) => ({ id, name: to }));
     router.post('/files/batch/rename', { renames }, {
