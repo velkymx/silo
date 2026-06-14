@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import { readableTextColor } from '../../lib/contrast';
 
 const props = defineProps({
     summary: { type: Object, default: () => ({ used: 0, quota: 0 }) },
@@ -163,7 +164,11 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
                             @click.stop="open(t.node)"
                             @mouseenter="hover = t.node"
                         >
-                            <span v-if="t.w > 50 && t.h > 20" class="tm-file-label">{{ t.node.name }}</span>
+                            <span
+                                v-if="t.w > 50 && t.h > 20"
+                                class="tm-file-label"
+                                :style="{ color: readableTextColor(colorFor(t.node.category)) }"
+                            >{{ t.node.name }}</span>
                         </div>
                     </template>
                     <div v-if="!tiles.length" class="text-muted d-flex align-items-center justify-content-center h-100">
@@ -231,12 +236,10 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
     filter: brightness(1.15);
 }
 .tm-file-label {
-    color: #fff;
     font-size: 0.68rem;
     padding: 1px 3px;
     display: block;
     white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
 }
 .legend-dot {
     display: inline-block;
