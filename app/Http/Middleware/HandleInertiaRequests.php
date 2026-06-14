@@ -53,6 +53,14 @@ class HandleInertiaRequests extends Middleware
             'storage' => fn () => $request->user()
                 ? app(\App\Services\QuotaService::class)->summary($request->user()->id)
                 : null,
+            // The folder tree, shared so the sidebar FOLDERS section is identical on every route.
+            'folders' => fn () => $request->user()
+                ? \App\Models\File::where('owner_id', $request->user()->id)
+                    ->where('is_dir', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'parent_id'])
+                : [],
+            'currentFolder' => fn () => $request->integer('folder') ?: null,
         ];
     }
 }

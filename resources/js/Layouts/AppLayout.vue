@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
+import FolderTree from '../Components/FolderTree.vue';
 
 const { isMobile } = useBreakpoints();
 const mobileNavOpen = ref(false);
@@ -15,6 +16,23 @@ function toggleSidebar() {
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
 const flash = computed(() => page.props.flash ?? {});
+
+// Shared folder tree (consistent on every route).
+const folders = computed(() => page.props.folders ?? []);
+const currentFolder = computed(() => page.props.currentFolder ?? null);
+const ancestorIds = computed(() => {
+    const byId = new Map(folders.value.map((f) => [f.id, f]));
+    const ids = new Set();
+    let id = currentFolder.value;
+    while (id && byId.has(id)) {
+        ids.add(id);
+        id = byId.get(id).parent_id;
+    }
+    return ids;
+});
+function goFolder(id) {
+    router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
+}
 
 // Shared storage meter (consistent on every page).
 const storage = computed(() => page.props.storage ?? null);
@@ -144,6 +162,17 @@ function onUserMenu({ item }) {
                 </template>
 
                 <div class="pt-3 flex-grow-1 overflow-auto">
+                    <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Folders</div>
+                    <VibeButton
+                        variant="link"
+                        class="p-0 text-decoration-none mb-1 d-block px-1"
+                        :class="!currentFolder ? 'fw-bold' : 'text-body'"
+                        @click="goFolder(null)"
+                    >
+                        <VibeIcon icon="house-door-fill" class="me-1" />Home
+                    </VibeButton>
+                    <FolderTree :folders="folders" :current-id="currentFolder" :open-ids="ancestorIds" />
+
                     <slot name="sidebar" />
                 </div>
 

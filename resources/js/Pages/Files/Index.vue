@@ -850,17 +850,6 @@ onBeforeUnmount(() => {
         </template>
 
         <template #sidebar>
-            <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Folders</div>
-            <VibeButton
-                variant="link"
-                class="p-0 text-decoration-none mb-1 d-block px-1"
-                :class="!current ? 'fw-bold' : 'text-body'"
-                @click="visitFolder(null)"
-            >
-                <VibeIcon icon="house-door-fill" class="me-1" />Home
-            </VibeButton>
-            <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
-
             <template v-if="allTags.length">
                 <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Tags</div>
                 <div class="d-flex flex-wrap gap-1 px-1">
