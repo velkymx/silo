@@ -11,6 +11,8 @@ use App\Services\QuotaService;
 use App\Support\FileResponse;
 use App\Support\Uploads;
 use Illuminate\Http\Request;
+use Closure;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -218,8 +220,6 @@ class FileController extends Controller
         if (! pathinfo($name, PATHINFO_EXTENSION)) {
             $name .= '.md';
         }
-        $this->assertNoCollision($parent?->id, $name, $userId);
-
         $content = (string) $request->input('content');
         if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
             throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
@@ -231,18 +231,22 @@ class FileController extends Controller
         }
         Storage::disk($disk)->put($path, $content);
 
-        $file = File::create([
-            'name' => $name,
-            'path' => $path,
-            'disk' => $disk,
-            'is_dir' => false,
-            'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
-            'size' => strlen($content),
-            'hash' => hash('sha256', $content),
-            'status' => File::STATUS_PENDING,
-            'parent_id' => $parent?->id,
-            'owner_id' => $userId,
-        ]);
+        $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $content, $parent, $userId) {
+            $this->assertNoCollision($parent?->id, $name, $userId);
+
+            return File::create([
+                'name' => $name,
+                'path' => $path,
+                'disk' => $disk,
+                'is_dir' => false,
+                'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
+                'size' => strlen($content),
+                'hash' => hash('sha256', $content),
+                'status' => File::STATUS_PENDING,
+                'parent_id' => $parent?->id,
+                'owner_id' => $userId,
+            ]);
+        });
 
         ProcessUploadedFile::dispatch($file->id);
         Audit::log('file.create', $file);
@@ -294,8 +298,6 @@ class FileController extends Controller
         if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== $type) {
             $name .= '.'.$type;
         }
-        $this->assertNoCollision($parent?->id, $name, $userId);
-
         $bytes = $request->file('file')->get();
         if (app(QuotaService::class)->wouldExceed($userId, strlen($bytes))) {
             throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
@@ -304,18 +306,22 @@ class FileController extends Controller
         $path = "uploads/{$userId}/".Str::random(40).'.'.$type;
         Storage::disk($disk)->put($path, $bytes);
 
-        $file = File::create([
-            'name' => $name,
-            'path' => $path,
-            'disk' => $disk,
-            'is_dir' => false,
-            'mime' => self::NEW_DOC_TYPES[$type],
-            'size' => strlen($bytes),
-            'hash' => hash('sha256', $bytes),
-            'status' => File::STATUS_PENDING,
-            'parent_id' => $parent?->id,
-            'owner_id' => $userId,
-        ]);
+        $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $type, $bytes, $parent, $userId) {
+            $this->assertNoCollision($parent?->id, $name, $userId);
+
+            return File::create([
+                'name' => $name,
+                'path' => $path,
+                'disk' => $disk,
+                'is_dir' => false,
+                'mime' => self::NEW_DOC_TYPES[$type],
+                'size' => strlen($bytes),
+                'hash' => hash('sha256', $bytes),
+                'status' => File::STATUS_PENDING,
+                'parent_id' => $parent?->id,
+                'owner_id' => $userId,
+            ]);
+        });
 
         ProcessUploadedFile::dispatch($file->id);
         Audit::log('file.create', $file);
@@ -779,16 +785,18 @@ class FileController extends Controller
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
         $name = trim((string) $request->string('folder_name'));
 
-        $this->assertNoCollision($parent?->id, $name, $userId);
+        $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId) {
+            $this->assertNoCollision($parent?->id, $name, $userId);
 
-        File::create([
-            'name' => $name,
-            'path' => $name, // informational only; folders have no disk directory
-            'disk' => config('filemanager.disk'),
-            'is_dir' => true,
-            'parent_id' => $parent?->id,
-            'owner_id' => $userId,
-        ]);
+            File::create([
+                'name' => $name,
+                'path' => $name, // informational only; folders have no disk directory
+                'disk' => config('filemanager.disk'),
+                'is_dir' => true,
+                'parent_id' => $parent?->id,
+                'owner_id' => $userId,
+            ]);
+        });
 
         return redirect()->route('files.index', ['folder' => $parent?->id])
             ->with('success', "Folder '{$name}' created successfully!");
@@ -802,9 +810,10 @@ class FileController extends Controller
         $request->validate(['name' => 'required|string|max:255']);
         $name = trim((string) $request->string('name'));
 
-        $this->assertNoCollision($file->parent_id, $name, $file->owner_id, $file->id);
-
-        $file->update(['name' => $name]);
+        $this->withFolderLock($file->owner_id, $file->parent_id, function () use ($file, $name) {
+            $this->assertNoCollision($file->parent_id, $name, $file->owner_id, $file->id);
+            $file->update(['name' => $name]);
+        });
 
         return back()->with('success', 'Renamed successfully!');
     }
@@ -823,9 +832,10 @@ class FileController extends Controller
             ]);
         }
 
-        $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
-
-        $file->update(['parent_id' => $target?->id]);
+        $this->withFolderLock($file->owner_id, $target?->id, function () use ($file, $target) {
+            $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
+            $file->update(['parent_id' => $target?->id]);
+        });
 
         return redirect()->route('files.index', ['folder' => $target?->id])
             ->with('success', 'Moved successfully!');
@@ -845,9 +855,10 @@ class FileController extends Controller
             ]);
         }
 
-        $name = $this->uniqueName($target?->id, $file->name, $file->owner_id);
-
-        DB::transaction(fn () => $this->copyNode($file, $target?->id, $name));
+        $this->withFolderLock($file->owner_id, $target?->id, function () use ($file, $target) {
+            $name = $this->uniqueName($target?->id, $file->name, $file->owner_id);
+            DB::transaction(fn () => $this->copyNode($file, $target?->id, $name));
+        });
 
         return redirect()->route('files.index', ['folder' => $target?->id])
             ->with('success', 'Copied successfully!');
@@ -1020,6 +1031,18 @@ class FileController extends Controller
     }
 
     // Produce a non-colliding name by appending "(copy)" / "(copy N)".
+    /**
+     * Serialize name-sensitive writes (create/copy/rename/move) within one
+     * folder so concurrent requests can't both pass the uniqueness check and
+     * insert a duplicate. Uses an atomic cross-process cache lock.
+     */
+    protected function withFolderLock(int $ownerId, ?int $parentId, Closure $callback): mixed
+    {
+        $key = "file-write:{$ownerId}:".($parentId ?? 'root');
+
+        return Cache::lock($key, 10)->block(5, $callback);
+    }
+
     protected function uniqueName(?int $parentId, string $name, int $ownerId): string
     {
         $base = $name;
