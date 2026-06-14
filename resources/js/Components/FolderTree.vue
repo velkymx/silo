@@ -1,28 +1,41 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
-const props = defineProps({
+interface TreeNode {
+    id: number;
+    name: string;
+    parent_id: number | null;
+    is_dir: boolean;
+    type: string;
+}
+
+const props = withDefaults(defineProps<{
     // The folder node, or null for the synthetic root (renders no row).
-    folder: { type: Object, default: null },
-    level: { type: Number, default: 0 },
-    currentId: { type: Number, default: null },
-    revealIds: { type: Object, default: () => new Set() },
+    folder?: TreeNode | null;
+    level?: number;
+    currentId?: number | null;
+    revealIds?: Set<number>;
+}>(), {
+    folder: null,
+    level: 0,
+    currentId: null,
+    revealIds: () => new Set<number>(),
 });
 
 const isRoot = props.folder === null;
 const expanded = ref(isRoot);
 const loaded = ref(false);
 const loading = ref(false);
-const children = ref([]);
+const children = ref<TreeNode[]>([]);
 
-async function load() {
+async function load(): Promise<void> {
     if (loaded.value || loading.value) return;
     loading.value = true;
     try {
-        const url = isRoot ? '/tree' : `/tree/${props.folder.id}`;
+        const url = isRoot ? '/tree' : `/tree/${props.folder!.id}`;
         const { data } = await window.axios.get(url);
-        children.value = data;
+        children.value = data as TreeNode[];
         loaded.value = true;
     } finally {
         loading.value = false;
@@ -30,35 +43,34 @@ async function load() {
 }
 
 onMounted(() => {
-    if (isRoot || props.revealIds.has(props.folder?.id)) { expanded.value = true; load(); }
+    if (isRoot || (props.folder && props.revealIds.has(props.folder.id))) { expanded.value = true; load(); }
 });
 
 watch(() => props.revealIds, (ids) => {
-    if (!isRoot && ids.has(props.folder.id) && !expanded.value) { expanded.value = true; load(); }
+    if (!isRoot && props.folder && ids.has(props.folder.id) && !expanded.value) { expanded.value = true; load(); }
 });
 
-function toggle(e) {
+function toggle(e?: Event): void {
     e?.stopPropagation();
     expanded.value = !expanded.value;
     if (expanded.value) load();
 }
-function onRow() {
+function onRow(): void {
     if (!expanded.value) { expanded.value = true; load(); }
-    router.get('/', { folder: props.folder.id }, { preserveScroll: true });
+    router.get('/', { folder: props.folder!.id }, { preserveScroll: true });
 }
-function openFile(node) {
+function openFile(node: TreeNode): void {
     router.get('/', { ...(node.parent_id ? { folder: node.parent_id } : {}), open: node.id }, { preserveScroll: true });
 }
 
-const folders = () => children.value.filter((c) => c.is_dir);
-const files = () => children.value.filter((c) => !c.is_dir);
-const hasChildren = ref(true); // assume expandable until proven empty after load
+const folders = (): TreeNode[] => children.value.filter((c) => c.is_dir);
+const files = (): TreeNode[] => children.value.filter((c) => !c.is_dir);
 
 const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
 const videoTypes = ['mp4', 'mov', 'webm', 'mkv'];
 const audioTypes = ['mp3', 'wav', 'flac', 'ogg'];
 
-const fileIcon = (type) => {
+const fileIcon = (type: string): string => {
     if (imageTypes.includes(type)) return 'file-earmark-image';
     if (type === 'pdf') return 'file-earmark-pdf';
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return 'file-earmark-zip';
@@ -70,7 +82,7 @@ const fileIcon = (type) => {
     return 'file-earmark';
 };
 // Match the datagrid icon colors (Files Index colorFor).
-const fileColor = (type) => {
+const fileColor = (type: string): string => {
     if (imageTypes.includes(type)) return '#10b981';
     if (type === 'pdf') return '#ef4444';
     if (videoTypes.includes(type)) return '#6366f1';
@@ -80,13 +92,13 @@ const fileColor = (type) => {
     if (['doc', 'docx', 'odt', 'rtf', 'md', 'markdown', 'txt', 'log'].includes(type)) return '#3b82f6';
     return '#6b7280';
 };
-const padFor = (lvl, leaf) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 0)) + 'rem' });
+const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 0)) + 'rem' });
 </script>
 
 <template>
     <!-- A folder's own row -->
     <div
-        v-if="!isRoot"
+        v-if="folder"
         class="vs-row folder"
         :class="{ active: folder.id === currentId }"
         :style="padFor(level, false)"
