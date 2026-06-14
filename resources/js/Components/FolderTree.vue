@@ -41,12 +41,12 @@ function onDrop({ payload }, folderId) {
 </script>
 
 <template>
-    <ul class="folder-tree list-unstyled mb-0">
-        <li v-for="child in children" :key="child.id">
+    <ul class="folder-tree nav nav-pills flex-column list-unstyled mb-0">
+        <li v-for="child in children" :key="child.id" class="nav-item">
             <VibeDroppable group="files" tag="div" @drop="onDrop($event, child.id)">
                 <template #default="drop">
                     <div
-                        class="ft-row d-flex align-items-center"
+                        class="ft-row nav-link d-flex align-items-center"
                         :class="{ active: child.id === currentId, 'drop-over': drop && drop.isOver }"
                         @click="go(child.id)"
                     >
@@ -82,21 +82,13 @@ function onDrop({ payload }, folderId) {
 </template>
 
 <style scoped>
+/* Row uses Bootstrap .nav-pills .nav-link (+ .active) styling for consistency
+   with the rest of the sidebar; only tighten the padding for a tree feel. */
 .ft-row {
-    padding: 0.25rem 0.4rem;
-    border-radius: 0.375rem;
+    padding: 0.3rem 0.5rem;
     cursor: pointer;
     user-select: none;
     font-size: 0.9rem;
-    line-height: 1.4;
-}
-.ft-row:hover {
-    background: var(--bs-secondary-bg);
-}
-.ft-row.active {
-    background: var(--bs-primary-bg-subtle);
-    color: var(--bs-primary-text-emphasis);
-    font-weight: 600;
 }
 .ft-row.drop-over {
     outline: 2px dashed var(--bs-primary);
