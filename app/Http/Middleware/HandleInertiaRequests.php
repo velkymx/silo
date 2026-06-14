@@ -61,6 +61,11 @@ class HandleInertiaRequests extends Middleware
                     ->get(['id', 'name', 'parent_id'])
                 : [],
             'currentFolder' => fn () => $request->integer('folder') ?: null,
+            // Saved searches (smart folders) for the sidebar.
+            'savedSearches' => fn () => $request->user()
+                ? \App\Models\SavedSearch::where('owner_id', $request->user()->id)
+                    ->orderBy('name')->get(['id', 'name', 'params'])
+                : [],
         ];
     }
 }

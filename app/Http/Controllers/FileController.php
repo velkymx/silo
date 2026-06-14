@@ -35,6 +35,7 @@ class FileController extends Controller
             : 'name';
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
         $searching = $request->filled('search');
+        $advanced = $request->hasAny(['date_from', 'date_to', 'size_min', 'size_max', 'ftype']);
         $starredOnly = $request->boolean('starred');
         $recentOnly = $request->boolean('recent');
         $activeTag = $request->filled('tag')
@@ -51,7 +52,13 @@ class FileController extends Controller
         // payload bounded on very large result sets.
         $cap = 1000;
 
-        if ($searching) {
+        if ($advanced) {
+            // Structured (Gmail-style) search: text + date range + size + type + tag.
+            $folders = collect();
+            $files = $this->advancedQuery($request, $userId, $activeTag)
+                ->with(['versions', 'tags'])->latest('created_at')->limit($cap)->get()
+                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
+        } elseif ($searching) {
             // Full-text search (Scout) spans every folder the user owns.
             $folders = collect();
             $files = File::search($request->string('search')->toString())
@@ -97,10 +104,11 @@ class FileController extends Controller
             'files' => $files->values(),
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
-            'searching' => $searching,
+            'searching' => $searching || $advanced,
+            'advanced' => $advanced,
             'starredOnly' => $starredOnly,
             'recentOnly' => $recentOnly,
-            'flat' => $searching || (bool) $activeTag || $starredOnly || $recentOnly,
+            'flat' => $searching || $advanced || (bool) $activeTag || $starredOnly || $recentOnly,
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
             // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
@@ -111,8 +119,63 @@ class FileController extends Controller
                 'search' => $request->string('search')->toString(),
                 'sort' => $sort,
                 'direction' => $direction,
+                'date_from' => $request->string('date_from')->toString() ?: null,
+                'date_to' => $request->string('date_to')->toString() ?: null,
+                'size_min' => $request->input('size_min'),
+                'size_max' => $request->input('size_max'),
+                'ftype' => $request->string('ftype')->toString() ?: null,
             ],
         ]);
+    }
+
+    // File-type categories for advanced search → extension / mime matchers.
+    private const TYPE_FILTERS = [
+        'image' => ['mime' => 'image/%'],
+        'video' => ['mime' => 'video/%'],
+        'audio' => ['mime' => 'audio/%'],
+        'pdf' => ['ext' => ['pdf']],
+        'document' => ['ext' => ['doc', 'docx', 'txt', 'md', 'rtf', 'odt']],
+        'spreadsheet' => ['ext' => ['xls', 'xlsx', 'csv', 'ods']],
+        'archive' => ['ext' => ['zip', 'rar', '7z', 'tar', 'gz']],
+    ];
+
+    private function advancedQuery(Request $request, int $userId, ?Tag $activeTag)
+    {
+        $q = File::query()->where('owner_id', $userId)->where('is_dir', false);
+
+        if ($request->filled('search')) {
+            $term = $request->string('search')->toString();
+            $q->where('name', 'like', "%{$term}%");
+        }
+        if ($request->filled('date_from')) {
+            $q->whereDate('created_at', '>=', $request->date('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $q->whereDate('created_at', '<=', $request->date('date_to'));
+        }
+        if ($request->filled('size_min')) {
+            $q->where('size', '>=', (int) ($request->float('size_min') * 1024 * 1024));
+        }
+        if ($request->filled('size_max')) {
+            $q->where('size', '<=', (int) ($request->float('size_max') * 1024 * 1024));
+        }
+        if ($activeTag) {
+            $q->whereHas('tags', fn ($t) => $t->where('tags.id', $activeTag->id));
+        }
+        if ($request->filled('ftype') && isset(self::TYPE_FILTERS[$request->string('ftype')->toString()])) {
+            $rule = self::TYPE_FILTERS[$request->string('ftype')->toString()];
+            if (isset($rule['mime'])) {
+                $q->where('mime', 'like', $rule['mime']);
+            } else {
+                $q->where(function ($sub) use ($rule) {
+                    foreach ($rule['ext'] as $ext) {
+                        $sub->orWhere('name', 'like', "%.{$ext}");
+                    }
+                });
+            }
+        }
+
+        return $q;
     }
 
     // Create a new text/markdown file from editor content.

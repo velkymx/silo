@@ -92,6 +92,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/files/batch/folder', [FileController::class, 'batchFolder'])->name('files.batch.folder');
     Route::post('/files/batch/rename', [FileController::class, 'batchRename'])->name('files.batch.rename');
 
+    Route::post('/saved-searches', [\App\Http\Controllers\SavedSearchController::class, 'store'])->name('saved-searches.store');
+    Route::delete('/saved-searches/{savedSearch}', [\App\Http\Controllers\SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
+
     Route::post('/folders', [FileController::class, 'createFolder'])->name('folders.create');
     Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
 });

@@ -34,6 +34,17 @@ function goFolder(id) {
     router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
 }
 
+// Smart folders (saved searches).
+const savedSearches = computed(() => page.props.savedSearches ?? []);
+function runSavedSearch(s) {
+    router.get('/', s.params || {});
+}
+function deleteSavedSearch(s) {
+    if (confirm(`Remove smart folder "${s.name}"?`)) {
+        router.delete(`/saved-searches/${s.id}`, { preserveScroll: true });
+    }
+}
+
 // Shared storage meter (consistent on every page).
 const storage = computed(() => page.props.storage ?? null);
 const storagePct = computed(() =>
@@ -172,6 +183,18 @@ function onUserMenu({ item }) {
                         <VibeIcon icon="house-door-fill" class="me-1" />Home
                     </VibeButton>
                     <FolderTree :folders="folders" :current-id="currentFolder" :open-ids="ancestorIds" />
+
+                    <template v-if="savedSearches.length">
+                        <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Smart Folders</div>
+                        <div v-for="s in savedSearches" :key="s.id" class="d-flex align-items-center px-1 py-1 saved-search">
+                            <VibeButton variant="link" class="p-0 text-decoration-none text-truncate text-body flex-grow-1 text-start" @click="runSavedSearch(s)">
+                                <VibeIcon icon="funnel-fill" class="text-primary me-1" />{{ s.name }}
+                            </VibeButton>
+                            <VibeButton variant="link" size="sm" class="p-0 text-muted del-btn" title="Remove" @click.stop="deleteSavedSearch(s)">
+                                <VibeIcon icon="x" />
+                            </VibeButton>
+                        </div>
+                    </template>
 
                     <slot name="sidebar" />
                 </div>
