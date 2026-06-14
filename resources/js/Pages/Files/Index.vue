@@ -8,14 +8,13 @@ import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
 import UploadModal from '../../Components/UploadModal.vue';
 import ShareModal from '../../Components/ShareModal.vue';
-import MarkdownEditor from '../../Components/MarkdownEditor.vue';
+import EditorModal from '../../Components/EditorModal.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
-import { getText } from '../../lib/http';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -128,11 +127,7 @@ const htmlTypes = ['html', 'htm'];
 const editOpen = ref(false);
 const editItem = ref(null);
 const editKind = ref('markdown');
-const editContent = ref('');
-const editLoading = ref(false);
-const editSaving = ref(false);
 const editCreating = ref(false);
-const editName = ref('');
 
 function isEditable(item) {
     return !item.is_dir && (
@@ -157,38 +152,14 @@ async function openEditor(item) {
     editItem.value = item;
     editCreating.value = false;
     editKind.value = htmlTypes.includes(item.type) ? 'html' : 'markdown';
-    editContent.value = '';
-    editLoading.value = true;
     editOpen.value = true;
-    try {
-        editContent.value = await getText(`/raw/${item.id}`);
-    } finally {
-        editLoading.value = false;
-    }
 }
 
 function openNewMarkdown() {
     editItem.value = null;
     editCreating.value = true;
     editKind.value = 'markdown';
-    editName.value = 'untitled.md';
-    editContent.value = '';
-    editLoading.value = false;
     editOpen.value = true;
-}
-
-function saveEdit() {
-    editSaving.value = true;
-    const done = {
-        preserveScroll: true,
-        onSuccess: () => { editOpen.value = false; },
-        onFinish: () => { editSaving.value = false; },
-    };
-    if (editCreating.value) {
-        router.post('/files/text', { name: editName.value, content: editContent.value, parent_id: currentId.value }, done);
-    } else {
-        router.put(`/files/${editItem.value.id}/content`, { content: editContent.value }, done);
-    }
 }
 
 const newMenu = [
@@ -786,28 +757,7 @@ onBeforeUnmount(() => {
         </VibeDataTable>
 
         <!-- Editor modal -->
-        <VibeModal
-            v-model="editOpen"
-            :title="editCreating ? 'New Markdown file' : `Edit — ${editItem?.name || ''}`"
-            fullscreen
-        >
-            <div v-if="editLoading" class="text-center py-5 text-muted">
-                <VibeSpinner class="me-2" />Loading…
-            </div>
-            <template v-else>
-                <VibeFormGroup v-if="editCreating" label="File name" class="mb-3">
-                    <VibeFormInput v-model="editName" placeholder="untitled.md" />
-                </VibeFormGroup>
-                <MarkdownEditor v-if="editKind === 'markdown'" v-model="editContent" />
-                <VibeFormWysiwyg v-else v-model="editContent" height="60vh" />
-            </template>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="editOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="editSaving || editLoading" @click="saveEdit">
-                    <VibeIcon icon="save" class="me-1" />{{ editCreating ? 'Create' : 'Save' }}
-                </VibeButton>
-            </template>
-        </VibeModal>
+        <EditorModal v-model="editOpen" :item="editItem" :creating="editCreating" :kind="editKind" :parent-id="currentId" />
 
         <!-- Details modal -->
         <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
