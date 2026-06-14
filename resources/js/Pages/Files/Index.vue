@@ -732,18 +732,6 @@ onBeforeUnmount(() => {
             </VibeButton>
             <FolderTree :folders="allFolders" :current-id="currentId" :open-ids="ancestorIds" />
 
-            <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Storage</div>
-            <div class="px-1">
-                <template v-if="storage.quota > 0">
-                    <VibeProgress :bars="storageBars" class="mb-1" />
-                    <div class="small text-muted">
-                        {{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)
-                    </div>
-                </template>
-                <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
-                <a href="/profile" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/profile')">Manage storage</a>
-            </div>
-
             <template v-if="allTags.length">
                 <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Tags</div>
                 <div class="d-flex flex-wrap gap-1 px-1">
@@ -760,6 +748,20 @@ onBeforeUnmount(() => {
                     >{{ tag.name }}</span>
                 </div>
             </template>
+        </template>
+
+        <template #sidebar-bottom>
+            <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Storage</div>
+            <div class="px-1">
+                <template v-if="storage.quota > 0">
+                    <VibeProgress :bars="storageBars" class="mb-1" />
+                    <div class="small text-muted">
+                        {{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)
+                    </div>
+                </template>
+                <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
+                <a href="/profile" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/profile')">Manage storage</a>
+            </div>
         </template>
 
         <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
@@ -1271,33 +1273,40 @@ onBeforeUnmount(() => {
 
         <!-- Upload modal -->
         <VibeModal v-model="uploadOpen" title="Upload Files" fullscreen>
-            <form @submit.prevent="submitUpload">
-                <VibeFileInput
-                    v-model="uploadFiles"
-                    label="Choose Files"
-                    multiple
-                    drag-drop
-                    :max-size="maxUploadBytes"
-                    :help-text="`Up to ${maxUploadLabel} per file.`"
-                />
-                <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">
-                    {{ uploadForm.errors['files.0'] }}
-                </p>
-                <VibeProgress
-                    v-if="uploadForm.progress"
-                    :bars="[{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }]"
-                    class="my-3"
-                />
-            </form>
+            <div class="mx-auto" style="max-width: 640px">
+                <form @submit.prevent="submitUpload">
+                    <VibeFileInput
+                        v-model="uploadFiles"
+                        label="Choose Files"
+                        multiple
+                        drag-drop
+                        :max-size="maxUploadBytes"
+                        :help-text="`Up to ${maxUploadLabel} per file.`"
+                    />
+                    <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-2">
+                        {{ uploadForm.errors['files.0'] }}
+                    </p>
+                    <p v-if="uploadFiles.length" class="text-muted small mt-2 mb-0">
+                        {{ uploadFiles.length }} file{{ uploadFiles.length === 1 ? '' : 's' }} ready to upload.
+                    </p>
+                    <VibeProgress
+                        v-if="uploadForm.progress"
+                        :bars="[{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }]"
+                        class="mt-3"
+                    />
+                </form>
+            </div>
             <template #footer>
-                <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
-                <VibeButton
-                    variant="success"
-                    :disabled="uploadForm.processing || !uploadFiles.length"
-                    @click="submitUpload"
-                >
-                    Upload
-                </VibeButton>
+                <div class="d-flex justify-content-center gap-2 w-100">
+                    <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
+                    <VibeButton
+                        variant="primary"
+                        :disabled="uploadForm.processing || !uploadFiles.length"
+                        @click="submitUpload"
+                    >
+                        <VibeIcon icon="upload" class="me-1" />Upload{{ uploadFiles.length ? ` ${uploadFiles.length}` : '' }}
+                    </VibeButton>
+                </div>
             </template>
         </VibeModal>
 

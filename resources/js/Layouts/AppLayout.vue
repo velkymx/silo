@@ -128,6 +128,11 @@ function onUserMenu({ item }) {
                 <div class="pt-3 flex-grow-1 overflow-auto">
                     <slot name="sidebar" />
                 </div>
+
+                <!-- Pinned to the bottom of the sidebar (e.g. storage meter). -->
+                <div v-if="$slots['sidebar-bottom']" class="pt-3 mt-2 border-top">
+                    <slot name="sidebar-bottom" />
+                </div>
             </aside>
 
             <!-- Content -->
