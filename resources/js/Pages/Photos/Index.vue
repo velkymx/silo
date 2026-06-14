@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
@@ -72,6 +72,14 @@ function step(d) {
 function jumpTo(i) {
     slide.value = i;
 }
+
+// Keep the active filmstrip thumbnail scrolled into view (never off-screen).
+const filmstripEl = ref(null);
+watch(slide, async () => {
+    await nextTick();
+    const el = filmstripEl.value?.children?.[slide.value];
+    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+});
 
 function star(p) {
     router.post(`/files/${p.id}/star`, {}, { preserveScroll: true, preserveState: false });
@@ -301,7 +309,7 @@ function saveEdit() {
             </div>
 
             <!-- Thumbnail filmstrip -->
-            <div class="filmstrip">
+            <div ref="filmstripEl" class="filmstrip">
                 <img
                     v-for="(p, i) in photos"
                     :key="p.id"
@@ -447,7 +455,8 @@ function saveEdit() {
     gap: 6px;
     overflow-x: auto;
     padding: 10px 4px 2px;
-    justify-content: center;
+    justify-content: safe center;
+    scroll-padding-inline: 50%;
 }
 .film-thumb {
     width: 64px;
