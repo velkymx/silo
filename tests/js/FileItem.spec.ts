@@ -34,6 +34,8 @@ describe('FileItem', () => {
         expect(wrapper.text()).toContain('photo.png');
         expect(wrapper.text()).toContain('Processing');
         expect(wrapper.text()).toContain('v3');
+        // Truncated name keeps the full name in a title tooltip.
+        expect(wrapper.find('span.text-truncate').attributes('title')).toBe('photo.png');
     });
 
     it('list view emits tag + toggle-select', async () => {

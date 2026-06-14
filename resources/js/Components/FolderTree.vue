@@ -118,7 +118,7 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
             <VibeIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" />
         </span>
         <VibeIcon :icon="expanded ? 'folder2-open' : 'folder-fill'" class="vs-icon" :style="{ color: '#f59e0b' }" />
-        <span class="text-truncate">{{ folder.name }}</span>
+        <span class="text-truncate" :title="folder.name">{{ folder.name }}</span>
     </div>
 
     <!-- Children (lazy) -->
@@ -139,7 +139,7 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
             @click="openFile(f)"
         >
             <VibeIcon :icon="fileIcon(f.type)" class="vs-icon" :style="{ color: fileColor(f.type) }" />
-            <span class="text-truncate">{{ f.name }}</span>
+            <span class="text-truncate" :title="f.name">{{ f.name }}</span>
         </div>
         <div v-if="loading" class="vs-row text-muted" :style="padFor(isRoot ? 0 : level + 1, true)">
             <VibeSpinner size="sm" class="me-2" />Loading…

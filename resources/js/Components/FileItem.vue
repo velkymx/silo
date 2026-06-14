@@ -96,7 +96,7 @@ const emit = defineEmits<{
                             />
                             <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
                             <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="me-2 fs-4 flex-shrink-0" :style="{ color: colorFor(item) }" />
-                            <span class="text-truncate">{{ item.name }}</span>
+                            <span class="text-truncate" :title="item.name">{{ item.name }}</span>
                             <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
                             <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
                             <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
