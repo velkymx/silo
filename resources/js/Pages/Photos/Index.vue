@@ -439,6 +439,30 @@ function saveEdit() {
 /* Lightbox nav + filmstrip */
 .lightbox-stage {
     position: relative;
+    height: calc(100vh - 220px); /* leave room for header + filmstrip */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+/* Cap the carousel image to the stage so it never pushes the filmstrip off-screen. */
+.lightbox-stage :deep(.carousel),
+.lightbox-stage :deep(.carousel-inner),
+.lightbox-stage :deep(.carousel-item) {
+    height: 100%;
+    width: 100%;
+}
+.lightbox-stage :deep(.carousel-item) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-stage :deep(.carousel-item img) {
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin: 0 auto;
 }
 .nav-btn {
     position: absolute;
@@ -466,6 +490,8 @@ function saveEdit() {
     padding: 10px 4px 2px;
     justify-content: safe center;
     scroll-padding-inline: 50%;
+    height: 92px;
+    flex-shrink: 0;
 }
 .film-thumb {
     width: 64px;

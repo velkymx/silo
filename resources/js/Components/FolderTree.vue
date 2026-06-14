@@ -54,16 +54,31 @@ const folders = () => children.value.filter((c) => c.is_dir);
 const files = () => children.value.filter((c) => !c.is_dir);
 const hasChildren = ref(true); // assume expandable until proven empty after load
 
+const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+const videoTypes = ['mp4', 'mov', 'webm', 'mkv'];
+const audioTypes = ['mp3', 'wav', 'flac', 'ogg'];
+
 const fileIcon = (type) => {
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(type)) return 'file-earmark-image';
+    if (imageTypes.includes(type)) return 'file-earmark-image';
     if (type === 'pdf') return 'file-earmark-pdf';
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return 'file-earmark-zip';
     if (['xls', 'xlsx', 'csv', 'ods'].includes(type)) return 'file-earmark-spreadsheet';
     if (['doc', 'docx', 'odt', 'rtf'].includes(type)) return 'file-earmark-word';
     if (['md', 'markdown', 'txt', 'log'].includes(type)) return 'file-earmark-text';
-    if (['mp4', 'mov', 'webm', 'mkv'].includes(type)) return 'file-earmark-play';
-    if (['mp3', 'wav', 'flac', 'ogg'].includes(type)) return 'file-earmark-music';
+    if (videoTypes.includes(type)) return 'file-earmark-play';
+    if (audioTypes.includes(type)) return 'file-earmark-music';
     return 'file-earmark';
+};
+// Match the datagrid icon colors (Files Index colorFor).
+const fileColor = (type) => {
+    if (imageTypes.includes(type)) return '#10b981';
+    if (type === 'pdf') return '#ef4444';
+    if (videoTypes.includes(type)) return '#6366f1';
+    if (audioTypes.includes(type)) return '#ec4899';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return '#f59e0b';
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(type)) return '#22c55e';
+    if (['doc', 'docx', 'odt', 'rtf', 'md', 'markdown', 'txt', 'log'].includes(type)) return '#3b82f6';
+    return '#6b7280';
 };
 const padFor = (lvl, leaf) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 0)) + 'rem' });
 </script>
@@ -80,7 +95,7 @@ const padFor = (lvl, leaf) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 
         <span class="vs-twisty" @click="toggle">
             <VibeIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" />
         </span>
-        <VibeIcon :icon="expanded ? 'folder2-open' : 'folder-fill'" class="vs-icon text-warning" />
+        <VibeIcon :icon="expanded ? 'folder2-open' : 'folder-fill'" class="vs-icon" :style="{ color: '#f59e0b' }" />
         <span class="text-truncate">{{ folder.name }}</span>
     </div>
 
@@ -101,7 +116,7 @@ const padFor = (lvl, leaf) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 
             :style="padFor(isRoot ? 0 : level + 1, true)"
             @click="openFile(f)"
         >
-            <VibeIcon :icon="fileIcon(f.type)" class="vs-icon text-secondary" />
+            <VibeIcon :icon="fileIcon(f.type)" class="vs-icon" :style="{ color: fileColor(f.type) }" />
             <span class="text-truncate">{{ f.name }}</span>
         </div>
         <div v-if="loading" class="vs-row text-muted" :style="padFor(isRoot ? 0 : level + 1, true)">
