@@ -13,14 +13,19 @@ const el = ref(null);
 let viewer = null;
 const error = ref('');
 
+// Race guard: a newer `url` must win even if an older fetch resolves later.
+let loadSeq = 0;
+
 function isDark() {
     return document.documentElement.getAttribute('data-bs-theme') === 'dark';
 }
 
 async function load() {
     error.value = '';
+    const token = ++loadSeq;
     try {
         const markdown = await getText(props.url);
+        if (token !== loadSeq || !el.value) return;
 
         viewer?.destroy();
         viewer = new Viewer({
@@ -29,13 +34,14 @@ async function load() {
             theme: isDark() ? 'dark' : 'light',
         });
     } catch (e) {
-        error.value = 'Could not render this file.';
+        if (token === loadSeq) error.value = 'Could not render this file.';
     }
 }
 
 onMounted(load);
 watch(() => props.url, load);
 onBeforeUnmount(() => {
+    loadSeq++;
     viewer?.destroy();
     viewer = null;
 });

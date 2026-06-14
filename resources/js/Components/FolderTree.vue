@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { http } from '../lib/http';
 
@@ -30,17 +30,27 @@ const loaded = ref(false);
 const loading = ref(false);
 const children = ref<TreeNode[]>([]);
 
+// Race guard: a stale response (or one that resolves after unmount) must not
+// overwrite this node's children.
+let loadSeq = 0;
+let alive = true;
+
 async function load(): Promise<void> {
     if (loaded.value || loading.value) return;
     loading.value = true;
+    const token = ++loadSeq;
     try {
         const url = isRoot ? '/tree' : `/tree/${props.folder!.id}`;
-        children.value = await http.get<TreeNode[]>(url);
+        const result = await http.get<TreeNode[]>(url);
+        if (!alive || token !== loadSeq) return;
+        children.value = result;
         loaded.value = true;
     } finally {
-        loading.value = false;
+        if (token === loadSeq) loading.value = false;
     }
 }
+
+onBeforeUnmount(() => { alive = false; loadSeq++; });
 
 onMounted(() => {
     if (isRoot || (props.folder && props.revealIds.has(props.folder.id))) { expanded.value = true; load(); }
