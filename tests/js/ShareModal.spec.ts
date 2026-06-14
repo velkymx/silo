@@ -51,6 +51,15 @@ describe('ShareModal', () => {
         expect(httpDel).toHaveBeenCalledWith('/files/5/permissions/1');
     });
 
+    it('has a Cancel button that closes the modal', async () => {
+        const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });
+        await flushPromises();
+        const cancel = wrapper.findAll('button').find((b) => b.text() === 'Cancel');
+        expect(cancel).toBeTruthy();
+        await cancel!.trigger('click');
+        expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([false]);
+    });
+
     it('creating a public link posts the link form', async () => {
         httpPost.mockResolvedValue({ links: [] });
         const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });

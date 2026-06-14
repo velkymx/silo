@@ -110,7 +110,7 @@ function copyLink(url: string, id: number): void {
 </script>
 
 <template>
-    <VibeModal v-model="open" :title="`Share — ${item?.name || ''}`" fullscreen hide-footer>
+    <VibeModal v-model="open" :title="`Share — ${item?.name || ''}`" fullscreen>
         <h6 class="text-muted">People &amp; groups with access</h6>
         <table v-if="grants.length" class="table table-sm align-middle">
             <tbody>
@@ -193,6 +193,9 @@ function copyLink(url: string, id: number): void {
                 <div class="col"><VibeFormInput v-model="linkForm.password" type="password" placeholder="Password (optional)" /></div>
                 <div class="col-auto"><VibeButton variant="primary" @click="createLink">Create link</VibeButton></div>
             </div>
+        </template>
+        <template #footer>
+            <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
         </template>
     </VibeModal>
 </template>
