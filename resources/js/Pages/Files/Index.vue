@@ -16,6 +16,7 @@ import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { useBusyGuard } from '../../composables/useBusyGuard';
+import { useQuickLook } from '../../composables/useQuickLook';
 import { useConfirm } from '../../composables/useConfirm';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
@@ -250,8 +251,7 @@ function submitBatchRename() {
 
 function selectFile(item) {
     if (item.is_dir) return;
-    const idx = props.files.findIndex((f) => f.id === item.id);
-    if (idx >= 0) selectedIndex.value = idx;
+    quickSetActive(item);
 }
 
 // List vs thumbnail grid view, remembered across visits.
@@ -366,23 +366,12 @@ function openDetails(item) {
 }
 
 // ----- Quick Look -----
-const quickOpen = ref(false);
-const quickIndex = ref(0);
-const quickFile = computed(() => props.files[quickIndex.value] ?? null);
-
-function quickLook(file) {
-    const idx = props.files.findIndex((f) => f.id === file.id);
-    quickIndex.value = idx >= 0 ? idx : 0;
-    quickOpen.value = true;
-}
-
-function quickStep(delta) {
-    if (!props.files.length) return;
-    quickIndex.value = (quickIndex.value + delta + props.files.length) % props.files.length;
-}
-
-// Spacebar opens Quick Look for the selected row; arrows page through files.
-const selectedIndex = ref(0);
+const quickFiles = computed(() => props.files);
+const {
+    quickOpen, quickIndex, quickFile, selectedIndex,
+    setActive: quickSetActive, open: quickLook, openAtSelected: quickOpenSelected,
+    step: quickStep, close: quickClose,
+} = useQuickLook(quickFiles);
 
 function onKey(e) {
     // Cmd/Ctrl-K focuses the search box from anywhere.
@@ -398,15 +387,14 @@ function onKey(e) {
     if (quickOpen.value) {
         if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); quickStep(1); }
         if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); quickStep(-1); }
-        if (e.key === 'Escape') quickOpen.value = false;
-        if (e.key === ' ') { e.preventDefault(); quickOpen.value = false; }
+        if (e.key === 'Escape') quickClose();
+        if (e.key === ' ') { e.preventDefault(); quickClose(); }
         return;
     }
 
     if (e.key === ' ' && props.files.length) {
         e.preventDefault();
-        quickIndex.value = Math.min(selectedIndex.value, props.files.length - 1);
-        quickOpen.value = true;
+        quickOpenSelected();
     }
 }
 
