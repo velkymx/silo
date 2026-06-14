@@ -41,12 +41,12 @@ function onDrop({ payload }, folderId) {
 </script>
 
 <template>
-    <ul class="folder-tree nav nav-pills flex-column list-unstyled mb-0">
-        <li v-for="child in children" :key="child.id" class="nav-item">
+    <ul class="folder-tree list-unstyled mb-0">
+        <li v-for="child in children" :key="child.id">
             <VibeDroppable group="files" tag="div" @drop="onDrop($event, child.id)">
                 <template #default="drop">
                     <div
-                        class="ft-row nav-link d-flex align-items-center"
+                        class="ft-row d-flex align-items-center"
                         :class="{ active: child.id === currentId, 'drop-over': drop && drop.isOver }"
                         @click="go(child.id)"
                     >
@@ -82,13 +82,25 @@ function onDrop({ payload }, folderId) {
 </template>
 
 <style scoped>
-/* Row uses Bootstrap .nav-pills .nav-link (+ .active) styling for consistency
-   with the rest of the sidebar; only tighten the padding for a tree feel. */
+/* Tree rows match the sidebar nav (same hover + active tint) without the
+   nav-pills block layout that broke the tree. */
 .ft-row {
-    padding: 0.3rem 0.5rem;
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
     cursor: pointer;
     user-select: none;
     font-size: 0.9rem;
+    color: var(--bs-body-color);
+}
+.ft-row:hover {
+    background: rgba(99, 102, 241, 0.07);
+}
+.ft-row.active {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    font-weight: 600;
 }
 .ft-row.drop-over {
     outline: 2px dashed var(--bs-primary);

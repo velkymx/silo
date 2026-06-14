@@ -869,8 +869,8 @@ onBeforeUnmount(() => {
     <AppLayout>
         <template #sidebar>
             <template v-if="allTags.length">
-                <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Tags</div>
-                <div class="d-flex flex-wrap gap-1 px-1">
+                <div class="side-heading"><VibeIcon icon="tags-fill" />Tags</div>
+                <div class="d-flex flex-wrap gap-1 px-2">
                     <span
                         v-for="tag in allTags"
                         :key="tag.id"

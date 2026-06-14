@@ -229,7 +229,7 @@ function onUserMenu({ item }) {
 
         <div class="d-flex flex-grow-1" style="min-height: 0">
             <!-- Sidebar (collapsible on desktop, offcanvas on mobile) -->
-            <aside v-if="!isMobile && sidebarOpen" class="d-flex flex-column flex-shrink-0 border-end bg-body p-3" style="width: 250px">
+            <aside v-if="!isMobile && sidebarOpen" class="app-sidebar d-flex flex-column flex-shrink-0 border-end bg-body p-2" style="width: 250px">
                 <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
@@ -237,8 +237,7 @@ function onUserMenu({ item }) {
                 </VibeNav>
 
                 <template v-if="adminNav.length">
-                    <hr class="my-3" >
-                    <div class="text-muted text-uppercase small fw-semibold px-3 mb-1">Admin</div>
+                    <div class="side-heading"><VibeIcon icon="shield-lock-fill" />Admin</div>
                     <VibeNav pills vertical :items="adminNav" @item-click="onNav">
                         <template #item="{ item }">
                             <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
@@ -246,27 +245,24 @@ function onUserMenu({ item }) {
                     </VibeNav>
                 </template>
 
-                <div class="pt-3 flex-grow-1 overflow-auto">
-                    <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Folders</div>
-                    <VibeButton
-                        variant="link"
-                        class="p-0 text-decoration-none mb-1 d-block px-1"
-                        :class="!currentFolder ? 'fw-bold' : 'text-body'"
+                <div class="flex-grow-1 overflow-auto">
+                    <div class="side-heading"><VibeIcon icon="folder-fill" />Folders</div>
+                    <div
+                        class="side-row d-flex align-items-center"
+                        :class="{ active: !currentFolder }"
+                        role="button"
                         @click="goFolder(null)"
                     >
-                        <VibeIcon icon="house-door-fill" class="me-1" />Home
-                    </VibeButton>
+                        <VibeIcon icon="house-door-fill" class="nav-ico" />Home
+                    </div>
                     <FolderTree :folders="folders" :current-id="currentFolder" :open-ids="ancestorIds" />
 
                     <template v-if="savedSearches.length">
-                        <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Smart Folders</div>
-                        <div v-for="s in savedSearches" :key="s.id" class="d-flex align-items-center px-1 py-1 saved-search">
-                            <VibeButton variant="link" class="p-0 text-decoration-none text-truncate text-body flex-grow-1 text-start" @click="runSavedSearch(s)">
-                                <VibeIcon icon="funnel-fill" class="text-primary me-1" />{{ s.name }}
-                            </VibeButton>
-                            <VibeButton variant="link" size="sm" class="p-0 text-muted del-btn" title="Remove" @click.stop="deleteSavedSearch(s)">
-                                <VibeIcon icon="x" />
-                            </VibeButton>
+                        <div class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</div>
+                        <div v-for="s in savedSearches" :key="s.id" class="side-row d-flex align-items-center saved-search" role="button" @click="runSavedSearch(s)">
+                            <VibeIcon icon="bookmark-star-fill" class="nav-ico text-primary" />
+                            <span class="text-truncate flex-grow-1">{{ s.name }}</span>
+                            <VibeIcon icon="x" class="del-btn text-muted" title="Remove" @click.stop="deleteSavedSearch(s)" />
                         </div>
                     </template>
 
@@ -274,15 +270,15 @@ function onUserMenu({ item }) {
                 </div>
 
                 <!-- Storage meter, pinned to the bottom and consistent across pages. -->
-                <div v-if="storage" class="pt-3 mt-2 border-top">
-                    <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Storage</div>
-                    <div class="px-1">
+                <div v-if="storage" class="pt-2 mt-2 border-top">
+                    <div class="side-heading"><VibeIcon icon="hdd-fill" />Storage</div>
+                    <div class="px-2">
                         <template v-if="storage.quota > 0">
                             <VibeProgress :bars="storageBars" class="mb-1" />
                             <div class="small text-muted">{{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)</div>
                         </template>
                         <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
-                        <a href="/storage" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/storage')">Manage storage</a>
+                        <a href="/usage" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/usage')">Manage storage</a>
                     </div>
                 </div>
             </aside>
@@ -333,5 +329,29 @@ function onUserMenu({ item }) {
     margin-right: 0.6rem;
     text-align: center;
     flex-shrink: 0;
+}
+
+/* One consistent left edge + padding for every sidebar row and heading. */
+.app-sidebar :deep(.nav-link),
+.app-sidebar .side-row {
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: var(--bs-body-color);
+}
+.app-sidebar .side-row:hover {
+    background: rgba(99, 102, 241, 0.07);
+}
+.app-sidebar .side-row.active {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    font-weight: 600;
+}
+.app-sidebar .del-btn {
+    opacity: 0;
+    cursor: pointer;
+}
+.app-sidebar .saved-search:hover .del-btn {
+    opacity: 1;
 }
 </style>
