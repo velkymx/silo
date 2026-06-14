@@ -15,6 +15,7 @@ import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
+import { useBusyGuard } from '../../composables/useBusyGuard';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
 
@@ -196,29 +197,39 @@ const {
     isSelected, toggleSel, clearSelection, onItemClick,
 } = useSelection(items, openItem);
 
+// Guards every batch mutation against double-click / double-submit. Only one
+// batch op runs at a time, so a single shared single-flight guard is enough.
+const { busy: batchBusy, run: runBatch, release: releaseBatch } = useBusyGuard({ autoRelease: false });
+
 function batchDelete() {
     if (!confirm(`Move ${batchIds.value.length} item(s) to trash?`)) return;
-    router.post('/files/batch/delete', { ids: batchIds.value }, { preserveScroll: true, onSuccess: clearSelection });
+    runBatch(() => router.post('/files/batch/delete', { ids: batchIds.value }, {
+        preserveScroll: true,
+        onSuccess: clearSelection,
+        onFinish: releaseBatch,
+    }));
 }
 
 // New Folder From Selection.
 const batchFolderOpen = ref(false);
 const batchFolderName = ref('New Folder');
 function submitBatchFolder() {
-    router.post('/files/batch/folder', { name: batchFolderName.value, ids: batchIds.value, parent_id: currentId.value }, {
+    runBatch(() => router.post('/files/batch/folder', { name: batchFolderName.value, ids: batchIds.value, parent_id: currentId.value }, {
         preserveScroll: true,
         onSuccess: () => { batchFolderOpen.value = false; clearSelection(); },
-    });
+        onFinish: releaseBatch,
+    }));
 }
 
 // Batch move.
 const batchMoveOpen = ref(false);
 const batchMoveTarget = ref('');
 function submitBatchMove() {
-    router.post('/files/batch/move', { ids: batchIds.value, target_id: batchMoveTarget.value || null }, {
+    runBatch(() => router.post('/files/batch/move', { ids: batchIds.value, target_id: batchMoveTarget.value || null }, {
         preserveScroll: true,
         onSuccess: () => { batchMoveOpen.value = false; clearSelection(); },
-    });
+        onFinish: releaseBatch,
+    }));
 }
 
 // Batch rename (find/replace, prefix/suffix, sequential numbering).
@@ -227,10 +238,11 @@ const { renameOpts, renamePreview } = useBatchRename(selectedItems);
 
 function submitBatchRename() {
     const renames = renamePreview.value.map(({ id, to }) => ({ id, name: to }));
-    router.post('/files/batch/rename', { renames }, {
+    runBatch(() => router.post('/files/batch/rename', { renames }, {
         preserveScroll: true,
         onSuccess: () => { batchRenameOpen.value = false; clearSelection(); },
-    });
+        onFinish: releaseBatch,
+    }));
 }
 
 function selectFile(item) {
@@ -641,7 +653,7 @@ onBeforeUnmount(() => {
                 <VibeButton variant="primary" size="sm" outline @click="batchMoveTarget = ''; batchMoveOpen = true">
                     <VibeIcon icon="folder-symlink" class="me-1" />Move…
                 </VibeButton>
-                <VibeButton variant="danger" size="sm" outline @click="batchDelete">
+                <VibeButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
                     <VibeIcon icon="trash" class="me-1" />Delete
                 </VibeButton>
                 <VibeButton variant="secondary" size="sm" outline @click="clearSelection">Clear</VibeButton>
@@ -959,7 +971,7 @@ onBeforeUnmount(() => {
             </div>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="batchFolderOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="!batchFolderName" @click="submitBatchFolder">Create</VibeButton>
+                <VibeButton variant="primary" :disabled="!batchFolderName || batchBusy" @click="submitBatchFolder">Create</VibeButton>
             </template>
         </VibeModal>
 
@@ -972,7 +984,7 @@ onBeforeUnmount(() => {
             </div>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="batchMoveOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" @click="submitBatchMove">Move {{ selectedIds.size }}</VibeButton>
+                <VibeButton variant="primary" :disabled="batchBusy" @click="submitBatchMove">Move {{ selectedIds.size }}</VibeButton>
             </template>
         </VibeModal>
 
@@ -1018,7 +1030,7 @@ onBeforeUnmount(() => {
             </div>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="batchRenameOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" @click="submitBatchRename">Rename {{ selectedIds.size }}</VibeButton>
+                <VibeButton variant="primary" :disabled="batchBusy" @click="submitBatchRename">Rename {{ selectedIds.size }}</VibeButton>
             </template>
         </VibeModal>
 
