@@ -8,6 +8,7 @@ import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
+import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -116,36 +117,6 @@ const columns = computed(() => [
     { key: 'type', label: 'Type', sortable: false },
     { key: 'actions', label: '', sortable: false, searchable: false },
 ]);
-
-const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-const videoTypes = ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'];
-const audioTypes = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
-
-function typeLabel(item) {
-    if (item.is_dir) return 'Folder';
-    const t = item.type;
-    if (imageTypes.includes(t)) return 'Image';
-    if (t === 'pdf') return 'PDF';
-    if (videoTypes.includes(t)) return 'Video';
-    if (audioTypes.includes(t)) return 'Audio';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(t)) return 'Archive';
-    if (['doc', 'docx', 'rtf', 'txt', 'md'].includes(t)) return 'Document';
-    if (['xls', 'xlsx', 'csv'].includes(t)) return 'Spreadsheet';
-    return t ? t.toUpperCase() : 'File';
-}
-
-function colorFor(item) {
-    if (item.is_dir) return '#f59e0b';
-    const t = item.type;
-    if (imageTypes.includes(t)) return '#10b981';
-    if (t === 'pdf') return '#ef4444';
-    if (videoTypes.includes(t)) return '#6366f1';
-    if (audioTypes.includes(t)) return '#ec4899';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(t)) return '#f59e0b';
-    if (['xls', 'xlsx', 'csv'].includes(t)) return '#22c55e';
-    if (['doc', 'docx', 'rtf', 'txt', 'md'].includes(t)) return '#3b82f6';
-    return '#6b7280';
-}
 
 function toggleStar(item) {
     router.post(`/files/${item.id}/star`, {}, { preserveScroll: true });
@@ -306,13 +277,6 @@ function selectFile(item) {
 const viewMode = ref(localStorage.getItem('fm-view') === 'grid' ? 'grid' : 'list');
 watch(viewMode, (v) => localStorage.setItem('fm-view', v));
 
-function iconFor(type) {
-    if (imageTypes.includes(type)) return 'file-earmark-image';
-    if (type === 'pdf') return 'file-earmark-pdf';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return 'file-earmark-zip';
-    if (['doc', 'docx', 'txt', 'md'].includes(type)) return 'file-earmark-text';
-    return 'file-earmark';
-}
 
 const fileActions = [
     { text: 'Download', action: 'download', icon: 'download' },
