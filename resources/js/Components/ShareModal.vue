@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 import { http, HttpError } from '../lib/http';
 
 interface FileLike { id: number; name: string; is_dir?: boolean }
@@ -102,11 +102,18 @@ async function revokeLink(id: number): Promise<void> {
     links.value = data.links;
 }
 
+let copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
 function copyLink(url: string, id: number): void {
     navigator.clipboard?.writeText(url);
     copied.value = id;
-    setTimeout(() => (copied.value = null), 1500);
+    if (copiedTimer) clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => { copied.value = null; copiedTimer = null; }, 1500);
 }
+
+onBeforeUnmount(() => {
+    if (copiedTimer) clearTimeout(copiedTimer);
+});
 </script>
 
 <template>

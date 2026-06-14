@@ -60,6 +60,22 @@ describe('ShareModal', () => {
         expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([false]);
     });
 
+    it('clears the copied timer on unmount (no leak)', async () => {
+        Object.assign(navigator, { clipboard: { writeText: vi.fn() } });
+        const wrapper = mount(ShareModal, { props: { modelValue: false, item: file } });
+        await wrapper.setProps({ modelValue: true });
+        await flushPromises();
+        vi.useFakeTimers();
+        // Links table is the last table; its first row button is "copy".
+        const tables = wrapper.findAll('table');
+        const copy = tables[tables.length - 1].findAll('button')[0];
+        await copy.trigger('click');
+        wrapper.unmount();
+        // Flushing the pending 1.5s timeout after unmount must not throw / update state.
+        expect(() => vi.runAllTimers()).not.toThrow();
+        vi.useRealTimers();
+    });
+
     it('creating a public link posts the link form', async () => {
         httpPost.mockResolvedValue({ links: [] });
         const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });
