@@ -11,119 +11,116 @@ const props = defineProps({
 });
 
 const CATEGORY_COLORS = {
-    image: '#10b981',
-    video: '#6366f1',
-    audio: '#ec4899',
-    pdf: '#ef4444',
-    document: '#3b82f6',
-    spreadsheet: '#22c55e',
-    archive: '#f59e0b',
-    folder: '#64748b',
-    other: '#94a3b8',
+    image: '#10b981', video: '#6366f1', audio: '#ec4899', pdf: '#ef4444',
+    document: '#3b82f6', spreadsheet: '#22c55e', archive: '#f59e0b',
+    folder: '#64748b', other: '#94a3b8',
 };
 const colorFor = (c) => CATEGORY_COLORS[c] || CATEGORY_COLORS.other;
 
 function fmtBytes(n) {
     if (!n) return '0 B';
     const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    let v = n;
+    let i = 0; let v = n;
     while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
     return `${v.toFixed(i ? 1 : 0)} ${u[i]}`;
 }
 
-// ----- Drill-down state -----
-const currentId = ref(null);
-const byId = computed(() => Object.fromEntries(props.nodes.map((n) => [n.id, n])));
-const path = computed(() => {
-    const trail = [];
-    let id = currentId.value;
-    while (id) {
-        const n = byId.value[id];
-        if (!n) break;
-        trail.unshift(n);
-        id = n.parent_id;
+// ----- Build the hierarchy (root = parent_id null) -----
+const tree = computed(() => {
+    const byParent = {};
+    for (const n of props.nodes) {
+        if (n.size <= 0) continue;
+        (byParent[n.parent_id ?? 0] ||= []).push(n);
     }
-    return trail;
+    const attach = (node) => ({
+        ...node,
+        children: (byParent[node.id] || []).map(attach).sort((a, b) => b.size - a.size),
+    });
+    return (byParent[0] || []).map(attach).sort((a, b) => b.size - a.size);
 });
 
-const levelItems = computed(() =>
-    props.nodes
-        .filter((n) => (n.parent_id ?? null) === currentId.value && n.size > 0)
-        .sort((a, b) => b.size - a.size)
-);
-
-function enter(node) {
-    if (node.is_dir) currentId.value = node.id;
-    else router.get('/', node.parent_id ? { folder: node.parent_id } : {});
-}
-
-// ----- Squarified treemap layout -----
+// ----- Squarified treemap, rendered as a full nested layout -----
 const box = ref(null);
-const dims = ref({ w: 800, h: 460 });
+const dims = ref({ w: 800, h: 520 });
 let ro = null;
 onMounted(() => {
-    const measure = () => {
-        if (box.value) dims.value = { w: box.value.clientWidth, h: box.value.clientHeight };
-    };
+    const measure = () => { if (box.value) dims.value = { w: box.value.clientWidth, h: box.value.clientHeight }; };
     measure();
     ro = new ResizeObserver(measure);
     if (box.value) ro.observe(box.value);
 });
 onBeforeUnmount(() => ro?.disconnect());
 
-function worst(row, length, scale) {
-    const areas = row.map((r) => r.size * scale);
+function worst(areas, length) {
     const sum = areas.reduce((a, b) => a + b, 0);
-    const max = Math.max(...areas);
-    const min = Math.min(...areas);
+    const max = Math.max(...areas), min = Math.min(...areas);
     return Math.max((length * length * max) / (sum * sum), (sum * sum) / (length * length * min));
 }
 
-const rects = computed(() => {
-    const items = levelItems.value;
-    const { w, h } = dims.value;
+// Lay out one set of items inside a rect; returns [{node,x,y,w,h}].
+function squarify(items, x, y, w, h) {
     const total = items.reduce((a, b) => a + b.size, 0);
-    if (!total || w < 10 || h < 10) return [];
+    if (total <= 0 || w < 1 || h < 1) return [];
     const scale = (w * h) / total;
-
     const out = [];
-    let x = 0;
-    let y = 0;
-    let rw = w;
-    let rh = h;
-    let i = 0;
-    let row = [];
-
-    const layoutRow = () => {
+    let rx = x, ry = y, rw = w, rh = h, i = 0, row = [];
+    const flush = () => {
         const areas = row.map((r) => r.size * scale);
         const sum = areas.reduce((a, b) => a + b, 0);
         const vertical = rw >= rh;
-        const thickness = sum / (vertical ? rh : rw);
-        let off = vertical ? y : x;
+        const thick = sum / (vertical ? rh : rw);
+        let off = vertical ? ry : rx;
         row.forEach((r, k) => {
-            const len = areas[k] / thickness;
-            if (vertical) {
-                out.push({ node: r, x, y: off, w: thickness, h: len });
-            } else {
-                out.push({ node: r, x: off, y, w: len, h: thickness });
-            }
+            const len = areas[k] / thick;
+            out.push(vertical
+                ? { node: r, x: rx, y: off, w: thick, h: len }
+                : { node: r, x: off, y: ry, w: len, h: thick });
             off += len;
         });
-        if (vertical) { x += thickness; rw -= thickness; } else { y += thickness; rh -= thickness; }
+        if (vertical) { rx += thick; rw -= thick; } else { ry += thick; rh -= thick; }
     };
-
     while (i < items.length) {
-        const next = items[i];
         const length = Math.min(rw, rh);
-        if (row.length === 0) { row.push(next); i++; continue; }
-        const cur = worst(row, length, scale);
-        const withNext = worst([...row, next], length, scale);
-        if (withNext <= cur) { row.push(next); i++; } else { layoutRow(); row = []; }
+        if (!row.length) { row.push(items[i++]); continue; }
+        const cur = worst(row.map((r) => r.size * scale), length);
+        const nxt = worst([...row, items[i]].map((r) => r.size * scale), length);
+        if (nxt <= cur) { row.push(items[i++]); } else { flush(); row = []; }
     }
-    if (row.length) layoutRow();
+    if (row.length) flush();
+    return out;
+}
+
+const HEADER = 15;
+const PAD = 2;
+const MAX_TILES = 6000;
+
+const tiles = computed(() => {
+    const { w, h } = dims.value;
+    const out = [];
+    const layout = (items, x, y, rw, rh, depth) => {
+        if (out.length > MAX_TILES || rw < 3 || rh < 3) return;
+        for (const r of squarify(items, x, y, rw, rh)) {
+            if (out.length > MAX_TILES) return;
+            const isFolder = r.node.is_dir && r.node.children?.length;
+            out.push({ ...r, isFolder: !!isFolder, node: r.node, depth });
+            if (isFolder && r.w > 24 && r.h > HEADER + 8) {
+                layout(
+                    r.node.children,
+                    r.x + PAD, r.y + PAD + HEADER,
+                    r.w - 2 * PAD, r.h - 2 * PAD - HEADER,
+                    depth + 1,
+                );
+            }
+        }
+    };
+    if (w > 10 && h > 10) layout(tree.value, 0, 0, w, h, 0);
     return out;
 });
+
+function open(node) {
+    if (node.is_dir) router.get('/', { folder: node.id });
+    else router.get('/', node.parent_id ? { folder: node.parent_id } : {});
+}
 
 const hover = ref(null);
 const categories = computed(() => Object.entries(props.byCategory).map(([k, v]) => ({ name: k, size: v })));
@@ -137,46 +134,41 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
             <span class="text-muted">
                 {{ fmtBytes(summary.used) }}<template v-if="summary.quota > 0"> of {{ fmtBytes(summary.quota) }} ({{ pct }}%)</template> used
             </span>
-        </div>
-
-        <!-- Drill path -->
-        <div class="d-flex align-items-center gap-1 mb-2 small">
-            <VibeButton variant="link" class="p-0 text-decoration-none" @click="currentId = null">
-                <VibeIcon icon="house-door-fill" class="me-1" />Home
-            </VibeButton>
-            <template v-for="n in path" :key="n.id">
-                <VibeIcon icon="chevron-right" class="text-muted" style="font-size: 0.7rem" />
-                <VibeButton variant="link" class="p-0 text-decoration-none" @click="currentId = n.id">{{ n.name }}</VibeButton>
-            </template>
+            <span class="ms-auto small text-muted" style="min-height: 1.2rem">
+                <template v-if="hover"><strong>{{ hover.name }}</strong> · {{ fmtBytes(hover.size) }}<span v-if="!hover.is_dir"> · {{ hover.category }}</span></template>
+                <template v-else>Every file as a tile, nested inside its folder. Click to open.</template>
+            </span>
         </div>
 
         <VibeRow class="g-3">
             <VibeCol :lg="8">
                 <div ref="box" class="treemap-box border rounded">
-                    <div
-                        v-for="r in rects"
-                        :key="r.node.id"
-                        class="treemap-tile"
-                        :style="{
-                            left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px',
-                            background: colorFor(r.node.category),
-                        }"
-                        :title="`${r.node.name} — ${fmtBytes(r.node.size)}`"
-                        @click="enter(r.node)"
-                        @mouseenter="hover = r.node"
-                        @mouseleave="hover = null"
-                    >
-                        <span v-if="r.w > 54 && r.h > 22" class="tile-label">
-                            <VibeIcon v-if="r.node.is_dir" icon="folder-fill" class="me-1" />{{ r.node.name }}
-                        </span>
+                    <template v-for="t in tiles" :key="t.node.id">
+                        <!-- Folder frame -->
+                        <div
+                            v-if="t.isFolder"
+                            class="tm-folder"
+                            :style="{ left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px', zIndex: t.depth }"
+                            @click.stop="open(t.node)"
+                            @mouseenter="hover = t.node"
+                        >
+                            <div v-if="t.w > 40" class="tm-folder-label"><VibeIcon icon="folder-fill" class="me-1" />{{ t.node.name }}</div>
+                        </div>
+                        <!-- File tile -->
+                        <div
+                            v-else
+                            class="tm-file"
+                            :style="{ left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px', background: colorFor(t.node.category), zIndex: 100 + t.depth }"
+                            :title="`${t.node.name} — ${fmtBytes(t.node.size)}`"
+                            @click.stop="open(t.node)"
+                            @mouseenter="hover = t.node"
+                        >
+                            <span v-if="t.w > 50 && t.h > 20" class="tm-file-label">{{ t.node.name }}</span>
+                        </div>
+                    </template>
+                    <div v-if="!tiles.length" class="text-muted d-flex align-items-center justify-content-center h-100">
+                        Nothing stored yet.
                     </div>
-                    <div v-if="!rects.length" class="text-muted d-flex align-items-center justify-content-center h-100">
-                        Nothing stored here yet.
-                    </div>
-                </div>
-                <div class="small text-muted mt-1" style="height: 1.2rem">
-                    <template v-if="hover"><strong>{{ hover.name }}</strong> · {{ fmtBytes(hover.size) }} · {{ hover.category }}</template>
-                    <template v-else>Click a folder tile to drill in. Hover for details.</template>
                 </div>
             </VibeCol>
 
@@ -187,9 +179,7 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
                             <span><span class="legend-dot" :style="{ background: colorFor(c.name) }"></span>{{ c.name }}</span>
                             <span class="text-muted">{{ fmtBytes(c.size) }}</span>
                         </div>
-                        <div class="type-bar">
-                            <div :style="{ width: (summary.used ? (c.size / summary.used * 100) : 0) + '%', background: colorFor(c.name) }"></div>
-                        </div>
+                        <div class="type-bar"><div :style="{ width: (summary.used ? (c.size / summary.used * 100) : 0) + '%', background: colorFor(c.name) }"></div></div>
                     </div>
                     <p v-if="!categories.length" class="text-muted small mb-0">No files yet.</p>
                 </VibeCard>
@@ -211,28 +201,42 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
 .treemap-box {
     position: relative;
     width: 100%;
-    height: 62vh;
+    height: 64vh;
     overflow: hidden;
     background: var(--bs-tertiary-bg);
 }
-.treemap-tile {
+.tm-folder {
     position: absolute;
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--bs-border-color);
+    background: color-mix(in srgb, var(--bs-secondary-bg) 70%, transparent);
+    cursor: pointer;
+}
+.tm-folder-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 4px;
+    color: var(--bs-body-color);
+    white-space: nowrap;
+    overflow: hidden;
+    background: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.tm-file {
+    position: absolute;
+    border: 1px solid rgba(255, 255, 255, 0.45);
     cursor: pointer;
     overflow: hidden;
-    transition: filter 0.1s;
 }
-.treemap-tile:hover {
-    filter: brightness(1.12);
-    z-index: 2;
+.tm-file:hover {
+    filter: brightness(1.15);
 }
-.tile-label {
+.tm-file-label {
     color: #fff;
-    font-size: 0.72rem;
-    padding: 2px 4px;
+    font-size: 0.68rem;
+    padding: 1px 3px;
     display: block;
     white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
 }
 .legend-dot {
     display: inline-block;
