@@ -16,6 +16,24 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user);
 const flash = computed(() => page.props.flash ?? {});
 
+// Shared storage meter (consistent on every page).
+const storage = computed(() => page.props.storage ?? null);
+const storagePct = computed(() =>
+    storage.value?.quota > 0 ? Math.min(100, Math.round((storage.value.used / storage.value.quota) * 100)) : 0
+);
+const storageBars = computed(() => [{
+    value: storagePct.value,
+    variant: storagePct.value > 90 ? 'danger' : storagePct.value > 75 ? 'warning' : 'success',
+}]);
+function fmtBytes(n) {
+    if (!n) return '0 B';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(i ? 1 : 0)} ${u[i]}`;
+}
+
 // Footer legalese.
 const year = new Date().getFullYear();
 const appName = 'File Manager by AJBApps';
@@ -129,9 +147,17 @@ function onUserMenu({ item }) {
                     <slot name="sidebar" />
                 </div>
 
-                <!-- Pinned to the bottom of the sidebar (e.g. storage meter). -->
-                <div v-if="$slots['sidebar-bottom']" class="pt-3 mt-2 border-top">
-                    <slot name="sidebar-bottom" />
+                <!-- Storage meter, pinned to the bottom and consistent across pages. -->
+                <div v-if="storage" class="pt-3 mt-2 border-top">
+                    <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Storage</div>
+                    <div class="px-1">
+                        <template v-if="storage.quota > 0">
+                            <VibeProgress :bars="storageBars" class="mb-1" />
+                            <div class="small text-muted">{{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)</div>
+                        </template>
+                        <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
+                        <a href="/profile" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/profile')">Manage storage</a>
+                    </div>
                 </div>
             </aside>
 

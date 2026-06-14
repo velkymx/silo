@@ -879,20 +879,6 @@ onBeforeUnmount(() => {
             </template>
         </template>
 
-        <template #sidebar-bottom>
-            <div class="text-muted text-uppercase small fw-semibold mb-2 px-1">Storage</div>
-            <div class="px-1">
-                <template v-if="storage.quota > 0">
-                    <VibeProgress :bars="storageBars" class="mb-1" />
-                    <div class="small text-muted">
-                        {{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)
-                    </div>
-                </template>
-                <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
-                <a href="/profile" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/profile')">Manage storage</a>
-            </div>
-        </template>
-
         <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
             <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb" />
             <div class="d-flex align-items-center gap-2 flex-shrink-0">

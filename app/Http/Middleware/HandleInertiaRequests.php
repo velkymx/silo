@@ -49,6 +49,10 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            // Always available so the sidebar storage meter is consistent on every page.
+            'storage' => fn () => $request->user()
+                ? app(\App\Services\QuotaService::class)->summary($request->user()->id)
+                : null,
         ];
     }
 }
