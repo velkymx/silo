@@ -17,6 +17,7 @@ import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { useBusyGuard } from '../../composables/useBusyGuard';
 import { useQuickLook } from '../../composables/useQuickLook';
+import { descendantIds } from '../../lib/folderTree';
 import { useConfirm } from '../../composables/useConfirm';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
@@ -432,25 +433,10 @@ const transferMode = ref('move');
 const transferItem = ref(null);
 const transferForm = useForm({ target_id: null });
 
-// Folders the item cannot be moved/copied into (itself + its descendants).
-function descendantIds(folderId) {
-    const ids = new Set([folderId]);
-    let added = true;
-    while (added) {
-        added = false;
-        for (const f of props.allFolders) {
-            if (f.parent_id && ids.has(f.parent_id) && !ids.has(f.id)) {
-                ids.add(f.id);
-                added = true;
-            }
-        }
-    }
-    return ids;
-}
-
 const destinationOptions = computed(() => {
     const item = transferItem.value;
-    const excluded = item?.is_dir ? descendantIds(item.id) : new Set();
+    // Folders the item cannot be moved/copied into (itself + its descendants).
+    const excluded = item?.is_dir ? descendantIds(item.id, props.allFolders) : new Set();
     const options = [{ value: null, text: 'Home' }];
     for (const f of props.allFolders) {
         if (!excluded.has(f.id)) options.push({ value: f.id, text: f.name });
