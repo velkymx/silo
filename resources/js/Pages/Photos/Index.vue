@@ -433,11 +433,18 @@ function saveEdit() {
     bottom: 4px;
     right: 4px;
     z-index: 2;
-    opacity: 0;
+    opacity: 0.55;
     transition: opacity 0.15s;
 }
-.photo-cell:hover .cell-actions {
+.photo-cell:hover .cell-actions,
+.photo-cell:focus-within .cell-actions {
     opacity: 1;
+}
+/* Touch devices have no hover — keep the trigger fully visible. */
+@media (hover: none) {
+    .cell-actions {
+        opacity: 1;
+    }
 }
 .badge-select {
     position: absolute;
