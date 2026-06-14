@@ -36,6 +36,8 @@ class FileController extends Controller
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
         $searching = $request->filled('search');
         $advanced = $request->hasAny(['date_from', 'date_to', 'size_min', 'size_max', 'ftype']);
+        // Limit search to the current folder (and its subfolders) when requested.
+        $scopeFolderId = $request->input('scope') === 'folder' ? ($request->integer('folder') ?: null) : null;
         $starredOnly = $request->boolean('starred');
         $recentOnly = $request->boolean('recent');
         $activeTag = $request->filled('tag')
@@ -52,11 +54,14 @@ class FileController extends Controller
         // payload bounded on very large result sets.
         $cap = 1000;
 
-        if ($advanced) {
-            // Structured (Gmail-style) search: text + date range + size + type + tag.
+        if ($advanced || ($searching && $scopeFolderId)) {
+            // Structured / folder-scoped search via a DB query.
             $folders = collect();
-            $files = $this->advancedQuery($request, $userId, $activeTag)
-                ->with(['versions', 'tags'])->latest('created_at')->limit($cap)->get()
+            $query = $this->advancedQuery($request, $userId, $activeTag);
+            if ($scopeFolderId) {
+                $query->whereIn('parent_id', $this->subtreeFolderIds($scopeFolderId, $allFolders));
+            }
+            $files = $query->with(['versions', 'tags'])->latest('created_at')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($searching) {
             // Full-text search (Scout) spans every folder the user owns.
@@ -124,6 +129,7 @@ class FileController extends Controller
                 'size_min' => $request->input('size_min'),
                 'size_max' => $request->input('size_max'),
                 'ftype' => $request->string('ftype')->toString() ?: null,
+                'scope' => $scopeFolderId ? 'folder' : 'all',
             ],
         ]);
     }
@@ -138,6 +144,23 @@ class FileController extends Controller
         'spreadsheet' => ['ext' => ['xls', 'xlsx', 'csv', 'ods']],
         'archive' => ['ext' => ['zip', 'rar', '7z', 'tar', 'gz']],
     ];
+
+    /** A folder id plus all of its descendant folder ids (for scoped search). */
+    private function subtreeFolderIds(int $folderId, \Illuminate\Support\Collection $allFolders): array
+    {
+        $childrenByParent = $allFolders->groupBy('parent_id');
+        $ids = [$folderId];
+        $stack = [$folderId];
+        while ($stack) {
+            $parent = array_pop($stack);
+            foreach ($childrenByParent->get($parent, collect()) as $child) {
+                $ids[] = $child->id;
+                $stack[] = $child->id;
+            }
+        }
+
+        return $ids;
+    }
 
     private function advancedQuery(Request $request, int $userId, ?Tag $activeTag)
     {
