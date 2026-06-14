@@ -9,6 +9,7 @@ import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
+import { useAdvancedSearch } from '../../composables/useAdvancedSearch';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -732,35 +733,9 @@ function filterByTag(id) {
 
 // ----- Delete -----
 // ----- Advanced search + smart folders -----
-const advOpen = ref(false);
-const adv = ref({ search: '', date_from: '', date_to: '', size_min: '', size_max: '', ftype: '', tag: '' });
-const typeOptions = [
-    { value: '', text: 'Any type' },
-    { value: 'image', text: 'Images' },
-    { value: 'video', text: 'Videos' },
-    { value: 'audio', text: 'Audio' },
-    { value: 'pdf', text: 'PDF' },
-    { value: 'document', text: 'Documents' },
-    { value: 'spreadsheet', text: 'Spreadsheets' },
-    { value: 'archive', text: 'Archives' },
-];
+const { advOpen, adv, typeOptions, openAdvanced, advParams } = useAdvancedSearch(computed(() => props.filters));
 const tagFilterOptions = computed(() => [{ value: '', text: 'Any tag' }, ...props.allTags.map((t) => ({ value: t.id, text: t.name }))]);
 
-function openAdvanced() {
-    adv.value = {
-        search: props.filters.search || '',
-        date_from: props.filters.date_from || '',
-        date_to: props.filters.date_to || '',
-        size_min: props.filters.size_min ?? '',
-        size_max: props.filters.size_max ?? '',
-        ftype: props.filters.ftype || '',
-        tag: '',
-    };
-    advOpen.value = true;
-}
-function advParams() {
-    return Object.fromEntries(Object.entries(adv.value).filter(([, v]) => v !== '' && v != null));
-}
 function applyAdvanced() {
     router.get('/', advParams(), { preserveScroll: true });
     advOpen.value = false;
