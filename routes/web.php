@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilePermissionController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PublicShareController;
 use App\Http\Controllers\ShareLinkController;
@@ -44,6 +45,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/avatar', [UserController::class, 'updateAvatar'])->name('profile.avatar');
     Route::get('/avatars/{user}', [UserController::class, 'avatar'])->name('users.avatar');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
+    Route::get('/photos', [PhotoController::class, 'index'])->name('photos.index');
+    Route::post('/photos/upload', [PhotoController::class, 'upload'])
+        ->middleware('throttle:60,1')->name('photos.upload');
+    Route::post('/photos/albums', [PhotoController::class, 'storeAlbum'])->name('photos.albums.store');
+    Route::delete('/photos/albums/{album}', [PhotoController::class, 'destroyAlbum'])->name('photos.albums.destroy');
+    Route::post('/photos/albums/{album}/photos', [PhotoController::class, 'addToAlbum'])->name('photos.albums.add');
+    Route::delete('/photos/albums/{album}/photos', [PhotoController::class, 'removeFromAlbum'])->name('photos.albums.remove');
+    Route::post('/photos/albums/{album}/cover', [PhotoController::class, 'setCover'])->name('photos.albums.cover');
+
     Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 
