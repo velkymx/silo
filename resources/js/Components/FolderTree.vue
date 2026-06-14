@@ -1,123 +1,145 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
-    folders: { type: Array, default: () => [] },
-    parentId: { type: Number, default: null },
+    // The folder node, or null for the synthetic root (renders no row).
+    folder: { type: Object, default: null },
+    level: { type: Number, default: 0 },
     currentId: { type: Number, default: null },
-    openIds: { type: Object, default: () => new Set() },
+    revealIds: { type: Object, default: () => new Set() },
 });
 
-const children = computed(() =>
-    props.folders
-        .filter((f) => (f.parent_id ?? null) === props.parentId)
-        .sort((a, b) => a.name.localeCompare(b.name))
-);
+const isRoot = props.folder === null;
+const expanded = ref(isRoot);
+const loaded = ref(false);
+const loading = ref(false);
+const children = ref([]);
 
-const open = ref(new Set(props.openIds));
+async function load() {
+    if (loaded.value || loading.value) return;
+    loading.value = true;
+    try {
+        const url = isRoot ? '/tree' : `/tree/${props.folder.id}`;
+        const { data } = await window.axios.get(url);
+        children.value = data;
+        loaded.value = true;
+    } finally {
+        loading.value = false;
+    }
+}
 
-// Keep ancestors of the current folder expanded as the user navigates.
-watch(() => props.openIds, (ids) => {
-    for (const id of ids) open.value.add(id);
-    open.value = new Set(open.value);
+onMounted(() => {
+    if (isRoot || props.revealIds.has(props.folder?.id)) { expanded.value = true; load(); }
 });
 
-function hasChildren(id) {
-    return props.folders.some((f) => f.parent_id === id);
+watch(() => props.revealIds, (ids) => {
+    if (!isRoot && ids.has(props.folder.id) && !expanded.value) { expanded.value = true; load(); }
+});
+
+function toggle(e) {
+    e?.stopPropagation();
+    expanded.value = !expanded.value;
+    if (expanded.value) load();
 }
-function toggle(id) {
-    open.value.has(id) ? open.value.delete(id) : open.value.add(id);
-    open.value = new Set(open.value);
+function onRow() {
+    if (!expanded.value) { expanded.value = true; load(); }
+    router.get('/', { folder: props.folder.id }, { preserveScroll: true });
 }
-function go(id) {
-    router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
+function openFile(node) {
+    router.get('/', { ...(node.parent_id ? { folder: node.parent_id } : {}), open: node.id }, { preserveScroll: true });
 }
-// Drag a file/folder onto a sidebar folder to move it there.
-function onDrop({ payload }, folderId) {
-    if (!payload || payload.id === folderId) return;
-    router.post(`/files/${payload.id}/move`, { target_id: folderId }, { preserveScroll: true });
-}
+
+const folders = () => children.value.filter((c) => c.is_dir);
+const files = () => children.value.filter((c) => !c.is_dir);
+const hasChildren = ref(true); // assume expandable until proven empty after load
+
+const fileIcon = (type) => {
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(type)) return 'file-earmark-image';
+    if (type === 'pdf') return 'file-earmark-pdf';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return 'file-earmark-zip';
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(type)) return 'file-earmark-spreadsheet';
+    if (['doc', 'docx', 'odt', 'rtf'].includes(type)) return 'file-earmark-word';
+    if (['md', 'markdown', 'txt', 'log'].includes(type)) return 'file-earmark-text';
+    if (['mp4', 'mov', 'webm', 'mkv'].includes(type)) return 'file-earmark-play';
+    if (['mp3', 'wav', 'flac', 'ogg'].includes(type)) return 'file-earmark-music';
+    return 'file-earmark';
+};
+const padFor = (lvl, leaf) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 0)) + 'rem' });
 </script>
 
 <template>
-    <ul class="folder-tree list-unstyled mb-0">
-        <li v-for="child in children" :key="child.id">
-            <VibeDroppable group="files" tag="div" @drop="onDrop($event, child.id)">
-                <template #default="drop">
-                    <div
-                        class="ft-row d-flex align-items-center"
-                        :class="{ active: child.id === currentId, 'drop-over': drop && drop.isOver }"
-                        @click="go(child.id)"
-                    >
-                        <button
-                            v-if="hasChildren(child.id)"
-                            class="ft-toggle btn btn-link btn-sm p-0"
-                            type="button"
-                            @click.stop="toggle(child.id)"
-                        >
-                            <VibeIcon :icon="open.has(child.id) ? 'chevron-down' : 'chevron-right'" />
-                        </button>
-                        <span v-else class="ft-toggle"></span>
+    <!-- A folder's own row -->
+    <div
+        v-if="!isRoot"
+        class="vs-row folder"
+        :class="{ active: folder.id === currentId }"
+        :style="padFor(level, false)"
+        @click="onRow"
+    >
+        <span class="vs-twisty" @click="toggle">
+            <VibeIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" />
+        </span>
+        <VibeIcon :icon="expanded ? 'folder2-open' : 'folder-fill'" class="vs-icon text-warning" />
+        <span class="text-truncate">{{ folder.name }}</span>
+    </div>
 
-                        <VibeIcon
-                            :icon="open.has(child.id) ? 'folder2-open' : 'folder-fill'"
-                            class="text-warning me-2 flex-shrink-0"
-                        />
-                        <span class="text-truncate">{{ child.name }}</span>
-                    </div>
-                </template>
-            </VibeDroppable>
-
-            <div v-if="open.has(child.id)" class="ft-children">
-                <FolderTree
-                    :folders="folders"
-                    :parent-id="child.id"
-                    :current-id="currentId"
-                    :open-ids="openIds"
-                />
-            </div>
-        </li>
-    </ul>
+    <!-- Children (lazy) -->
+    <template v-if="expanded">
+        <FolderTree
+            v-for="f in folders()"
+            :key="'d' + f.id"
+            :folder="f"
+            :level="isRoot ? 0 : level + 1"
+            :current-id="currentId"
+            :reveal-ids="revealIds"
+        />
+        <div
+            v-for="f in files()"
+            :key="'f' + f.id"
+            class="vs-row file"
+            :style="padFor(isRoot ? 0 : level + 1, true)"
+            @click="openFile(f)"
+        >
+            <VibeIcon :icon="fileIcon(f.type)" class="vs-icon text-secondary" />
+            <span class="text-truncate">{{ f.name }}</span>
+        </div>
+        <div v-if="loading" class="vs-row text-muted" :style="padFor(isRoot ? 0 : level + 1, true)">
+            <VibeSpinner size="sm" class="me-2" />Loading…
+        </div>
+    </template>
 </template>
 
 <style scoped>
-/* Tree rows match the sidebar nav (same hover + active tint) without the
-   nav-pills block layout that broke the tree. */
-.ft-row {
+.vs-row {
     display: flex;
     align-items: center;
-    padding: 0.35rem 0.6rem;
-    border-radius: 0.5rem;
+    gap: 0.25rem;
+    padding-top: 0.18rem;
+    padding-bottom: 0.18rem;
+    padding-right: 0.4rem;
+    font-size: 0.86rem;
+    line-height: 1.5;
     cursor: pointer;
-    user-select: none;
-    font-size: 0.9rem;
-    color: var(--bs-body-color);
+    border-radius: 0.3rem;
+    white-space: nowrap;
 }
-.ft-row:hover {
-    background: rgba(99, 102, 241, 0.07);
+.vs-row:hover {
+    background: var(--bs-secondary-bg);
 }
-.ft-row.active {
-    background: rgba(99, 102, 241, 0.12);
+.vs-row.active {
+    background: rgba(99, 102, 241, 0.14);
     color: #4f46e5;
-    font-weight: 600;
 }
-.ft-row.drop-over {
-    outline: 2px dashed var(--bs-primary);
-    outline-offset: -2px;
-}
-.ft-toggle {
-    width: 1.1rem;
-    flex-shrink: 0;
-    color: var(--bs-secondary-color);
-    text-decoration: none;
+.vs-twisty {
+    width: 1rem;
     display: inline-flex;
     justify-content: center;
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+    flex-shrink: 0;
 }
-/* Indent guide for nested levels. */
-.ft-children {
-    margin-left: 0.65rem;
-    padding-left: 0.5rem;
-    border-left: 1px solid var(--bs-border-color);
+.vs-icon {
+    flex-shrink: 0;
 }
 </style>

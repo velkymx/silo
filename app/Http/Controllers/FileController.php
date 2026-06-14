@@ -519,6 +519,30 @@ class FileController extends Controller
         return back()->with('success', 'Renamed selected items.');
     }
 
+    // Lazy children for the VSCode-style sidebar tree: direct folders + files of
+    // a folder (or the root), folders first.
+    public function tree(Request $request, ?File $folder = null)
+    {
+        $userId = auth()->id();
+        if ($folder) {
+            abort_unless($folder->owner_id === $userId && $folder->is_dir, 404);
+        }
+
+        $children = File::where('owner_id', $userId)
+            ->where('parent_id', $folder?->id)
+            ->orderByDesc('is_dir')
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_dir', 'parent_id']);
+
+        return response()->json($children->map(fn (File $f) => [
+            'id' => $f->id,
+            'name' => $f->name,
+            'parent_id' => $f->parent_id,
+            'is_dir' => (bool) $f->is_dir,
+            'type' => strtolower(pathinfo($f->name, PATHINFO_EXTENSION)),
+        ])->values());
+    }
+
     // Toggle a file's or folder's starred (favorite) flag.
     public function star(File $file)
     {

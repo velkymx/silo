@@ -255,7 +255,7 @@ function onUserMenu({ item }) {
                     >
                         <VibeIcon icon="house-door-fill" class="nav-ico" />Home
                     </div>
-                    <FolderTree :folders="folders" :current-id="currentFolder" :open-ids="ancestorIds" />
+                    <FolderTree :folder="null" :current-id="currentFolder" :reveal-ids="ancestorIds" />
 
                     <template v-if="savedSearches.length">
                         <div class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</div>

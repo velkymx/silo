@@ -856,6 +856,12 @@ watch(hasPending, (pending) => {
 });
 
 onMounted(() => {
+    // Open a file directly when navigated from the sidebar tree (?open=id).
+    const openId = new URLSearchParams(window.location.search).get('open');
+    if (openId) {
+        const f = props.files.find((x) => String(x.id) === openId);
+        if (f) quickLook(f);
+    }
     startPolling();
     window.addEventListener('keydown', onKey);
 });

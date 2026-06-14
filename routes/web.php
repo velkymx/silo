@@ -55,6 +55,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/photos/albums/{album}/cover', [PhotoController::class, 'setCover'])->name('photos.albums.cover');
 
     Route::get('/usage', [\App\Http\Controllers\StorageController::class, 'index'])->name('storage.index');
+    Route::get('/tree/{folder?}', [FileController::class, 'tree'])->whereNumber('folder')->name('files.tree');
     Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 
