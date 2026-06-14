@@ -46,6 +46,12 @@ function clearSelection() {
     selected.value = new Set();
     selectMode.value = false;
 }
+function batchDeleteSelected() {
+    if (!confirm(`Move ${selected.size} photo(s) to trash?`)) return;
+    router.post('/files/batch/delete', { ids: [...selected.value] }, {
+        preserveScroll: true, onSuccess: clearSelection,
+    });
+}
 
 // ----- Lightbox -----
 const lightboxOpen = ref(false);
@@ -58,6 +64,13 @@ function openPhoto(p) {
     if (selectMode.value) { toggleSelect(p.id); return; }
     slide.value = props.photos.findIndex((x) => x.id === p.id);
     lightboxOpen.value = true;
+}
+function step(d) {
+    const n = props.photos.length;
+    if (n) slide.value = (slide.value + d + n) % n;
+}
+function jumpTo(i) {
+    slide.value = i;
 }
 
 function star(p) {
@@ -183,6 +196,9 @@ function saveEdit() {
             <VibeDropdown variant="primary" size="sm" :items="albums.map((a) => ({ text: a.name, id: a.id }))" @item-click="addSelectedToAlbum($event.item.id)">
                 <VibeIcon icon="collection" class="me-1" />Add to album
             </VibeDropdown>
+            <VibeButton variant="danger" size="sm" outline @click="batchDeleteSelected">
+                <VibeIcon icon="trash" class="me-1" />Delete
+            </VibeButton>
             <VibeButton variant="secondary" size="sm" outline @click="clearSelection">Clear</VibeButton>
         </VibeAlert>
 
@@ -230,14 +246,37 @@ function saveEdit() {
                     </div>
                 </div>
             </template>
-            <VibeCarousel
-                v-if="lightboxOpen"
-                v-model="slide"
-                :items="carouselItems"
-                :ride="ride ? 'carousel' : false"
-                :interval="ride ? 4000 : false"
-                dark
-            />
+            <div class="lightbox-stage">
+                <VibeButton variant="dark" class="nav-btn nav-prev" title="Previous (←)" @click="step(-1)">
+                    <VibeIcon icon="chevron-left" />
+                </VibeButton>
+                <VibeCarousel
+                    v-if="lightboxOpen"
+                    v-model="slide"
+                    :items="carouselItems"
+                    :controls="false"
+                    :indicators="false"
+                    :ride="ride ? 'carousel' : false"
+                    :interval="ride ? 4000 : false"
+                    dark
+                />
+                <VibeButton variant="dark" class="nav-btn nav-next" title="Next (→)" @click="step(1)">
+                    <VibeIcon icon="chevron-right" />
+                </VibeButton>
+            </div>
+
+            <!-- Thumbnail filmstrip -->
+            <div class="filmstrip">
+                <img
+                    v-for="(p, i) in photos"
+                    :key="p.id"
+                    :src="p.thumb_url"
+                    :alt="p.name"
+                    class="film-thumb"
+                    :class="{ active: i === slide }"
+                    @click="jumpTo(i)"
+                >
+            </div>
         </VibeModal>
 
         <!-- Upload -->
@@ -325,5 +364,54 @@ function saveEdit() {
     left: 6px;
     color: #fff;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+/* Lightbox nav + filmstrip */
+.lightbox-stage {
+    position: relative;
+}
+.nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    opacity: 0.75;
+    border-radius: 50%;
+    width: 46px;
+    height: 46px;
+}
+.nav-btn:hover {
+    opacity: 1;
+}
+.nav-prev {
+    left: 8px;
+}
+.nav-next {
+    right: 8px;
+}
+.filmstrip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 4px 2px;
+    justify-content: center;
+}
+.film-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.5;
+    border: 2px solid transparent;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+.film-thumb:hover {
+    opacity: 0.85;
+}
+.film-thumb.active {
+    opacity: 1;
+    border-color: var(--bs-primary);
 }
 </style>
