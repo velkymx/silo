@@ -117,6 +117,14 @@ const columns = computed(() => [
     { key: 'actions', label: '', sortable: false, searchable: false },
 ]);
 
+const versionColumns = [
+    { key: 'version', label: 'Version' },
+    { key: 'note', label: 'What changed', sortable: false },
+    { key: 'size', label: 'Size' },
+    { key: 'created_at', label: 'Saved' },
+    { key: 'actions', label: '', sortable: false, searchable: false },
+];
+
 function toggleStar(item) {
     router.post(`/files/${item.id}/star`, {}, { preserveScroll: true });
 }
@@ -787,34 +795,40 @@ onBeforeUnmount(() => {
                 Current: version {{ versionsItem?.version }}.
                 <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
             </p>
-            <table v-if="versionsItem?.versions?.length" class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr><th>Version</th><th>What changed</th><th>Size</th><th>Saved</th><th class="text-end">Actions</th></tr>
-                </thead>
-                <tbody>
-                    <tr v-for="v in versionsItem.versions" :key="v.id">
-                        <td>v{{ v.version }}</td>
-                        <td class="small">
-                            <span v-if="v.note">{{ v.note }}</span>
-                            <span v-else class="text-muted fst-italic">—</span>
-                        </td>
-                        <td>{{ (v.size / 1024).toFixed(2) }} KB</td>
-                        <td class="small">{{ v.created_at }}</td>
-                        <td class="text-end">
-                            <VibeButton
-                                variant="success"
-                                size="sm"
-                                :href="`/files/${versionsItem.id}/versions/${v.id}/download`"
-                            >
-                                <VibeIcon icon="download" />
-                            </VibeButton>
-                            <VibeButton variant="primary" size="sm" outline class="ms-1" @click="restoreVersion(v)">
-                                <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
-                            </VibeButton>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <VibeDataTable
+                v-if="versionsItem?.versions?.length"
+                :items="versionsItem.versions"
+                :columns="versionColumns"
+                row-key="id"
+                hover
+                :searchable="false"
+                :show-per-page="false"
+                :per-page="100"
+                :responsive="false"
+            >
+                <template #cell(version)="{ item }">v{{ item.version }}</template>
+                <template #cell(note)="{ item }">
+                    <span v-if="item.note" class="small">{{ item.note }}</span>
+                    <span v-else class="text-muted fst-italic small">—</span>
+                </template>
+                <template #cell(size)="{ item }">{{ (item.size / 1024).toFixed(2) }} KB</template>
+                <template #cell(created_at)="{ item }"><span class="small">{{ item.created_at }}</span></template>
+                <template #cell(actions)="{ item }">
+                    <div class="d-flex justify-content-end gap-1">
+                        <VibeButton
+                            variant="success"
+                            size="sm"
+                            :href="`/files/${versionsItem.id}/versions/${item.id}/download`"
+                            :aria-label="`Download version ${item.version}`"
+                        >
+                            <VibeIcon icon="download" />
+                        </VibeButton>
+                        <VibeButton variant="primary" size="sm" outline @click="restoreVersion(item)">
+                            <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
+                        </VibeButton>
+                    </div>
+                </template>
+            </VibeDataTable>
         </VibeModal>
 
         <!-- Quick Look modal -->
