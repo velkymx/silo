@@ -6,6 +6,7 @@ import FolderTree from '../../Components/FolderTree.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
+import { useSelection } from '../../composables/useSelection';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -244,44 +245,6 @@ function onNewMenu({ item }) {
 }
 
 // ----- Multi-select + batch operations (Finder-style) -----
-const selectMode = ref(false);
-const selectedIds = ref(new Set());
-let lastClickedIndex = -1;
-
-const selectedItems = computed(() => items.value.filter((i) => selectedIds.value.has(i.id)));
-
-function isSelected(id) {
-    return selectedIds.value.has(id);
-}
-function toggleSel(id) {
-    selectedIds.value.has(id) ? selectedIds.value.delete(id) : selectedIds.value.add(id);
-    selectedIds.value = new Set(selectedIds.value);
-}
-function clearSelection() {
-    selectedIds.value = new Set();
-    selectMode.value = false;
-    lastClickedIndex = -1;
-}
-
-// Click behaviour: plain click opens; Cmd/Ctrl toggles; Shift selects a range;
-// in select mode any click toggles.
-function onItemClick(item, event) {
-    const idx = items.value.findIndex((i) => i.id === item.id);
-    if (event?.shiftKey && lastClickedIndex >= 0) {
-        const [a, b] = [lastClickedIndex, idx].sort((x, y) => x - y);
-        for (let i = a; i <= b; i++) selectedIds.value.add(items.value[i].id);
-        selectedIds.value = new Set(selectedIds.value);
-        return;
-    }
-    if (selectMode.value || event?.metaKey || event?.ctrlKey) {
-        toggleSel(item.id);
-        lastClickedIndex = idx;
-        return;
-    }
-    lastClickedIndex = idx;
-    openItem(item);
-}
-
 function openItem(item) {
     if (item.is_dir) {
         visitFolder(item.id);
@@ -290,7 +253,10 @@ function openItem(item) {
     }
 }
 
-const batchIds = computed(() => [...selectedIds.value]);
+const {
+    selectMode, selectedIds, selectedItems, batchIds,
+    isSelected, toggleSel, clearSelection, onItemClick,
+} = useSelection(items, openItem);
 
 function batchDelete() {
     if (!confirm(`Move ${batchIds.value.length} item(s) to trash?`)) return;
@@ -529,12 +495,41 @@ const uploadForm = useForm({ files: [], parent_id: currentId.value });
 const uploadInput = ref(null);
 const uploadDragOver = ref(false);
 
+// Build a blob URL for an image File (the minifier can shadow the `URL` global
+// in some bundles, so reach for it via the global scope explicitly). Returns
+// null if no URL API is available (SSR / test) or the file isn't usable.
+function blobUrlFor(f) {
+    if (!f || typeof f !== 'object' || typeof f.type !== 'string') return null;
+    const Url = (typeof globalThis !== 'undefined' && globalThis.URL) || (typeof window !== 'undefined' && window.URL);
+    if (!Url || typeof Url.createObjectURL !== 'function') return null;
+    if (!f.type.startsWith('image/')) return null;
+    if (f.__url) return f.__url;
+    try {
+        f.__url = Url.createObjectURL(f);
+    } catch {
+        return null;
+    }
+    return f.__url;
+}
+
+// Revoke every blob URL we've created. Call before clearing the list, on
+// unmount, and on individual removal to keep memory + file handles in check.
+function revokeBlobUrl(f) {
+    if (f && f.__url) {
+        const Url = (typeof globalThis !== 'undefined' && globalThis.URL) || (typeof window !== 'undefined' && window.URL);
+        try { Url?.revokeObjectURL(f.__url); } catch { /* ignore */ }
+        f.__url = null;
+    }
+}
+
 watch(uploadFiles, (val) => {
     uploadForm.files = val;
 });
 
 function addUploadFiles(list) {
-    uploadFiles.value = [...uploadFiles.value, ...Array.from(list)];
+    const incoming = Array.from(list);
+    for (const f of incoming) blobUrlFor(f);
+    uploadFiles.value = [...uploadFiles.value, ...incoming];
 }
 function onUploadDrop(e) {
     uploadDragOver.value = false;
@@ -545,10 +540,12 @@ function onUploadPick(e) {
     e.target.value = '';
 }
 function removeUploadFile(i) {
+    const removed = uploadFiles.value[i];
+    revokeBlobUrl(removed);
     uploadFiles.value = uploadFiles.value.filter((_, idx) => idx !== i);
 }
 function isImageFile(f) {
-    return f.type?.startsWith('image/');
+    return typeof f?.type === 'string' && f.type.startsWith('image/');
 }
 
 function submitUpload() {
@@ -557,10 +554,16 @@ function submitUpload() {
         forceFormData: true,
         onSuccess: () => {
             uploadForm.reset();
+            uploadFiles.value.forEach(revokeBlobUrl);
             uploadFiles.value = [];
             uploadOpen.value = false;
         },
     });
+}
+
+function clearAllUploads() {
+    uploadFiles.value.forEach(revokeBlobUrl);
+    uploadFiles.value = [];
 }
 
 // ----- Create folder -----
@@ -868,6 +871,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
     poll && clearInterval(poll);
     window.removeEventListener('keydown', onKey);
+    uploadFiles.value.forEach(revokeBlobUrl);
 });
 </script>
 
@@ -1508,11 +1512,11 @@ onBeforeUnmount(() => {
                 <div v-if="uploadFiles.length" class="mt-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="small text-muted">{{ uploadFiles.length }} file(s) · {{ fmtBytes(uploadFiles.reduce((s, f) => s + f.size, 0)) }}</span>
-                        <VibeButton variant="link" size="sm" class="p-0 text-decoration-none" @click="uploadFiles = []">Clear all</VibeButton>
+                        <VibeButton variant="link" size="sm" class="p-0 text-decoration-none" @click="clearAllUploads">Clear all</VibeButton>
                     </div>
                     <div class="border rounded" style="max-height: 40vh; overflow: auto">
                         <div v-for="(f, i) in uploadFiles" :key="i" class="d-flex align-items-center gap-2 p-2 border-bottom">
-                            <img v-if="isImageFile(f)" :src="f.__url || (f.__url = URL.createObjectURL(f))" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
+                            <img v-if="isImageFile(f) && blobUrlFor(f)" :src="f.__url" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
                             <VibeIcon v-else icon="file-earmark" class="fs-4 text-secondary flex-shrink-0" />
                             <div class="flex-grow-1 min-w-0">
                                 <div class="text-truncate small">{{ f.name }}</div>
