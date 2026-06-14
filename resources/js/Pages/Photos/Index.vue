@@ -90,6 +90,7 @@ watch(slide, async () => {
 });
 
 function star(p) {
+    if (!p) return;
     router.post(`/files/${p.id}/star`, {}, { preserveScroll: true, preserveState: false });
 }
 
@@ -110,6 +111,7 @@ function onPhotoMenu(p, { item }) {
     if (item.action === 'delete') destroyPhoto(p);
 }
 async function destroyPhoto(p) {
+    if (!p) return;
     if (!await confirm({ title: 'Move to trash', message: `Move “${p.name}” to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.delete(`/delete/${p.id}`, { preserveScroll: true, onSuccess: () => { lightboxOpen.value = false; } });
 }
@@ -144,6 +146,7 @@ const editorPhoto = ref(null);
 const cropper = ref(null);
 const editorSaving = ref(false);
 function openEditor(p) {
+    if (!p) return;
     editorPhoto.value = p;
     editorOpen.value = true;
 }
@@ -283,7 +286,7 @@ function saveEdit() {
             <template #header>
                 <div class="d-flex align-items-center w-100">
                     <span class="text-truncate" :title="currentPhoto?.name">{{ currentPhoto?.name }}</span>
-                    <div class="ms-auto d-flex gap-2">
+                    <div v-if="currentPhoto" class="ms-auto d-flex gap-2">
                         <VibeButton variant="secondary" size="sm" outline :title="ride ? 'Stop' : 'Slideshow'" :aria-label="ride ? 'Stop slideshow' : 'Start slideshow'" @click="ride = !ride">
                             <VibeIcon :icon="ride ? 'pause-fill' : 'play-fill'" />
                         </VibeButton>
