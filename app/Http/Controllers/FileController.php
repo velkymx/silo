@@ -685,6 +685,8 @@ class FileController extends Controller
             ];
 
             // An upload onto an existing file name becomes a new version of that file.
+            // (resolveFolder() guarantees $parent is owned by the uploader, so a
+            // cross-owner collision in a foreign folder can't occur here.)
             $existing = File::files()
                 ->where('owner_id', $userId)
                 ->where('parent_id', $parent?->id)
