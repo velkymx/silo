@@ -9,6 +9,7 @@ interface TreeNode {
     parent_id: number | null;
     is_dir: boolean;
     type: string;
+    has_children?: boolean;
 }
 
 const props = withDefaults(defineProps<{
@@ -121,6 +122,7 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
         @keydown.space.prevent="toggle()"
     >
         <button
+            v-if="folder.has_children !== false"
             type="button"
             class="vs-twisty"
             :aria-label="(expanded ? 'Collapse ' : 'Expand ') + folder.name"
@@ -129,6 +131,7 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
         >
             <VibeIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" />
         </button>
+        <span v-else class="vs-twisty" aria-hidden="true"></span>
         <VibeIcon :icon="expanded ? 'folder2-open' : 'folder-fill'" class="vs-icon" :style="{ color: '#f59e0b' }" />
         <span class="text-truncate" :title="folder.name">{{ folder.name }}</span>
     </div>
@@ -159,6 +162,13 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
         </div>
         <div v-if="loading" class="vs-row text-muted" :style="padFor(isRoot ? 0 : level + 1, true)">
             <VibeSpinner size="sm" class="me-2" />Loading…
+        </div>
+        <div
+            v-else-if="loaded && !children.length"
+            class="vs-row text-muted fst-italic"
+            :style="padFor(isRoot ? 0 : level + 1, true)"
+        >
+            No items
         </div>
     </template>
 </template>

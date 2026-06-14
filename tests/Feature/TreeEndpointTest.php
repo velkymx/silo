@@ -27,6 +27,20 @@ class TreeEndpointTest extends TestCase
         $this->assertSame(['Sub', 'inside.txt'], array_column($kids, 'name'));
     }
 
+    public function test_has_children_flag_distinguishes_empty_folders(): void
+    {
+        $user = User::factory()->create();
+        $parent = File::factory()->for($user, 'owner')->folder()->create(['name' => 'Parent', 'parent_id' => null]);
+        $empty = File::factory()->for($user, 'owner')->folder()->create(['name' => 'Empty', 'parent_id' => null]);
+        File::factory()->for($user, 'owner')->create(['name' => 'child.txt', 'parent_id' => $parent->id]);
+
+        $root = collect($this->actingAs($user)->getJson('/tree')->assertOk()->json())
+            ->keyBy('name');
+
+        $this->assertTrue($root['Parent']['has_children']);
+        $this->assertFalse($root['Empty']['has_children']);
+    }
+
     public function test_cannot_read_another_users_folder(): void
     {
         $folder = File::factory()->for(User::factory()->create(), 'owner')->folder()->create();

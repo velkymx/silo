@@ -7,7 +7,7 @@ vi.mock('@/lib/http', () => ({ http: { get: httpGet } }));
 
 import FolderTree from '@/Components/FolderTree.vue';
 
-type Node = { id: number; name: string; parent_id: number | null; is_dir: boolean; type: string };
+type Node = { id: number; name: string; parent_id: number | null; is_dir: boolean; type: string; has_children?: boolean };
 
 function fakeTree(byUrl: Record<string, Node[]>) {
     httpGet.mockImplementation((url: string) => Promise.resolve(byUrl[url] ?? []));
@@ -86,6 +86,35 @@ describe('FolderTree (VSCode-style sidebar tree)', () => {
         expect(httpGet).toHaveBeenCalledWith('/tree/1');
         expect(wrapper.text()).toContain('inside.pdf');
         expect(wrapper.find('.vs-row.folder').attributes('aria-expanded')).toBe('true');
+    });
+
+    it('hides the twisty for folders with has_children false', async () => {
+        fakeTree({
+            '/tree': [
+                { id: 1, name: 'Full', parent_id: null, is_dir: true, type: '', has_children: true },
+                { id: 2, name: 'Empty', parent_id: null, is_dir: true, type: '', has_children: false },
+            ],
+        });
+        const wrapper = mount(FolderTree, { props: { folder: null } as any });
+        await flushPromises();
+
+        const rows = wrapper.findAll('.vs-row.folder');
+        const full = rows.find((r) => r.text().includes('Full'))!;
+        const empty = rows.find((r) => r.text().includes('Empty'))!;
+        expect(full.find('button.vs-twisty').exists()).toBe(true);
+        expect(empty.find('button.vs-twisty').exists()).toBe(false);
+    });
+
+    it('shows a "No items" row when an expanded folder is empty', async () => {
+        fakeTree({
+            '/tree': [{ id: 1, name: 'Docs', parent_id: null, is_dir: true, type: '', has_children: true }],
+            '/tree/1': [],
+        });
+        const wrapper = mount(FolderTree, { props: { folder: null } as any });
+        await flushPromises();
+        await wrapper.find('.vs-twisty').trigger('click');
+        await flushPromises();
+        expect(wrapper.text()).toContain('No items');
     });
 
     it('clicking a file navigates with ?open=id', async () => {
