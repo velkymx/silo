@@ -149,6 +149,12 @@ function toggleStar(item) {
     router.post(`/files/${item.id}/star`, {}, { preserveScroll: true });
 }
 
+// Drag-and-drop move: drop a file/folder onto a folder to move it there.
+function onDropToFolder({ payload }, folder) {
+    if (!payload || !folder?.is_dir || payload.id === folder.id) return;
+    router.post(`/files/${payload.id}/move`, { target_id: folder.id }, { preserveScroll: true });
+}
+
 // ----- Text / Markdown / HTML editor -----
 const markdownTypes = ['md', 'markdown', 'txt', 'text', 'log', 'csv'];
 const htmlTypes = ['html', 'htm'];
@@ -819,7 +825,21 @@ onBeforeUnmount(() => {
         <!-- Thumbnail / grid view -->
         <VibeRow v-if="viewMode === 'grid'" class="g-3">
             <VibeCol v-for="item in items" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
-                <div class="card h-100 text-center border position-relative" style="cursor: pointer" @click="openItem(item)">
+              <VibeDraggable :payload="item" group="files" tag="div" class="h-100">
+               <template #default="{ isDragging }">
+                <component
+                    :is="item.is_dir ? 'VibeDroppable' : 'div'"
+                    group="files"
+                    class="h-100"
+                    @drop="onDropToFolder($event, item)"
+                >
+                 <template #default="drop">
+                <div
+                    class="card h-100 text-center border position-relative"
+                    :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver }"
+                    style="cursor: pointer"
+                    @click="openItem(item)"
+                >
                     <VibeButton
                         variant="link"
                         class="position-absolute top-0 start-0 m-1 p-1"
@@ -867,6 +887,10 @@ onBeforeUnmount(() => {
                         <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
                     </div>
                 </div>
+                 </template>
+                </component>
+               </template>
+              </VibeDraggable>
             </VibeCol>
             <VibeCol v-if="!items.length" :cols="12">
                 <p class="text-muted text-center py-4">{{ flat ? 'No matching files.' : 'This folder is empty.' }}</p>
@@ -892,7 +916,20 @@ onBeforeUnmount(() => {
             </template>
 
             <template #cell(name)="{ item }">
-                <div class="d-flex align-items-center" style="cursor: pointer" @click="openItem(item)">
+              <VibeDraggable :payload="item" group="files" tag="div">
+               <template #default="{ isDragging }">
+                <component
+                    :is="item.is_dir ? 'VibeDroppable' : 'div'"
+                    group="files"
+                    @drop="onDropToFolder($event, item)"
+                >
+                 <template #default="drop">
+                <div
+                    class="d-flex align-items-center rounded"
+                    :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': drop && drop.isOver }"
+                    style="cursor: pointer"
+                    @click="openItem(item)"
+                >
                     <img
                         v-if="item.thumb_url"
                         :src="item.thumb_url"
@@ -925,6 +962,10 @@ onBeforeUnmount(() => {
                         @click.stop="filterByTag(tag.id)"
                     >{{ tag.name }}</span>
                 </div>
+                 </template>
+                </component>
+               </template>
+              </VibeDraggable>
             </template>
 
             <template #cell(modified)="{ item }">
