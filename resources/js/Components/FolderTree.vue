@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -16,6 +16,12 @@ const children = computed(() =>
 );
 
 const open = ref(new Set(props.openIds));
+
+// Keep ancestors of the current folder expanded as the user navigates.
+watch(() => props.openIds, (ids) => {
+    for (const id of ids) open.value.add(id);
+    open.value = new Set(open.value);
+});
 
 function hasChildren(id) {
     return props.folders.some((f) => f.parent_id === id);
@@ -51,7 +57,10 @@ function go(id) {
                     :class="child.id === currentId ? 'fw-bold' : 'text-body'"
                     @click="go(child.id)"
                 >
-                    <VibeIcon icon="folder-fill" class="text-warning me-1" />{{ child.name }}
+                    <VibeIcon
+                        :icon="open.has(child.id) ? 'folder2-open' : 'folder-fill'"
+                        class="text-warning me-1"
+                    />{{ child.name }}
                 </VibeButton>
             </div>
             <div v-if="open.has(child.id)" class="ps-3">

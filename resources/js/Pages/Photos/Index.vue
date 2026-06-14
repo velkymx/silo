@@ -240,7 +240,9 @@ function saveEdit() {
                     :class="{ selected: selected.has(p.id) }"
                     @click="openPhoto(p)"
                 >
-                    <img :src="p.thumb_url" :alt="p.name" loading="lazy">
+                    <div class="photo-thumb">
+                        <img :src="p.thumb_url" :alt="p.name" loading="lazy">
+                    </div>
 
                     <!-- Star (click to toggle) -->
                     <VibeButton
@@ -378,6 +380,10 @@ function saveEdit() {
     position: relative;
     aspect-ratio: 1;
     cursor: pointer;
+}
+.photo-thumb {
+    width: 100%;
+    height: 100%;
     border-radius: 6px;
     overflow: hidden;
     background: var(--bs-tertiary-bg);
@@ -390,6 +396,9 @@ function saveEdit() {
 }
 .photo-cell:hover img {
     transform: scale(1.04);
+}
+.cell-actions {
+    z-index: 20;
 }
 .photo-cell.selected {
     outline: 3px solid var(--bs-primary);

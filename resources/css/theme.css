@@ -63,3 +63,26 @@
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
 }
+
+/* Breadcrumbs: visible chevron dividers + clear links */
+.breadcrumb {
+    --bs-breadcrumb-divider: '';
+    font-weight: 500;
+}
+.breadcrumb-item + .breadcrumb-item::before {
+    content: '›';
+    color: var(--bs-secondary-color);
+    padding-right: 0.5rem;
+    font-weight: 600;
+}
+.breadcrumb-item a {
+    color: var(--bs-primary);
+    text-decoration: none;
+}
+.breadcrumb-item a:hover {
+    text-decoration: underline;
+}
+.breadcrumb-item.active {
+    color: var(--bs-body-color);
+    font-weight: 600;
+}

@@ -67,7 +67,7 @@ const ancestorIds = computed(() => {
 
 // ----- Breadcrumb -----
 const breadcrumbItems = computed(() => [
-    { text: 'My Files', folder: null, active: !props.current },
+    { text: 'Home', folder: null, active: !props.current },
     ...props.breadcrumbs.map((b, i) => ({
         text: b.name,
         folder: b.id,
@@ -623,7 +623,7 @@ function descendantIds(folderId) {
 const destinationOptions = computed(() => {
     const item = transferItem.value;
     const excluded = item?.is_dir ? descendantIds(item.id) : new Set();
-    const options = [{ value: null, text: 'Home (root)' }];
+    const options = [{ value: null, text: 'Home' }];
     for (const f of props.allFolders) {
         if (!excluded.has(f.id)) options.push({ value: f.id, text: f.name });
     }
@@ -1085,6 +1085,7 @@ onBeforeUnmount(() => {
             hover
             :searchable="false"
             :per-page="10"
+            :show-per-page="false"
             :responsive="false"
             :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
             @row-clicked="selectFile"

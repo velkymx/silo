@@ -83,7 +83,7 @@ function active(test) {
 }
 
 const baseNav = computed(() => [
-    { text: 'My Files', href: '/', icon: 'folder-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
+    { text: 'Home', href: '/', icon: 'house-door-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
     { text: 'Recent', href: '/?recent=1', icon: 'clock-history', active: active((p, q) => q.includes('recent=1')) },
     { text: 'Starred', href: '/?starred=1', icon: 'star-fill', active: active((p, q) => q.includes('starred=1')) },
     { text: 'Photos', href: '/photos', icon: 'images', active: active((p) => p.startsWith('/photos')) },
