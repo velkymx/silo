@@ -23,5 +23,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Turn "POST data too large" (upload exceeds PHP's post_max_size) into a
+        // friendly flash instead of a 500. Raise post_max_size/upload_max_filesize
+        // in php.ini (the Docker image already sets 256M) to allow bigger uploads.
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $e, $request) {
+            $message = 'That upload is larger than the server allows. Try a smaller file or raise the server upload limit.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 413);
+            }
+
+            return back()->with('error', $message);
+        });
     })->create();
