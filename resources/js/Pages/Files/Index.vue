@@ -6,6 +6,7 @@ import FolderTree from '../../Components/FolderTree.vue';
 import FileItem from '../../Components/FileItem.vue';
 import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
+import UploadModal from '../../Components/UploadModal.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
@@ -36,19 +37,6 @@ const props = defineProps({
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
 });
 
-const maxUploadBytes = computed(() => props.maxUploadKb * 1024);
-const maxUploadLabel = computed(() =>
-    props.maxUploadKb >= 1024 ? `${(props.maxUploadKb / 1024).toFixed(0)} MB` : `${props.maxUploadKb} KB`
-);
-
-function fmtBytes(n) {
-    if (n < 1024) return `${n} B`;
-    const units = ['KB', 'MB', 'GB', 'TB'];
-    let v = n / 1024;
-    let i = 0;
-    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
-    return `${v.toFixed(1)} ${units[i]}`;
-}
 
 const storagePct = computed(() =>
     props.storage.quota > 0 ? Math.min(100, Math.round((props.storage.used / props.storage.quota) * 100)) : 0
@@ -437,81 +425,6 @@ const imageMime = (f) => f && (f.type ? imageTypes.includes(f.type) : false);
 
 // ----- Upload -----
 const uploadOpen = ref(false);
-const uploadFiles = ref([]);
-const uploadForm = useForm({ files: [], parent_id: currentId.value });
-const uploadInput = ref(null);
-const uploadDragOver = ref(false);
-
-// Build a blob URL for an image File (the minifier can shadow the `URL` global
-// in some bundles, so reach for it via the global scope explicitly). Returns
-// null if no URL API is available (SSR / test) or the file isn't usable.
-function blobUrlFor(f) {
-    if (!f || typeof f !== 'object' || typeof f.type !== 'string') return null;
-    const Url = (typeof globalThis !== 'undefined' && globalThis.URL) || (typeof window !== 'undefined' && window.URL);
-    if (!Url || typeof Url.createObjectURL !== 'function') return null;
-    if (!f.type.startsWith('image/')) return null;
-    if (f.__url) return f.__url;
-    try {
-        f.__url = Url.createObjectURL(f);
-    } catch {
-        return null;
-    }
-    return f.__url;
-}
-
-// Revoke every blob URL we've created. Call before clearing the list, on
-// unmount, and on individual removal to keep memory + file handles in check.
-function revokeBlobUrl(f) {
-    if (f && f.__url) {
-        const Url = (typeof globalThis !== 'undefined' && globalThis.URL) || (typeof window !== 'undefined' && window.URL);
-        try { Url?.revokeObjectURL(f.__url); } catch { /* ignore */ }
-        f.__url = null;
-    }
-}
-
-watch(uploadFiles, (val) => {
-    uploadForm.files = val;
-});
-
-function addUploadFiles(list) {
-    const incoming = Array.from(list);
-    for (const f of incoming) blobUrlFor(f);
-    uploadFiles.value = [...uploadFiles.value, ...incoming];
-}
-function onUploadDrop(e) {
-    uploadDragOver.value = false;
-    if (e.dataTransfer?.files?.length) addUploadFiles(e.dataTransfer.files);
-}
-function onUploadPick(e) {
-    if (e.target.files?.length) addUploadFiles(e.target.files);
-    e.target.value = '';
-}
-function removeUploadFile(i) {
-    const removed = uploadFiles.value[i];
-    revokeBlobUrl(removed);
-    uploadFiles.value = uploadFiles.value.filter((_, idx) => idx !== i);
-}
-function isImageFile(f) {
-    return typeof f?.type === 'string' && f.type.startsWith('image/');
-}
-
-function submitUpload() {
-    uploadForm.parent_id = currentId.value;
-    uploadForm.post('/upload', {
-        forceFormData: true,
-        onSuccess: () => {
-            uploadForm.reset();
-            uploadFiles.value.forEach(revokeBlobUrl);
-            uploadFiles.value = [];
-            uploadOpen.value = false;
-        },
-    });
-}
-
-function clearAllUploads() {
-    uploadFiles.value.forEach(revokeBlobUrl);
-    uploadFiles.value = [];
-}
 
 // ----- Create folder -----
 const folderOpen = ref(false);
@@ -763,7 +676,6 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKey);
-    uploadFiles.value.forEach(revokeBlobUrl);
 });
 </script>
 
@@ -1258,59 +1170,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Upload modal -->
-        <VibeModal v-model="uploadOpen" title="Upload Files" fullscreen>
-            <div class="mx-auto" style="max-width: 720px">
-                <!-- Drop zone -->
-                <div
-                    class="upload-dropzone"
-                    :class="{ dragover: uploadDragOver }"
-                    @click="uploadInput?.click()"
-                    @dragover.prevent="uploadDragOver = true"
-                    @dragleave.prevent="uploadDragOver = false"
-                    @drop.prevent="onUploadDrop"
-                >
-                    <VibeIcon icon="cloud-arrow-up" class="display-4 text-primary mb-2" />
-                    <div class="fw-semibold">Drag &amp; drop files here</div>
-                    <div class="text-muted small">or click to browse · up to {{ maxUploadLabel }} per file</div>
-                    <input ref="uploadInput" type="file" multiple class="d-none" @change="onUploadPick">
-                </div>
-
-                <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-2">{{ uploadForm.errors['files.0'] }}</p>
-
-                <!-- Selected files -->
-                <div v-if="uploadFiles.length" class="mt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="small text-muted">{{ uploadFiles.length }} file(s) · {{ fmtBytes(uploadFiles.reduce((s, f) => s + f.size, 0)) }}</span>
-                        <VibeButton variant="link" size="sm" class="p-0 text-decoration-none" @click="clearAllUploads">Clear all</VibeButton>
-                    </div>
-                    <div class="border rounded" style="max-height: 40vh; overflow: auto">
-                        <div v-for="(f, i) in uploadFiles" :key="i" class="d-flex align-items-center gap-2 p-2 border-bottom">
-                            <img v-if="isImageFile(f) && blobUrlFor(f)" :src="f.__url" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
-                            <VibeIcon v-else icon="file-earmark" class="fs-4 text-secondary flex-shrink-0" />
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="text-truncate small">{{ f.name }}</div>
-                                <div class="text-muted" style="font-size: 0.72rem">{{ fmtBytes(f.size) }}</div>
-                            </div>
-                            <VibeButton variant="link" size="sm" class="p-0 text-danger" @click="removeUploadFile(i)"><VibeIcon icon="x-lg" /></VibeButton>
-                        </div>
-                    </div>
-                </div>
-
-                <VibeProgress
-                    v-if="uploadForm.progress"
-                    :bars="[{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }]"
-                    class="mt-3"
-                />
-            </div>
-            <template #footer>
-                <div class="d-flex justify-content-center gap-2 w-100">
-                    <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
-                    <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadFiles.length" @click="submitUpload">
-                        <VibeIcon icon="upload" class="me-1" />Upload{{ uploadFiles.length ? ` ${uploadFiles.length}` : '' }}
-                    </VibeButton>
-                </div>
-            </template>
-        </VibeModal>
+        <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" />
 
         <!-- Create folder modal -->
         <VibeModal v-model="folderOpen" title="Create Folder" fullscreen>
@@ -1444,24 +1304,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.upload-dropzone {
-    border: 2px dashed var(--bs-border-color);
-    border-radius: 0.75rem;
-    padding: 2.5rem 1rem;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    background: var(--bs-body-tertiary);
-}
-.upload-dropzone:hover,
-.upload-dropzone.dragover {
-    border-color: var(--bs-primary);
-    background: var(--bs-primary-bg-subtle);
-}
 .select-check {
     cursor: pointer;
-}
-.min-w-0 {
-    min-width: 0;
 }
 </style>
