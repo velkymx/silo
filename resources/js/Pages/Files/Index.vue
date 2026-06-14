@@ -16,6 +16,7 @@ import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
+import { triggerDownload } from '../../lib/download';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -268,7 +269,7 @@ const folderActions = [
 ];
 
 function onAction(item, { item: action }) {
-    if (action.action === 'download') window.location.href = `/download/${item.id}`;
+    if (action.action === 'download') triggerDownload(`/download/${item.id}`);
     if (action.action === 'edit') openEditor(item);
     if (action.action === 'details') openDetails(item);
     if (action.action === 'share') openShare(item);

@@ -4,6 +4,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
+import { triggerDownload } from '../../lib/download';
 
 const props = defineProps({
     photos: { type: Array, default: () => [] },
@@ -98,7 +99,7 @@ function onPhotoMenu(p, { item }) {
     if (item.action === 'open') openPhoto(p);
     if (item.action === 'edit') openEditor(p);
     if (item.action === 'star') star(p);
-    if (item.action === 'download') window.location.href = `/download/${p.id}`;
+    if (item.action === 'download') triggerDownload(`/download/${p.id}`);
     if (item.action === 'delete') destroyPhoto(p);
 }
 function destroyPhoto(p) {
