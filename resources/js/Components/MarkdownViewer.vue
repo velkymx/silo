@@ -3,6 +3,7 @@ import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import Viewer from '@toast-ui/editor/viewer';
 import '@toast-ui/editor/dist/toastui-editor-viewer.css';
 import '@toast-ui/editor/dist/theme/toastui-editor-dark.css';
+import { getText } from '../lib/http';
 
 const props = defineProps({
     url: { type: String, required: true },
@@ -19,11 +20,7 @@ function isDark() {
 async function load() {
     error.value = '';
     try {
-        const { data } = await window.axios.get(props.url, {
-            responseType: 'text',
-            transformResponse: [(d) => d],
-        });
-        const markdown = typeof data === 'string' ? data : String(data ?? '');
+        const markdown = await getText(props.url);
 
         viewer?.destroy();
         viewer = new Viewer({

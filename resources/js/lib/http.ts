@@ -43,3 +43,22 @@ export const http = {
     put: <T = unknown>(url: string, body?: unknown) => request<T>('PUT', url, body),
     del: <T = unknown>(url: string) => request<T>('DELETE', url),
 };
+
+async function raw(url: string): Promise<Response> {
+    const res = await fetch(url, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfToken() },
+        credentials: 'same-origin',
+    });
+    if (!res.ok) throw new HttpError(res.status, null);
+    return res;
+}
+
+/** Fetch a stored file's raw text (e.g. markdown/text content). */
+export async function getText(url: string): Promise<string> {
+    return (await raw(url)).text();
+}
+
+/** Fetch a stored file's bytes (e.g. docx/xlsx for the in-browser editors). */
+export async function getArrayBuffer(url: string): Promise<ArrayBuffer> {
+    return (await raw(url)).arrayBuffer();
+}

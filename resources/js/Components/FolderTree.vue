@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { http } from '../lib/http';
 
 interface TreeNode {
     id: number;
@@ -34,8 +35,7 @@ async function load(): Promise<void> {
     loading.value = true;
     try {
         const url = isRoot ? '/tree' : `/tree/${props.folder!.id}`;
-        const { data } = await window.axios.get(url);
-        children.value = data as TreeNode[];
+        children.value = await http.get<TreeNode[]>(url);
         loaded.value = true;
     } finally {
         loading.value = false;

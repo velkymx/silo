@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
-const { routerGet } = vi.hoisted(() => ({ routerGet: vi.fn() }));
+const { routerGet, httpGet } = vi.hoisted(() => ({ routerGet: vi.fn(), httpGet: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({ router: { get: routerGet } }));
+vi.mock('@/lib/http', () => ({ http: { get: httpGet } }));
 
 import FolderTree from '@/Components/FolderTree.vue';
 
 type Node = { id: number; name: string; parent_id: number | null; is_dir: boolean; type: string };
 
-function fakeAxios(byUrl: Record<string, Node[]>) {
-    return {
-        get: vi.fn((url: string) => Promise.resolve({ data: byUrl[url] ?? [] })),
-    };
+function fakeTree(byUrl: Record<string, Node[]>) {
+    httpGet.mockImplementation((url: string) => Promise.resolve(byUrl[url] ?? []));
 }
 
 describe('FolderTree (VSCode-style sidebar tree)', () => {
@@ -20,7 +19,7 @@ describe('FolderTree (VSCode-style sidebar tree)', () => {
     });
 
     it('loads the root level and renders folders + files', async () => {
-        (globalThis as any).window.axios = fakeAxios({
+        fakeTree({
             '/tree': [
                 { id: 1, name: 'Docs', parent_id: null, is_dir: true, type: '' },
                 { id: 2, name: 'note.txt', parent_id: null, is_dir: false, type: 'txt' },
@@ -30,13 +29,13 @@ describe('FolderTree (VSCode-style sidebar tree)', () => {
         const wrapper = mount(FolderTree, { props: { folder: null } as any });
         await flushPromises();
 
-        expect((window as any).axios.get).toHaveBeenCalledWith('/tree');
+        expect(httpGet).toHaveBeenCalledWith('/tree');
         expect(wrapper.text()).toContain('Docs');
         expect(wrapper.text()).toContain('note.txt');
     });
 
     it('expanding a folder lazily fetches its children', async () => {
-        (globalThis as any).window.axios = fakeAxios({
+        fakeTree({
             '/tree': [{ id: 1, name: 'Docs', parent_id: null, is_dir: true, type: '' }],
             '/tree/1': [{ id: 3, name: 'inside.pdf', parent_id: 1, is_dir: false, type: 'pdf' }],
         });
@@ -48,12 +47,12 @@ describe('FolderTree (VSCode-style sidebar tree)', () => {
         await wrapper.find('.vs-twisty').trigger('click');
         await flushPromises();
 
-        expect((window as any).axios.get).toHaveBeenCalledWith('/tree/1');
+        expect(httpGet).toHaveBeenCalledWith('/tree/1');
         expect(wrapper.text()).toContain('inside.pdf');
     });
 
     it('clicking a file navigates with ?open=id', async () => {
-        (globalThis as any).window.axios = fakeAxios({
+        fakeTree({
             '/tree': [{ id: 5, name: 'pic.png', parent_id: null, is_dir: false, type: 'png' }],
         });
 

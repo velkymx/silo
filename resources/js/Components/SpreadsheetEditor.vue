@@ -3,6 +3,7 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import jspreadsheet from 'jspreadsheet-ce';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';
 import 'jsuites/dist/jsuites.css';
+import { getArrayBuffer } from '../lib/http';
 
 const props = defineProps({
     url: { type: String, required: true },
@@ -100,8 +101,8 @@ async function load() {
         XLSX = await import('xlsx');
         let wb;
         if (props.url) {
-            const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
-            wb = XLSX.read(res.data, { type: 'array', cellFormula: true, cellStyles: true });
+            const bytes = await getArrayBuffer(props.url);
+            wb = XLSX.read(bytes, { type: 'array', cellFormula: true, cellStyles: true });
         } else {
             // New blank document.
             wb = XLSX.utils.book_new();

@@ -15,6 +15,7 @@ import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
+import { getText } from '../../lib/http';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -160,8 +161,7 @@ async function openEditor(item) {
     editLoading.value = true;
     editOpen.value = true;
     try {
-        const { data } = await window.axios.get(`/raw/${item.id}`, { responseType: 'text', transformResponse: [(d) => d] });
-        editContent.value = typeof data === 'string' ? data : String(data ?? '');
+        editContent.value = await getText(`/raw/${item.id}`);
     } finally {
         editLoading.value = false;
     }

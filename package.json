@@ -17,7 +17,6 @@
         "@vue/test-utils": "^2.4.11",
         "@vue/tsconfig": "^0.9.1",
         "autoprefixer": "^10.4.20",
-        "axios": "^1.7.4",
         "bootstrap": "^5.3.8",
         "concurrently": "^10.0.3",
         "jsdom": "^29.1.1",

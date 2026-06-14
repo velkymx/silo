@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { getArrayBuffer } from '../lib/http';
 
 const props = defineProps({
     url: { type: String, required: true },
@@ -19,8 +20,7 @@ async function render() {
     loading.value = true;
 
     try {
-        const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
-        const buffer = res.data;
+        const buffer = await getArrayBuffer(props.url);
 
         if (props.type === 'docx') {
             const { renderAsync } = await import('docx-preview');

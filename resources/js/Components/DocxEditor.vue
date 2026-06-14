@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { getArrayBuffer } from '../lib/http';
 
 const props = defineProps({
     url: { type: String, default: null },
@@ -30,8 +31,8 @@ async function load() {
 
         // Load existing bytes, or start a blank document when creating.
         if (props.url) {
-            const res = await window.axios.get(props.url, { responseType: 'arraybuffer' });
-            config.document = new File([res.data], props.name, { type: DOCX_MIME });
+            const bytes = await getArrayBuffer(props.url);
+            config.document = new File([bytes], props.name, { type: DOCX_MIME });
         }
 
         superdoc = new SuperDoc(config);
