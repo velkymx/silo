@@ -53,7 +53,8 @@ function openSave() {
 }
 
 async function commitSave() {
-    if (!editorRef.value?.serialize) return;
+    // Never serialize an editor that hasn't signalled ready or has errored.
+    if (!ready.value || loadError.value || typeof editorRef.value?.serialize !== 'function') return;
     saving.value = true;
     try {
         const blob = await editorRef.value.serialize();
@@ -101,7 +102,7 @@ async function commitSave() {
                     {{ isFullscreen ? 'Exit' : 'Full screen' }}
                 </VibeButton>
                 <VibeButton variant="light" size="sm" @click="back">Cancel</VibeButton>
-                <VibeButton variant="primary" size="sm" :disabled="!ready || kind === 'unsupported'" @click="openSave">
+                <VibeButton variant="primary" size="sm" :disabled="!ready || kind === 'unsupported' || !!loadError" @click="openSave">
                     <VibeIcon icon="check2" class="me-1" />{{ creating ? 'Create' : 'Save' }}
                 </VibeButton>
             </div>
