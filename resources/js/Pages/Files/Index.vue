@@ -5,13 +5,13 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import FolderTree from '../../Components/FolderTree.vue';
 import FileItem from '../../Components/FileItem.vue';
 import ItemActions from '../../Components/ItemActions.vue';
+import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
-import { useAdvancedSearch } from '../../composables/useAdvancedSearch';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -734,22 +734,8 @@ function filterByTag(id) {
 }
 
 // ----- Delete -----
-// ----- Advanced search + smart folders -----
-const { advOpen, adv, typeOptions, openAdvanced, advParams } = useAdvancedSearch(computed(() => props.filters));
-const tagFilterOptions = computed(() => [{ value: '', text: 'Any tag' }, ...props.allTags.map((t) => ({ value: t.id, text: t.name }))]);
-
-function applyAdvanced() {
-    router.get('/', advParams(), { preserveScroll: true });
-    advOpen.value = false;
-}
-function saveSmartFolder() {
-    const name = window.prompt('Name this smart folder:');
-    if (!name) return;
-    router.post('/saved-searches', { name, params: advParams() }, {
-        preserveScroll: true,
-        onSuccess: () => { advOpen.value = false; },
-    });
-}
+// ----- Advanced search + smart folders (modal owns the form) -----
+const advOpen = ref(false);
 
 function destroy(item) {
     const msg = item.is_dir && item.item_count > 0
@@ -816,7 +802,7 @@ onBeforeUnmount(() => {
                     <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
-                <VibeButton variant="secondary" outline title="Advanced search" @click="openAdvanced">
+                <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
                     <VibeIcon icon="funnel" class="me-1" />Filters
                 </VibeButton>
                 <VibeButton
@@ -1453,36 +1439,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Advanced search -->
-        <VibeModal v-model="advOpen" title="Advanced Search" fullscreen>
-            <div class="mx-auto" style="max-width: 640px">
-                <VibeFormGroup label="Contains text">
-                    <VibeFormInput v-model="adv.search" placeholder="Name or content…" />
-                </VibeFormGroup>
-                <div class="row g-2 mt-1">
-                    <div class="col"><VibeFormGroup label="Date from"><VibeFormInput v-model="adv.date_from" type="date" /></VibeFormGroup></div>
-                    <div class="col"><VibeFormGroup label="Date to"><VibeFormInput v-model="adv.date_to" type="date" /></VibeFormGroup></div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col"><VibeFormGroup label="Min size (MB)"><VibeFormInput v-model="adv.size_min" type="number" min="0" step="0.1" /></VibeFormGroup></div>
-                    <div class="col"><VibeFormGroup label="Max size (MB)"><VibeFormInput v-model="adv.size_max" type="number" min="0" step="0.1" /></VibeFormGroup></div>
-                </div>
-                <div class="row g-2 mt-1">
-                    <div class="col"><VibeFormGroup label="Type"><VibeFormSelect v-model="adv.ftype" :options="typeOptions" /></VibeFormGroup></div>
-                    <div class="col"><VibeFormGroup label="Tag"><VibeFormSelect v-model="adv.tag" :options="tagFilterOptions" /></VibeFormGroup></div>
-                </div>
-            </div>
-            <template #footer>
-                <div class="d-flex w-100 gap-2">
-                    <VibeButton variant="secondary" outline @click="saveSmartFolder">
-                        <VibeIcon icon="bookmark-plus" class="me-1" />Save as Smart Folder
-                    </VibeButton>
-                    <div class="ms-auto d-flex gap-2">
-                        <VibeButton variant="secondary" outline @click="advOpen = false">Cancel</VibeButton>
-                        <VibeButton variant="primary" @click="applyAdvanced"><VibeIcon icon="search" class="me-1" />Search</VibeButton>
-                    </div>
-                </div>
-            </template>
-        </VibeModal>
+        <AdvancedSearchModal v-model="advOpen" :filters="filters" :all-tags="allTags" />
     </AppLayout>
 </template>
 
