@@ -695,8 +695,8 @@ onBeforeUnmount(() => {
             row-key="id"
             hover
             :searchable="false"
-            :per-page="10"
-            :show-per-page="false"
+            :per-page="25"
+            :per-page-options="[10, 25, 50, 100]"
             :responsive="false"
             :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
             @row-clicked="selectFile"
