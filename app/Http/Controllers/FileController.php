@@ -311,6 +311,128 @@ class FileController extends Controller
             ->with('success', 'Saved.');
     }
 
+    // ---- Batch operations (multi-select) ----
+
+    /** Load files by id that the current user owns, preserving the given order. */
+    private function ownedBatch(array $ids): \Illuminate\Support\Collection
+    {
+        $userId = auth()->id();
+        $files = File::whereIn('id', $ids)->where('owner_id', $userId)->get()->keyBy('id');
+
+        return collect($ids)->map(fn ($id) => $files->get($id))->filter()->values();
+    }
+
+    public function batchMove(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+            'target_id' => 'nullable|integer|exists:files,id',
+        ]);
+
+        $userId = auth()->id();
+        $target = $this->resolveFolder($request->input('target_id'), $userId);
+
+        DB::transaction(function () use ($request, $target) {
+            foreach ($this->ownedBatch($request->input('ids')) as $file) {
+                if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
+                    throw ValidationException::withMessages(['target_id' => "Cannot move \"{$file->name}\" into itself."]);
+                }
+                $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
+                $file->update(['parent_id' => $target?->id]);
+            }
+        });
+
+        return redirect()->route('files.index', ['folder' => $target?->id])
+            ->with('success', 'Moved selected items.');
+    }
+
+    public function batchDelete(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+
+        DB::transaction(function () use ($request) {
+            foreach ($this->ownedBatch($request->input('ids')) as $file) {
+                if ($file->is_dir) {
+                    $this->trashSubtree($file);
+                }
+                $file->delete();
+                Audit::log('file.trash', $file);
+            }
+        });
+
+        return back()->with('success', 'Moved selected items to trash.');
+    }
+
+    // New Folder From Selection: create a folder in the current location and
+    // move the selected items into it (Finder-style).
+    public function batchFolder(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+            'parent_id' => 'nullable|integer|exists:files,id',
+        ]);
+
+        $userId = auth()->id();
+        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
+        $name = trim((string) $request->string('name'));
+        $this->assertNoCollision($parent?->id, $name, $userId);
+
+        $folder = DB::transaction(function () use ($name, $parent, $userId, $request) {
+            $folder = File::create([
+                'name' => $name,
+                'path' => $name,
+                'disk' => config('filemanager.disk'),
+                'is_dir' => true,
+                'parent_id' => $parent?->id,
+                'owner_id' => $userId,
+            ]);
+
+            foreach ($this->ownedBatch($request->input('ids')) as $file) {
+                if ($file->id === $folder->id) {
+                    continue;
+                }
+                $this->assertNoCollision($folder->id, $file->name, $userId, $file->id);
+                $file->update(['parent_id' => $folder->id]);
+            }
+
+            return $folder;
+        });
+
+        return redirect()->route('files.index', ['folder' => $parent?->id])
+            ->with('success', "Created “{$folder->name}” from selection.");
+    }
+
+    // Batch rename: the client computes the final names (find/replace, prefix/
+    // suffix, numbering) and previews them; we apply with collision checks.
+    public function batchRename(Request $request)
+    {
+        $request->validate([
+            'renames' => 'required|array',
+            'renames.*.id' => 'required|integer',
+            'renames.*.name' => 'required|string|max:255',
+        ]);
+
+        $userId = auth()->id();
+        $byId = collect($request->input('renames'))->keyBy('id');
+
+        DB::transaction(function () use ($byId, $userId) {
+            $files = File::whereIn('id', $byId->keys())->where('owner_id', $userId)->get();
+            foreach ($files as $file) {
+                $name = trim((string) $byId[$file->id]['name']);
+                if ($name === '' || $name === $file->name) {
+                    continue;
+                }
+                $this->assertNoCollision($file->parent_id, $name, $userId, $file->id);
+                $file->update(['name' => $name]);
+            }
+        });
+
+        return back()->with('success', 'Renamed selected items.');
+    }
+
     // Toggle a file's or folder's starred (favorite) flag.
     public function star(File $file)
     {

@@ -243,12 +243,112 @@ function onNewMenu({ item }) {
     }
 }
 
+// ----- Multi-select + batch operations (Finder-style) -----
+const selectMode = ref(false);
+const selectedIds = ref(new Set());
+let lastClickedIndex = -1;
+
+const selectedItems = computed(() => items.value.filter((i) => selectedIds.value.has(i.id)));
+
+function isSelected(id) {
+    return selectedIds.value.has(id);
+}
+function toggleSel(id) {
+    selectedIds.value.has(id) ? selectedIds.value.delete(id) : selectedIds.value.add(id);
+    selectedIds.value = new Set(selectedIds.value);
+}
+function clearSelection() {
+    selectedIds.value = new Set();
+    selectMode.value = false;
+    lastClickedIndex = -1;
+}
+
+// Click behaviour: plain click opens; Cmd/Ctrl toggles; Shift selects a range;
+// in select mode any click toggles.
+function onItemClick(item, event) {
+    const idx = items.value.findIndex((i) => i.id === item.id);
+    if (event?.shiftKey && lastClickedIndex >= 0) {
+        const [a, b] = [lastClickedIndex, idx].sort((x, y) => x - y);
+        for (let i = a; i <= b; i++) selectedIds.value.add(items.value[i].id);
+        selectedIds.value = new Set(selectedIds.value);
+        return;
+    }
+    if (selectMode.value || event?.metaKey || event?.ctrlKey) {
+        toggleSel(item.id);
+        lastClickedIndex = idx;
+        return;
+    }
+    lastClickedIndex = idx;
+    openItem(item);
+}
+
 function openItem(item) {
     if (item.is_dir) {
         visitFolder(item.id);
     } else {
         quickLook(item);
     }
+}
+
+const batchIds = computed(() => [...selectedIds.value]);
+
+function batchDelete() {
+    if (!confirm(`Move ${batchIds.value.length} item(s) to trash?`)) return;
+    router.post('/files/batch/delete', { ids: batchIds.value }, { preserveScroll: true, onSuccess: clearSelection });
+}
+
+// New Folder From Selection.
+const batchFolderOpen = ref(false);
+const batchFolderName = ref('New Folder');
+function submitBatchFolder() {
+    router.post('/files/batch/folder', { name: batchFolderName.value, ids: batchIds.value, parent_id: currentId.value }, {
+        preserveScroll: true,
+        onSuccess: () => { batchFolderOpen.value = false; clearSelection(); },
+    });
+}
+
+// Batch move.
+const batchMoveOpen = ref(false);
+const batchMoveTarget = ref('');
+function submitBatchMove() {
+    router.post('/files/batch/move', { ids: batchIds.value, target_id: batchMoveTarget.value || null }, {
+        preserveScroll: true,
+        onSuccess: () => { batchMoveOpen.value = false; clearSelection(); },
+    });
+}
+
+// Batch rename (find/replace, prefix/suffix, sequential numbering).
+const batchRenameOpen = ref(false);
+const renameOpts = ref({ mode: 'replace', find: '', replace: '', text: '', position: 'before', base: '', start: 1, pad: 2 });
+
+function splitExt(name) {
+    const i = name.lastIndexOf('.');
+    return i > 0 ? [name.slice(0, i), name.slice(i)] : [name, ''];
+}
+function computeName(item, seq) {
+    const o = renameOpts.value;
+    const [stem, ext] = splitExt(item.name);
+    if (o.mode === 'replace') {
+        if (!o.find) return item.name;
+        return stem.split(o.find).join(o.replace) + ext;
+    }
+    if (o.mode === 'add') {
+        return (o.position === 'before' ? o.text + stem : stem + o.text) + ext;
+    }
+    // number
+    const n = String(o.start + seq).padStart(Math.max(1, o.pad), '0');
+    const base = o.base || stem;
+    return `${base}${n}${ext}`;
+}
+const renamePreview = computed(() =>
+    selectedItems.value.map((item, i) => ({ id: item.id, from: item.name, to: computeName(item, i) }))
+);
+function submitBatchRename() {
+    const renames = renamePreview.value.map(({ id, to }) => ({ id, name: to }));
+    router.post('/files/batch/rename', { renames }, {
+        preserveScroll: true,
+        onSuccess: () => { batchRenameOpen.value = false; clearSelection(); },
+    });
 }
 
 function selectFile(item) {
@@ -780,6 +880,14 @@ onBeforeUnmount(() => {
                     <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
+                <VibeButton
+                    :variant="selectMode ? 'primary' : 'secondary'"
+                    :outline="!selectMode"
+                    title="Select multiple"
+                    @click="selectMode ? clearSelection() : (selectMode = true)"
+                >
+                    <VibeIcon icon="check2-square" class="me-1" />Select
+                </VibeButton>
                 <div class="vr mx-1 d-none d-sm-block"></div>
                 <VibeButtonGroup>
                     <VibeButton
@@ -801,6 +909,26 @@ onBeforeUnmount(() => {
                 </VibeButtonGroup>
             </div>
         </div>
+
+        <!-- Batch action bar -->
+        <VibeAlert v-if="selectedIds.size" variant="primary" class="d-flex flex-wrap align-items-center gap-2">
+            <strong>{{ selectedIds.size }} selected</strong>
+            <div class="ms-auto d-flex flex-wrap gap-2">
+                <VibeButton variant="primary" size="sm" @click="batchFolderName = 'New Folder'; batchFolderOpen = true">
+                    <VibeIcon icon="folder-plus" class="me-1" />New Folder from Selection
+                </VibeButton>
+                <VibeButton variant="primary" size="sm" outline @click="batchRenameOpen = true">
+                    <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
+                </VibeButton>
+                <VibeButton variant="primary" size="sm" outline @click="batchMoveTarget = ''; batchMoveOpen = true">
+                    <VibeIcon icon="folder-symlink" class="me-1" />Move…
+                </VibeButton>
+                <VibeButton variant="danger" size="sm" outline @click="batchDelete">
+                    <VibeIcon icon="trash" class="me-1" />Delete
+                </VibeButton>
+                <VibeButton variant="secondary" size="sm" outline @click="clearSelection">Clear</VibeButton>
+            </div>
+        </VibeAlert>
 
         <VibeAlert v-if="searching" variant="info" class="d-flex align-items-center justify-content-between">
             <span><VibeIcon icon="search" class="me-1" />Results for "{{ filters.search }}" across all folders.</span>
@@ -836,10 +964,18 @@ onBeforeUnmount(() => {
                  <template #default="drop">
                 <div
                     class="card h-100 text-center border position-relative"
-                    :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver }"
+                    :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver, 'border-primary border-2': isSelected(item.id) }"
                     style="cursor: pointer"
-                    @click="openItem(item)"
+                    @click="onItemClick(item, $event)"
                 >
+                    <VibeIcon
+                        v-if="selectMode || isSelected(item.id)"
+                        :icon="isSelected(item.id) ? 'check-circle-fill' : 'circle'"
+                        class="position-absolute m-1"
+                        :class="isSelected(item.id) ? 'text-primary' : 'text-muted'"
+                        style="top: 50%; left: 6px; z-index: 2"
+                        @click.stop="toggleSel(item.id)"
+                    />
                     <VibeButton
                         variant="link"
                         class="position-absolute top-0 start-0 m-1 p-1"
@@ -926,10 +1062,17 @@ onBeforeUnmount(() => {
                  <template #default="drop">
                 <div
                     class="d-flex align-items-center rounded"
-                    :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': drop && drop.isOver }"
+                    :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || isSelected(item.id) }"
                     style="cursor: pointer"
-                    @click="openItem(item)"
+                    @click="onItemClick(item, $event)"
                 >
+                    <VibeIcon
+                        v-if="selectMode || isSelected(item.id)"
+                        :icon="isSelected(item.id) ? 'check-square-fill' : 'square'"
+                        class="me-2 flex-shrink-0"
+                        :class="isSelected(item.id) ? 'text-primary' : 'text-muted'"
+                        @click.stop="toggleSel(item.id)"
+                    />
                     <img
                         v-if="item.thumb_url"
                         :src="item.thumb_url"
@@ -1401,6 +1544,79 @@ onBeforeUnmount(() => {
                 <VibeButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
                     {{ transferMode === 'move' ? 'Move' : 'Copy' }}
                 </VibeButton>
+            </template>
+        </VibeModal>
+
+        <!-- New Folder from Selection -->
+        <VibeModal v-model="batchFolderOpen" title="New Folder from Selection" fullscreen>
+            <div class="mx-auto" style="max-width: 520px">
+                <VibeFormGroup label="Folder name">
+                    <VibeFormInput v-model="batchFolderName" />
+                </VibeFormGroup>
+                <p class="text-muted small mt-2">{{ selectedIds.size }} item(s) will be moved into it.</p>
+            </div>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="batchFolderOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="!batchFolderName" @click="submitBatchFolder">Create</VibeButton>
+            </template>
+        </VibeModal>
+
+        <!-- Batch move -->
+        <VibeModal v-model="batchMoveOpen" title="Move Selection To" fullscreen>
+            <div class="mx-auto" style="max-width: 520px">
+                <VibeFormGroup label="Destination folder">
+                    <VibeFormSelect v-model="batchMoveTarget" :options="destinationOptions" />
+                </VibeFormGroup>
+            </div>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="batchMoveOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" @click="submitBatchMove">Move {{ selectedIds.size }}</VibeButton>
+            </template>
+        </VibeModal>
+
+        <!-- Batch rename -->
+        <VibeModal v-model="batchRenameOpen" title="Batch Rename" fullscreen>
+            <div class="mx-auto" style="max-width: 760px">
+                <VibeButtonGroup class="mb-3">
+                    <VibeButton :variant="renameOpts.mode === 'replace' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'replace'" @click="renameOpts.mode = 'replace'">Find &amp; Replace</VibeButton>
+                    <VibeButton :variant="renameOpts.mode === 'add' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'add'" @click="renameOpts.mode = 'add'">Add Text</VibeButton>
+                    <VibeButton :variant="renameOpts.mode === 'number' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'number'" @click="renameOpts.mode = 'number'">Numbering</VibeButton>
+                </VibeButtonGroup>
+
+                <div v-if="renameOpts.mode === 'replace'" class="row g-2">
+                    <div class="col"><VibeFormGroup label="Find"><VibeFormInput v-model="renameOpts.find" /></VibeFormGroup></div>
+                    <div class="col"><VibeFormGroup label="Replace with"><VibeFormInput v-model="renameOpts.replace" /></VibeFormGroup></div>
+                </div>
+                <div v-else-if="renameOpts.mode === 'add'" class="row g-2 align-items-end">
+                    <div class="col"><VibeFormGroup label="Text"><VibeFormInput v-model="renameOpts.text" /></VibeFormGroup></div>
+                    <div class="col-auto">
+                        <VibeFormGroup label="Position">
+                            <VibeFormSelect v-model="renameOpts.position" :options="[{ value: 'before', text: 'Before name' }, { value: 'after', text: 'After name' }]" />
+                        </VibeFormGroup>
+                    </div>
+                </div>
+                <div v-else class="row g-2 align-items-end">
+                    <div class="col"><VibeFormGroup label="Base name"><VibeFormInput v-model="renameOpts.base" placeholder="(keep original)" /></VibeFormGroup></div>
+                    <div class="col-auto"><VibeFormGroup label="Start at"><VibeFormInput v-model.number="renameOpts.start" type="number" style="width: 90px" /></VibeFormGroup></div>
+                    <div class="col-auto"><VibeFormGroup label="Digits"><VibeFormInput v-model.number="renameOpts.pad" type="number" style="width: 80px" /></VibeFormGroup></div>
+                </div>
+
+                <h6 class="mt-3 text-muted">Preview</h6>
+                <div class="border rounded" style="max-height: 50vh; overflow: auto">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr v-for="r in renamePreview" :key="r.id">
+                                <td class="text-muted text-truncate" style="max-width: 280px">{{ r.from }}</td>
+                                <td class="text-center text-muted"><VibeIcon icon="arrow-right" /></td>
+                                <td class="fw-medium text-truncate" :class="{ 'text-danger': r.to !== r.from && renamePreview.filter(x => x.to === r.to).length > 1 }">{{ r.to }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="batchRenameOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" @click="submitBatchRename">Rename {{ selectedIds.size }}</VibeButton>
             </template>
         </VibeModal>
     </AppLayout>

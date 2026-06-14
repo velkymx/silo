@@ -71,7 +71,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/thumbnail/{file}', [FileController::class, 'thumbnail'])->name('files.thumbnail');
     Route::delete('/delete/{file}', [FileController::class, 'destroy'])->name('files.delete');
     Route::patch('/files/{file}/rename', [FileController::class, 'rename'])->name('files.rename');
-    Route::post('/files/{file}/move', [FileController::class, 'move'])->name('files.move');
+    Route::post('/files/{file}/move', [FileController::class, 'move'])->whereNumber('file')->name('files.move');
     Route::post('/files/{file}/copy', [FileController::class, 'copy'])->name('files.copy');
     Route::put('/files/{file}/tags', [FileController::class, 'syncTags'])->name('files.tags');
     Route::post('/files/{file}/star', [FileController::class, 'star'])->name('files.star');
@@ -86,6 +86,11 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/files/{file}/links/{link}', [ShareLinkController::class, 'destroy'])->name('files.links.destroy');
     Route::get('/files/{file}/versions/{version}/download', [FileController::class, 'downloadVersion'])->name('files.versions.download');
     Route::post('/files/{file}/versions/{version}/restore', [FileController::class, 'restoreVersion'])->name('files.versions.restore');
+
+    Route::post('/files/batch/move', [FileController::class, 'batchMove'])->name('files.batch.move');
+    Route::post('/files/batch/delete', [FileController::class, 'batchDelete'])->name('files.batch.delete');
+    Route::post('/files/batch/folder', [FileController::class, 'batchFolder'])->name('files.batch.folder');
+    Route::post('/files/batch/rename', [FileController::class, 'batchRename'])->name('files.batch.rename');
 
     Route::post('/folders', [FileController::class, 'createFolder'])->name('folders.create');
     Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
