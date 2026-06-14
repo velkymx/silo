@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
+import PageError from '../../../Components/PageError.vue';
 import { useConfirm } from '../../../composables/useConfirm';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
@@ -48,6 +49,7 @@ async function destroy(group) {
 
 <template>
     <AppLayout>
+        <PageError />
         <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Groups</h4>
 
         <VibeRow class="g-2 align-items-end mb-4">

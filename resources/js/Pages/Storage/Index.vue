@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import PageError from '../../Components/PageError.vue';
 import { readableTextColor } from '../../lib/contrast';
 import { usePageLoading } from '../../composables/usePageLoading';
 
@@ -134,6 +135,7 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
 
 <template>
     <AppLayout>
+        <PageError />
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <h4 class="mb-0"><VibeIcon icon="hdd-fill" class="me-2" />Storage</h4>
             <span class="text-muted">

@@ -1,6 +1,7 @@
 <script setup>
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
+import PageError from '../../../Components/PageError.vue';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
 const props = defineProps({
@@ -28,6 +29,7 @@ const variant = (action) => {
 
 <template>
     <AppLayout>
+        <PageError />
         <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
         <p class="text-muted small">{{ logs.length }} recent events.</p>
 

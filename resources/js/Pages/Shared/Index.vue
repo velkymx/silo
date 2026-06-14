@@ -2,6 +2,7 @@
 import AppLayout from '../../Layouts/AppLayout.vue';
 import SharedListing from '../../Components/SharedListing.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import PageError from '../../Components/PageError.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 defineProps({
@@ -14,6 +15,7 @@ const { loading } = usePageLoading();
 
 <template>
     <AppLayout>
+        <PageError />
         <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Shared with me</h4>
         <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />
         <template v-else>
