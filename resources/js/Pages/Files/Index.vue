@@ -9,6 +9,7 @@ import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
 import UploadModal from '../../Components/UploadModal.vue';
 import ShareModal from '../../Components/ShareModal.vue';
 import EditorModal from '../../Components/EditorModal.vue';
+import RenameModal from '../../Components/RenameModal.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
@@ -414,23 +415,11 @@ function submitFolder() {
 
 // ----- Rename -----
 const renameOpen = ref(false);
-const renameItem = ref(null);
-const renameForm = useForm({ name: '' });
+const renameTarget = ref(null);
 
 function openRename(item) {
-    renameItem.value = item;
-    renameForm.clearErrors();
-    renameForm.name = item.name;
+    renameTarget.value = item;
     renameOpen.value = true;
-}
-
-function submitRename() {
-    renameForm.patch(`/files/${renameItem.value.id}/rename`, {
-        preserveScroll: true,
-        onSuccess: () => {
-            renameOpen.value = false;
-        },
-    });
 }
 
 // ----- Move / Copy -----
@@ -938,21 +927,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Rename modal -->
-        <VibeModal v-model="renameOpen" title="Rename" fullscreen>
-            <form @submit.prevent="submitRename">
-                <VibeFormGroup
-                    label="New Name"
-                    :validation-state="renameForm.errors.name ? 'invalid' : null"
-                    :validation-message="renameForm.errors.name"
-                >
-                    <VibeFormInput v-model="renameForm.name" required />
-                </VibeFormGroup>
-            </form>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="renameOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="renameForm.processing" @click="submitRename">Rename</VibeButton>
-            </template>
-        </VibeModal>
+        <RenameModal v-model="renameOpen" :item="renameTarget" />
 
         <!-- Move / Copy modal -->
         <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" fullscreen>
