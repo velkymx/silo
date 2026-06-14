@@ -51,7 +51,7 @@ function clearSelection() {
     selectMode.value = false;
 }
 async function batchDeleteSelected() {
-    if (!await confirm({ title: 'Move to trash', message: `Move ${selected.size} photo(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
+    if (!await confirm({ title: 'Move to trash', message: `Move ${selected.value.size} photo(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.post('/files/batch/delete', { ids: [...selected.value] }, {
         preserveScroll: true, onSuccess: clearSelection,
     });
