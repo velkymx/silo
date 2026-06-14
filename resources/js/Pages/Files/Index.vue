@@ -3,6 +3,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import FolderTree from '../../Components/FolderTree.vue';
+import FileItem from '../../Components/FileItem.vue';
+import ItemActions from '../../Components/ItemActions.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
@@ -890,80 +892,18 @@ onBeforeUnmount(() => {
         <!-- Thumbnail / grid view -->
         <VibeRow v-if="viewMode === 'grid'" class="g-3">
             <VibeCol v-for="item in items" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
-              <VibeDraggable :payload="item" group="files" tag="div" class="h-100">
-               <template #default="{ isDragging }">
-                <component
-                    :is="item.is_dir ? 'VibeDroppable' : 'div'"
-                    group="files"
-                    class="h-100"
-                    @drop="onDropToFolder($event, item)"
-                >
-                 <template #default="drop">
-                <div
-                    class="card h-100 text-center border position-relative"
-                    :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver, 'border-primary border-2': isSelected(item.id) }"
-                    style="cursor: pointer"
-                    @click="onItemClick(item, $event)"
-                >
-                    <VibeIcon
-                        v-if="selectMode || isSelected(item.id)"
-                        :icon="isSelected(item.id) ? 'check-circle-fill' : 'circle'"
-                        class="position-absolute m-1"
-                        :class="isSelected(item.id) ? 'text-primary' : 'text-muted'"
-                        style="top: 50%; left: 6px; z-index: 2"
-                        @click.stop="toggleSel(item.id)"
-                    />
-                    <VibeButton
-                        variant="link"
-                        class="position-absolute top-0 start-0 m-1 p-1"
-                        :title="item.starred ? 'Unstar' : 'Star'"
-                        @click.stop="toggleStar(item)"
-                    >
-                        <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
-                    </VibeButton>
-                    <div class="position-absolute top-0 end-0 m-1" @click.stop>
-                        <VibeDropdown
-                            size="sm"
-                            variant="light"
-                            menu-end
-                            :items="item.is_dir ? folderActions : fileMenu(item)"
-                            @item-click="onAction(item, $event)"
-                        >
-                            <template #button><VibeIcon icon="three-dots-vertical" /></template>
-                            <template #item="{ item: a }"><VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}</template>
-                        </VibeDropdown>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
-                        <img
-                            v-if="item.thumb_url"
-                            :src="item.thumb_url"
-                            :alt="item.name"
-                            class="w-100 h-100"
-                            style="object-fit: cover"
-                        >
-                        <VibeIcon
-                            v-else
-                            :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)"
-                            class="display-4"
-                            :style="{ color: colorFor(item) }"
-                        />
-                    </div>
-                    <div class="p-2">
-                        <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
-                        <div class="text-muted" style="font-size: 0.7rem">
-                            {{ item.is_dir ? `${item.item_count} items` : `${(item.size / 1024).toFixed(1)} KB` }}
-                        </div>
-                        <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
-                        <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="mt-1">
-                            <VibeIcon icon="shield-exclamation" class="me-1" />Infected
-                        </VibeBadge>
-                        <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
-                    </div>
-                </div>
-                 </template>
-                </component>
-               </template>
-              </VibeDraggable>
+                <FileItem
+                    :item="item"
+                    view="grid"
+                    :select-mode="selectMode"
+                    :selected="isSelected(item.id)"
+                    :menu="item.is_dir ? folderActions : fileMenu(item)"
+                    @open="onItemClick"
+                    @toggle-select="toggleSel"
+                    @star="toggleStar"
+                    @action="onAction(item, $event)"
+                    @drop="onDropToFolder"
+                />
             </VibeCol>
             <VibeCol v-if="!items.length" :cols="12">
                 <p class="text-muted text-center py-4">{{ flat ? 'No matching files.' : 'This folder is empty.' }}</p>
@@ -990,62 +930,15 @@ onBeforeUnmount(() => {
             </template>
 
             <template #cell(name)="{ item }">
-              <VibeDraggable :payload="item" group="files" tag="div">
-               <template #default="{ isDragging }">
-                <component
-                    :is="item.is_dir ? 'VibeDroppable' : 'div'"
-                    group="files"
-                    @drop="onDropToFolder($event, item)"
-                >
-                 <template #default="drop">
-                <div
-                    class="d-flex align-items-center rounded"
-                    :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || isSelected(item.id) }"
-                    style="cursor: pointer"
-                    @click="onItemClick(item, $event)"
-                >
-                    <VibeIcon
-                        :icon="isSelected(item.id) ? 'check-square-fill' : 'square'"
-                        class="me-2 flex-shrink-0 select-check"
-                        :class="isSelected(item.id) ? 'text-primary' : 'text-muted'"
-                        @click.stop="toggleSel(item.id)"
-                    />
-                    <img
-                        v-if="item.thumb_url"
-                        :src="item.thumb_url"
-                        :alt="item.name"
-                        class="rounded border me-2 flex-shrink-0"
-                        style="width: 36px; height: 36px; object-fit: cover"
-                    >
-                    <VibeIcon
-                        v-else
-                        :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)"
-                        class="me-2 fs-4 flex-shrink-0"
-                        :style="{ color: colorFor(item) }"
-                    />
-                    <span class="text-truncate">{{ item.name }}</span>
-                    <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2">
-                        <VibeSpinner size="sm" class="me-1" />Processing
-                    </VibeBadge>
-                    <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="ms-2">
-                        <VibeIcon icon="shield-exclamation" class="me-1" />Infected
-                    </VibeBadge>
-                    <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
-                    <VibeBadge v-if="item.version > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
-                </div>
-                <div v-if="item.tags?.length" class="mt-1" style="padding-left: 2.75rem">
-                    <span
-                        v-for="tag in item.tags"
-                        :key="tag.id"
-                        class="badge rounded-pill me-1"
-                        :style="{ backgroundColor: tag.color || '#6c757d', cursor: 'pointer' }"
-                        @click.stop="filterByTag(tag.id)"
-                    >{{ tag.name }}</span>
-                </div>
-                 </template>
-                </component>
-               </template>
-              </VibeDraggable>
+                <FileItem
+                    :item="item"
+                    view="list"
+                    :selected="isSelected(item.id)"
+                    @open="onItemClick"
+                    @toggle-select="toggleSel"
+                    @drop="onDropToFolder"
+                    @tag="filterByTag"
+                />
             </template>
 
             <template #cell(modified)="{ item }">
@@ -1063,27 +956,13 @@ onBeforeUnmount(() => {
             </template>
 
             <template #cell(actions)="{ item }">
-                <div class="d-flex justify-content-end gap-1 align-items-center" @click.stop>
-                    <VibeButton
-                        variant="link"
-                        class="p-0 me-1"
-                        :title="item.starred ? 'Unstar' : 'Star'"
-                        @click="toggleStar(item)"
-                    >
-                        <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
-                    </VibeButton>
-                    <VibeDropdown
-                        size="sm"
-                        variant="light"
-                        menu-end
-                        :items="item.is_dir ? folderActions : fileMenu(item)"
-                        @item-click="onAction(item, $event)"
-                    >
-                        <template #button><VibeIcon icon="three-dots-vertical" /></template>
-                        <template #item="{ item: a }">
-                            <VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}
-                        </template>
-                    </VibeDropdown>
+                <div class="d-flex justify-content-end">
+                    <ItemActions
+                        :item="item"
+                        :menu="item.is_dir ? folderActions : fileMenu(item)"
+                        @star="toggleStar"
+                        @action="onAction(item, $event)"
+                    />
                 </div>
             </template>
         </VibeDataTable>
