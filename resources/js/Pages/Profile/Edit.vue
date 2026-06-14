@@ -4,6 +4,7 @@ import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
+import { initials } from '../../lib/initials';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -11,7 +12,7 @@ const props = defineProps({
 });
 
 const groupOptions = computed(() => props.groups.map((g) => ({ value: g.id, text: g.name })));
-const initial = computed(() => (props.user.name || '?').charAt(0).toUpperCase());
+const initial = computed(() => initials(props.user.name) || '?');
 
 const form = useForm({
     name: props.user.name,

@@ -4,6 +4,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 import FolderTree from '../Components/FolderTree.vue';
 import { useConfirm, useDialogHost } from '../composables/useConfirm';
+import { initials } from '../lib/initials';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
@@ -228,7 +229,7 @@ function onUserMenu({ item }) {
                         v-else
                         class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white me-2"
                         style="width: 22px; height: 22px; font-size: 0.72rem"
-                    >{{ user.name.charAt(0).toUpperCase() }}</span>{{ user.name }}
+                    >{{ initials(user.name) }}</span>{{ user.name }}
                 </template>
                 <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
             </VibeDropdown>
