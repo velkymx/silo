@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 import FolderTree from '../Components/FolderTree.vue';
@@ -33,6 +33,34 @@ const ancestorIds = computed(() => {
 function goFolder(id) {
     router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
 }
+
+// Global search (unified in the top bar, present on every page).
+const searchValue = ref('');
+function syncSearchFromUrl() {
+    const q = new URLSearchParams(page.url.split('?')[1] || '');
+    searchValue.value = q.get('search') || '';
+}
+syncSearchFromUrl();
+watch(() => page.url, syncSearchFromUrl);
+function runGlobalSearch() {
+    const v = searchValue.value.trim();
+    router.get('/', v ? { search: v } : {});
+}
+function clearGlobalSearch() {
+    searchValue.value = '';
+    router.get('/', {});
+}
+const isSearching = computed(() => searchValue.value.length > 0);
+
+// Cmd/Ctrl-K focuses the global search from any page.
+function onKeydown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        document.getElementById('global-search')?.focus();
+    }
+}
+onMounted(() => document.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 // Smart folders (saved searches).
 const savedSearches = computed(() => page.props.savedSearches ?? []);
@@ -129,7 +157,28 @@ function onUserMenu({ item }) {
                 <span class="fw-bold fs-5 text-body d-none d-md-inline">File Manager</span>
             </a>
             <div class="flex-grow-1 min-vw-0">
-                <slot name="topbar" />
+                <VibeInputGroup class="mx-auto" style="max-width: 560px">
+                    <template #prepend>
+                        <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
+                    </template>
+                    <VibeFormInput
+                        id="global-search"
+                        v-model="searchValue"
+                        type="search"
+                        class="border-start-0"
+                        placeholder="Search files, folders, tags…"
+                        no-wrapper
+                        @keyup.enter="runGlobalSearch"
+                    />
+                    <template #append>
+                        <VibeButton v-if="isSearching" variant="secondary" outline @click="clearGlobalSearch">
+                            <VibeIcon icon="x-lg" />
+                        </VibeButton>
+                        <span v-else class="input-group-text bg-body text-muted">
+                            <kbd class="bg-body-secondary text-body-secondary border" style="font-size: 0.7rem">⌘K</kbd>
+                        </span>
+                    </template>
+                </VibeInputGroup>
             </div>
             <VibeButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
                 <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
@@ -149,7 +198,7 @@ function onUserMenu({ item }) {
                         style="width: 22px; height: 22px; font-size: 0.72rem"
                     >{{ user.name.charAt(0).toUpperCase() }}</span>{{ user.name }}
                 </template>
-                <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
             </VibeDropdown>
         </header>
 
@@ -158,7 +207,7 @@ function onUserMenu({ item }) {
             <aside v-if="!isMobile && sidebarOpen" class="d-flex flex-column flex-shrink-0 border-end bg-body p-3" style="width: 250px">
                 <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                     <template #item="{ item }">
-                        <VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}
+                        <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
                     </template>
                 </VibeNav>
 
@@ -167,7 +216,7 @@ function onUserMenu({ item }) {
                     <div class="text-muted text-uppercase small fw-semibold px-3 mb-1">Admin</div>
                     <VibeNav pills vertical :items="adminNav" @item-click="onNav">
                         <template #item="{ item }">
-                            <VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}
+                            <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
                         </template>
                     </VibeNav>
                 </template>
@@ -238,15 +287,26 @@ function onUserMenu({ item }) {
         <!-- Mobile navigation drawer -->
         <VibeOffcanvas v-model="mobileNavOpen" placement="start" title="File Manager">
             <VibeNav pills vertical :items="baseNav" @item-click="onNav">
-                <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
             </VibeNav>
             <template v-if="adminNav.length">
                 <hr class="my-3" >
                 <div class="text-muted text-uppercase small fw-semibold px-3 mb-1">Admin</div>
                 <VibeNav pills vertical :items="adminNav" @item-click="onNav">
-                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
                 </VibeNav>
             </template>
         </VibeOffcanvas>
     </div>
 </template>
+
+<style scoped>
+/* Even alignment of sidebar nav icons (Bootstrap glyphs vary in width). */
+.nav-ico {
+    display: inline-block;
+    width: 1.25rem;
+    margin-right: 0.6rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+</style>

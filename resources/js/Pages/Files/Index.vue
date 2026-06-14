@@ -867,31 +867,6 @@ onBeforeUnmount(() => {
 
 <template>
     <AppLayout>
-        <template #topbar>
-            <VibeInputGroup class="mx-auto" style="max-width: 560px">
-                <template #prepend>
-                    <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
-                </template>
-                <VibeFormInput
-                    id="global-search"
-                    v-model="search"
-                    type="search"
-                    class="border-start-0"
-                    placeholder="Search files, folders, tags…"
-                    no-wrapper
-                    @keyup.enter="runSearch"
-                />
-                <template #append>
-                    <VibeButton v-if="searching" variant="secondary" outline @click="clearSearch">
-                        <VibeIcon icon="x-lg" />
-                    </VibeButton>
-                    <span v-else class="input-group-text bg-body text-muted">
-                        <kbd class="bg-body-secondary text-body-secondary border" style="font-size: 0.7rem">⌘K</kbd>
-                    </span>
-                </template>
-            </VibeInputGroup>
-        </template>
-
         <template #sidebar>
             <template v-if="allTags.length">
                 <div class="text-muted text-uppercase small fw-semibold mt-4 mb-2 px-1">Tags</div>
