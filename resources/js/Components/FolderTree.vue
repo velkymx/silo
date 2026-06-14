@@ -26,44 +26,50 @@ watch(() => props.openIds, (ids) => {
 function hasChildren(id) {
     return props.folders.some((f) => f.parent_id === id);
 }
-
 function toggle(id) {
     open.value.has(id) ? open.value.delete(id) : open.value.add(id);
     open.value = new Set(open.value);
 }
-
 function go(id) {
     router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
+}
+// Drag a file/folder onto a sidebar folder to move it there.
+function onDrop({ payload }, folderId) {
+    if (!payload || payload.id === folderId) return;
+    router.post(`/files/${payload.id}/move`, { target_id: folderId }, { preserveScroll: true });
 }
 </script>
 
 <template>
-    <ul class="list-unstyled mb-0">
-        <li v-for="child in children" :key="child.id" class="py-1">
-            <div class="d-flex align-items-center">
-                <VibeButton
-                    v-if="hasChildren(child.id)"
-                    variant="link"
-                    size="sm"
-                    class="p-0 me-1 text-muted"
-                    @click="toggle(child.id)"
-                >
-                    <VibeIcon :icon="open.has(child.id) ? 'chevron-down' : 'chevron-right'" />
-                </VibeButton>
-                <span v-else class="me-1 d-inline-block" style="width: 1rem"></span>
-                <VibeButton
-                    variant="link"
-                    class="p-0 text-decoration-none text-truncate"
-                    :class="child.id === currentId ? 'fw-bold' : 'text-body'"
-                    @click="go(child.id)"
-                >
-                    <VibeIcon
-                        :icon="open.has(child.id) ? 'folder2-open' : 'folder-fill'"
-                        class="text-warning me-1"
-                    />{{ child.name }}
-                </VibeButton>
-            </div>
-            <div v-if="open.has(child.id)" class="ps-3">
+    <ul class="folder-tree list-unstyled mb-0">
+        <li v-for="child in children" :key="child.id">
+            <VibeDroppable group="files" tag="div" @drop="onDrop($event, child.id)">
+                <template #default="drop">
+                    <div
+                        class="ft-row d-flex align-items-center"
+                        :class="{ active: child.id === currentId, 'drop-over': drop && drop.isOver }"
+                        @click="go(child.id)"
+                    >
+                        <button
+                            v-if="hasChildren(child.id)"
+                            class="ft-toggle btn btn-link btn-sm p-0"
+                            type="button"
+                            @click.stop="toggle(child.id)"
+                        >
+                            <VibeIcon :icon="open.has(child.id) ? 'chevron-down' : 'chevron-right'" />
+                        </button>
+                        <span v-else class="ft-toggle"></span>
+
+                        <VibeIcon
+                            :icon="open.has(child.id) ? 'folder2-open' : 'folder-fill'"
+                            class="text-warning me-2 flex-shrink-0"
+                        />
+                        <span class="text-truncate">{{ child.name }}</span>
+                    </div>
+                </template>
+            </VibeDroppable>
+
+            <div v-if="open.has(child.id)" class="ft-children">
                 <FolderTree
                     :folders="folders"
                     :parent-id="child.id"
@@ -74,3 +80,40 @@ function go(id) {
         </li>
     </ul>
 </template>
+
+<style scoped>
+.ft-row {
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+.ft-row:hover {
+    background: var(--bs-secondary-bg);
+}
+.ft-row.active {
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary-text-emphasis);
+    font-weight: 600;
+}
+.ft-row.drop-over {
+    outline: 2px dashed var(--bs-primary);
+    outline-offset: -2px;
+}
+.ft-toggle {
+    width: 1.1rem;
+    flex-shrink: 0;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    display: inline-flex;
+    justify-content: center;
+}
+/* Indent guide for nested levels. */
+.ft-children {
+    margin-left: 0.65rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--bs-border-color);
+}
+</style>
