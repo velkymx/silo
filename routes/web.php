@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/photos/albums/{album}/photos', [PhotoController::class, 'removeFromAlbum'])->name('photos.albums.remove');
     Route::post('/photos/albums/{album}/cover', [PhotoController::class, 'setCover'])->name('photos.albums.cover');
 
+    Route::get('/storage', [\App\Http\Controllers\StorageController::class, 'index'])->name('storage.index');
     Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 

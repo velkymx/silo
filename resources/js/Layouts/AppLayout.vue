@@ -282,7 +282,7 @@ function onUserMenu({ item }) {
                             <div class="small text-muted">{{ fmtBytes(storage.used) }} of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)</div>
                         </template>
                         <div v-else class="small text-muted">{{ fmtBytes(storage.used) }} used · unlimited</div>
-                        <a href="/profile" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/profile')">Manage storage</a>
+                        <a href="/storage" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/storage')">Manage storage</a>
                     </div>
                 </div>
             </aside>
