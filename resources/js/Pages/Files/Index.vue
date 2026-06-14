@@ -8,6 +8,7 @@ import MarkdownViewer from '../../Components/MarkdownViewer.vue';
 import DocViewer from '../../Components/DocViewer.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
+import { useJobPolling } from '../../composables/useJobPolling';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -782,24 +783,10 @@ function destroy(item) {
 }
 
 // ----- Background-job status polling -----
-const hasPending = computed(() => props.files.some((f) => f.status === 'pending'));
-let poll = null;
-
-function startPolling() {
-    if (poll || !hasPending.value) return;
-    poll = setInterval(() => {
-        if (!hasPending.value) {
-            clearInterval(poll);
-            poll = null;
-            return;
-        }
-        router.reload({ only: ['files'], preserveScroll: true });
-    }, 3000);
-}
-
-watch(hasPending, (pending) => {
-    if (pending) startPolling();
-});
+const filesRef = computed(() => props.files);
+const { start: startPolling } = useJobPolling(filesRef, () =>
+    router.reload({ only: ['files'], preserveScroll: true })
+);
 
 onMounted(() => {
     // Open a file directly when navigated from the sidebar tree (?open=id).
@@ -812,7 +799,6 @@ onMounted(() => {
     window.addEventListener('keydown', onKey);
 });
 onBeforeUnmount(() => {
-    poll && clearInterval(poll);
     window.removeEventListener('keydown', onKey);
     uploadFiles.value.forEach(revokeBlobUrl);
 });
