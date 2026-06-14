@@ -16,6 +16,7 @@ import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { useBusyGuard } from '../../composables/useBusyGuard';
+import { useConfirm } from '../../composables/useConfirm';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
 
@@ -197,12 +198,14 @@ const {
     isSelected, toggleSel, clearSelection, onItemClick,
 } = useSelection(items, openItem);
 
+const { confirm } = useConfirm();
+
 // Guards every batch mutation against double-click / double-submit. Only one
 // batch op runs at a time, so a single shared single-flight guard is enough.
 const { busy: batchBusy, run: runBatch, release: releaseBatch } = useBusyGuard({ autoRelease: false });
 
-function batchDelete() {
-    if (!confirm(`Move ${batchIds.value.length} item(s) to trash?`)) return;
+async function batchDelete() {
+    if (!await confirm({ title: 'Move to trash', message: `Move ${batchIds.value.length} item(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     runBatch(() => router.post('/files/batch/delete', { ids: batchIds.value }, {
         preserveScroll: true,
         onSuccess: clearSelection,
@@ -311,8 +314,8 @@ function openVersions(item) {
     versionsOpen.value = true;
 }
 
-function restoreVersion(version) {
-    if (!confirm(`Restore version ${version.version}? Current content is kept in history.`)) return;
+async function restoreVersion(version) {
+    if (!await confirm({ title: 'Restore version', message: `Restore version ${version.version}? Current content is kept in history.`, confirmLabel: 'Restore' })) return;
     router.post(`/files/${versionsItem.value.id}/versions/${version.id}/restore`, {}, {
         preserveScroll: true,
         onSuccess: () => {
@@ -543,11 +546,11 @@ function filterByTag(id) {
 // ----- Advanced search + smart folders (modal owns the form) -----
 const advOpen = ref(false);
 
-function destroy(item) {
+async function destroy(item) {
     const msg = item.is_dir && item.item_count > 0
         ? `Delete folder "${item.name}" and its ${item.item_count} item(s)? Everything inside moves to trash.`
         : `Move "${item.name}" to trash?`;
-    if (!confirm(msg)) return;
+    if (!await confirm({ title: 'Move to trash', message: msg, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.delete(`/delete/${item.id}`, { preserveScroll: true });
 }
 

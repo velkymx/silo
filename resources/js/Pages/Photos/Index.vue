@@ -5,6 +5,9 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
+import { useConfirm } from '../../composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const props = defineProps({
     photos: { type: Array, default: () => [] },
@@ -47,8 +50,8 @@ function clearSelection() {
     selected.value = new Set();
     selectMode.value = false;
 }
-function batchDeleteSelected() {
-    if (!confirm(`Move ${selected.size} photo(s) to trash?`)) return;
+async function batchDeleteSelected() {
+    if (!await confirm({ title: 'Move to trash', message: `Move ${selected.size} photo(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.post('/files/batch/delete', { ids: [...selected.value] }, {
         preserveScroll: true, onSuccess: clearSelection,
     });
@@ -102,8 +105,8 @@ function onPhotoMenu(p, { item }) {
     if (item.action === 'download') triggerDownload(`/download/${p.id}`);
     if (item.action === 'delete') destroyPhoto(p);
 }
-function destroyPhoto(p) {
-    if (!confirm(`Move “${p.name}” to trash?`)) return;
+async function destroyPhoto(p) {
+    if (!await confirm({ title: 'Move to trash', message: `Move “${p.name}” to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.delete(`/delete/${p.id}`, { preserveScroll: true, onSuccess: () => { lightboxOpen.value = false; } });
 }
 
@@ -125,8 +128,8 @@ function addSelectedToAlbum(albumId) {
         preserveScroll: true, onSuccess: clearSelection,
     });
 }
-function deleteAlbum(a) {
-    if (confirm(`Delete album “${a.name}”? Photos are kept.`)) {
+async function deleteAlbum(a) {
+    if (await confirm({ title: 'Delete album', message: `Delete album “${a.name}”? Photos are kept.`, confirmLabel: 'Delete', variant: 'danger' })) {
         router.delete(`/photos/albums/${a.id}`, { preserveScroll: true });
     }
 }

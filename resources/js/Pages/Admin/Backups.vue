@@ -2,6 +2,9 @@
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import { useConfirm } from '../../composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const props = defineProps({
     backups: { type: Array, default: () => [] },
@@ -26,15 +29,15 @@ function runNow() {
     router.post('/backups', {}, { preserveScroll: true });
 }
 
-function remove(b) {
-    if (confirm(`Delete backup ${b.filename}? This cannot be undone.`)) {
+async function remove(b) {
+    if (await confirm({ title: 'Delete backup', message: `Delete backup ${b.filename}? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) {
         router.delete(`/backups/${b.id}`, { preserveScroll: true });
     }
 }
 
-function restore(b) {
-    if (!confirm(`Restore ${b.filename}? This OVERWRITES all current data (database + files).`)) return;
-    if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+async function restore(b) {
+    if (!await confirm({ title: 'Restore backup', message: `Restore ${b.filename}? This OVERWRITES all current data (database + files).`, confirmLabel: 'Restore', variant: 'danger' })) return;
+    if (!await confirm({ title: 'Are you absolutely sure?', message: 'This cannot be undone.', confirmLabel: 'Yes, restore', variant: 'danger' })) return;
     router.post(`/backups/${b.id}/restore`, {}, { preserveScroll: true });
 }
 

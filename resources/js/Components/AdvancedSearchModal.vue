@@ -2,6 +2,9 @@
 import { computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useAdvancedSearch, type AdvFilters } from '../composables/useAdvancedSearch';
+import { usePrompt } from '../composables/useConfirm';
+
+const { prompt } = usePrompt();
 
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ filters: AdvFilters; allTags: { id: number; name: string }[] }>();
@@ -22,8 +25,8 @@ function applyAdvanced(): void {
     open.value = false;
 }
 
-function saveSmartFolder(): void {
-    const name = window.prompt('Name this smart folder:');
+async function saveSmartFolder(): Promise<void> {
+    const name = await prompt({ title: 'Save smart folder', message: 'Name this smart folder:', placeholder: 'My Smart Folder', confirmLabel: 'Save' });
     if (!name) return;
     router.post('/saved-searches', { name, params: advParams() }, {
         preserveScroll: true,

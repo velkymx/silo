@@ -1,6 +1,9 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import { useConfirm } from '../../composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -23,13 +26,13 @@ function restore(item) {
     router.post(`/trash/${item.id}/restore`, {}, { preserveScroll: true });
 }
 
-function purge(item) {
-    if (!confirm(`Permanently delete "${item.name}"? This cannot be undone.`)) return;
+async function purge(item) {
+    if (!await confirm({ title: 'Permanently delete', message: `Permanently delete "${item.name}"? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
     router.delete(`/trash/${item.id}`, { preserveScroll: true });
 }
 
-function emptyTrash() {
-    if (!confirm('Permanently delete everything in the trash? This cannot be undone.')) return;
+async function emptyTrash() {
+    if (!await confirm({ title: 'Empty trash', message: 'Permanently delete everything in the trash? This cannot be undone.', confirmLabel: 'Empty trash', variant: 'danger' })) return;
     router.delete('/trash/empty', { preserveScroll: true });
 }
 </script>

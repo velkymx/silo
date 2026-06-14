@@ -3,6 +3,10 @@ import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 import FolderTree from '../Components/FolderTree.vue';
+import { useConfirm, useDialogHost } from '../composables/useConfirm';
+
+const { confirm } = useConfirm();
+const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
 
 const { isMobile } = useBreakpoints();
 const mobileNavOpen = ref(false);
@@ -79,8 +83,8 @@ const savedSearches = computed(() => page.props.savedSearches ?? []);
 function runSavedSearch(s) {
     router.get('/', s.params || {});
 }
-function deleteSavedSearch(s) {
-    if (confirm(`Remove smart folder "${s.name}"?`)) {
+async function deleteSavedSearch(s) {
+    if (await confirm({ title: 'Remove smart folder', message: `Remove smart folder "${s.name}"?`, confirmLabel: 'Remove', variant: 'danger' })) {
         router.delete(`/saved-searches/${s.id}`, { preserveScroll: true });
     }
 }
@@ -332,6 +336,23 @@ function onUserMenu({ item }) {
                 <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
             </VibeNav>
         </VibeOffcanvas>
+
+        <!-- Single in-app confirm/prompt host (replaces native window.confirm/prompt). -->
+        <VibeModal v-model="dialog.open" :title="dialog.title" size="sm" centered @hide="dialogCancel">
+            <p class="mb-0">{{ dialog.message }}</p>
+            <VibeFormInput
+                v-if="dialog.mode === 'prompt'"
+                v-model="dialog.inputValue"
+                :placeholder="dialog.placeholder"
+                class="mt-3"
+                autofocus
+                @keyup.enter="dialogAccept"
+            />
+            <template #footer>
+                <VibeButton variant="secondary" outline @click="dialogCancel">{{ dialog.cancelLabel }}</VibeButton>
+                <VibeButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</VibeButton>
+            </template>
+        </VibeModal>
     </div>
 </template>
 

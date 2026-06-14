@@ -2,6 +2,9 @@
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
+import { useConfirm } from '../../../composables/useConfirm';
+
+const { confirm } = useConfirm();
 
 defineProps({
     groups: { type: Array, default: () => [] },
@@ -34,8 +37,8 @@ function saveEdit() {
     });
 }
 
-function destroy(group) {
-    if (!confirm(`Delete group "${group.name}"? Members will be unassigned.`)) return;
+async function destroy(group) {
+    if (!await confirm({ title: 'Delete group', message: `Delete group "${group.name}"? Members will be unassigned.`, confirmLabel: 'Delete', variant: 'danger' })) return;
     useForm({}).delete(`/groups/${group.id}`, { preserveScroll: true });
 }
 </script>
