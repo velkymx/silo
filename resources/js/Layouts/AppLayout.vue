@@ -128,6 +128,9 @@ const baseNav = computed(() => [
     { text: 'Starred', href: '/?starred=1', icon: 'star-fill', active: active((p, q) => q.includes('starred=1')) },
     { text: 'Photos', href: '/photos', icon: 'images', active: active((p) => p.startsWith('/photos')) },
     { text: 'Shared with me', href: '/shared', icon: 'people-fill', active: active((p) => p.startsWith('/shared')) },
+]);
+
+const trashNav = computed(() => [
     { text: 'Trash', href: '/trash', icon: 'trash-fill', active: active((p) => p.startsWith('/trash')) },
 ]);
 
@@ -269,6 +272,13 @@ function onUserMenu({ item }) {
                     <slot name="sidebar" />
                 </div>
 
+                <!-- Trash pinned to the bottom, directly above the Storage block. -->
+                <VibeNav pills vertical :items="trashNav" class="pt-2 mt-2 border-top" @item-click="onNav">
+                    <template #item="{ item }">
+                        <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
+                    </template>
+                </VibeNav>
+
                 <!-- Storage meter, pinned to the bottom and consistent across pages. -->
                 <div v-if="storage" class="pt-2 mt-2 border-top">
                     <div class="side-heading"><VibeIcon icon="hdd-fill" />Storage</div>
@@ -317,6 +327,10 @@ function onUserMenu({ item }) {
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
                 </VibeNav>
             </template>
+            <hr class="my-3" >
+            <VibeNav pills vertical :items="trashNav" @item-click="onNav">
+                <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
+            </VibeNav>
         </VibeOffcanvas>
     </div>
 </template>
