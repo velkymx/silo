@@ -14,7 +14,11 @@ return [
     |
     */
 
-    'disk' => env('FILEMANAGER_DISK', 'public'),
+    // Private by default: blobs are served only through the policy-gated
+    // /raw/{file} route, never directly from the web root. Only set this to a
+    // public/web-served disk if you accept that every stored file becomes
+    // reachable by URL without auth.
+    'disk' => env('FILEMANAGER_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
