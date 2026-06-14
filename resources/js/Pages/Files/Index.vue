@@ -584,13 +584,13 @@ onBeforeUnmount(() => {
             </template>
         </template>
 
-        <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
             <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
                 <template #item="{ item, index }">
                     <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                 </template>
             </VibeBreadcrumb>
-            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
                 <VibeButton variant="primary" @click="uploadOpen = true">
                     <VibeIcon icon="upload" class="me-1" />Upload
                 </VibeButton>

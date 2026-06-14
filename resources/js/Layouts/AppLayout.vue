@@ -167,7 +167,7 @@ function onUserMenu({ item }) {
 <template>
     <div class="d-flex flex-column min-vh-100 bg-body-tertiary">
         <!-- Full-width top bar -->
-        <header class="d-flex align-items-center gap-3 border-bottom bg-body px-3 py-2">
+        <header class="d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2">
             <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
             </VibeButton>
