@@ -120,7 +120,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                     <VibeButton variant="link" size="sm" class="p-0 text-decoration-none" @click="clearAllUploads">Clear all</VibeButton>
                 </div>
                 <div class="border rounded" style="max-height: 40vh; overflow: auto">
-                    <div v-for="(f, i) in uploadFiles" :key="i" class="d-flex align-items-center gap-2 p-2 border-bottom">
+                    <div v-for="(f, i) in uploadFiles" :key="`${f.name}-${f.size}-${f.lastModified}`" class="d-flex align-items-center gap-2 p-2 border-bottom">
                         <img v-if="blobUrlFor(f)" :src="blobUrlFor(f)!" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
                         <VibeIcon v-else icon="file-earmark" class="fs-4 text-secondary flex-shrink-0" />
                         <div class="flex-grow-1 min-w-0">
