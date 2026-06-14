@@ -144,6 +144,7 @@ onBeforeUnmount(() => clearInterval(poll));
                                     size="sm"
                                     :href="`/backups/${item.id}/download`"
                                     title="Download"
+                                    :aria-label="`Download backup ${item.filename}`"
                                 >
                                     <VibeIcon icon="download" />
                                 </VibeButton>
@@ -153,11 +154,12 @@ onBeforeUnmount(() => clearInterval(poll));
                                     size="sm"
                                     outline
                                     title="Restore (overwrites all data)"
+                                    :aria-label="`Restore backup ${item.filename} (overwrites all data)`"
                                     @click="restore(item)"
                                 >
                                     <VibeIcon icon="arrow-counterclockwise" />
                                 </VibeButton>
-                                <VibeButton variant="danger" size="sm" outline title="Delete" @click="remove(item)">
+                                <VibeButton variant="danger" size="sm" outline title="Delete" :aria-label="`Delete backup ${item.filename}`" @click="remove(item)">
                                     <VibeIcon icon="trash" />
                                 </VibeButton>
                             </div>

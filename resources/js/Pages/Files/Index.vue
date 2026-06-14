@@ -841,10 +841,10 @@ onBeforeUnmount(() => {
                     </h5>
                     <div class="d-flex gap-2 align-items-center ms-3">
                         <small class="text-muted">{{ quickIndex + 1 }} / {{ files.length }}</small>
-                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" @click="quickStep(-1)">
+                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="quickStep(-1)">
                             <VibeIcon icon="chevron-left" />
                         </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" @click="quickStep(1)">
+                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="quickStep(1)">
                             <VibeIcon icon="chevron-right" />
                         </VibeButton>
                         <VibeButton variant="success" size="sm" :href="`/download/${quickFile?.id}`">

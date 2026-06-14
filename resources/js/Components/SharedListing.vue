@@ -106,11 +106,12 @@ function quickLook(file) {
                     size="sm"
                     outline
                     title="Quick Look"
+                    :aria-label="`Quick Look ${item.name}`"
                     @click="quickLook(item)"
                 >
                     <VibeIcon icon="eye" />
                 </VibeButton>
-                <VibeButton variant="success" size="sm" :href="`/download/${item.id}`">
+                <VibeButton variant="success" size="sm" :href="`/download/${item.id}`" :aria-label="`Download ${item.name}`">
                     <VibeIcon icon="download" />
                 </VibeButton>
             </div>

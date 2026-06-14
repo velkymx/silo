@@ -253,6 +253,7 @@ function saveEdit() {
                         variant="link"
                         class="cell-star p-0"
                         :title="p.starred ? 'Unstar' : 'Star'"
+                        :aria-label="(p.starred ? 'Unstar ' : 'Star ') + p.name"
                         @click.stop="star(p)"
                     >
                         <VibeIcon :icon="p.starred ? 'star-fill' : 'star'" :class="p.starred ? 'text-warning' : 'text-white'" />
@@ -260,8 +261,8 @@ function saveEdit() {
 
                     <!-- Actions -->
                     <div class="cell-actions" @click.stop>
-                        <VibeDropdown size="sm" variant="light" menu-end :items="photoMenu(p)" @item-click="onPhotoMenu(p, $event)">
-                            <template #button><VibeIcon icon="three-dots-vertical" /></template>
+                        <VibeDropdown size="sm" variant="light" menu-end :title="`Photo actions ${p.name}`" :items="photoMenu(p)" @item-click="onPhotoMenu(p, $event)">
+                            <template #button><VibeIcon icon="three-dots-vertical" /><span class="visually-hidden">Photo actions</span></template>
                             <template #item="{ item: a }"><VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}</template>
                         </VibeDropdown>
                     </div>
@@ -277,26 +278,26 @@ function saveEdit() {
                 <div class="d-flex align-items-center w-100">
                     <span class="text-truncate" :title="currentPhoto?.name">{{ currentPhoto?.name }}</span>
                     <div class="ms-auto d-flex gap-2">
-                        <VibeButton variant="secondary" size="sm" outline :title="ride ? 'Stop' : 'Slideshow'" @click="ride = !ride">
+                        <VibeButton variant="secondary" size="sm" outline :title="ride ? 'Stop' : 'Slideshow'" :aria-label="ride ? 'Stop slideshow' : 'Start slideshow'" @click="ride = !ride">
                             <VibeIcon :icon="ride ? 'pause-fill' : 'play-fill'" />
                         </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Star" @click="star(currentPhoto)">
+                        <VibeButton variant="secondary" size="sm" outline title="Star" :aria-label="(currentPhoto?.starred ? 'Unstar ' : 'Star ') + (currentPhoto?.name || 'photo')" @click="star(currentPhoto)">
                             <VibeIcon :icon="currentPhoto?.starred ? 'star-fill' : 'star'" />
                         </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Edit" @click="openEditor(currentPhoto)">
+                        <VibeButton variant="secondary" size="sm" outline title="Edit" :aria-label="`Edit ${currentPhoto?.name || 'photo'}`" @click="openEditor(currentPhoto)">
                             <VibeIcon icon="pencil" />
                         </VibeButton>
-                        <VibeButton variant="success" size="sm" :href="`/download/${currentPhoto?.id}`" title="Download">
+                        <VibeButton variant="success" size="sm" :href="`/download/${currentPhoto?.id}`" title="Download" :aria-label="`Download ${currentPhoto?.name || 'photo'}`">
                             <VibeIcon icon="download" />
                         </VibeButton>
-                        <VibeButton variant="danger" size="sm" outline title="Delete" @click="destroyPhoto(currentPhoto)">
+                        <VibeButton variant="danger" size="sm" outline title="Delete" :aria-label="`Delete ${currentPhoto?.name || 'photo'}`" @click="destroyPhoto(currentPhoto)">
                             <VibeIcon icon="trash" />
                         </VibeButton>
                     </div>
                 </div>
             </template>
             <div class="lightbox-stage">
-                <VibeButton variant="dark" class="nav-btn nav-prev" title="Previous (←)" @click="step(-1)">
+                <VibeButton variant="dark" class="nav-btn nav-prev" title="Previous (←)" aria-label="Previous photo" @click="step(-1)">
                     <VibeIcon icon="chevron-left" />
                 </VibeButton>
                 <VibeCarousel
@@ -309,7 +310,7 @@ function saveEdit() {
                     :interval="ride ? 4000 : false"
                     dark
                 />
-                <VibeButton variant="dark" class="nav-btn nav-next" title="Next (→)" @click="step(1)">
+                <VibeButton variant="dark" class="nav-btn nav-next" title="Next (→)" aria-label="Next photo" @click="step(1)">
                     <VibeIcon icon="chevron-right" />
                 </VibeButton>
             </div>
