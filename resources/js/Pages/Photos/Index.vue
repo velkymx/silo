@@ -76,6 +76,23 @@ function jumpTo(i) {
 function star(p) {
     router.post(`/files/${p.id}/star`, {}, { preserveScroll: true, preserveState: false });
 }
+
+function photoMenu(p) {
+    return [
+        { text: 'Open', action: 'open', icon: 'arrows-fullscreen' },
+        { text: 'Edit', action: 'edit', icon: 'pencil' },
+        { text: p.starred ? 'Unstar' : 'Star', action: 'star', icon: p.starred ? 'star-fill' : 'star' },
+        { text: 'Download', action: 'download', icon: 'download' },
+        { text: 'Delete', action: 'delete', icon: 'trash' },
+    ];
+}
+function onPhotoMenu(p, { item }) {
+    if (item.action === 'open') openPhoto(p);
+    if (item.action === 'edit') openEditor(p);
+    if (item.action === 'star') star(p);
+    if (item.action === 'download') window.location.href = `/download/${p.id}`;
+    if (item.action === 'delete') destroyPhoto(p);
+}
 function destroyPhoto(p) {
     if (!confirm(`Move “${p.name}” to trash?`)) return;
     router.delete(`/delete/${p.id}`, { preserveScroll: true, onSuccess: () => { lightboxOpen.value = false; } });
@@ -216,7 +233,25 @@ function saveEdit() {
                     @click="openPhoto(p)"
                 >
                     <img :src="p.thumb_url" :alt="p.name" loading="lazy">
-                    <VibeIcon v-if="p.starred" icon="star-fill" class="badge-star text-warning" />
+
+                    <!-- Star (click to toggle) -->
+                    <VibeButton
+                        variant="link"
+                        class="cell-star p-0"
+                        :title="p.starred ? 'Unstar' : 'Star'"
+                        @click.stop="star(p)"
+                    >
+                        <VibeIcon :icon="p.starred ? 'star-fill' : 'star'" :class="p.starred ? 'text-warning' : 'text-white'" />
+                    </VibeButton>
+
+                    <!-- Actions -->
+                    <div class="cell-actions" @click.stop>
+                        <VibeDropdown size="sm" variant="light" menu-end :items="photoMenu(p)" @item-click="onPhotoMenu(p, $event)">
+                            <template #button><VibeIcon icon="three-dots-vertical" /></template>
+                            <template #item="{ item: a }"><VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}</template>
+                        </VibeDropdown>
+                    </div>
+
                     <VibeIcon v-if="selectMode" :icon="selected.has(p.id) ? 'check-circle-fill' : 'circle'" class="badge-select" />
                 </div>
             </div>
@@ -357,6 +392,24 @@ function saveEdit() {
     top: 4px;
     right: 6px;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.cell-star {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    z-index: 2;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+.cell-actions {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.photo-cell:hover .cell-actions {
+    opacity: 1;
 }
 .badge-select {
     position: absolute;
