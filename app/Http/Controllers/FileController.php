@@ -208,7 +208,7 @@ class FileController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'content' => 'present|string',
+            'content' => 'required|string', // a text file must have content
             'parent_id' => 'nullable|integer|exists:files,id',
         ]);
 
