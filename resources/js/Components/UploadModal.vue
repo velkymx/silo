@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { fmtBytes } from '../lib/format';
 
 const open = defineModel<boolean>({ required: true });
 const props = withDefaults(
@@ -22,15 +23,6 @@ const uploadDragOver = ref(false);
 const maxUploadLabel = computed(() =>
     props.maxUploadKb >= 1024 ? `${(props.maxUploadKb / 1024).toFixed(0)} MB` : `${props.maxUploadKb} KB`,
 );
-
-function fmtBytes(n: number): string {
-    if (!n) return '0 B';
-    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    let v = n;
-    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-    return `${v.toFixed(i ? 1 : 0)} ${u[i]}`;
-}
 
 function blobUrlFor(f: File): string | null {
     if (!f || typeof f.type !== 'string' || !f.type.startsWith('image/')) return null;

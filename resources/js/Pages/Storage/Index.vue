@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import PageError from '../../Components/PageError.vue';
 import { readableTextColor } from '../../lib/contrast';
+import { fmtBytes } from '../../lib/format';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 const { loading } = usePageLoading();
@@ -23,13 +24,6 @@ const CATEGORY_COLORS = {
 };
 const colorFor = (c) => CATEGORY_COLORS[c] || CATEGORY_COLORS.other;
 
-function fmtBytes(n) {
-    if (!n) return '0 B';
-    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0; let v = n;
-    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-    return `${v.toFixed(i ? 1 : 0)} ${u[i]}`;
-}
 
 // ----- Build the hierarchy (root = parent_id null) -----
 const tree = computed(() => {

@@ -4,6 +4,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import PageError from '../../Components/PageError.vue';
+import { fmtBytes } from '../../lib/format';
 import { useConfirm } from '../../composables/useConfirm';
 import { usePageLoading } from '../../composables/usePageLoading';
 
@@ -45,14 +46,7 @@ async function restore(b) {
     router.post(`/backups/${b.id}/restore`, {}, { preserveScroll: true });
 }
 
-function human(bytes) {
-    if (!bytes) return '—';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    let n = bytes;
-    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-    return `${n.toFixed(1)} ${units[i]}`;
-}
+const human = (bytes) => (bytes ? fmtBytes(bytes) : '—');
 
 const statusVariant = (s) => ({ ready: 'success', pending: 'info', failed: 'danger' }[s] || 'secondary');
 

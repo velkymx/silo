@@ -5,6 +5,7 @@ import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 import FolderTree from '../Components/FolderTree.vue';
 import { useConfirm, useDialogHost } from '../composables/useConfirm';
 import { initials } from '../lib/initials';
+import { fmtBytes } from '../lib/format';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
@@ -99,14 +100,6 @@ const storageBars = computed(() => [{
     value: storagePct.value,
     variant: storagePct.value > 90 ? 'danger' : storagePct.value > 75 ? 'warning' : 'success',
 }]);
-function fmtBytes(n) {
-    if (!n) return '0 B';
-    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    let v = n;
-    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-    return `${v.toFixed(i ? 1 : 0)} ${u[i]}`;
-}
 
 // Footer legalese.
 const year = new Date().getFullYear();
