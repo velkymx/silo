@@ -39,6 +39,16 @@ class RegisterController extends Controller
     public function __construct()
     {
         $this->middleware('guest');
+
+        // Self-service registration is opt-in (admin-only by default).
+        $this->middleware(function ($request, $next) {
+            abort_unless(config('filemanager.allow_registration'), 404);
+
+            return $next($request);
+        })->only(['showRegistrationForm', 'register']);
+
+        // Throttle the signup endpoint against automated account creation.
+        $this->middleware('throttle:5,1')->only('register');
     }
 
     /**

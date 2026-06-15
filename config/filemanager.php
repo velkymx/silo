@@ -47,6 +47,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public registration
+    |--------------------------------------------------------------------------
+    |
+    | When false (default), the /register routes 404 — accounts are created by
+    | an admin. Set ALLOW_REGISTRATION=true to open self-service signup.
+    |
+    */
+
+    'allow_registration' => (bool) env('ALLOW_REGISTRATION', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Per-User Storage Quota
     |--------------------------------------------------------------------------
     |

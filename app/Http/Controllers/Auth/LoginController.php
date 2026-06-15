@@ -37,6 +37,10 @@ class LoginController extends Controller
     {
         $this->middleware('guest')->except('logout');
         $this->middleware('auth')->only('logout');
+
+        // Rate-limit the login endpoint (on top of the per-credential
+        // ThrottlesLogins lockout) against credential stuffing.
+        $this->middleware('throttle:5,1')->only('login');
     }
 
     /**
