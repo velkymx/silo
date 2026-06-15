@@ -6,6 +6,7 @@ import FolderTree from '../Components/FolderTree.vue';
 import { useConfirm, useDialogHost } from '../composables/useConfirm';
 import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
+import { useStorageMeter } from '../composables/useStorageMeter';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
@@ -93,13 +94,9 @@ async function deleteSavedSearch(s) {
 
 // Shared storage meter (consistent on every page).
 const storage = computed(() => page.props.storage ?? null);
-const storagePct = computed(() =>
-    storage.value?.quota > 0 ? Math.min(100, Math.round((storage.value.used / storage.value.quota) * 100)) : 0
+const { pct: storagePct, bars: storageBars } = useStorageMeter(
+    computed(() => storage.value ?? { used: 0, quota: 0 }),
 );
-const storageBars = computed(() => [{
-    value: storagePct.value,
-    variant: storagePct.value > 90 ? 'danger' : storagePct.value > 75 ? 'warning' : 'success',
-}]);
 
 // Footer legalese.
 const year = new Date().getFullYear();

@@ -18,6 +18,7 @@ import { useJobPolling } from '../../composables/useJobPolling';
 import { useBusyGuard } from '../../composables/useBusyGuard';
 import { useQuickLook } from '../../composables/useQuickLook';
 import { descendantIds } from '../../lib/folderTree';
+import { useStorageMeter } from '../../composables/useStorageMeter';
 import { useConfirm } from '../../composables/useConfirm';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
@@ -45,13 +46,7 @@ const props = defineProps({
 });
 
 
-const storagePct = computed(() =>
-    props.storage.quota > 0 ? Math.min(100, Math.round((props.storage.used / props.storage.quota) * 100)) : 0
-);
-const storageBars = computed(() => [{
-    value: storagePct.value,
-    variant: storagePct.value > 90 ? 'danger' : storagePct.value > 75 ? 'warning' : 'success',
-}]);
+const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => props.storage));
 
 const currentId = computed(() => props.current?.id ?? null);
 
