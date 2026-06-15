@@ -6,6 +6,7 @@ import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import PageError from '../../Components/PageError.vue';
 import { readableTextColor } from '../../lib/contrast';
 import { fmtBytes } from '../../lib/format';
+import { categoryColor } from '../../lib/categoryColors';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 const { loading } = usePageLoading();
@@ -17,12 +18,7 @@ const props = defineProps({
     byCategory: { type: Object, default: () => ({}) },
 });
 
-const CATEGORY_COLORS = {
-    image: '#10b981', video: '#6366f1', audio: '#ec4899', pdf: '#ef4444',
-    document: '#3b82f6', spreadsheet: '#22c55e', archive: '#f59e0b',
-    folder: '#64748b', other: '#94a3b8',
-};
-const colorFor = (c) => CATEGORY_COLORS[c] || CATEGORY_COLORS.other;
+const colorFor = (c) => categoryColor(c);
 
 
 // ----- Build the hierarchy (root = parent_id null) -----

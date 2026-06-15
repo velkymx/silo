@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { http } from '../lib/http';
+import { CATEGORY_COLORS } from '../lib/categoryColors';
 
 interface TreeNode {
     id: number;
@@ -92,16 +93,16 @@ const fileIcon = (type: string): string => {
     if (audioTypes.includes(type)) return 'file-earmark-music';
     return 'file-earmark';
 };
-// Match the datagrid icon colors (Files Index colorFor).
+// Match the datagrid icon colors (shared CATEGORY_COLORS palette).
 const fileColor = (type: string): string => {
-    if (imageTypes.includes(type)) return '#10b981';
-    if (type === 'pdf') return '#ef4444';
-    if (videoTypes.includes(type)) return '#6366f1';
-    if (audioTypes.includes(type)) return '#ec4899';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return '#f59e0b';
-    if (['xls', 'xlsx', 'csv', 'ods'].includes(type)) return '#22c55e';
-    if (['doc', 'docx', 'odt', 'rtf', 'md', 'markdown', 'txt', 'log'].includes(type)) return '#3b82f6';
-    return '#6b7280';
+    if (imageTypes.includes(type)) return CATEGORY_COLORS.image;
+    if (type === 'pdf') return CATEGORY_COLORS.pdf;
+    if (videoTypes.includes(type)) return CATEGORY_COLORS.video;
+    if (audioTypes.includes(type)) return CATEGORY_COLORS.audio;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return CATEGORY_COLORS.archive;
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(type)) return CATEGORY_COLORS.spreadsheet;
+    if (['doc', 'docx', 'odt', 'rtf', 'md', 'markdown', 'txt', 'log'].includes(type)) return CATEGORY_COLORS.document;
+    return CATEGORY_COLORS.other;
 };
 const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 + (leaf ? 1.05 : 0)) + 'rem' });
 </script>

@@ -1,3 +1,5 @@
+import { CATEGORY_COLORS } from './categoryColors';
+
 export interface TypedItem {
     is_dir?: boolean;
     type?: string;
@@ -27,16 +29,16 @@ export function typeLabel(item: TypedItem): string {
 
 /** Accent color for an item's icon (shared by grid, list, treemap). */
 export function colorFor(item: TypedItem): string {
-    if (item.is_dir) return '#f59e0b';
+    if (item.is_dir) return CATEGORY_COLORS.folder;
     const t = item.type ?? '';
-    if (imageTypes.includes(t)) return '#10b981';
-    if (t === 'pdf') return '#ef4444';
-    if (videoTypes.includes(t)) return '#6366f1';
-    if (audioTypes.includes(t)) return '#ec4899';
-    if (archiveTypes.includes(t)) return '#f59e0b';
-    if (sheetTypes.includes(t)) return '#22c55e';
-    if (docTypes.includes(t)) return '#3b82f6';
-    return '#6b7280';
+    if (imageTypes.includes(t)) return CATEGORY_COLORS.image;
+    if (t === 'pdf') return CATEGORY_COLORS.pdf;
+    if (videoTypes.includes(t)) return CATEGORY_COLORS.video;
+    if (audioTypes.includes(t)) return CATEGORY_COLORS.audio;
+    if (archiveTypes.includes(t)) return CATEGORY_COLORS.archive;
+    if (sheetTypes.includes(t)) return CATEGORY_COLORS.spreadsheet;
+    if (docTypes.includes(t)) return CATEGORY_COLORS.document;
+    return CATEGORY_COLORS.other;
 }
 
 /** Bootstrap-icon name for a file extension. */
