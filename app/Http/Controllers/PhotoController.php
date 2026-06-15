@@ -133,7 +133,7 @@ class PhotoController extends Controller
     {
         $this->authorizeAlbum($album);
         $id = $this->ownedPhotoIds($request)[0] ?? null;
-        abort_unless($id, 422);
+        abort_unless($id, 404, 'Photo not found.');
         $album->update(['cover_file_id' => $id]);
 
         return back()->with('success', 'Cover updated.');
