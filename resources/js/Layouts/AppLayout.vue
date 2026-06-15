@@ -177,6 +177,7 @@ function onUserMenu({ item }) {
                         type="search"
                         class="border-start-0"
                         :placeholder="searchScope === 'folder' ? 'Search this folder…' : 'Search files, folders, tags…'"
+                        aria-label="Search files, folders, and tags"
                         no-wrapper
                         @keyup.enter="runGlobalSearch"
                     />
@@ -374,10 +375,12 @@ function onUserMenu({ item }) {
     font-weight: 600;
 }
 .app-sidebar .del-btn {
-    opacity: 0;
+    opacity: 0.4;
     cursor: pointer;
+    transition: opacity 0.15s;
 }
-.app-sidebar .saved-search:hover .del-btn {
+.app-sidebar .saved-search:hover .del-btn,
+.app-sidebar .saved-search:focus-within .del-btn {
     opacity: 1;
 }
 </style>
