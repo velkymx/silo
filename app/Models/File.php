@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Arr;
 use Laravel\Scout\Searchable;
 
 class File extends Model
@@ -73,7 +74,11 @@ class File extends Model
         return [
             'name' => $this->name,
             'mime' => $this->mime,
-            'metadata' => is_array($this->metadata) ? implode(' ', array_map('strval', $this->metadata)) : null,
+            // Flatten nested metadata (EXIF, ID3, tag arrays) to a flat string;
+            // array_map('strval', …) alone would choke on nested arrays.
+            'metadata' => is_array($this->metadata)
+                ? implode(' ', array_map('strval', Arr::flatten($this->metadata)))
+                : null,
         ];
     }
 
