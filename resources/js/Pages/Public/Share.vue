@@ -1,6 +1,7 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
+import { fmtBytes } from '../../lib/format';
 
 const props = defineProps({
     locked: { type: Boolean, default: false },
@@ -62,7 +63,7 @@ function unlock() {
                     <VibeIcon icon="file-earmark" class="display-3 d-block mb-2" />
                     No inline preview available.
                 </div>
-                <div class="small text-muted">{{ mime || 'file' }} · {{ (size / 1024).toFixed(1) }} KB</div>
+                <div class="small text-muted">{{ mime || 'file' }} · {{ fmtBytes(size) }}</div>
             </div>
             <VibeButton
                 v-if="download_url"
