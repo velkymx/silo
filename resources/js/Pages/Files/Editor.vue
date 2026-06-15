@@ -101,7 +101,6 @@ async function commitSave() {
                     <VibeIcon :icon="isFullscreen ? 'fullscreen-exit' : 'arrows-fullscreen'" class="me-1" />
                     {{ isFullscreen ? 'Exit' : 'Full screen' }}
                 </VibeButton>
-                <VibeButton variant="light" size="sm" @click="back">Cancel</VibeButton>
                 <VibeButton variant="primary" size="sm" :disabled="!ready || kind === 'unsupported' || !!loadError" @click="openSave">
                     <VibeIcon icon="check2" class="me-1" />{{ creating ? 'Create' : 'Save' }}
                 </VibeButton>
