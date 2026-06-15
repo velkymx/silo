@@ -112,3 +112,25 @@
     text-align: center;
     font-size: 0.85rem;
 }
+
+/* FE-P4-2/P4-8: subtle motion polish. Respects reduced-motion. */
+.modal.fade .modal-dialog {
+    transform: scale(0.97) translateY(-6px);
+    transition: transform 0.18s ease-out;
+}
+.modal.show .modal-dialog {
+    transform: scale(1) translateY(0);
+}
+.app-sidebar .side-row,
+.list-row,
+.photo-cell {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .modal.fade .modal-dialog,
+    .app-sidebar .side-row,
+    .list-row,
+    .photo-cell {
+        transition: none;
+    }
+}
