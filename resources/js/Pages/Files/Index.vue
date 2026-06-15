@@ -96,6 +96,20 @@ function clearSearch() {
     router.get('/', currentId.value ? { folder: currentId.value } : {}, { preserveScroll: true });
 }
 
+function clearAllFilters() {
+    router.get('/', {}, { preserveScroll: true });
+}
+
+// All active view filters collapsed into one chip bar (search/tag/starred/recent).
+const activeFilters = computed(() => {
+    const out = [];
+    if (props.searching) out.push({ key: 'search', icon: 'search', label: `Search: "${props.filters.search}"`, clear: clearSearch });
+    if (props.activeTag) out.push({ key: 'tag', icon: 'tag-fill', label: `Tag: ${props.activeTag.name}`, clear: () => filterByTag(null) });
+    if (props.starredOnly) out.push({ key: 'starred', icon: 'star-fill', label: 'Starred', clear: clearAllFilters });
+    if (props.recentOnly) out.push({ key: 'recent', icon: 'clock-history', label: 'Recent', clear: clearAllFilters });
+    return out;
+});
+
 // ----- Unified Finder/Dropbox-style listing -----
 // Folders and files share one list; folders sort ahead of files by default.
 const items = computed(() => [
@@ -640,24 +654,19 @@ onBeforeUnmount(() => {
             </div>
         </VibeAlert>
 
-        <VibeAlert v-if="searching" variant="info" class="d-flex align-items-center justify-content-between">
-            <span><VibeIcon icon="search" class="me-1" />Results for "{{ filters.search }}" across all folders.</span>
-            <VibeButton variant="info" size="sm" outline @click="clearSearch">Clear</VibeButton>
-        </VibeAlert>
-
-        <VibeAlert v-if="activeTag" variant="primary" class="d-flex align-items-center justify-content-between">
-            <span><VibeIcon icon="tag-fill" class="me-1" />Files tagged "{{ activeTag.name }}".</span>
-            <VibeButton variant="primary" size="sm" outline @click="filterByTag(null)">Clear</VibeButton>
-        </VibeAlert>
-
-        <VibeAlert v-if="starredOnly" variant="warning" class="d-flex align-items-center justify-content-between">
-            <span><VibeIcon icon="star-fill" class="me-1" />Starred items.</span>
-            <VibeButton variant="warning" size="sm" outline @click="router.get('/', {}, { preserveScroll: true })">Clear</VibeButton>
-        </VibeAlert>
-
-        <VibeAlert v-if="recentOnly" variant="secondary" class="d-flex align-items-center justify-content-between">
-            <span><VibeIcon icon="clock-history" class="me-1" />Recent uploads.</span>
-            <VibeButton variant="secondary" size="sm" outline @click="router.get('/', {}, { preserveScroll: true })">Clear</VibeButton>
+        <!-- Single compact chip bar for all active view filters. -->
+        <VibeAlert v-if="activeFilters.length" variant="light" class="border d-flex flex-wrap align-items-center gap-2 py-2">
+            <VibeIcon icon="funnel-fill" class="text-muted" />
+            <VibeBadge
+                v-for="f in activeFilters"
+                :key="f.key"
+                variant="secondary"
+                class="d-flex align-items-center gap-1"
+            >
+                <VibeIcon :icon="f.icon" />{{ f.label }}
+                <VibeIcon icon="x" style="cursor: pointer" :aria-label="`Clear ${f.label}`" @click="f.clear()" />
+            </VibeBadge>
+            <VibeButton variant="link" size="sm" class="ms-auto p-0 text-decoration-none" @click="clearAllFilters">Clear all</VibeButton>
         </VibeAlert>
 
         <!-- Thumbnail / grid view -->
