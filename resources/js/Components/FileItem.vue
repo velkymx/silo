@@ -123,6 +123,14 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+/* Subtle lift on grid cards for tactile hover feedback. */
+.card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12) !important;
+}
 /* Outside select mode the list checkbox stays hidden until the row is hovered
    or focused, so it doesn't compete with the filename. */
 .select-check.check-idle {
