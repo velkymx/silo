@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
             </template>
 
             <template #cell(actions)="{ item }">
-                <div class="d-flex justify-content-end">
+                <div class="d-flex justify-content-end" @click.stop>
                     <ItemActions
                         :item="item"
                         :menu="item.is_dir ? folderActions : fileMenu(item)"
