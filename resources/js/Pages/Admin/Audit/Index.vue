@@ -3,13 +3,32 @@ import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import PageError from '../../../Components/PageError.vue';
 import { ref } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
 const props = defineProps({
     logs: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({ action: '', from: null, to: null }) },
 });
 
 const { loading } = usePageLoading();
+
+const filterForm = ref({
+    action: props.filters.action ?? '',
+    from: props.filters.from ?? '',
+    to: props.filters.to ?? '',
+});
+function applyFilters() {
+    router.get('/audit', {
+        action: filterForm.value.action || undefined,
+        from: filterForm.value.from || undefined,
+        to: filterForm.value.to || undefined,
+    }, { preserveScroll: true, preserveState: true });
+}
+function clearFilters() {
+    filterForm.value = { action: '', from: '', to: '' };
+    router.get('/audit', {}, { preserveScroll: true });
+}
 
 const expanded = ref(new Set());
 function toggleMeta(id) {
@@ -39,7 +58,30 @@ const variant = (action) => {
     <AppLayout>
         <PageError />
         <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
-        <p class="text-muted small">{{ logs.length }} recent events.</p>
+
+        <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
+            <div class="col-sm-4">
+                <VibeFormGroup label="Action">
+                    <VibeFormInput v-model="filterForm.action" placeholder="e.g. upload, file.delete" />
+                </VibeFormGroup>
+            </div>
+            <div class="col-sm-3">
+                <VibeFormGroup label="From">
+                    <VibeFormInput v-model="filterForm.from" type="date" />
+                </VibeFormGroup>
+            </div>
+            <div class="col-sm-3">
+                <VibeFormGroup label="To">
+                    <VibeFormInput v-model="filterForm.to" type="date" />
+                </VibeFormGroup>
+            </div>
+            <div class="col-sm-2 d-flex gap-2">
+                <VibeButton type="submit" variant="primary">Filter</VibeButton>
+                <VibeButton variant="secondary" outline @click="clearFilters">Clear</VibeButton>
+            </div>
+        </form>
+
+        <p class="text-muted small">{{ logs.length }} event(s).</p>
 
         <LoadingSkeleton v-if="loading" :rows="8" :cols="6" />
         <VibeDataTable

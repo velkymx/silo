@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class AuditController extends Controller
@@ -16,12 +17,25 @@ class AuditController extends Controller
         });
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        // The VibeDataTable paginates client-side; hand it a capped recent window.
-        $logs = AuditLog::with('user:id,name')->latest('id')->limit(2000)->get();
+        $filters = [
+            'action' => $request->string('action')->trim()->value(),
+            'from' => $request->date('from')?->toDateString(),
+            'to' => $request->date('to')?->toDateString(),
+        ];
+
+        // Server-side filtered; the VibeDataTable paginates the capped subset.
+        $logs = AuditLog::with('user:id,name')
+            ->when($filters['action'] !== '', fn ($q) => $q->where('action', 'like', '%'.$filters['action'].'%'))
+            ->when($filters['from'], fn ($q) => $q->whereDate('created_at', '>=', $filters['from']))
+            ->when($filters['to'], fn ($q) => $q->whereDate('created_at', '<=', $filters['to']))
+            ->latest('id')
+            ->limit(2000)
+            ->get();
 
         return Inertia::render('Admin/Audit/Index', [
+            'filters' => $filters,
             'logs' => $logs->map(fn (AuditLog $log) => [
                 'id' => $log->id,
                 'user' => $log->user?->name ?? 'guest',
