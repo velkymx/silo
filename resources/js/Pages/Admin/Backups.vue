@@ -118,6 +118,7 @@ onBeforeUnmount(() => clearInterval(poll));
                         :columns="columns"
                         row-key="id"
                         hover
+                        striped
                         :per-page="10"
                         empty-text="No backups yet. Run one or set a schedule."
                     >
