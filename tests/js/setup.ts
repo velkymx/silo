@@ -111,6 +111,9 @@ const components: Record<string, any> = {
 
 config.global.components = components;
 
+// VibeUI registers v-vibe-tooltip globally; stub it as a no-op in tests.
+config.global.directives = { 'vibe-tooltip': {} };
+
 // Locally-imported components (layouts) must be stubbed, not globally
 // registered, to override the import.
 config.global.stubs = {

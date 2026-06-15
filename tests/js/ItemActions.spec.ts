@@ -13,8 +13,9 @@ describe('ItemActions', () => {
 
     it('emits star with the item', async () => {
         const wrapper = mount(ItemActions, { props: { item, menu } });
-        const star = wrapper.findAll('button').find((b) => b.attributes('title')?.includes('Star'));
-        await star!.trigger('click');
+        // Star is the first button (link variant) before the actions dropdown.
+        const star = wrapper.findAll('button')[0];
+        await star.trigger('click');
         expect(wrapper.emitted('star')?.[0]).toEqual([item]);
     });
 
