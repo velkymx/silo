@@ -116,8 +116,21 @@ class FilePolicy
     protected function lineageIds(File $file): array
     {
         $ids = [];
-        for ($node = $file; $node; $node = $node->parent) {
+        $seen = [];
+        $node = $file;
+
+        // Depth cap + visited-set so a corrupt parent cycle can't loop forever;
+        // each step fetches only id/parent_id (no full model hydration).
+        for ($depth = 0; $node && $depth < 64; $depth++) {
+            if (isset($seen[$node->id])) {
+                break;
+            }
+            $seen[$node->id] = true;
             $ids[] = $node->id;
+
+            $node = $node->parent_id
+                ? File::withTrashed()->select('id', 'parent_id')->find($node->parent_id)
+                : null;
         }
 
         return $ids;
