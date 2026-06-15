@@ -73,14 +73,13 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed', // Password confirmation required if provided
-            'group_id' => 'required|exists:groups,id', // Validate the group ID
         ]);
-    
-        // Update user details
+
+        // Update user details. Group membership is NOT self-assignable — only
+        // admins set it (privilege escalation otherwise).
         $user->name = $request->name;
         $user->email = $request->email;
-        $user->group_id = $request->group_id; // Assign the selected group
-    
+
         // Update password if provided
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);

@@ -11,13 +11,11 @@ const props = defineProps({
     groups: { type: Array, default: () => [] },
 });
 
-const groupOptions = computed(() => props.groups.map((g) => ({ value: g.id, text: g.name })));
 const initial = computed(() => initials(props.user.name) || '?');
 
 const form = useForm({
     name: props.user.name,
     email: props.user.email,
-    group_id: props.user.group_id,
     password: '',
     password_confirmation: '',
 });
@@ -111,15 +109,6 @@ function applyCrop() {
                             :validation-message="form.errors.email"
                         >
                             <VibeFormInput v-model="form.email" type="email" required />
-                        </VibeFormGroup>
-
-                        <VibeFormGroup
-                            label="Group"
-                            class="mt-3"
-                            :validation-state="form.errors.group_id ? 'invalid' : null"
-                            :validation-message="form.errors.group_id"
-                        >
-                            <VibeFormSelect v-model="form.group_id" :options="groupOptions" placeholder="Choose…" />
                         </VibeFormGroup>
 
                         <VibeFormGroup
