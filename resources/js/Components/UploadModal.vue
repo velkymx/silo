@@ -3,7 +3,10 @@ import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 
 const open = defineModel<boolean>({ required: true });
-const props = defineProps<{ parentId: number | null; maxUploadKb: number }>();
+const props = withDefaults(
+    defineProps<{ parentId: number | null; maxUploadKb: number; storage?: { used: number; quota: number } }>(),
+    { storage: () => ({ used: 0, quota: 0 }) },
+);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -78,6 +81,7 @@ function clearAllUploads(): void {
 }
 
 function submitUpload(): void {
+    if (overQuota.value) return;
     uploadForm.parent_id = props.parentId;
     uploadForm.post('/upload', {
         forceFormData: true,
@@ -91,6 +95,12 @@ function submitUpload(): void {
 }
 
 const totalBytes = computed(() => uploadFiles.value.reduce((s, f) => s + f.size, 0));
+
+// Client-side quota pre-check: blocks the round-trip when the selection would
+// blow the user's quota (the server still enforces it authoritatively).
+const overQuota = computed(() =>
+    props.storage.quota > 0 && props.storage.used + totalBytes.value > props.storage.quota,
+);
 
 onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
 </script>
@@ -132,6 +142,10 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                 </div>
             </div>
 
+            <VibeAlert v-if="overQuota" variant="danger" class="mt-3 mb-0">
+                <VibeIcon icon="exclamation-triangle" class="me-1" />This selection ({{ fmtBytes(totalBytes) }}) would exceed your storage quota. Remove some files or free up space.
+            </VibeAlert>
+
             <VibeProgress
                 v-if="uploadForm.progress"
                 :bars="[{ value: uploadForm.progress.percentage, showValue: true, variant: 'success' }]"
@@ -141,7 +155,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
         <template #footer>
             <div class="d-flex justify-content-center gap-2 w-100">
                 <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadFiles.length" @click="submitUpload">
+                <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadFiles.length || overQuota" @click="submitUpload">
                     <VibeIcon icon="upload" class="me-1" />Upload{{ uploadFiles.length ? ` ${uploadFiles.length}` : '' }}
                 </VibeButton>
             </div>

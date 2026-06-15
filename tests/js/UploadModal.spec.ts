@@ -43,6 +43,18 @@ describe('UploadModal', () => {
         expect((file as unknown as Record<string, unknown>).__url).toBeUndefined();
     });
 
+    it('blocks upload and warns when the selection exceeds quota', async () => {
+        const big = new File([new Uint8Array(2000)], 'big.bin', { type: 'application/octet-stream' });
+        const wrapper = mount(UploadModal, {
+            props: { modelValue: true, parentId: null, maxUploadKb: 99999, storage: { used: 0, quota: 1000 } },
+        });
+        await wrapper.find('.upload-dropzone').trigger('drop', { dataTransfer: { files: [big] } });
+        expect(wrapper.text()).toContain('exceed your storage quota');
+        const upBtn = wrapper.findAll('button').find((b) => b.text().includes('Upload'));
+        await upBtn!.trigger('click');
+        expect(formPost).not.toHaveBeenCalled();
+    });
+
     it('submit posts to /upload with the parent id', async () => {
         const wrapper = mount(UploadModal, { props: { modelValue: true, parentId: 42, maxUploadKb: 1024 } });
         await wrapper.find('.upload-dropzone').trigger('drop', { dataTransfer: { files: [png()] } });

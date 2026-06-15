@@ -911,7 +911,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Upload modal -->
-        <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" />
+        <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" :storage="storage" />
 
         <!-- Create folder modal -->
         <VibeModal v-model="folderOpen" title="Create Folder" centered>
