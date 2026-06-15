@@ -54,6 +54,31 @@ class ProcessUploadedFileTest extends TestCase
         $this->assertSame(18, $file->metadata['height']);
     }
 
+    public function test_duplicate_dispatch_processes_only_once(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $image = UploadedFile::fake()->image('pic.png', 20, 20);
+        $path = 'uploads/'.$user->id.'/pic.png';
+        Storage::disk('public')->put($path, file_get_contents($image->getRealPath()));
+
+        $file = File::factory()->for($user, 'owner')->create([
+            'name' => 'pic.png', 'path' => $path, 'mime' => 'image/png', 'status' => File::STATUS_PENDING,
+        ]);
+
+        // Two jobs for the same file (the duplicate-dispatch race).
+        ProcessUploadedFile::dispatchSync($file->id);
+        $afterFirst = $file->fresh();
+        ProcessUploadedFile::dispatchSync($file->id);
+        $afterSecond = $file->fresh();
+
+        // Consistent terminal status, and the second run was a no-op (CAS guard).
+        $this->assertSame(File::STATUS_READY, $afterSecond->status);
+        $this->assertSame($afterFirst->thumbnail_path, $afterSecond->thumbnail_path);
+        $this->assertNotNull($afterSecond->thumbnail_path);
+    }
+
     public function test_job_marks_failed_when_blob_missing(): void
     {
         Storage::fake('public');

@@ -66,7 +66,7 @@ class PublicShareController extends Controller
         $link = $this->resolve($token);
         $this->assertUnlocked($link);
 
-        abort_unless($link->file->status === \App\Models\File::STATUS_READY, 404);
+        abort_unless($link->file->status === \App\Models\File::STATUS_READY || $link->file->referenced, 404);
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
 
         return FileResponse::serve(
@@ -83,7 +83,7 @@ class PublicShareController extends Controller
         $link = $this->resolve($token);
         $this->assertUnlocked($link);
         abort_unless($link->allow_download, 403);
-        abort_unless($link->file->status === \App\Models\File::STATUS_READY, 404);
+        abort_unless($link->file->status === \App\Models\File::STATUS_READY || $link->file->referenced, 404);
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
 
         Audit::log('link.download', $link->file, ['token' => $token], userId: $link->created_by);

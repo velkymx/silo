@@ -731,7 +731,9 @@ class FileController extends Controller
 
         abort_if($file->is_dir, 404);
         // Fail closed: only serve files that finished processing/AV-scanning.
-        abort_unless($file->status === File::STATUS_READY, 404);
+        // Referenced (admin-imported, trusted) blobs are exempt — they were
+        // never an untrusted user upload.
+        abort_unless($file->status === File::STATUS_READY || $file->referenced, 404);
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
         Audit::log('file.download', $file);
@@ -746,7 +748,9 @@ class FileController extends Controller
 
         abort_if($file->is_dir, 404);
         // Fail closed: only serve files that finished processing/AV-scanning.
-        abort_unless($file->status === File::STATUS_READY, 404);
+        // Referenced (admin-imported, trusted) blobs are exempt — they were
+        // never an untrusted user upload.
+        abort_unless($file->status === File::STATUS_READY || $file->referenced, 404);
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
         return FileResponse::serve(Storage::disk($file->disk), $file->path, $file->name, $file->mime);

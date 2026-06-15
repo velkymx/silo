@@ -89,10 +89,7 @@ class ImportFolder extends Command
                     'mime' => $disk->mimeType($filePath) ?: null,
                     'size' => $disk->size($filePath),
                     'referenced' => true,
-                    // Imported blobs already exist on disk and are admin-trusted,
-                    // so they are immediately servable. The optional process job
-                    // only enriches metadata/thumbnails.
-                    'status' => File::STATUS_READY,
+                    'status' => File::STATUS_PENDING,
                 ],
             );
 

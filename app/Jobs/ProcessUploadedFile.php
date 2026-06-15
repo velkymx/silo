@@ -9,6 +9,7 @@ use App\Services\ThumbnailGenerator;
 use App\Services\VirusScanner;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -29,9 +30,32 @@ class ProcessUploadedFile implements ShouldQueue
      */
     public function handle(MetadataExtractor $extractor, ThumbnailGenerator $thumbnails, VirusScanner $scanner): void
     {
+        // Serialize against a duplicate dispatch for the same file so two
+        // workers can't interleave scan/metadata/thumbnail writes.
+        $lock = Cache::lock("process-file-{$this->fileId}", 300);
+        if (! $lock->get()) {
+            return;
+        }
+
+        try {
+            $this->process($extractor, $thumbnails, $scanner);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function process(MetadataExtractor $extractor, ThumbnailGenerator $thumbnails, VirusScanner $scanner): void
+    {
         $file = File::find($this->fileId);
 
         if (! $file || $file->is_dir) {
+            return;
+        }
+
+        // CAS guard: only the first job that finds the file still PENDING does
+        // the work; a duplicate that runs after completion sees a terminal
+        // status and bails (idempotent, exactly one thumbnail).
+        if ($file->status !== File::STATUS_PENDING) {
             return;
         }
 
