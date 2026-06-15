@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Jobs\ImportScan;
 use App\Services\Audit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ImportController extends Controller
@@ -14,16 +13,28 @@ class ImportController extends Controller
     {
         $root = config('filesystems.disks.import.root');
 
+        // Lazily count up to a cap instead of loading the entire tree into memory
+        // (an import mount can hold an unbounded number of files).
+        $cap = 10000;
         $fileCount = null;
-        try {
-            $fileCount = count(Storage::disk('import')->allFiles());
-        } catch (\Throwable $e) {
-            // Disk root not present (no folder mounted) — leave count unknown.
+        $capped = false;
+        if ($root && is_dir($root)) {
+            $fileCount = 0;
+            $iter = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iter as $entry) {
+                if ($entry->isFile() && ++$fileCount >= $cap) {
+                    $capped = true;
+                    break;
+                }
+            }
         }
 
         return Inertia::render('Admin/Import', [
             'root' => $root,
             'fileCount' => $fileCount,
+            'fileCountCapped' => $capped,
         ]);
     }
 
