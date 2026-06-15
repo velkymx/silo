@@ -61,10 +61,11 @@ class TrashService
     public function roots(int $ownerId): \Illuminate\Support\Collection
     {
         $trashed = File::onlyTrashed()->where('owner_id', $ownerId)->get();
-        $trashedIds = $trashed->pluck('id')->all();
+        // O(1) membership instead of in_array's O(n) scan per item.
+        $trashedIds = array_flip($trashed->pluck('id')->all());
 
         return $trashed->filter(
-            fn (File $f) => $f->parent_id === null || ! in_array($f->parent_id, $trashedIds, true)
+            fn (File $f) => $f->parent_id === null || ! isset($trashedIds[$f->parent_id])
         )->values();
     }
 
