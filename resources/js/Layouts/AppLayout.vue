@@ -2,7 +2,6 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
-import FolderTree from '../Components/FolderTree.vue';
 import { useConfirm, useDialogHost } from '../composables/useConfirm';
 import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
@@ -24,31 +23,8 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user);
 const flash = computed(() => page.props.flash ?? {});
 
-// Shared folder tree (consistent on every route).
-const folders = computed(() => page.props.folders ?? []);
+// Current folder (used by the search-scope toggle).
 const currentFolder = computed(() => page.props.currentFolder ?? null);
-
-// Inertia reuses the FolderTree instance across same-component visits, so its
-// lazily-loaded children would otherwise go stale after a folder is created,
-// renamed, moved, or deleted. Re-key the tree on the folder SET (not on every
-// navigation) so it re-mounts and re-fetches only when the structure changes —
-// expansion state is preserved during ordinary browsing.
-const treeKey = computed(() =>
-    folders.value.map((f) => `${f.id}:${f.parent_id ?? 0}:${f.name}`).join('|'),
-);
-const ancestorIds = computed(() => {
-    const byId = new Map(folders.value.map((f) => [f.id, f]));
-    const ids = new Set();
-    let id = currentFolder.value;
-    while (id && byId.has(id)) {
-        ids.add(id);
-        id = byId.get(id).parent_id;
-    }
-    return ids;
-});
-function goFolder(id) {
-    router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
-}
 
 // Global search (unified in the top bar, present on every page).
 const searchValue = ref('');
@@ -254,17 +230,6 @@ function onUserMenu({ item }) {
                 </template>
 
                 <div class="flex-grow-1 overflow-auto">
-                    <div class="side-heading"><VibeIcon icon="folder-fill" />Folders</div>
-                    <div
-                        class="side-row d-flex align-items-center"
-                        :class="{ active: !currentFolder }"
-                        role="button"
-                        @click="goFolder(null)"
-                    >
-                        <VibeIcon icon="house-door-fill" class="nav-ico" />Home
-                    </div>
-                    <FolderTree :key="treeKey" :folder="null" :current-id="currentFolder" :reveal-ids="ancestorIds" />
-
                     <template v-if="savedSearches.length">
                         <div class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</div>
                         <div v-for="s in savedSearches" :key="s.id" class="side-row d-flex align-items-center saved-search" role="button" @click="runSavedSearch(s)">
