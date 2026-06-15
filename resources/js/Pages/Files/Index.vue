@@ -21,6 +21,8 @@ import EmptyState from '../../Components/EmptyState.vue';
 import { useConfirm } from '../../composables/useConfirm';
 import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
+import { fmtBytes } from '../../lib/format';
+import { TYPE_OPTIONS } from '../../composables/useAdvancedSearch';
 
 // Office formats edited on the full-screen editor page (binary, versioned).
 const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -97,10 +99,29 @@ function clearAllFilters() {
     router.get('/', {}, { preserveScroll: true });
 }
 
-// All active view filters collapsed into one chip bar (search/tag/starred/recent).
+// Human-readable summary of the structured (advanced) filters in play.
+const advancedSummary = computed(() => {
+    const f = props.filters;
+    const parts = [];
+    if (f.ftype) parts.push(TYPE_OPTIONS.find((o) => o.value === f.ftype)?.text ?? f.ftype);
+    if (f.date_from || f.date_to) {
+        const target = f.date_target === 'edited' ? 'Edited' : 'Uploaded';
+        parts.push(`${target} ${f.date_from ?? '…'} → ${f.date_to ?? '…'}`);
+    }
+    if (f.size_min || f.size_max) {
+        const lo = f.size_min ? fmtBytes(Number(f.size_min)) : '0';
+        const hi = f.size_max ? fmtBytes(Number(f.size_max)) : '∞';
+        parts.push(`${lo} – ${hi}`);
+    }
+    if (f.scope === 'folder') parts.push('this folder');
+    return parts.join(' · ');
+});
+
+// All active view filters collapsed into one chip bar.
 const activeFilters = computed(() => {
     const out = [];
-    if (props.searching) out.push({ key: 'search', icon: 'search', label: `Search: "${props.filters.search}"`, clear: clearSearch });
+    if (props.filters.search) out.push({ key: 'search', icon: 'search', label: `Search: "${props.filters.search}"`, clear: clearSearch });
+    if (props.advanced) out.push({ key: 'advanced', icon: 'sliders', label: advancedSummary.value, clear: clearAllFilters });
     if (props.activeTag) out.push({ key: 'tag', icon: 'tag-fill', label: `Tag: ${props.activeTag.name}`, clear: () => filterByTag(null) });
     if (props.starredOnly) out.push({ key: 'starred', icon: 'star-fill', label: 'Starred', clear: clearAllFilters });
     if (props.recentOnly) out.push({ key: 'recent', icon: 'clock-history', label: 'Recent', clear: clearAllFilters });
@@ -887,7 +908,13 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Advanced search -->
-        <AdvancedSearchModal v-model="advOpen" :filters="filters" :all-tags="allTags" />
+        <AdvancedSearchModal
+            v-model="advOpen"
+            :filters="filters"
+            :all-tags="allTags"
+            :current-folder-id="currentId"
+            :current-folder-name="current?.name ?? null"
+        />
 
         <!-- Right-click context menu -->
         <ContextMenu

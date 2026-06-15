@@ -44,6 +44,7 @@ class File extends Model
         'starred',
         'referenced',
         'sort_order',
+        'content_edited_at',
         'parent_id',
         'owner_id',
     ];
@@ -62,6 +63,7 @@ class File extends Model
             'version' => 'integer',
             'starred' => 'boolean',
             'referenced' => 'boolean',
+            'content_edited_at' => 'datetime',
         ];
     }
 

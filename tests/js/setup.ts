@@ -42,6 +42,12 @@ const components: Record<string, any> = {
         emits: ['update:modelValue'],
         template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
     },
+    VibeFormSwitch: {
+        name: 'VibeFormSwitch',
+        props: ['modelValue'],
+        emits: ['update:modelValue'],
+        template: '<input type="checkbox" role="switch" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
+    },
     VibeFormGroup: passthrough('VibeFormGroup'),
     VibeInputGroup: passthrough('VibeInputGroup'),
     VibeAutocomplete: inputStub('VibeAutocomplete'),

@@ -22,7 +22,7 @@ use Inertia\Inertia;
 class FileController extends Controller
 {
     // Display files and folders for the current (DB-backed) folder.
-    public function index(Request $request)
+    public function index(Request $request, \App\Services\FileSearch $search)
     {
         $userId = auth()->id();
 
@@ -36,10 +36,11 @@ class FileController extends Controller
             ? $request->get('sort')
             : 'name';
         $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
-        $searching = $request->filled('search');
-        $advanced = $request->hasAny(['date_from', 'date_to', 'size_min', 'size_max', 'ftype']);
-        // Limit search to the current folder (and its subfolders) when requested.
-        $scopeFolderId = $request->input('scope') === 'folder' ? ($request->integer('folder') ?: null) : null;
+        // A search runs when there's free text or any structured filter; a bare
+        // tag (with nothing else) is a Smart Folder, handled separately below.
+        $advanced = $search->isAdvanced($request);
+        $useSearch = $request->filled('search') || $advanced;
+        $scopeFolderId = $search->scopeFolderId($request);
         $starredOnly = $request->boolean('starred');
         $recentOnly = $request->boolean('recent');
         $activeTag = $request->filled('tag')
@@ -56,21 +57,11 @@ class FileController extends Controller
         // payload bounded on very large result sets.
         $cap = 1000;
 
-        if ($advanced || ($searching && $scopeFolderId)) {
-            // Structured / folder-scoped search via a DB query.
+        if ($useSearch) {
+            // Unified search: free text + date/size/type/tag/scope in one query.
             $folders = collect();
-            $query = $this->advancedQuery($request, $userId, $activeTag);
-            if ($scopeFolderId) {
-                $query->whereIn('parent_id', $this->subtreeFolderIds($scopeFolderId, $allFolders));
-            }
-            $files = $query->with(['versions', 'tags'])->latest('created_at')->limit($cap)->get()
-                ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
-        } elseif ($searching) {
-            // Full-text search (Scout) spans every folder the user owns.
-            $folders = collect();
-            $files = File::search($request->string('search')->toString())
-                ->where('owner_id', $userId)->where('is_dir', false)
-                ->take($cap)->get()->load(['versions', 'tags'])
+            $files = $search->build($request, $userId, $allFolders)
+                ->with(['versions', 'tags'])->latest('created_at')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
         } elseif ($activeTag) {
             // Tag filter spans every folder the user owns (folders + files).
@@ -111,11 +102,11 @@ class FileController extends Controller
             'files' => $files->values(),
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
-            'searching' => $searching || $advanced,
+            'searching' => $useSearch,
             'advanced' => $advanced,
             'starredOnly' => $starredOnly,
             'recentOnly' => $recentOnly,
-            'flat' => $searching || $advanced || (bool) $activeTag || $starredOnly || $recentOnly,
+            'flat' => $useSearch || (bool) $activeTag || $starredOnly || $recentOnly,
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
             // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
@@ -126,81 +117,16 @@ class FileController extends Controller
                 'search' => $request->string('search')->toString(),
                 'sort' => $sort,
                 'direction' => $direction,
+                'date_target' => $request->string('date_target')->toString() === 'edited' ? 'edited' : 'uploaded',
                 'date_from' => $request->string('date_from')->toString() ?: null,
                 'date_to' => $request->string('date_to')->toString() ?: null,
                 'size_min' => $request->input('size_min'),
                 'size_max' => $request->input('size_max'),
                 'ftype' => $request->string('ftype')->toString() ?: null,
+                'tag' => $activeTag?->id,
                 'scope' => $scopeFolderId ? 'folder' : 'all',
             ],
         ]);
-    }
-
-    // File-type categories for advanced search → extension / mime matchers.
-    private const TYPE_FILTERS = [
-        'image' => ['mime' => 'image/%'],
-        'video' => ['mime' => 'video/%'],
-        'audio' => ['mime' => 'audio/%'],
-        'pdf' => ['ext' => ['pdf']],
-        'document' => ['ext' => ['doc', 'docx', 'txt', 'md', 'rtf', 'odt']],
-        'spreadsheet' => ['ext' => ['xls', 'xlsx', 'csv', 'ods']],
-        'archive' => ['ext' => ['zip', 'rar', '7z', 'tar', 'gz']],
-    ];
-
-    /** A folder id plus all of its descendant folder ids (for scoped search). */
-    private function subtreeFolderIds(int $folderId, \Illuminate\Support\Collection $allFolders): array
-    {
-        $childrenByParent = $allFolders->groupBy('parent_id');
-        $ids = [$folderId];
-        $stack = [$folderId];
-        while ($stack) {
-            $parent = array_pop($stack);
-            foreach ($childrenByParent->get($parent, collect()) as $child) {
-                $ids[] = $child->id;
-                $stack[] = $child->id;
-            }
-        }
-
-        return $ids;
-    }
-
-    private function advancedQuery(Request $request, int $userId, ?Tag $activeTag)
-    {
-        $q = File::query()->where('owner_id', $userId)->where('is_dir', false);
-
-        if ($request->filled('search')) {
-            $term = $request->string('search')->toString();
-            $q->where('name', 'like', "%{$term}%");
-        }
-        if ($request->filled('date_from')) {
-            $q->whereDate('created_at', '>=', $request->date('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $q->whereDate('created_at', '<=', $request->date('date_to'));
-        }
-        if ($request->filled('size_min')) {
-            $q->where('size', '>=', (int) ($request->float('size_min') * 1024 * 1024));
-        }
-        if ($request->filled('size_max')) {
-            $q->where('size', '<=', (int) ($request->float('size_max') * 1024 * 1024));
-        }
-        if ($activeTag) {
-            $q->whereHas('tags', fn ($t) => $t->where('tags.id', $activeTag->id));
-        }
-        if ($request->filled('ftype') && isset(self::TYPE_FILTERS[$request->string('ftype')->toString()])) {
-            $rule = self::TYPE_FILTERS[$request->string('ftype')->toString()];
-            if (isset($rule['mime'])) {
-                $q->where('mime', 'like', $rule['mime']);
-            } else {
-                $q->where(function ($sub) use ($rule) {
-                    foreach ($rule['ext'] as $ext) {
-                        $sub->orWhere('name', 'like', "%.{$ext}");
-                    }
-                });
-            }
-        }
-
-        return $q;
     }
 
     // Create a new text/markdown file from editor content.
@@ -393,6 +319,7 @@ class FileController extends Controller
                 'version' => $file->version + 1,
                 'status' => File::STATUS_PENDING,
                 'referenced' => false, // edited content is now app-owned
+                'content_edited_at' => now(),
             ]);
         });
 
@@ -908,6 +835,7 @@ class FileController extends Controller
                 'hash' => $version->hash,
                 'version' => $file->version + 1,
                 'status' => File::STATUS_PENDING,
+                'content_edited_at' => now(),
             ]);
         });
 
@@ -932,7 +860,7 @@ class FileController extends Controller
 
             // The new blob is app-managed, so the file is no longer a referenced
             // import — otherwise trash:purge would skip deleting the new bytes.
-            $file->update($attributes + ['version' => $file->version + 1, 'referenced' => false]);
+            $file->update($attributes + ['version' => $file->version + 1, 'referenced' => false, 'content_edited_at' => now()]);
         });
 
         return $file;
