@@ -44,10 +44,10 @@ test('upload, preview, and trash round-trip', async ({ page }) => {
     await page.locator('.modal.show').getByTitle('Close').click();
     await expect(page.locator('.modal.show')).toHaveCount(0); // wait for the modal to fully close
 
-    // Move to trash.
+    // Move to trash (confirm via the in-app dialog, not a native window.confirm).
     await row.locator('.dropdown-toggle').click();
-    page.once('dialog', (d) => d.accept());
     await page.locator('.dropdown-menu.show >> text=Delete').click();
+    await page.locator('.modal.show button:has-text("Move to trash")').click();
     await expect(page.getByText('Moved to trash.')).toBeVisible();
 
     // Restore from trash.
@@ -68,7 +68,8 @@ test('admin can create a group', async ({ page }) => {
     await login(page);
     await page.goto('/groups');
     const name = 'E2E Group ' + Date.now();
-    await page.locator('input').first().fill(name);
-    await page.getByText('Add group', { exact: false }).click();
+    // Target the group-name field, not the global search box in the header.
+    await page.locator('input:not(#global-search)').first().fill(name);
+    await page.getByRole('button', { name: 'Add group' }).click();
     await expect(page.getByText(name)).toBeVisible();
 });

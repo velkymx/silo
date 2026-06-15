@@ -116,7 +116,7 @@ Everything below is done from the UI — no shell access required.
 
 - PHP **8.3+** with `gd`, `exif`, and `fileinfo` (thumbnails + metadata). `imagick` adds **PDF thumbnails**; `bz2` enables **ultra** backup compression.
 - Composer 2.x
-- Node.js **20+** and npm
+- Node.js **24+** and npm
 - MySQL 8 / MariaDB / PostgreSQL / SQLite
 - A queue worker process (see [Background processing](#background-processing))
 - _Optional:_ **ClamAV** (`clamd`) for upload virus scanning

@@ -65,8 +65,33 @@ class ThumbnailGenerator
     /** Whether first-page PDF thumbnails can be produced (needs Imagick + Ghostscript). */
     public static function supportsPdf(): bool
     {
-        return extension_loaded('imagick') && in_array('PDF', Imagick::queryFormats('PDF') ?: [], true);
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        if (! extension_loaded('imagick') || ! in_array('PDF', Imagick::queryFormats('PDF') ?: [], true)) {
+            return $cached = false;
+        }
+
+        // Imagick can REGISTER the PDF format yet still fail to rasterize it when
+        // the Ghostscript delegate is missing or ImageMagick's policy.xml blocks
+        // PDF. Probe a minimal PDF once so we report real capability.
+        try {
+            $probe = new Imagick();
+            $probe->setResolution(12, 12);
+            $probe->readImageBlob(self::MINIMAL_PDF);
+            $probe->clear();
+            $probe->destroy();
+
+            return $cached = true;
+        } catch (Throwable) {
+            return $cached = false;
+        }
     }
+
+    /** A minimal one-page PDF used only to probe PDF rasterization support. */
+    private const MINIMAL_PDF = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 72 72]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF";
 
     /** Downscaled JPEG bytes for a raster image, or null on failure. */
     protected function fromImage(string $contents): ?string
