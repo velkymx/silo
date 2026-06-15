@@ -2,6 +2,7 @@
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import PageError from '../../../Components/PageError.vue';
+import { ref } from 'vue';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
 const props = defineProps({
@@ -9,6 +10,13 @@ const props = defineProps({
 });
 
 const { loading } = usePageLoading();
+
+const expanded = ref(new Set());
+function toggleMeta(id) {
+    const next = new Set(expanded.value);
+    next.has(id) ? next.delete(id) : next.add(id);
+    expanded.value = next;
+}
 
 const columns = [
     { key: 'at', label: 'When' },
@@ -50,7 +58,20 @@ const variant = (action) => {
                 <VibeBadge :variant="variant(item.action)">{{ item.action }}</VibeBadge>
             </template>
             <template #cell(meta)="{ item }">
-                <code v-if="item.meta" class="small">{{ JSON.stringify(item.meta) }}</code>
+                <template v-if="item.meta">
+                    <code
+                        class="small d-inline-block align-top"
+                        :class="expanded.has(item.id) ? 'text-break' : 'text-truncate'"
+                        :style="expanded.has(item.id) ? 'white-space: pre-wrap; max-width: 360px' : 'max-width: 220px'"
+                    >{{ JSON.stringify(item.meta, null, expanded.has(item.id) ? 2 : 0) }}</code>
+                    <VibeButton
+                        variant="link"
+                        size="sm"
+                        class="p-0 ms-1 text-decoration-none"
+                        :aria-label="expanded.has(item.id) ? 'Collapse details' : 'Expand details'"
+                        @click="toggleMeta(item.id)"
+                    >{{ expanded.has(item.id) ? 'less' : 'more' }}</VibeButton>
+                </template>
             </template>
         </VibeDataTable>
     </AppLayout>
