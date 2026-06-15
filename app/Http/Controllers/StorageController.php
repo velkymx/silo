@@ -13,7 +13,10 @@ class StorageController extends Controller
     {
         $userId = auth()->id();
 
+        // toBase() returns lightweight stdClass rows instead of fully-hydrated
+        // Eloquent models — a large library stays in bounded, modest memory.
         $rows = File::where('owner_id', $userId)
+            ->toBase()
             ->get(['id', 'name', 'parent_id', 'is_dir', 'size', 'mime', 'created_at']);
 
         // Aggregate folder sizes from descendant files (post-order over the tree).
@@ -46,7 +49,7 @@ class StorageController extends Controller
                 'name' => $r->name,
                 'size' => (int) $r->size,
                 'category' => $this->category($r),
-                'created_at' => $r->created_at->format('Y-m-d'),
+                'created_at' => substr((string) $r->created_at, 0, 10),
             ])->values();
 
         $byCategory = $rows->where('is_dir', false)
@@ -62,7 +65,7 @@ class StorageController extends Controller
         ]);
     }
 
-    private function category(File $file): string
+    private function category(object $file): string
     {
         $mime = (string) $file->mime;
         if (str_starts_with($mime, 'image/')) return 'image';
