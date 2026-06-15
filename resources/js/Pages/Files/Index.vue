@@ -9,8 +9,7 @@ import UploadModal from '../../Components/UploadModal.vue';
 import ShareModal from '../../Components/ShareModal.vue';
 import EditorModal from '../../Components/EditorModal.vue';
 import RenameModal from '../../Components/RenameModal.vue';
-import MarkdownViewer from '../../Components/MarkdownViewer.vue';
-import DocViewer from '../../Components/DocViewer.vue';
+import QuickLookModal from '../../Components/QuickLookModal.vue';
 import { useSelection } from '../../composables/useSelection';
 import { useBatchRename } from '../../composables/useBatchRename';
 import { useJobPolling } from '../../composables/useJobPolling';
@@ -20,13 +19,11 @@ import { descendantIds } from '../../lib/folderTree';
 import { useStorageMeter } from '../../composables/useStorageMeter';
 import EmptyState from '../../Components/EmptyState.vue';
 import { useConfirm } from '../../composables/useConfirm';
-import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
+import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
 
-const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 // Office formats edited on the full-screen editor page (binary, versioned).
 const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
-const previewMarkdownTypes = ['md', 'markdown'];
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
@@ -415,8 +412,6 @@ function onKey(e) {
         quickOpenSelected();
     }
 }
-
-const imageMime = (f) => f && (f.type ? imageTypes.includes(f.type) : false);
 
 // ----- Upload -----
 const uploadOpen = ref(false);
@@ -854,86 +849,15 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Quick Look modal -->
-        <VibeModal v-model="quickOpen" fullscreen hide-footer>
-            <template #header>
-                <div class="d-flex align-items-center justify-content-between w-100">
-                    <h5 class="modal-title text-truncate mb-0">
-                        <VibeIcon :icon="quickFile ? iconFor(quickFile.type) : 'file-earmark'" class="me-2" />
-                        {{ quickFile?.name }}
-                    </h5>
-                    <div class="d-flex gap-2 align-items-center ms-3">
-                        <small class="text-muted">{{ quickIndex + 1 }} / {{ files.length }}</small>
-                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="quickStep(-1)">
-                            <VibeIcon icon="chevron-left" />
-                        </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="quickStep(1)">
-                            <VibeIcon icon="chevron-right" />
-                        </VibeButton>
-                        <VibeButton variant="success" size="sm" :href="`/download/${quickFile?.id}`">
-                            <VibeIcon icon="download" class="me-1" />Download
-                        </VibeButton>
-                        <VibeDropdown
-                            v-if="quickFile"
-                            variant="primary"
-                            size="sm"
-                            :items="fileMenu(quickFile)"
-                            @item-click="onQuickAction"
-                        >
-                            <VibeIcon icon="three-dots-vertical" class="me-1" />Actions
-                        </VibeDropdown>
-                        <VibeButton variant="secondary" size="sm" outline title="Close" aria-label="Close preview" @click="quickClose">
-                            <VibeIcon icon="x-lg" />
-                        </VibeButton>
-                    </div>
-                </div>
-            </template>
-
-            <div v-if="quickFile" class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center" style="height: calc(100vh - 130px)">
-                <img
-                    v-if="imageMime(quickFile)"
-                    :src="quickFile.url"
-                    :alt="quickFile.name"
-                    class="img-fluid rounded"
-                    style="max-height: 100%; object-fit: contain"
-                >
-                <iframe
-                    v-else-if="quickFile.type === 'pdf'"
-                    :src="quickFile.url"
-                    class="w-100 h-100 border rounded"
-                ></iframe>
-                <audio v-else-if="quickFile.mime?.startsWith('audio/')" :src="quickFile.url" controls class="w-100" />
-                <video
-                    v-else-if="quickFile.mime?.startsWith('video/')"
-                    :src="quickFile.url"
-                    controls
-                    class="img-fluid rounded"
-                    style="max-height: 100%"
-                />
-                <MarkdownViewer
-                    v-else-if="previewMarkdownTypes.includes(quickFile.type)"
-                    :key="quickFile.id"
-                    :url="`/raw/${quickFile.id}`"
-                    class="w-100 h-100 overflow-auto text-start"
-                />
-                <DocViewer
-                    v-else-if="officeTypes.includes(quickFile.type)"
-                    :key="quickFile.id"
-                    :url="quickFile.url"
-                    :type="quickFile.type"
-                    class="w-100 h-100 overflow-auto text-start"
-                />
-                <pre
-                    v-else-if="quickFile.metadata?.preview"
-                    class="text-start p-3 bg-body-tertiary rounded border w-100 h-100"
-                    style="overflow: auto; white-space: pre-wrap"
-                >{{ quickFile.metadata.preview }}</pre>
-                <div v-else class="text-muted py-5">
-                    <VibeIcon :icon="iconFor(quickFile.type)" class="display-1 d-block mb-3" />
-                    No inline preview for this file type.
-                    <div class="small mt-2">{{ quickFile.mime || 'unknown type' }} · {{ (quickFile.size / 1024).toFixed(1) }} KB</div>
-                </div>
-            </div>
-        </VibeModal>
+        <QuickLookModal
+            v-model="quickOpen"
+            :file="quickFile"
+            :index="quickIndex"
+            :total="files.length"
+            :menu="quickFile ? fileMenu(quickFile) : []"
+            @step="quickStep"
+            @action="onQuickAction"
+        />
 
         <!-- Upload modal -->
         <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" :storage="storage" />
