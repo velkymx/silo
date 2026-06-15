@@ -656,8 +656,10 @@ class FileController extends Controller
             // Storage is flat per user; the folder hierarchy lives entirely in the DB.
             $path = $upload->store("uploads/{$userId}", $disk);
 
+            $cleanName = $this->sanitizeFilename($upload->getClientOriginalName());
+
             $attributes = [
-                'name' => $upload->getClientOriginalName(),
+                'name' => $cleanName,
                 'path' => $path,
                 'disk' => $disk,
                 'mime' => $upload->getClientMimeType(),
@@ -672,7 +674,7 @@ class FileController extends Controller
             $existing = File::files()
                 ->where('owner_id', $userId)
                 ->where('parent_id', $parent?->id)
-                ->where('name', $upload->getClientOriginalName())
+                ->where('name', $cleanName)
                 ->first();
 
             $file = $existing
@@ -686,6 +688,20 @@ class FileController extends Controller
 
         return redirect()->route('files.index', ['folder' => $parent?->id])
             ->with('success', 'Files uploaded successfully!');
+    }
+
+    /**
+     * Allowlist-sanitize an uploaded filename: strip any path components, keep
+     * only word chars, dash, dot, space and parens, collapse the rest to '_',
+     * and never allow a leading dot / empty result.
+     */
+    protected function sanitizeFilename(string $name): string
+    {
+        $name = basename(str_replace('\\', '/', $name));
+        $name = preg_replace('/[^\w\-. ()]+/u', '_', $name) ?? '';
+        $name = ltrim(trim($name), '.');
+
+        return $name !== '' ? mb_substr($name, 0, 255) : 'file';
     }
 
     // Download a file resolved by DB id (no client-supplied paths).
