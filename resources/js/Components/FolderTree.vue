@@ -191,6 +191,12 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
 .vs-row:hover {
     background: var(--bs-secondary-bg);
 }
+.vs-row:focus-visible,
+.vs-twisty:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: -2px;
+    border-radius: 0.3rem;
+}
 .vs-row.active {
     background: rgba(99, 102, 241, 0.14);
     color: #4f46e5;
