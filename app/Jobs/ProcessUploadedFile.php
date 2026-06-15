@@ -79,6 +79,11 @@ class ProcessUploadedFile implements ShouldQueue
             return;
         }
         if ($verdict === VirusScanner::ERROR) {
+            // Unscannable → fail closed AND drop the (uploaded) blob so it can't
+            // orphan. Never delete a referenced/imported original.
+            if (! $file->referenced) {
+                $disk->delete($file->path);
+            }
             $file->update(['status' => File::STATUS_FAILED]);
             Log::error('file.scan_error', ['file_id' => $file->id]);
 
@@ -106,6 +111,16 @@ class ProcessUploadedFile implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
-        File::whereKey($this->fileId)->update(['status' => File::STATUS_FAILED]);
+        $file = File::find($this->fileId);
+        if (! $file) {
+            return;
+        }
+
+        // Drop the unservable blob (unless it's a referenced/imported original)
+        // so a failed upload doesn't orphan bytes on disk.
+        if (! $file->referenced && $file->path) {
+            Storage::disk($file->disk)->delete($file->path);
+        }
+        $file->update(['status' => File::STATUS_FAILED]);
     }
 }
