@@ -49,13 +49,23 @@ const tree = computed(() => {
 const box = ref(null);
 const dims = ref({ w: 800, h: 520 });
 let ro = null;
+let measureTimer = null;
 onMounted(() => {
-    const measure = () => { if (box.value) dims.value = { w: box.value.clientWidth, h: box.value.clientHeight }; };
-    measure();
+    const apply = () => { if (box.value) dims.value = { w: box.value.clientWidth, h: box.value.clientHeight }; };
+    apply();
+    // Debounce: a drag-resize fires dozens of events; recompute the (heavy)
+    // treemap only once the size settles.
+    const measure = () => {
+        if (measureTimer) clearTimeout(measureTimer);
+        measureTimer = setTimeout(apply, 120);
+    };
     ro = new ResizeObserver(measure);
     if (box.value) ro.observe(box.value);
 });
-onBeforeUnmount(() => ro?.disconnect());
+onBeforeUnmount(() => {
+    ro?.disconnect();
+    if (measureTimer) clearTimeout(measureTimer);
+});
 
 function worst(areas, length) {
     const sum = areas.reduce((a, b) => a + b, 0);
@@ -100,13 +110,14 @@ const HEADER = 15;
 const PAD = 2;
 const MAX_TILES = 6000;
 
-const tiles = computed(() => {
+const treemap = computed(() => {
     const { w, h } = dims.value;
     const out = [];
+    let truncated = false;
     const layout = (items, x, y, rw, rh, depth) => {
-        if (out.length > MAX_TILES || rw < 3 || rh < 3) return;
+        if (out.length >= MAX_TILES || rw < 3 || rh < 3) return;
         for (const r of squarify(items, x, y, rw, rh)) {
-            if (out.length > MAX_TILES) return;
+            if (out.length >= MAX_TILES) { truncated = true; return; }
             const isFolder = r.node.is_dir && r.node.children?.length;
             out.push({ ...r, isFolder: !!isFolder, node: r.node, depth });
             if (isFolder && r.w > 24 && r.h > HEADER + 8) {
@@ -120,8 +131,11 @@ const tiles = computed(() => {
         }
     };
     if (w > 10 && h > 10) layout(tree.value, 0, 0, w, h, 0);
-    return out;
+    return { tiles: out, truncated };
 });
+
+const tiles = computed(() => treemap.value.tiles);
+const truncated = computed(() => treemap.value.truncated);
 
 function open(node) {
     if (node.is_dir) router.get('/', { folder: node.id });
@@ -148,6 +162,9 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
         </div>
 
         <LoadingSkeleton v-if="loading" :rows="8" :cols="4" />
+        <VibeAlert v-if="truncated && !loading" variant="info" class="py-2 small">
+            <VibeIcon icon="info-circle" class="me-1" />Showing the {{ tiles.length.toLocaleString() }} largest areas. Some smaller items are hidden — open a folder to drill in.
+        </VibeAlert>
         <VibeRow v-show="!loading" class="g-3">
             <VibeCol :lg="8">
                 <div ref="box" class="treemap-box border rounded">
