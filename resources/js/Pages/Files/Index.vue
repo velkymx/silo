@@ -224,6 +224,13 @@ function selectFile(item) {
 const viewMode = ref(localStorage.getItem('fm-view') === 'grid' ? 'grid' : 'list');
 watch(viewMode, (v) => localStorage.setItem('fm-view', v));
 
+// Grid windowing: render a bounded slice so a 1000-item folder doesn't mount
+// 1000 cards at once. "Show more" reveals the next page; reset when items change.
+const gridPageSize = 60;
+const gridShown = ref(gridPageSize);
+const gridItems = computed(() => items.value.slice(0, gridShown.value));
+watch(items, () => { gridShown.value = gridPageSize; });
+
 
 const fileActions = [
     { text: 'Download', action: 'download', icon: 'download' },
@@ -610,30 +617,37 @@ onBeforeUnmount(() => {
             <VibeButton variant="link" size="sm" class="ms-auto p-0 text-decoration-none" @click="clearAllFilters">Clear all</VibeButton>
         </VibeAlert>
 
-        <!-- Thumbnail / grid view -->
-        <VibeRow v-if="viewMode === 'grid'" class="g-3">
-            <VibeCol v-for="item in items" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
-                <FileItem
-                    :item="item"
-                    view="grid"
-                    :select-mode="selectMode"
-                    :selected="isSelected(item.id)"
-                    :menu="item.is_dir ? folderActions : fileMenu(item)"
-                    @open="onItemClick"
-                    @toggle-select="toggleSel"
-                    @star="toggleStar"
-                    @action="onAction(item, $event)"
-                    @drop="onDropToFolder"
-                />
-            </VibeCol>
-            <VibeCol v-if="!items.length" :cols="12">
-                <EmptyState
-                    :icon="flat ? 'search' : 'folder2-open'"
-                    :title="flat ? 'No matching files' : 'This folder is empty'"
-                    :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
-                />
-            </VibeCol>
-        </VibeRow>
+        <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
+        <template v-if="viewMode === 'grid'">
+            <VibeRow class="g-3">
+                <VibeCol v-for="item in gridItems" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
+                    <FileItem
+                        :item="item"
+                        view="grid"
+                        :select-mode="selectMode"
+                        :selected="isSelected(item.id)"
+                        :menu="item.is_dir ? folderActions : fileMenu(item)"
+                        @open="onItemClick"
+                        @toggle-select="toggleSel"
+                        @star="toggleStar"
+                        @action="onAction(item, $event)"
+                        @drop="onDropToFolder"
+                    />
+                </VibeCol>
+                <VibeCol v-if="!items.length" :cols="12">
+                    <EmptyState
+                        :icon="flat ? 'search' : 'folder2-open'"
+                        :title="flat ? 'No matching files' : 'This folder is empty'"
+                        :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                    />
+                </VibeCol>
+            </VibeRow>
+            <div v-if="gridShown < items.length" class="text-center my-3">
+                <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
+                    Show more ({{ items.length - gridShown }} more)
+                </VibeButton>
+            </div>
+        </template>
 
         <VibeDataTable
             v-else
