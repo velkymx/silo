@@ -18,7 +18,7 @@ class SecurityHeaders
             return $response;
         }
 
-        foreach ($this->headers() as $name => $value) {
+        foreach ($this->headers($request) as $name => $value) {
             $response->headers->set($name, $value);
         }
 
@@ -28,10 +28,10 @@ class SecurityHeaders
     /**
      * @return array<string, string>
      */
-    private function headers(): array
+    private function headers(Request $request): array
     {
         return [
-            'Content-Security-Policy' => $this->csp(),
+            'Content-Security-Policy' => $this->csp($request),
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',
             'Referrer-Policy' => 'same-origin',
@@ -39,12 +39,16 @@ class SecurityHeaders
         ];
     }
 
-    private function csp(): string
+    private function csp(Request $request): string
     {
-        // 'unsafe-eval' is required by jspreadsheet-ce's formula engine.
+        // 'unsafe-eval' is required ONLY by jspreadsheet-ce's formula engine on
+        // the document editor page — every other route gets a stricter policy.
         // 'unsafe-inline' (style) covers Bootstrap/Vue injected styles.
         // All fonts/icons are bundled locally — no external origins (air-gap safe).
-        $script = ["'self'", "'unsafe-eval'"];
+        $script = ["'self'"];
+        if ($request->routeIs('files.edit')) {
+            $script[] = "'unsafe-eval'";
+        }
         $style = ["'self'", "'unsafe-inline'"];
         $font = ["'self'", 'data:'];
         $connect = ["'self'"];
