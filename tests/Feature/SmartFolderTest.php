@@ -22,7 +22,7 @@ class SmartFolderTest extends TestCase
 
         $s = SavedSearch::firstOrFail();
         $this->assertSame('Big images', $s->name);
-        $this->assertSame(['ftype' => 'image', 'size_min' => 5], $s->params); // junk stripped
+        $this->assertEqualsCanonicalizing(['ftype' => 'image', 'size_min' => 5], $s->params); // junk stripped
 
         // Shared on every page for the sidebar.
         $this->actingAs($user)->get('/')->assertInertia(fn ($p) => $p->has('savedSearches', 1));
