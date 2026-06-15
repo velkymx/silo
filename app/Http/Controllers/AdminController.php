@@ -18,7 +18,7 @@ class AdminController extends Controller
             $user = auth()->user();
 
             // Abort if the user is not authenticated or not an admin
-            if (!$user || $user->is_admin != 1) {
+            if (! $user || ! $user->is_admin) {
                 abort(403, 'Access denied. Admins only.');
             }
 
