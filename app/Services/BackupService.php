@@ -279,6 +279,7 @@ class BackupService
             if ($zip->open($archive) !== true) {
                 throw new \RuntimeException('Could not open the backup archive.');
             }
+            $this->assertSafeZipEntries($zip);
             $zip->extractTo($work);
             $zip->close();
 
@@ -289,6 +290,29 @@ class BackupService
         } finally {
             $this->rmrf($work);
             $lock->release();
+        }
+    }
+
+    /**
+     * Reject an archive whose entries try to escape the extraction directory
+     * (path traversal) or use absolute paths — restore is trusted-admin-only,
+     * but a tampered archive must still fail loudly rather than write anywhere.
+     */
+    private function assertSafeZipEntries(ZipArchive $zip): void
+    {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if ($name === false) {
+                continue;
+            }
+            $normalized = str_replace('\\', '/', $name);
+            if (
+                str_starts_with($normalized, '/')
+                || preg_match('#^[A-Za-z]:#', $normalized) === 1
+                || in_array('..', explode('/', $normalized), true)
+            ) {
+                throw new \RuntimeException("Unsafe path in backup archive: {$name}");
+            }
         }
     }
 
