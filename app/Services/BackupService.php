@@ -443,6 +443,13 @@ class BackupService
             ->take(PHP_INT_MAX)
             ->get()
             ->each(fn (Backup $b) => $this->delete($b));
+
+        // Failed backups never count toward retention, so they'd accumulate
+        // forever — clear out ones older than 30 days.
+        Backup::where('status', Backup::STATUS_FAILED)
+            ->where('created_at', '<', now()->subDays(30))
+            ->get()
+            ->each(fn (Backup $b) => $this->delete($b));
     }
 
     public function delete(Backup $backup): void
