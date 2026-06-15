@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { fmtBytes } from '../lib/format';
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
@@ -31,7 +32,7 @@ const folderColumns = [
 const fileColumns = [
     { key: 'name', label: 'File Name' },
     { key: 'owner', label: 'Owner' },
-    { key: 'size', label: 'Size', formatter: (v) => `${(v / 1024).toFixed(2)} KB` },
+    { key: 'size', label: 'Size', formatter: (v) => fmtBytes(v) },
     { key: 'abilities', label: 'Access', sortable: false },
     { key: 'actions', label: '', sortable: false, searchable: false },
 ];
@@ -118,7 +119,7 @@ function quickLook(file) {
         </template>
     </VibeDataTable>
 
-    <VibeModal v-model="previewOpen" fullscreen hide-footer :title="previewFile?.name">
+    <VibeModal v-model="previewOpen" size="xl" centered hide-footer :title="previewFile?.name">
         <div v-if="previewFile" class="text-center" style="min-height: 50vh">
             <img
                 v-if="imageTypes.includes(previewFile.type)"
