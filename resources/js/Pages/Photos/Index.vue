@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
@@ -81,6 +81,18 @@ function step(d) {
 function jumpTo(i) {
     slide.value = i;
 }
+
+// Keyboard navigation while the lightbox is open (mirrors Files Quick Look).
+function onLightboxKey(e) {
+    if (!lightboxOpen.value) return;
+    const tag = (e.target?.tagName || '').toLowerCase();
+    if (['input', 'textarea', 'select'].includes(tag) || e.target?.isContentEditable) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+    else if (e.key === 'Escape') lightboxOpen.value = false;
+}
+onMounted(() => window.addEventListener('keydown', onLightboxKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onLightboxKey));
 
 // Keep the active filmstrip thumbnail scrolled into view (never off-screen).
 const filmstripEl = ref(null);
@@ -287,7 +299,7 @@ function saveEdit() {
             <template #header>
                 <div class="d-flex align-items-center w-100">
                     <span class="text-truncate" :title="currentPhoto?.name">{{ currentPhoto?.name }}</span>
-                    <div v-if="currentPhoto" class="ms-auto d-flex gap-2">
+                    <div v-if="currentPhoto" class="ms-auto d-flex flex-wrap justify-content-end gap-2">
                         <VibeButton variant="secondary" size="sm" outline :title="ride ? 'Stop' : 'Slideshow'" :aria-label="ride ? 'Stop slideshow' : 'Start slideshow'" @click="ride = !ride">
                             <VibeIcon :icon="ride ? 'pause-fill' : 'play-fill'" />
                         </VibeButton>
