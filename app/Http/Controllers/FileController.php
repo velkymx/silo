@@ -425,14 +425,16 @@ class FileController extends Controller
         $userId = auth()->id();
         $target = $this->resolveFolder($request->input('target_id'), $userId);
 
-        DB::transaction(function () use ($request, $target) {
-            foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
-                    throw ValidationException::withMessages(['target_id' => "Cannot move \"{$file->name}\" into itself."]);
+        $this->withFolderLock($userId, $target?->id, function () use ($request, $target) {
+            DB::transaction(function () use ($request, $target) {
+                foreach ($this->ownedBatch($request->input('ids')) as $file) {
+                    if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
+                        throw ValidationException::withMessages(['target_id' => "Cannot move \"{$file->name}\" into itself."]);
+                    }
+                    $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
+                    $file->update(['parent_id' => $target?->id]);
                 }
-                $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
-                $file->update(['parent_id' => $target?->id]);
-            }
+            });
         });
 
         return redirect()->route('files.index', ['folder' => $target?->id])
@@ -470,27 +472,30 @@ class FileController extends Controller
         $userId = auth()->id();
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
         $name = trim((string) $request->string('name'));
-        $this->assertNoCollision($parent?->id, $name, $userId);
 
-        $folder = DB::transaction(function () use ($name, $parent, $userId, $request) {
-            $folder = File::create([
-                'name' => $name,
-                'path' => $name,
-                'disk' => config('filemanager.disk'),
-                'is_dir' => true,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
+        $folder = $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId, $request) {
+            $this->assertNoCollision($parent?->id, $name, $userId);
 
-            foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                if ($file->id === $folder->id) {
-                    continue;
+            return DB::transaction(function () use ($name, $parent, $userId, $request) {
+                $folder = File::create([
+                    'name' => $name,
+                    'path' => $name,
+                    'disk' => config('filemanager.disk'),
+                    'is_dir' => true,
+                    'parent_id' => $parent?->id,
+                    'owner_id' => $userId,
+                ]);
+
+                foreach ($this->ownedBatch($request->input('ids')) as $file) {
+                    if ($file->id === $folder->id) {
+                        continue;
+                    }
+                    $this->assertNoCollision($folder->id, $file->name, $userId, $file->id);
+                    $file->update(['parent_id' => $folder->id]);
                 }
-                $this->assertNoCollision($folder->id, $file->name, $userId, $file->id);
-                $file->update(['parent_id' => $folder->id]);
-            }
 
-            return $folder;
+                return $folder;
+            });
         });
 
         return redirect()->route('files.index', ['folder' => $parent?->id])
