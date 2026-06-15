@@ -2,7 +2,6 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-import FolderTree from '../../Components/FolderTree.vue';
 import FileItem from '../../Components/FileItem.vue';
 import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
