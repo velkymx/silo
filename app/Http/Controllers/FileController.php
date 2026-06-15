@@ -120,7 +120,7 @@ class FileController extends Controller
             // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
-            'storage' => app(QuotaService::class)->summary($userId),
+            // 'storage' is shared globally by HandleInertiaRequests — not duplicated here.
             'maxUploadKb' => Uploads::maxKb(),
             'filters' => [
                 'search' => $request->string('search')->toString(),
