@@ -19,6 +19,7 @@ import { useBusyGuard } from '../../composables/useBusyGuard';
 import { useQuickLook } from '../../composables/useQuickLook';
 import { descendantIds } from '../../lib/folderTree';
 import { useStorageMeter } from '../../composables/useStorageMeter';
+import EmptyState from '../../Components/EmptyState.vue';
 import { useConfirm } from '../../composables/useConfirm';
 import { imageTypes, typeLabel, colorFor, iconFor } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
@@ -687,7 +688,11 @@ onBeforeUnmount(() => {
                 />
             </VibeCol>
             <VibeCol v-if="!items.length" :cols="12">
-                <p class="text-muted text-center py-4">{{ flat ? 'No matching files.' : 'This folder is empty.' }}</p>
+                <EmptyState
+                    :icon="flat ? 'search' : 'folder2-open'"
+                    :title="flat ? 'No matching files' : 'This folder is empty'"
+                    :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                />
             </VibeCol>
         </VibeRow>
 

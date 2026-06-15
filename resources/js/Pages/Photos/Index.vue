@@ -8,6 +8,7 @@ import { triggerDownload } from '../../lib/download';
 import { useConfirm } from '../../composables/useConfirm';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import PageError from '../../Components/PageError.vue';
+import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
@@ -241,7 +242,7 @@ function saveEdit() {
 
         <!-- Timeline -->
         <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
-        <p v-else-if="!photos.length" class="text-muted text-center py-5">No photos yet. Upload some to get started.</p>
+        <EmptyState v-else-if="!photos.length" icon="images" title="No photos yet" hint="Upload some to get started." />
 
         <div v-for="g in groups" v-show="!loading" :key="g.key" class="mb-4">
             <h6 class="text-muted border-bottom pb-1 mb-2">{{ g.label }}</h6>
