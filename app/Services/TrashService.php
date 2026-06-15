@@ -79,9 +79,18 @@ class TrashService
      */
     protected function subtree(File $file): \Illuminate\Support\Collection
     {
+        // Breadth-first by parent_id: one query per depth level instead of one
+        // per node (and no O(n²) collection merges). Depth cap guards cycles.
         $nodes = collect([$file]);
-        foreach ($file->children()->withTrashed()->get() as $child) {
-            $nodes = $nodes->merge($this->subtree($child));
+        $frontier = [$file->id];
+
+        for ($depth = 0; $frontier !== [] && $depth < 256; $depth++) {
+            $children = File::withTrashed()->whereIn('parent_id', $frontier)->get();
+            if ($children->isEmpty()) {
+                break;
+            }
+            $nodes = $nodes->concat($children);
+            $frontier = $children->pluck('id')->all();
         }
 
         return $nodes;
