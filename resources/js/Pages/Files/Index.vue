@@ -865,6 +865,9 @@ onBeforeUnmount(() => {
                         >
                             <VibeIcon icon="three-dots-vertical" class="me-1" />Actions
                         </VibeDropdown>
+                        <VibeButton variant="secondary" size="sm" outline title="Close" aria-label="Close preview" @click="quickClose">
+                            <VibeIcon icon="x-lg" />
+                        </VibeButton>
                     </div>
                 </div>
             </template>
