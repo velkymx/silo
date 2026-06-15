@@ -730,7 +730,8 @@ class FileController extends Controller
         $this->authorize('view', $file);
 
         abort_if($file->is_dir, 404);
-        abort_if($file->status === File::STATUS_INFECTED, 404);
+        // Fail closed: only serve files that finished processing/AV-scanning.
+        abort_unless($file->status === File::STATUS_READY, 404);
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
         Audit::log('file.download', $file);
@@ -744,7 +745,8 @@ class FileController extends Controller
         $this->authorize('view', $file);
 
         abort_if($file->is_dir, 404);
-        abort_if($file->status === File::STATUS_INFECTED, 404);
+        // Fail closed: only serve files that finished processing/AV-scanning.
+        abort_unless($file->status === File::STATUS_READY, 404);
         abort_unless(Storage::disk($file->disk)->exists($file->path), 404);
 
         return FileResponse::serve(Storage::disk($file->disk), $file->path, $file->name, $file->mime);
