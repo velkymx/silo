@@ -1,3 +1,17 @@
+<div align="center">
+
+![File Manager Screenshot](screenshot.png)
+
+[![CI](https://github.com/velkymx/laravel-file-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/velkymx/laravel-file-manager/actions/workflows/ci.yml)
+[![Laravel 13](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
+[![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Vue 3](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![Bootstrap 5.3](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+</div>
+
 # File Manager by AJBApps
 
 A self-hosted file manager built with Laravel 13 and an Inertia + Vue 3 single-page UI on [VibeUI](https://www.npmjs.com/package/@velkymx/vibeui) (Bootstrap 5.3). Files and folders are modelled in the database, every action is authorized by policy, uploads are virus-scanned and processed asynchronously for metadata and thumbnails, and common document types can be **edited in the browser**.
@@ -21,8 +35,6 @@ A self-hosted file manager built with Laravel 13 and an Inertia + Vue 3 single-p
 - **Quotas** — per-user storage limit with a usage indicator.
 - **Admin** — manage users and groups, view a security audit log, and create/schedule **compressed backups**.
 - **Hardened serving** — files are served as attachments unless safely previewable, with `nosniff` + a strict Content-Security-Policy; sensitive routes are rate-limited.
-
-![File Manager Screenshot](screenshot.png)
 
 ---
 
