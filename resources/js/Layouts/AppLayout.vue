@@ -100,7 +100,7 @@ const { pct: storagePct, bars: storageBars } = useStorageMeter(
 
 // Footer legalese.
 const year = new Date().getFullYear();
-const appName = 'File Manager by AJBApps';
+const appName = import.meta.env.VITE_APP_NAME || 'File Manager';
 const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 
 const path = computed(() => page.url.split('?')[0]);
@@ -164,7 +164,7 @@ function onUserMenu({ item }) {
             </VibeButton>
             <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; width: 218px" @click="router.visit('/')">
                 <VibeIcon icon="folder-fill" class="text-primary fs-4 me-2" />
-                <span class="fw-bold fs-5 text-body d-none d-md-inline">File Manager</span>
+                <span class="fw-bold fs-5 text-body d-none d-md-inline">{{ appName }}</span>
             </a>
             <div class="flex-grow-1 min-vw-0">
                 <VibeInputGroup class="mx-auto" style="max-width: 620px">
@@ -312,7 +312,7 @@ function onUserMenu({ item }) {
         </div>
 
         <!-- Mobile navigation drawer -->
-        <VibeOffcanvas v-model="mobileNavOpen" placement="start" title="File Manager">
+        <VibeOffcanvas v-model="mobileNavOpen" placement="start" :title="appName">
             <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                 <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
             </VibeNav>
