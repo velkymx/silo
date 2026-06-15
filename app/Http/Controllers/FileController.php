@@ -838,7 +838,10 @@ class FileController extends Controller
         $this->authorize('update', $file);
 
         $request->validate(['target_id' => 'nullable|integer|exists:files,id']);
-        $target = $this->resolveFolder($request->input('target_id'), $file->owner_id);
+        // The destination is resolved + authorized against the ACTOR, never the
+        // file's owner — otherwise source access would imply write to the
+        // owner's tree.
+        $target = $this->resolveFolder($request->input('target_id'), auth()->id());
 
         if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
             throw ValidationException::withMessages([
@@ -861,7 +864,11 @@ class FileController extends Controller
         $this->authorize('view', $file);
 
         $request->validate(['target_id' => 'nullable|integer|exists:files,id']);
-        $target = $this->resolveFolder($request->input('target_id'), $file->owner_id);
+        // Resolve + authorize the destination against the ACTOR, and the copy is
+        // owned by the actor — a viewer can save a copy into their own space but
+        // never write into the owner's tree.
+        $actorId = (int) auth()->id();
+        $target = $this->resolveFolder($request->input('target_id'), $actorId);
 
         if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
             throw ValidationException::withMessages([
@@ -869,9 +876,9 @@ class FileController extends Controller
             ]);
         }
 
-        $this->withFolderLock($file->owner_id, $target?->id, function () use ($file, $target) {
-            $name = $this->uniqueName($target?->id, $file->name, $file->owner_id);
-            DB::transaction(fn () => $this->copyNode($file, $target?->id, $name));
+        $this->withFolderLock($actorId, $target?->id, function () use ($file, $target, $actorId) {
+            $name = $this->uniqueName($target?->id, $file->name, $actorId);
+            DB::transaction(fn () => $this->copyNode($file, $target?->id, $name, $actorId));
         });
 
         return redirect()->route('files.index', ['folder' => $target?->id])
@@ -979,13 +986,13 @@ class FileController extends Controller
     }
 
     // Recursively copy a node under a new parent, duplicating file blobs.
-    protected function copyNode(File $source, ?int $parentId, string $name): File
+    protected function copyNode(File $source, ?int $parentId, string $name, int $ownerId): File
     {
         $disk = config('filemanager.disk');
         $path = $source->name; // folder placeholder
 
         if (! $source->is_dir) {
-            $path = "uploads/{$source->owner_id}/".Str::random(40);
+            $path = "uploads/{$ownerId}/".Str::random(40);
             if ($extension = pathinfo($source->path, PATHINFO_EXTENSION)) {
                 $path .= ".{$extension}";
             }
@@ -1004,12 +1011,12 @@ class FileController extends Controller
             'metadata' => $source->metadata,
             'thumbnail_path' => null,
             'parent_id' => $parentId,
-            'owner_id' => $source->owner_id,
+            'owner_id' => $ownerId,
         ]);
 
         if ($source->is_dir) {
             foreach ($source->children as $child) {
-                $this->copyNode($child, $copy->id, $child->name);
+                $this->copyNode($child, $copy->id, $child->name, $ownerId);
             }
         }
 
