@@ -54,14 +54,18 @@ const emit = defineEmits<{
                         style="cursor: pointer"
                         @click="emit('open', item, $event)"
                     >
-                        <VibeIcon
+                        <button
                             v-if="selectMode || selected"
-                            :icon="selected ? 'check-circle-fill' : 'circle'"
-                            class="position-absolute m-1"
+                            type="button"
+                            class="grid-select position-absolute top-0 start-0 m-1 btn btn-sm p-0 lh-1 bg-body rounded-circle"
                             :class="selected ? 'text-primary' : 'text-muted'"
-                            style="top: 50%; left: 6px; z-index: 2"
+                            :aria-pressed="selected"
+                            :aria-label="selected ? `Deselect ${item.name}` : `Select ${item.name}`"
+                            style="z-index: 3"
                             @click.stop="emit('toggle-select', item.id)"
-                        />
+                        >
+                            <VibeIcon :icon="selected ? 'check-circle-fill' : 'circle'" />
+                        </button>
                         <div class="position-absolute top-0 end-0 m-1" style="z-index: 2">
                             <ItemActions :item="item" :menu="menu" @star="emit('star', item)" @action="emit('action', $event)" />
                         </div>
