@@ -27,4 +27,9 @@ class AuditLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function file(): BelongsTo
+    {
+        return $this->belongsTo(File::class);
+    }
 }
