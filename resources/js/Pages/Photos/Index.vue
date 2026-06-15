@@ -485,7 +485,11 @@ function saveEdit() {
     height: 100%;
     width: 100%;
 }
-.lightbox-stage :deep(.carousel-item) {
+/* Center only the slides Bootstrap is actually showing — flexing every
+   .carousel-item overrides Bootstrap's display:none and stacks all images. */
+.lightbox-stage :deep(.carousel-item.active),
+.lightbox-stage :deep(.carousel-item-next),
+.lightbox-stage :deep(.carousel-item-prev) {
     display: flex;
     align-items: center;
     justify-content: center;

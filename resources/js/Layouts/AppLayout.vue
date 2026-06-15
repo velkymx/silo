@@ -27,6 +27,15 @@ const flash = computed(() => page.props.flash ?? {});
 // Shared folder tree (consistent on every route).
 const folders = computed(() => page.props.folders ?? []);
 const currentFolder = computed(() => page.props.currentFolder ?? null);
+
+// Inertia reuses the FolderTree instance across same-component visits, so its
+// lazily-loaded children would otherwise go stale after a folder is created,
+// renamed, moved, or deleted. Re-key the tree on the folder SET (not on every
+// navigation) so it re-mounts and re-fetches only when the structure changes —
+// expansion state is preserved during ordinary browsing.
+const treeKey = computed(() =>
+    folders.value.map((f) => `${f.id}:${f.parent_id ?? 0}:${f.name}`).join('|'),
+);
 const ancestorIds = computed(() => {
     const byId = new Map(folders.value.map((f) => [f.id, f]));
     const ids = new Set();
@@ -254,7 +263,7 @@ function onUserMenu({ item }) {
                     >
                         <VibeIcon icon="house-door-fill" class="nav-ico" />Home
                     </div>
-                    <FolderTree :folder="null" :current-id="currentFolder" :reveal-ids="ancestorIds" />
+                    <FolderTree :key="treeKey" :folder="null" :current-id="currentFolder" :reveal-ids="ancestorIds" />
 
                     <template v-if="savedSearches.length">
                         <div class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</div>

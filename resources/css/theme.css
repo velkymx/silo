@@ -119,7 +119,9 @@
     transition: transform 0.18s ease-out;
 }
 .modal.show .modal-dialog {
-    transform: scale(1) translateY(0);
+    /* `none` (not scale(1)) so no stacking context lingers to interfere with
+       absolutely-positioned descendants like the lightbox carousel slides. */
+    transform: none;
 }
 .app-sidebar .side-row,
 .list-row,

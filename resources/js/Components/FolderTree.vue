@@ -31,6 +31,7 @@ const isRoot = props.folder === null;
 const expanded = ref(isRoot);
 const loaded = ref(false);
 const loading = ref(false);
+const failed = ref(false);
 const children = ref<TreeNode[]>([]);
 
 // Race guard: a stale response (or one that resolves after unmount) must not
@@ -41,16 +42,26 @@ let alive = true;
 async function load(): Promise<void> {
     if (loaded.value || loading.value) return;
     loading.value = true;
+    failed.value = false;
     const token = ++loadSeq;
     try {
         const url = isRoot ? '/tree' : `/tree/${props.folder!.id}`;
         const result = await http.get<TreeNode[]>(url);
         if (!alive || token !== loadSeq) return;
-        children.value = result;
+        children.value = Array.isArray(result) ? result : [];
         loaded.value = true;
+    } catch (e) {
+        // Surface the failure (with a retry) instead of silently showing nothing.
+        if (alive && token === loadSeq) failed.value = true;
     } finally {
         if (token === loadSeq) loading.value = false;
     }
+}
+
+function retry(e?: Event): void {
+    e?.stopPropagation();
+    loaded.value = false;
+    load();
 }
 
 onBeforeUnmount(() => { alive = false; loadSeq++; });
@@ -164,6 +175,17 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
         </div>
         <div v-if="loading" :style="padFor(isRoot ? 0 : level + 1, true)">
             <LoadingSkeleton :rows="2" :cols="1" />
+        </div>
+        <div
+            v-else-if="failed"
+            class="vs-row text-danger"
+            :style="padFor(isRoot ? 0 : level + 1, true)"
+            role="button"
+            tabindex="0"
+            @click="retry"
+            @keydown.enter.prevent="retry()"
+        >
+            <VibeIcon icon="exclamation-triangle" class="me-1" />Couldn’t load — retry
         </div>
         <div
             v-else-if="loaded && !children.length"
