@@ -14,6 +14,13 @@ class SavedSearchController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:120',
             'params' => 'required|array',
+            'params.search' => 'nullable|string|max:255',
+            'params.date_from' => 'nullable|date',
+            'params.date_to' => 'nullable|date',
+            'params.size_min' => 'nullable|numeric',
+            'params.size_max' => 'nullable|numeric',
+            'params.ftype' => 'nullable|string|max:30',
+            'params.tag' => 'nullable|integer',
         ]);
 
         // Keep only known filter keys with non-empty values.
