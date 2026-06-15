@@ -46,9 +46,12 @@ class TrashService
             ->get()
             ->filter(fn (File $f) => ! $this->parentIsTrashed($f)); // only deletion roots
 
-        foreach ($roots as $root) {
-            $this->purge($root);
-        }
+        // One outer transaction; per-root purges become savepoints (not N tx).
+        DB::transaction(function () use ($roots) {
+            foreach ($roots as $root) {
+                $this->purge($root);
+            }
+        });
 
         return $roots->count();
     }

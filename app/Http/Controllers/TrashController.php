@@ -51,10 +51,18 @@ class TrashController extends Controller
     // Empty the whole trash for the user.
     public function empty()
     {
-        foreach ($this->trash->roots(auth()->id()) as $root) {
+        $roots = $this->trash->roots(auth()->id());
+        foreach ($roots as $root) {
             $this->authorize('forceDelete', $root);
-            $this->trash->purge($root);
         }
+
+        // Single outer transaction so the whole empty is atomic and opens one
+        // transaction, not one per root.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($roots) {
+            foreach ($roots as $root) {
+                $this->trash->purge($root);
+            }
+        });
 
         return back()->with('success', 'Trash emptied.');
     }
