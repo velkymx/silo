@@ -87,6 +87,35 @@ class SharedWithMeTest extends TestCase
         $this->actingAs($other)->get("/shared/{$folder->id}")->assertForbidden();
     }
 
+    public function test_trashed_shared_file_disappears_from_shared(): void
+    {
+        $owner = User::factory()->create();
+        $me = User::factory()->create();
+        $file = File::factory()->for($owner, 'owner')->create(['name' => 'gone.txt']);
+        $this->grant($file, Permission::SUBJECT_USER, $me->id, 'read');
+
+        $file->delete(); // owner trashes it
+
+        $this->actingAs($me)->get('/shared')->assertInertia(
+            fn (Assert $page) => $page->has('files', 0)
+        );
+    }
+
+    public function test_browsing_a_shared_folder_hides_trashed_children(): void
+    {
+        $owner = User::factory()->create();
+        $me = User::factory()->create();
+        $folder = File::factory()->for($owner, 'owner')->folder()->create(['name' => 'Docs']);
+        $child = File::factory()->for($owner, 'owner')->create(['name' => 'old.txt', 'parent_id' => $folder->id]);
+        $this->grant($folder, Permission::SUBJECT_USER, $me->id, 'read');
+
+        $child->delete();
+
+        $this->actingAs($me)->get("/shared/{$folder->id}")->assertInertia(
+            fn (Assert $page) => $page->has('files', 0)
+        );
+    }
+
     public function test_shared_page_empty_for_user_with_no_grants(): void
     {
         $me = User::factory()->create();

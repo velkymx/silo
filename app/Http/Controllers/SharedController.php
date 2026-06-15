@@ -15,12 +15,13 @@ class SharedController extends Controller
         $user = auth()->user();
 
         $items = File::whereIn('id', $this->grantedFileIds($user))->with('owner')->get();
+        $abilities = $this->abilitiesFor($items->pluck('id'), $user);
 
         return Inertia::render('Shared/Index', [
             'folders' => $items->where('is_dir', true)->values()
-                ->map(fn (File $f) => $this->shape($f, $user)),
+                ->map(fn (File $f) => $this->shape($f, $user, $abilities)),
             'files' => $items->where('is_dir', false)->values()
-                ->map(fn (File $f) => $this->shape($f, $user)),
+                ->map(fn (File $f) => $this->shape($f, $user, $abilities)),
         ]);
     }
 
@@ -32,14 +33,15 @@ class SharedController extends Controller
 
         $user = auth()->user();
         $children = $folder->children()->with('owner')->orderByDesc('is_dir')->orderBy('name')->get();
+        $abilities = $this->abilitiesFor($children->pluck('id'), $user);
 
         return Inertia::render('Shared/Folder', [
             'current' => ['id' => $folder->id, 'name' => $folder->name],
             'trail' => $this->sharedTrail($folder, $user),
             'folders' => $children->where('is_dir', true)->values()
-                ->map(fn (File $f) => $this->shape($f, $user)),
+                ->map(fn (File $f) => $this->shape($f, $user, $abilities)),
             'files' => $children->where('is_dir', false)->values()
-                ->map(fn (File $f) => $this->shape($f, $user)),
+                ->map(fn (File $f) => $this->shape($f, $user, $abilities)),
         ]);
     }
 
@@ -62,13 +64,24 @@ class SharedController extends Controller
                 ->where('subject_type', Permission::SUBJECT_GROUP)->where('subject_id', $user->group_id)));
     }
 
-    // Frontend shape for a shared item, including owner + the viewer's abilities.
-    protected function shape(File $file, $user): array
+    /**
+     * Abilities the viewer holds on each of the given files, fetched in one
+     * query (avoids an N+1 of one permission lookup per shaped row).
+     *
+     * @return Collection<int, array<int, string>>
+     */
+    protected function abilitiesFor(Collection $fileIds, $user): Collection
     {
-        $abilities = Permission::where('file_id', $file->id)
+        return Permission::whereIn('file_id', $fileIds)
             ->where(fn ($q) => $this->subjectMatch($q, $user))
-            ->pluck('ability')->unique()->values();
+            ->get(['file_id', 'ability'])
+            ->groupBy('file_id')
+            ->map(fn ($rows) => $rows->pluck('ability')->unique()->values()->all());
+    }
 
+    // Frontend shape for a shared item, including owner + the viewer's abilities.
+    protected function shape(File $file, $user, Collection $abilities): array
+    {
         return [
             'id' => $file->id,
             'name' => $file->name,
@@ -79,7 +92,7 @@ class SharedController extends Controller
             'url' => $file->is_dir ? null : route('files.raw', $file),
             'thumb_url' => $file->thumbnail_path ? route('files.thumbnail', $file) : null,
             'owner' => $file->owner?->name,
-            'abilities' => $abilities,
+            'abilities' => $abilities->get($file->id, []),
             'created_at' => $file->created_at->format('Y-m-d H:i'),
         ];
     }
