@@ -837,7 +837,7 @@ onBeforeUnmount(() => {
         </VibeModal>
 
         <!-- Quick Look modal -->
-        <VibeModal v-model="quickOpen" size="xl" centered fullscreen hide-footer>
+        <VibeModal v-model="quickOpen" fullscreen hide-footer>
             <template #header>
                 <div class="d-flex align-items-center justify-content-between w-100">
                     <h5 class="modal-title text-truncate mb-0">
