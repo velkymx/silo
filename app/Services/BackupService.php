@@ -163,10 +163,16 @@ class BackupService
             return ['path' => null, 'temp' => false];
         }
         $tmp = tempnam(sys_get_temp_dir(), 'bkblob_');
-        $out = fopen($tmp, 'wb');
-        stream_copy_to_stream($stream, $out); // streamed, constant memory
-        fclose($out);
-        fclose($stream);
+        try {
+            $out = fopen($tmp, 'wb');
+            stream_copy_to_stream($stream, $out); // streamed, constant memory
+            fclose($out);
+        } catch (\Throwable $e) {
+            @unlink($tmp); // never leak the temp file on a copy failure
+            throw $e;
+        } finally {
+            fclose($stream);
+        }
 
         return ['path' => $tmp, 'temp' => true];
     }
@@ -194,29 +200,34 @@ class BackupService
 
         $tmp = tempnam(sys_get_temp_dir(), 'dbdump_');
 
-        if (($config['driver'] ?? null) === 'mysql') {
-            $this->run([
-                'mysqldump',
-                '--host='.($config['host'] ?? '127.0.0.1'),
-                '--port='.($config['port'] ?? 3306),
-                '--user='.($config['username'] ?? 'root'),
-                '--password='.($config['password'] ?? ''),
-                $config['database'],
-            ], $tmp);
+        try {
+            if (($config['driver'] ?? null) === 'mysql') {
+                $this->run([
+                    'mysqldump',
+                    '--host='.($config['host'] ?? '127.0.0.1'),
+                    '--port='.($config['port'] ?? 3306),
+                    '--user='.($config['username'] ?? 'root'),
+                    '--password='.($config['password'] ?? ''),
+                    $config['database'],
+                ], $tmp);
 
-            return ['abs' => $tmp, 'name' => 'database.sql', 'cleanup' => true];
-        }
+                return ['abs' => $tmp, 'name' => 'database.sql', 'cleanup' => true];
+            }
 
-        if (($config['driver'] ?? null) === 'pgsql') {
-            $this->run([
-                'pg_dump',
-                '--host='.($config['host'] ?? '127.0.0.1'),
-                '--port='.($config['port'] ?? 5432),
-                '--username='.($config['username'] ?? 'postgres'),
-                '--dbname='.$config['database'],
-            ], $tmp, ['PGPASSWORD' => $config['password'] ?? '']);
+            if (($config['driver'] ?? null) === 'pgsql') {
+                $this->run([
+                    'pg_dump',
+                    '--host='.($config['host'] ?? '127.0.0.1'),
+                    '--port='.($config['port'] ?? 5432),
+                    '--username='.($config['username'] ?? 'postgres'),
+                    '--dbname='.$config['database'],
+                ], $tmp, ['PGPASSWORD' => $config['password'] ?? '']);
 
-            return ['abs' => $tmp, 'name' => 'database.sql', 'cleanup' => true];
+                return ['abs' => $tmp, 'name' => 'database.sql', 'cleanup' => true];
+            }
+        } catch (\Throwable $e) {
+            @unlink($tmp); // dump command failed — don't leave the temp behind
+            throw $e;
         }
 
         @unlink($tmp);
