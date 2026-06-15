@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Backup;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -39,7 +40,6 @@ class BackupService
         $absPath = $absDir.DIRECTORY_SEPARATOR.$filename;
 
         try {
-            $this->assertFreeSpace($absDir);
             $compression = $this->buildArchive($absPath);
 
             $backup->update([
@@ -122,7 +122,14 @@ class BackupService
         }
 
         $zip->addFromString('manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
-        $zip->close(); // streams everything to disk here
+
+        // close() is where ZipArchive actually streams/flushes everything to
+        // disk — this is the real point of failure when the volume is full. A
+        // false return must abort so the partial archive is cleaned up by the
+        // caller rather than being marked "ready".
+        if (! $zip->close()) {
+            throw new \RuntimeException('Could not finalize the backup archive (out of disk space?).');
+        }
 
         foreach ($tempCopies as $t) {
             @unlink($t);
@@ -245,29 +252,6 @@ class BackupService
     }
 
     /** Abort early if the target volume clearly can't hold the data. */
-    private function assertFreeSpace(string $dir): void
-    {
-        $needed = 0;
-        foreach (array_unique([config('filemanager.disk'), ThumbnailGenerator::disk()]) as $diskName) {
-            $disk = Storage::disk($diskName);
-            foreach ($disk->allFiles() as $rel) {
-                try {
-                    $needed += $disk->size($rel);
-                } catch (\Throwable $e) {
-                    // ignore unreadable entry
-                }
-            }
-        }
-
-        $free = @disk_free_space($dir);
-        // Compression shrinks the archive, so the raw total is a safe headroom.
-        if ($free !== false && $needed > 0 && $free < $needed) {
-            throw new \RuntimeException(
-                'Insufficient disk space for backup: need ~'.$needed.' bytes, '.$free.' free.'
-            );
-        }
-    }
-
     /**
      * Restore a backup: replace the database and file blobs from the archive.
      * DESTRUCTIVE — overwrites current data. Returns a short summary.
@@ -279,23 +263,32 @@ class BackupService
             throw new \RuntimeException('Backup archive is missing.');
         }
 
+        // Single-process guard: a restore rewrites the whole database and all
+        // blobs, so two running at once (or concurrent writes) would corrupt
+        // live data. Reject if another restore already holds the lock.
+        $lock = Cache::lock('backup-restore', 600);
+        if (! $lock->get()) {
+            throw new \RuntimeException('A restore is already in progress. Try again shortly.');
+        }
+
         $work = sys_get_temp_dir().'/restore_'.Str::random(12);
         mkdir($work, 0775, true);
 
-        $zip = new ZipArchive();
-        if ($zip->open($archive) !== true) {
-            throw new \RuntimeException('Could not open the backup archive.');
-        }
-        $zip->extractTo($work);
-        $zip->close();
-
         try {
+            $zip = new ZipArchive();
+            if ($zip->open($archive) !== true) {
+                throw new \RuntimeException('Could not open the backup archive.');
+            }
+            $zip->extractTo($work);
+            $zip->close();
+
             $this->restoreDatabase($work);
             $disks = $this->restoreBlobs($work);
 
             return ['disks' => $disks];
         } finally {
             $this->rmrf($work);
+            $lock->release();
         }
     }
 
