@@ -507,9 +507,15 @@ function openTags(item) {
     tagsOpen.value = true;
 }
 
+const flashedTag = ref('');
 function addTag(name) {
     const value = (name ?? tagInput.value).trim();
-    if (value && !tagList.value.includes(value)) tagList.value.push(value);
+    if (value && !tagList.value.includes(value)) {
+        tagList.value.push(value);
+        // Briefly flash the new badge so the add is visually confirmed.
+        flashedTag.value = value;
+        setTimeout(() => { if (flashedTag.value === value) flashedTag.value = ''; }, 600);
+    }
     tagInput.value = '';
 }
 
@@ -775,7 +781,13 @@ onBeforeUnmount(() => {
         <!-- Tags modal -->
         <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
             <div class="d-flex flex-wrap gap-2 mb-3">
-                <VibeBadge v-for="name in tagList" :key="name" variant="primary" class="d-flex align-items-center">
+                <VibeBadge
+                    v-for="name in tagList"
+                    :key="name"
+                    variant="primary"
+                    class="d-flex align-items-center"
+                    :class="{ 'tag-flash': name === flashedTag }"
+                >
                     {{ name }}
                     <VibeIcon icon="x" class="ms-1" style="cursor: pointer" @click="removeTag(name)" />
                 </VibeBadge>
@@ -1053,5 +1065,13 @@ onBeforeUnmount(() => {
     position: sticky;
     top: 0.5rem;
     z-index: 5;
+}
+/* Brief confirmation pulse when a tag is added. */
+.tag-flash {
+    animation: tag-flash 0.6s ease-out;
+}
+@keyframes tag-flash {
+    0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.6); transform: scale(1.12); }
+    100% { box-shadow: 0 0 0 8px rgba(13, 110, 253, 0); transform: scale(1); }
 }
 </style>
