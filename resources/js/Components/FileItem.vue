@@ -102,11 +102,11 @@ const emit = defineEmits<{
                             <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
                             <VibeBadge v-if="(item.version ?? 0) > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
                         </div>
-                        <div v-if="item.tags?.length" class="mt-1" style="padding-left: 2.75rem">
+                        <div v-if="item.tags?.length" class="d-flex flex-wrap gap-1 mt-1 ms-5">
                             <span
                                 v-for="t in item.tags"
                                 :key="t.id"
-                                class="badge rounded-pill me-1"
+                                class="badge rounded-pill"
                                 :style="{ backgroundColor: t.color || '#6c757d', cursor: 'pointer' }"
                                 @click.stop="emit('tag', t.id)"
                             >{{ t.name }}</span>
