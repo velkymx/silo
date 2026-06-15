@@ -24,7 +24,7 @@ class MetadataExtractor
         $mime = (string) $file->mime;
 
         return match (true) {
-            str_starts_with($mime, 'image/') => $this->image($disk->get($file->path)),
+            str_starts_with($mime, 'image/') => $this->image($disk, $file->path),
             str_starts_with($mime, 'audio/'),
             str_starts_with($mime, 'video/') => $this->media($disk, $file->path),
             str_starts_with($mime, 'text/') => $this->text($disk->get($file->path)),
@@ -49,28 +49,71 @@ class MetadataExtractor
      *
      * @return array<string, mixed>
      */
-    protected function image(string $contents): array
+    protected function image($disk, string $path): array
     {
-        $meta = [];
-
-        if (($info = @getimagesizefromstring($contents)) !== false) {
-            $meta['width'] = $info[0];
-            $meta['height'] = $info[1];
+        // Read dimensions/EXIF straight from a file handle (constant memory)
+        // instead of loading the whole image into a string.
+        [$local, $temp] = $this->localPath($disk, $path);
+        if ($local === null) {
+            return [];
         }
 
-        if (extension_loaded('exif')) {
-            $exif = @exif_read_data('data://image/jpeg;base64,'.base64_encode($contents));
-            if (is_array($exif)) {
-                $meta = array_merge($meta, array_filter([
-                    'camera_make' => $exif['Make'] ?? null,
-                    'camera_model' => $exif['Model'] ?? null,
-                    'taken_at' => $exif['DateTimeOriginal'] ?? null,
-                    'orientation' => $exif['Orientation'] ?? null,
-                ], fn ($v) => $v !== null && $v !== ''));
+        try {
+            $meta = [];
+
+            if (($info = @getimagesize($local)) !== false) {
+                $meta['width'] = $info[0];
+                $meta['height'] = $info[1];
+            }
+
+            if (extension_loaded('exif')) {
+                $exif = @exif_read_data($local);
+                if (is_array($exif)) {
+                    $meta = array_merge($meta, array_filter([
+                        'camera_make' => $exif['Make'] ?? null,
+                        'camera_model' => $exif['Model'] ?? null,
+                        'taken_at' => $exif['DateTimeOriginal'] ?? null,
+                        'orientation' => $exif['Orientation'] ?? null,
+                    ], fn ($v) => $v !== null && $v !== ''));
+                }
+            }
+
+            return $meta;
+        } finally {
+            if ($temp) {
+                @unlink($local);
             }
         }
+    }
 
-        return $meta;
+    /**
+     * A local filesystem path for a stored file (direct for local disks, a
+     * streamed temp copy for remote ones). Returns [path|null, isTemp].
+     *
+     * @return array{0: ?string, 1: bool}
+     */
+    private function localPath($disk, string $rel): array
+    {
+        try {
+            $direct = $disk->path($rel);
+            if (is_file($direct)) {
+                return [$direct, false];
+            }
+        } catch (\Throwable $e) {
+            // remote disk — fall through to a temp copy
+        }
+
+        $stream = $disk->readStream($rel);
+        if ($stream === null) {
+            return [null, false];
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'meta_');
+        $out = fopen($tmp, 'wb');
+        stream_copy_to_stream($stream, $out);
+        fclose($out);
+        fclose($stream);
+
+        return [$tmp, true];
     }
 
     /**
