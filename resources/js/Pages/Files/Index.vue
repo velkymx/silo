@@ -635,24 +635,25 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Batch action bar -->
-        <VibeAlert v-if="selectedIds.size" variant="primary" class="d-flex flex-wrap align-items-center gap-2">
+        <div v-if="selectedIds.size" class="batch-bar d-flex flex-wrap align-items-center gap-2 border rounded bg-body p-2 mb-3 shadow-sm">
             <strong>{{ selectedIds.size }} selected</strong>
             <div class="ms-auto d-flex flex-wrap gap-2">
-                <VibeButton variant="primary" size="sm" @click="batchFolderName = 'New Folder'; batchFolderOpen = true">
-                    <VibeIcon icon="folder-plus" class="me-1" />New Folder from Selection
-                </VibeButton>
-                <VibeButton variant="primary" size="sm" outline @click="batchRenameOpen = true">
-                    <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
-                </VibeButton>
-                <VibeButton variant="primary" size="sm" outline @click="batchMoveTarget = ''; batchMoveOpen = true">
+                <!-- Move is the most common bulk action → the single primary. -->
+                <VibeButton variant="primary" size="sm" @click="batchMoveTarget = ''; batchMoveOpen = true">
                     <VibeIcon icon="folder-symlink" class="me-1" />Move…
+                </VibeButton>
+                <VibeButton variant="secondary" size="sm" outline @click="batchFolderName = 'New Folder'; batchFolderOpen = true">
+                    <VibeIcon icon="folder-plus" class="me-1" />New Folder
+                </VibeButton>
+                <VibeButton variant="secondary" size="sm" outline @click="batchRenameOpen = true">
+                    <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
                 </VibeButton>
                 <VibeButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
                     <VibeIcon icon="trash" class="me-1" />Delete
                 </VibeButton>
                 <VibeButton variant="secondary" size="sm" outline @click="clearSelection">Clear</VibeButton>
             </div>
-        </VibeAlert>
+        </div>
 
         <!-- Single compact chip bar for all active view filters. -->
         <VibeAlert v-if="activeFilters.length" variant="light" class="border d-flex flex-wrap align-items-center gap-2 py-2">
@@ -1037,5 +1038,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .select-check {
     cursor: pointer;
+}
+/* Batch action bar sticks to the top while scrolling a long selection. */
+.batch-bar {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 5;
 }
 </style>
