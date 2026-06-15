@@ -18,10 +18,14 @@ const form = useForm({
     email: props.user.email,
     password: '',
     password_confirmation: '',
+    current_password: '',
 });
 
+// Changing the email or password requires the current password.
+const needsCurrentPassword = computed(() => !!form.password || form.email !== props.user.email);
+
 function submit() {
-    form.post('/profile', { onFinish: () => form.reset('password', 'password_confirmation') });
+    form.post('/profile', { onFinish: () => form.reset('password', 'password_confirmation', 'current_password') });
 }
 
 // ----- Avatar upload + crop -----
@@ -129,8 +133,23 @@ function applyCrop() {
                             <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
                         </VibeFormGroup>
 
+                        <VibeFormGroup
+                            v-if="needsCurrentPassword"
+                            label="Current Password"
+                            class="mt-3"
+                            :validation-state="form.errors.current_password ? 'invalid' : null"
+                            :validation-message="form.errors.current_password"
+                        >
+                            <VibeFormInput
+                                v-model="form.current_password"
+                                type="password"
+                                autocomplete="current-password"
+                                help-text="Required to change your email or password."
+                            />
+                        </VibeFormGroup>
+
                         <VibeButton type="submit" variant="primary" class="mt-4" :disabled="form.processing">
-                            Save Changes
+                            <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save Changes' }}
                         </VibeButton>
                     </form>
                 </VibeCard>

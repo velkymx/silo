@@ -67,12 +67,16 @@ class UserController extends Controller
     public function update(Request $request)
     {
         $user = Auth::user();
-    
-        // Validate the request
+
+        // Changing the email or password requires re-entering the current
+        // password (Laravel's `current_password` rule verifies it).
+        $sensitiveChange = $request->filled('password') || $request->input('email') !== $user->email;
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed', // Password confirmation required if provided
+            'current_password' => [\Illuminate\Validation\Rule::requiredIf($sensitiveChange), 'current_password'],
         ]);
 
         // Update user details. Group membership is NOT self-assignable — only
