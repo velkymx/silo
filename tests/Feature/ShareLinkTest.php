@@ -86,6 +86,36 @@ class ShareLinkTest extends TestCase
         $this->get(route('shares.public.raw', $link->token))->assertOk();
     }
 
+    public function test_unlock_is_rate_limited_against_brute_force(): void
+    {
+        Storage::fake('public');
+        $file = $this->storedFile(User::factory()->create());
+        $link = ShareLink::factory()->protectedWith('hunter2')->create(['file_id' => $file->id]);
+
+        $hit429 = false;
+        for ($i = 0; $i < 7; $i++) {
+            $res = $this->post(route('shares.public.unlock', $link->token), ['password' => 'wrong']);
+            if ($res->status() === 429) {
+                $hit429 = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($hit429, 'Expected the unlock endpoint to rate-limit brute-force attempts.');
+    }
+
+    public function test_unlock_stores_session_keyed_by_link_id_not_token(): void
+    {
+        Storage::fake('public');
+        $file = $this->storedFile(User::factory()->create());
+        $link = ShareLink::factory()->protectedWith('hunter2')->create(['file_id' => $file->id]);
+
+        $this->post(route('shares.public.unlock', $link->token), ['password' => 'hunter2']);
+
+        $this->assertTrue(session()->has("share_unlocked.{$link->id}"));
+        $this->assertFalse(session()->has("share_unlocked.{$link->token}"));
+    }
+
     public function test_deleting_the_file_kills_the_link(): void
     {
         Storage::fake('public');

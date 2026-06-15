@@ -20,7 +20,7 @@ class PublicShareController extends Controller
         $link = $this->resolve($token);
         $file = $link->file;
 
-        if ($link->isProtected() && ! $this->unlocked($token)) {
+        if ($link->isProtected() && ! $this->unlocked($link)) {
             return Inertia::render('Public/Share', ['locked' => true, 'token' => $token, 'name' => $file->name]);
         }
 
@@ -55,7 +55,7 @@ class PublicShareController extends Controller
             return back()->withErrors(['password' => 'Incorrect password.']);
         }
 
-        $request->session()->put($this->sessionKey($token), true);
+        $request->session()->put($this->sessionKey($link), true);
 
         return redirect()->route('shares.public.show', $token);
     }
@@ -64,7 +64,7 @@ class PublicShareController extends Controller
     public function raw(string $token)
     {
         $link = $this->resolve($token);
-        $this->assertUnlocked($link, $token);
+        $this->assertUnlocked($link);
 
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
 
@@ -80,7 +80,7 @@ class PublicShareController extends Controller
     public function download(string $token)
     {
         $link = $this->resolve($token);
-        $this->assertUnlocked($link, $token);
+        $this->assertUnlocked($link);
         abort_unless($link->allow_download, 403);
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
 
@@ -99,18 +99,20 @@ class PublicShareController extends Controller
         return $link;
     }
 
-    protected function assertUnlocked(ShareLink $link, string $token): void
+    protected function assertUnlocked(ShareLink $link): void
     {
-        abort_if($link->isProtected() && ! $this->unlocked($token), 403);
+        abort_if($link->isProtected() && ! $this->unlocked($link), 403);
     }
 
-    protected function unlocked(string $token): bool
+    protected function unlocked(ShareLink $link): bool
     {
-        return (bool) session($this->sessionKey($token));
+        return (bool) session($this->sessionKey($link));
     }
 
-    protected function sessionKey(string $token): string
+    // Keyed by the link's primary id, never the secret token, so the token is
+    // not persisted in the session store.
+    protected function sessionKey(ShareLink $link): string
     {
-        return "share_unlocked.{$token}";
+        return "share_unlocked.{$link->id}";
     }
 }

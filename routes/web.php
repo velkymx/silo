@@ -105,7 +105,7 @@ Route::middleware(['auth'])->group(function () {
 // is the brute-force surface for password-protected links.
 Route::get('/s/{token}', [PublicShareController::class, 'show'])->name('shares.public.show');
 Route::post('/s/{token}/unlock', [PublicShareController::class, 'unlock'])
-    ->middleware('throttle:10,1')->name('shares.public.unlock');
+    ->middleware('throttle:5,1')->name('shares.public.unlock');
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('/s/{token}/raw', [PublicShareController::class, 'raw'])->name('shares.public.raw');
     Route::get('/s/{token}/download', [PublicShareController::class, 'download'])->name('shares.public.download');
