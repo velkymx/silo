@@ -242,7 +242,9 @@ onBeforeUnmount(() => {
                 @blur="commitCell"
             >
         </div>
-        <div ref="el" class="sheet-editor"></div>
+        <!-- Force the grid onto the light Bootstrap theme: the jspreadsheet
+             engine renders on a white canvas and doesn't track dark mode. -->
+        <div ref="el" class="sheet-editor" data-bs-theme="light"></div>
     </div>
 </template>
 
