@@ -83,7 +83,7 @@ const emit = defineEmits<{
                     <!-- LIST: name cell -->
                     <template v-else>
                         <div
-                            class="d-flex align-items-center rounded"
+                            class="list-row d-flex align-items-center rounded"
                             :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || selected }"
                             style="cursor: pointer"
                             @click="emit('open', item, $event)"
@@ -91,7 +91,7 @@ const emit = defineEmits<{
                             <VibeIcon
                                 :icon="selected ? 'check-square-fill' : 'square'"
                                 class="me-2 flex-shrink-0 select-check"
-                                :class="selected ? 'text-primary' : 'text-muted'"
+                                :class="[selected ? 'text-primary' : 'text-muted', { 'check-idle': !selectMode && !selected }]"
                                 @click.stop="emit('toggle-select', item.id)"
                             />
                             <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
@@ -117,3 +117,16 @@ const emit = defineEmits<{
         </template>
     </VibeDraggable>
 </template>
+
+<style scoped>
+/* Outside select mode the list checkbox stays hidden until the row is hovered
+   or focused, so it doesn't compete with the filename. */
+.select-check.check-idle {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.list-row:hover .select-check.check-idle,
+.list-row:focus-within .select-check.check-idle {
+    opacity: 1;
+}
+</style>

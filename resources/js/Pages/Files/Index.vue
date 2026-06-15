@@ -714,6 +714,7 @@ onBeforeUnmount(() => {
                 <FileItem
                     :item="item"
                     view="list"
+                    :select-mode="selectMode"
                     :selected="isSelected(item.id)"
                     @open="onItemClick"
                     @toggle-select="toggleSel"
