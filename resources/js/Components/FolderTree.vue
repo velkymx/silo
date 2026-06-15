@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { http } from '../lib/http';
 import { CATEGORY_COLORS } from '../lib/categoryColors';
+import LoadingSkeleton from './LoadingSkeleton.vue';
 
 interface TreeNode {
     id: number;
@@ -161,8 +162,8 @@ const padFor = (lvl: number, leaf: boolean) => ({ paddingLeft: (0.3 + lvl * 0.8 
             <VibeIcon :icon="fileIcon(f.type)" class="vs-icon" :style="{ color: fileColor(f.type) }" />
             <span class="text-truncate" :title="f.name">{{ f.name }}</span>
         </div>
-        <div v-if="loading" class="vs-row text-muted" :style="padFor(isRoot ? 0 : level + 1, true)">
-            <VibeSpinner size="sm" class="me-2" />Loading…
+        <div v-if="loading" :style="padFor(isRoot ? 0 : level + 1, true)">
+            <LoadingSkeleton :rows="2" :cols="1" />
         </div>
         <div
             v-else-if="loaded && !children.length"
