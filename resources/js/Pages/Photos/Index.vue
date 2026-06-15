@@ -82,6 +82,28 @@ function jumpTo(i) {
     slide.value = i;
 }
 
+// Drag-to-reorder the filmstrip. The strip binds a local ordered copy; on drop
+// we persist the new id sequence and reload so the gallery reflects it.
+const filmPhotos = ref([...props.photos]);
+watch(() => props.photos, (next) => { filmPhotos.value = [...next]; });
+
+function onFilmstripReorder() {
+    const currentId = currentPhoto.value?.id ?? null;
+    const ids = filmPhotos.value.map((p) => p.id);
+    router.post('/photos/reorder', { ids }, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['photos'],
+        onSuccess: () => {
+            // Keep the lightbox on the same photo after the order changes.
+            if (currentId !== null) {
+                const idx = props.photos.findIndex((p) => p.id === currentId);
+                if (idx >= 0) slide.value = idx;
+            }
+        },
+    });
+}
+
 // Keyboard navigation while the lightbox is open (mirrors Files Quick Look).
 function onLightboxKey(e) {
     if (!lightboxOpen.value) return;
@@ -98,8 +120,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onLightboxKey));
 const filmstripEl = ref(null);
 watch(slide, async () => {
     await nextTick();
-    const el = filmstripEl.value?.children?.[slide.value];
-    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    // filmstripEl is a VibeSortable component → reach its root element, then the
+    // thumbnail at the active slide.
+    const root = filmstripEl.value?.$el ?? filmstripEl.value;
+    const strip = root?.querySelector?.('.filmstrip') ?? root;
+    strip?.children?.[slide.value]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
 });
 
 function star(p) {
@@ -337,18 +362,26 @@ function saveEdit() {
                 </VibeButton>
             </div>
 
-            <!-- Thumbnail filmstrip -->
-            <div ref="filmstripEl" class="filmstrip">
-                <img
-                    v-for="(p, i) in photos"
-                    :key="p.id"
-                    :src="p.thumb_url"
-                    :alt="p.name"
-                    class="film-thumb"
-                    :class="{ active: i === slide }"
-                    @click="jumpTo(i)"
-                >
-            </div>
+            <!-- Thumbnail filmstrip (drag to reorder) -->
+            <VibeSortable
+                ref="filmstripEl"
+                v-model="filmPhotos"
+                item-key="id"
+                tag="div"
+                item-tag="div"
+                class="filmstrip"
+                @update:model-value="onFilmstripReorder"
+            >
+                <template #default="{ item: p }">
+                    <img
+                        :src="p.thumb_url"
+                        :alt="p.name"
+                        class="film-thumb"
+                        :class="{ active: currentPhoto && p.id === currentPhoto.id }"
+                        @click="jumpTo(photos.findIndex((x) => x.id === p.id))"
+                    >
+                </template>
+            </VibeSortable>
         </VibeModal>
 
         <!-- Upload -->

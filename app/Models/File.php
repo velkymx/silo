@@ -43,6 +43,7 @@ class File extends Model
         'version',
         'starred',
         'referenced',
+        'sort_order',
         'parent_id',
         'owner_id',
     ];

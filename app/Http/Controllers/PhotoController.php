@@ -39,7 +39,12 @@ class PhotoController extends Controller
             $query->whereHas('tags', fn ($q) => $q->where('tags.id', $tagId));
         }
 
-        $photos = $query->latest('created_at')->limit(2000)->get()
+        // Manual order first (drag-to-reorder in the filmstrip), then newest.
+        $photos = $query
+            ->orderByRaw('sort_order IS NULL') // non-null sort_order first
+            ->orderBy('sort_order')
+            ->latest('created_at')
+            ->limit(2000)->get()
             ->map(fn (File $f) => $this->photoShape($f))->values();
 
         return Inertia::render('Photos/Index', [
@@ -137,6 +142,28 @@ class PhotoController extends Controller
         $album->update(['cover_file_id' => $id]);
 
         return back()->with('success', 'Cover updated.');
+    }
+
+    // Persist a manual photo order (drag-to-reorder filmstrip). Only the user's
+    // own image files are touched; sort_order follows the given id sequence.
+    public function reorder(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+
+        $ownedImageIds = File::where('owner_id', auth()->id())
+            ->where('is_dir', false)
+            ->where('mime', 'like', 'image/%')
+            ->pluck('id')
+            ->flip();
+
+        $position = 0;
+        foreach ($request->input('ids') as $id) {
+            if ($ownedImageIds->has((int) $id)) {
+                File::whereKey($id)->update(['sort_order' => $position++]);
+            }
+        }
+
+        return back()->with('success', 'Order updated.');
     }
 
     private function authorizeAlbum(Album $album): void

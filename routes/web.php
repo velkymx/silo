@@ -53,6 +53,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/photos/albums/{album}/photos', [PhotoController::class, 'addToAlbum'])->name('photos.albums.add');
     Route::delete('/photos/albums/{album}/photos', [PhotoController::class, 'removeFromAlbum'])->name('photos.albums.remove');
     Route::post('/photos/albums/{album}/cover', [PhotoController::class, 'setCover'])->name('photos.albums.cover');
+    Route::post('/photos/reorder', [PhotoController::class, 'reorder'])->name('photos.reorder');
 
     Route::get('/usage', [\App\Http\Controllers\StorageController::class, 'index'])->name('storage.index');
         Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
