@@ -644,50 +644,54 @@ class FileController extends Controller
         $parent = $this->resolveFolder($request->input('parent_id'), $userId);
         $disk = config('filemanager.disk');
 
-        // Reject the whole batch if it would push the user over their quota.
-        $incoming = collect($request->file('files', []))->sum(fn ($f) => $f->getSize());
-        if (app(QuotaService::class)->wouldExceed($userId, $incoming)) {
-            throw ValidationException::withMessages([
-                'files' => 'This upload would exceed your storage quota.',
-            ]);
-        }
+        // Serialize quota-affecting writes per user so concurrent uploads can't
+        // each pass the check and collectively blow the quota (TOCTOU race).
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($request, $userId, $parent, $disk) {
+            // Reject the whole batch if it would push the user over their quota.
+            $incoming = collect($request->file('files', []))->sum(fn ($f) => $f->getSize());
+            if (app(QuotaService::class)->wouldExceed($userId, $incoming)) {
+                throw ValidationException::withMessages([
+                    'files' => 'This upload would exceed your storage quota.',
+                ]);
+            }
 
-        foreach ($request->file('files', []) as $upload) {
-            // Storage is flat per user; the folder hierarchy lives entirely in the DB.
-            $path = $upload->store("uploads/{$userId}", $disk);
+            foreach ($request->file('files', []) as $upload) {
+                // Storage is flat per user; the folder hierarchy lives entirely in the DB.
+                $path = $upload->store("uploads/{$userId}", $disk);
 
-            $cleanName = $this->sanitizeFilename($upload->getClientOriginalName());
+                $cleanName = $this->sanitizeFilename($upload->getClientOriginalName());
 
-            $attributes = [
-                'name' => $cleanName,
-                'path' => $path,
-                'disk' => $disk,
-                'mime' => $upload->getClientMimeType(),
-                'size' => $upload->getSize(),
-                'hash' => hash_file('sha256', $upload->getRealPath()),
-                'status' => File::STATUS_PENDING,
-            ];
+                $attributes = [
+                    'name' => $cleanName,
+                    'path' => $path,
+                    'disk' => $disk,
+                    'mime' => $upload->getClientMimeType(),
+                    'size' => $upload->getSize(),
+                    'hash' => hash_file('sha256', $upload->getRealPath()),
+                    'status' => File::STATUS_PENDING,
+                ];
 
-            // An upload onto an existing file name becomes a new version of that file.
-            // (resolveFolder() guarantees $parent is owned by the uploader, so a
-            // cross-owner collision in a foreign folder can't occur here.)
-            $existing = File::files()
-                ->where('owner_id', $userId)
-                ->where('parent_id', $parent?->id)
-                ->where('name', $cleanName)
-                ->first();
+                // An upload onto an existing file name becomes a new version of that
+                // file. (resolveFolder() guarantees $parent is owned by the uploader,
+                // so a cross-owner collision in a foreign folder can't occur here.)
+                $existing = File::files()
+                    ->where('owner_id', $userId)
+                    ->where('parent_id', $parent?->id)
+                    ->where('name', $cleanName)
+                    ->first();
 
-            $file = $existing
-                ? $this->overwrite($existing, $attributes, $userId)
-                : File::create($attributes + ['is_dir' => false, 'parent_id' => $parent?->id, 'owner_id' => $userId]);
+                $file = $existing
+                    ? $this->overwrite($existing, $attributes, $userId)
+                    : File::create($attributes + ['is_dir' => false, 'parent_id' => $parent?->id, 'owner_id' => $userId]);
 
-            // Refine mime + extract metadata off the request cycle.
-            ProcessUploadedFile::dispatch($file->id);
-            Audit::log('file.upload', $file, ['size' => $file->size]);
-        }
+                // Refine mime + extract metadata off the request cycle.
+                ProcessUploadedFile::dispatch($file->id);
+                Audit::log('file.upload', $file, ['size' => $file->size]);
+            }
 
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', 'Files uploaded successfully!');
+            return redirect()->route('files.index', ['folder' => $parent?->id])
+                ->with('success', 'Files uploaded successfully!');
+        });
     }
 
     /**
