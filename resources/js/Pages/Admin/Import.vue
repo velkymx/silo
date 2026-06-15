@@ -1,15 +1,24 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 const props = defineProps({
     root: { type: String, default: '' },
     fileCount: { type: Number, default: null },
+    fileCountCapped: { type: Boolean, default: false },
 });
 
 const name = ref('Imported');
 const scanning = ref(false);
+
+// The mounted folder changes on disk out-of-band; refresh the count periodically.
+function refreshCount() {
+    router.reload({ only: ['fileCount', 'fileCountCapped'], preserveScroll: true });
+}
+let countTimer = null;
+onMounted(() => { countTimer = setInterval(refreshCount, 15000); });
+onBeforeUnmount(() => { if (countTimer) clearInterval(countTimer); });
 
 function rescan() {
     scanning.value = true;
@@ -39,7 +48,8 @@ function rescan() {
                         <dt class="col-sm-3 text-muted">Files found</dt>
                         <dd class="col-sm-9">
                             <span v-if="fileCount === null" class="text-muted">Folder not mounted / empty.</span>
-                            <VibeBadge v-else variant="secondary">{{ fileCount }}</VibeBadge>
+                            <VibeBadge v-else variant="secondary">{{ fileCount }}{{ fileCountCapped ? '+' : '' }}</VibeBadge>
+                            <VibeButton variant="link" size="sm" class="p-0 ms-2 text-decoration-none" @click="refreshCount">Refresh</VibeButton>
                         </dd>
                     </dl>
 
