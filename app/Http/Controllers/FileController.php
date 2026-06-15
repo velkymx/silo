@@ -930,7 +930,9 @@ class FileController extends Controller
         DB::transaction(function () use ($file, $attributes, $userId) {
             $this->snapshotVersion($file, $userId);
 
-            $file->update($attributes + ['version' => $file->version + 1]);
+            // The new blob is app-managed, so the file is no longer a referenced
+            // import — otherwise trash:purge would skip deleting the new bytes.
+            $file->update($attributes + ['version' => $file->version + 1, 'referenced' => false]);
         });
 
         return $file;
