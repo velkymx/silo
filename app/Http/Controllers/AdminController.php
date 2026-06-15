@@ -93,11 +93,20 @@ class AdminController extends Controller
             'is_admin' => 'nullable|boolean',
         ]);
 
+        // Never let the final administrator strip their own (or the last) admin
+        // flag — that would lock everyone out of the admin area.
+        $wantsAdmin = $request->boolean('is_admin');
+        if ($user->is_admin && ! $wantsAdmin && User::where('is_admin', true)->count() <= 1) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'is_admin' => 'You cannot remove the last administrator.',
+            ]);
+        }
+
         // Update the user's basic info
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->group_id = $validated['group_id'];
-        $user->is_admin = $request->boolean('is_admin');
+        $user->is_admin = $wantsAdmin;
 
         // Update password only if provided
         if (!empty($validated['password'])) {
