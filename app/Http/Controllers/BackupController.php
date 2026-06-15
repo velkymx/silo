@@ -51,6 +51,8 @@ class BackupController extends Controller
 
         Setting::put('backup.frequency', $data['frequency']);
         Setting::put('backup.retention', $data['retention']);
+        // The scheduler caches the frequency — drop it so the change applies now.
+        \Illuminate\Support\Facades\Cache::forget('schedule.backup.frequency');
 
         return back()->with('success', 'Backup schedule saved.');
     }

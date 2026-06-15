@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -19,7 +20,12 @@ Schedule::command('files:reconcile')->everyTenMinutes();
 
 // Admin-configured automatic backups. The frequency lives in the settings table;
 // each cadence is registered and only fires when it matches the saved choice.
-$backupFrequency = fn () => \App\Models\Setting::get('backup.frequency', 'off');
+// Cached so the per-minute scheduler tick doesn't hit the DB three times.
+$backupFrequency = fn () => Cache::remember(
+    'schedule.backup.frequency',
+    now()->addMinutes(5),
+    fn () => \App\Models\Setting::get('backup.frequency', 'off'),
+);
 Schedule::command('backup:run')->dailyAt('02:00')->when(fn () => $backupFrequency() === 'daily');
 Schedule::command('backup:run')->weeklyOn(0, '02:00')->when(fn () => $backupFrequency() === 'weekly');
 Schedule::command('backup:run')->monthlyOn(1, '02:00')->when(fn () => $backupFrequency() === 'monthly');
