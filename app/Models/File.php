@@ -83,11 +83,12 @@ class File extends Model
     }
 
     /**
-     * Only real files (never folders) are searchable.
+     * Only real, live files (never folders, never trashed) are searchable —
+     * otherwise soft-deleted files would linger in an external search index.
      */
     public function shouldBeSearchable(): bool
     {
-        return ! $this->is_dir;
+        return ! $this->is_dir && ! $this->trashed();
     }
 
     /**
