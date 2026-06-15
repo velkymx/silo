@@ -40,6 +40,21 @@ describe('QuickLookModal', () => {
         expect(wrapper.emitted('action')).toBeTruthy();
     });
 
+    it('shows a hover thumbnail of the next file', async () => {
+        const nextFile = { id: 9, name: 'next.png', type: 'png', thumb_url: '/t/9' };
+        const wrapper = mount(QuickLookModal, {
+            props: { modelValue: true, file, index: 0, total: 2, menu, nextFile },
+            global: { stubs },
+        });
+        // The next button's wrapper carries the hover handlers.
+        const nextBtn = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Next file')!;
+        const wrap = wrapper.findAll('.position-relative').find((w) => w.element.contains(nextBtn.element))!;
+        await wrap.trigger('mouseenter');
+        const peek = wrap.find('.ql-peek img');
+        expect(peek.exists()).toBe(true);
+        expect(peek.attributes('src')).toBe('/t/9');
+    });
+
     it('closes via the close button', async () => {
         const wrapper = mount(QuickLookModal, {
             props: { modelValue: true, file, index: 0, total: 1, menu },

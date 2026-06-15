@@ -364,6 +364,16 @@ const {
     step: quickStep, close: quickClose,
 } = useQuickLook(quickFiles);
 
+// Neighbours for the Quick Look hover thumbnail previews.
+const quickPrev = computed(() => {
+    const n = props.files.length;
+    return n ? props.files[(quickIndex.value - 1 + n) % n] : null;
+});
+const quickNext = computed(() => {
+    const n = props.files.length;
+    return n ? props.files[(quickIndex.value + 1) % n] : null;
+});
+
 function onKey(e) {
     // Cmd/Ctrl-K focuses the search box from anywhere.
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -828,6 +838,8 @@ onBeforeUnmount(() => {
             :index="quickIndex"
             :total="files.length"
             :menu="quickFile ? fileMenu(quickFile) : []"
+            :prev-file="quickPrev"
+            :next-file="quickNext"
             @step="quickStep"
             @action="onQuickAction"
         />

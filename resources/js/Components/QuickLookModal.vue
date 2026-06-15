@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import MarkdownViewer from './MarkdownViewer.vue';
 import DocViewer from './DocViewer.vue';
 import { iconFor, imageTypes } from '../lib/fileTypes';
@@ -15,12 +16,16 @@ interface QuickFile {
 interface ActionItem { text: string; icon: string; action: string }
 
 const open = defineModel<boolean>({ required: true });
-defineProps<{
+withDefaults(defineProps<{
     file: QuickFile | null;
     index: number;
     total: number;
     menu: ActionItem[];
-}>();
+    prevFile?: (QuickFile & { thumb_url?: string | null }) | null;
+    nextFile?: (QuickFile & { thumb_url?: string | null }) | null;
+}>(), { prevFile: null, nextFile: null });
+
+const hoverSide = ref<'prev' | 'next' | null>(null);
 
 const emit = defineEmits<{
     step: [number];
@@ -45,12 +50,26 @@ function isImage(f: QuickFile | null): boolean {
                 </h5>
                 <div class="d-flex gap-2 align-items-center ms-3">
                     <small class="text-muted">{{ index + 1 }} / {{ total }}</small>
-                    <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
-                        <VibeIcon icon="chevron-left" />
-                    </VibeButton>
-                    <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
-                        <VibeIcon icon="chevron-right" />
-                    </VibeButton>
+                    <div class="position-relative" @mouseenter="hoverSide = 'prev'" @mouseleave="hoverSide = null">
+                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
+                            <VibeIcon icon="chevron-left" />
+                        </VibeButton>
+                        <div v-if="hoverSide === 'prev' && prevFile" class="ql-peek">
+                            <img v-if="prevFile.thumb_url" :src="prevFile.thumb_url" :alt="prevFile.name">
+                            <VibeIcon v-else :icon="iconFor(prevFile.type)" class="fs-2" />
+                            <div class="text-truncate small mt-1">{{ prevFile.name }}</div>
+                        </div>
+                    </div>
+                    <div class="position-relative" @mouseenter="hoverSide = 'next'" @mouseleave="hoverSide = null">
+                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
+                            <VibeIcon icon="chevron-right" />
+                        </VibeButton>
+                        <div v-if="hoverSide === 'next' && nextFile" class="ql-peek">
+                            <img v-if="nextFile.thumb_url" :src="nextFile.thumb_url" :alt="nextFile.name">
+                            <VibeIcon v-else :icon="iconFor(nextFile.type)" class="fs-2" />
+                            <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
+                        </div>
+                    </div>
                     <VibeButton variant="success" size="sm" :href="`/download/${file?.id}`">
                         <VibeIcon icon="download" class="me-1" />Download
                     </VibeButton>
@@ -117,3 +136,28 @@ function isImage(f: QuickFile | null): boolean {
         </div>
     </VibeModal>
 </template>
+
+<style scoped>
+/* Hover preview of the adjacent file under the prev/next buttons. */
+.ql-peek {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    padding: 6px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.18);
+    z-index: 1090;
+    text-align: center;
+    pointer-events: none;
+}
+.ql-peek img {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 0.35rem;
+}
+</style>
