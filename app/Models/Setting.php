@@ -18,7 +18,9 @@ class Setting extends Model
 
     public static function get(string $key, mixed $default = null): mixed
     {
-        return static::query()->whereKey($key)->value('value') ?? $default;
+        // Go through the model so the `value` cast decodes it — reading the raw
+        // column would return the JSON-encoded form (e.g. '"off"' not 'off').
+        return static::find($key)?->value ?? $default;
     }
 
     public static function put(string $key, mixed $value): void
