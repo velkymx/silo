@@ -11,9 +11,8 @@ import EditorModal from '../../Components/EditorModal.vue';
 import RenameModal from '../../Components/RenameModal.vue';
 import QuickLookModal from '../../Components/QuickLookModal.vue';
 import { useSelection } from '../../composables/useSelection';
-import { useBatchRename } from '../../composables/useBatchRename';
+import BatchActions from '../../Components/BatchActions.vue';
 import { useJobPolling } from '../../composables/useJobPolling';
-import { useBusyGuard } from '../../composables/useBusyGuard';
 import { useQuickLook } from '../../composables/useQuickLook';
 import { descendantIds } from '../../lib/folderTree';
 import { useStorageMeter } from '../../composables/useStorageMeter';
@@ -210,59 +209,11 @@ function openItem(item) {
 }
 
 const {
-    selectMode, selectedIds, selectedItems, batchIds,
+    selectMode, selectedIds, selectedItems,
     isSelected, toggleSel, clearSelection, onItemClick,
 } = useSelection(items, openItem);
 
 const { confirm } = useConfirm();
-
-// Guards every batch mutation against double-click / double-submit. Only one
-// batch op runs at a time, so a single shared single-flight guard is enough.
-const { busy: batchBusy, run: runBatch, release: releaseBatch } = useBusyGuard({ autoRelease: false });
-
-async function batchDelete() {
-    if (!await confirm({ title: 'Move to trash', message: `Move ${batchIds.value.length} item(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    runBatch(() => router.post('/files/batch/delete', { ids: batchIds.value }, {
-        preserveScroll: true,
-        onSuccess: clearSelection,
-        onFinish: releaseBatch,
-    }));
-}
-
-// New Folder From Selection.
-const batchFolderOpen = ref(false);
-const batchFolderName = ref('New Folder');
-function submitBatchFolder() {
-    runBatch(() => router.post('/files/batch/folder', { name: batchFolderName.value, ids: batchIds.value, parent_id: currentId.value }, {
-        preserveScroll: true,
-        onSuccess: () => { batchFolderOpen.value = false; clearSelection(); },
-        onFinish: releaseBatch,
-    }));
-}
-
-// Batch move.
-const batchMoveOpen = ref(false);
-const batchMoveTarget = ref('');
-function submitBatchMove() {
-    runBatch(() => router.post('/files/batch/move', { ids: batchIds.value, target_id: batchMoveTarget.value || null }, {
-        preserveScroll: true,
-        onSuccess: () => { batchMoveOpen.value = false; clearSelection(); },
-        onFinish: releaseBatch,
-    }));
-}
-
-// Batch rename (find/replace, prefix/suffix, sequential numbering).
-const batchRenameOpen = ref(false);
-const { renameOpts, renamePreview } = useBatchRename(selectedItems);
-
-function submitBatchRename() {
-    const renames = renamePreview.value.map(({ id, to }) => ({ id, name: to }));
-    runBatch(() => router.post('/files/batch/rename', { renames }, {
-        preserveScroll: true,
-        onSuccess: () => { batchRenameOpen.value = false; clearSelection(); },
-        onFinish: releaseBatch,
-    }));
-}
 
 function selectFile(item) {
     if (item.is_dir) return;
@@ -635,26 +586,14 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <!-- Batch action bar -->
-        <div v-if="selectedIds.size" class="batch-bar d-flex flex-wrap align-items-center gap-2 border rounded bg-body p-2 mb-3 shadow-sm">
-            <strong>{{ selectedIds.size }} selected</strong>
-            <div class="ms-auto d-flex flex-wrap gap-2">
-                <!-- Move is the most common bulk action → the single primary. -->
-                <VibeButton variant="primary" size="sm" @click="batchMoveTarget = ''; batchMoveOpen = true">
-                    <VibeIcon icon="folder-symlink" class="me-1" />Move…
-                </VibeButton>
-                <VibeButton variant="secondary" size="sm" outline @click="batchFolderName = 'New Folder'; batchFolderOpen = true">
-                    <VibeIcon icon="folder-plus" class="me-1" />New Folder
-                </VibeButton>
-                <VibeButton variant="secondary" size="sm" outline @click="batchRenameOpen = true">
-                    <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
-                </VibeButton>
-                <VibeButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
-                    <VibeIcon icon="trash" class="me-1" />Delete
-                </VibeButton>
-                <VibeButton variant="secondary" size="sm" outline @click="clearSelection">Clear</VibeButton>
-            </div>
-        </div>
+        <!-- Batch action bar + modals -->
+        <BatchActions
+            :selected-items="selectedItems"
+            :current-id="currentId"
+            :destination-options="destinationOptions"
+            @done="clearSelection"
+            @cleared="clearSelection"
+        />
 
         <!-- Single compact chip bar for all active view filters. -->
         <VibeAlert v-if="activeFilters.length" variant="light" class="border d-flex flex-wrap align-items-center gap-2 py-2">
@@ -901,79 +840,6 @@ onBeforeUnmount(() => {
             </template>
         </VibeModal>
 
-        <!-- New Folder from Selection -->
-        <VibeModal v-model="batchFolderOpen" title="New Folder from Selection" centered>
-            <div class="mx-auto" style="max-width: 520px">
-                <VibeFormGroup label="Folder name">
-                    <VibeFormInput v-model="batchFolderName" />
-                </VibeFormGroup>
-                <p class="text-muted small mt-2">{{ selectedIds.size }} item(s) will be moved into it.</p>
-            </div>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="batchFolderOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="!batchFolderName || batchBusy" @click="submitBatchFolder">Create</VibeButton>
-            </template>
-        </VibeModal>
-
-        <!-- Batch move -->
-        <VibeModal v-model="batchMoveOpen" title="Move Selection To" centered>
-            <div class="mx-auto" style="max-width: 520px">
-                <VibeFormGroup label="Destination folder">
-                    <VibeFormSelect v-model="batchMoveTarget" :options="destinationOptions" />
-                </VibeFormGroup>
-            </div>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="batchMoveOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="batchBusy" @click="submitBatchMove">Move {{ selectedIds.size }}</VibeButton>
-            </template>
-        </VibeModal>
-
-        <!-- Batch rename -->
-        <VibeModal v-model="batchRenameOpen" title="Batch Rename" size="lg" centered scrollable>
-            <div class="mx-auto" style="max-width: 760px">
-                <VibeButtonGroup class="mb-3">
-                    <VibeButton :variant="renameOpts.mode === 'replace' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'replace'" @click="renameOpts.mode = 'replace'">Find &amp; Replace</VibeButton>
-                    <VibeButton :variant="renameOpts.mode === 'add' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'add'" @click="renameOpts.mode = 'add'">Add Text</VibeButton>
-                    <VibeButton :variant="renameOpts.mode === 'number' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'number'" @click="renameOpts.mode = 'number'">Numbering</VibeButton>
-                </VibeButtonGroup>
-
-                <div v-if="renameOpts.mode === 'replace'" class="row g-2">
-                    <div class="col"><VibeFormGroup label="Find"><VibeFormInput v-model="renameOpts.find" /></VibeFormGroup></div>
-                    <div class="col"><VibeFormGroup label="Replace with"><VibeFormInput v-model="renameOpts.replace" /></VibeFormGroup></div>
-                </div>
-                <div v-else-if="renameOpts.mode === 'add'" class="row g-2 align-items-end">
-                    <div class="col"><VibeFormGroup label="Text"><VibeFormInput v-model="renameOpts.text" /></VibeFormGroup></div>
-                    <div class="col-auto">
-                        <VibeFormGroup label="Position">
-                            <VibeFormSelect v-model="renameOpts.position" :options="[{ value: 'before', text: 'Before name' }, { value: 'after', text: 'After name' }]" />
-                        </VibeFormGroup>
-                    </div>
-                </div>
-                <div v-else class="row g-2 align-items-end">
-                    <div class="col"><VibeFormGroup label="Base name"><VibeFormInput v-model="renameOpts.base" placeholder="(keep original)" /></VibeFormGroup></div>
-                    <div class="col-auto"><VibeFormGroup label="Start at"><VibeFormInput v-model.number="renameOpts.start" type="number" style="width: 90px" /></VibeFormGroup></div>
-                    <div class="col-auto"><VibeFormGroup label="Digits"><VibeFormInput v-model.number="renameOpts.pad" type="number" style="width: 80px" /></VibeFormGroup></div>
-                </div>
-
-                <h6 class="mt-3 text-muted">Preview</h6>
-                <div class="border rounded" style="max-height: 50vh; overflow: auto">
-                    <table class="table table-sm mb-0">
-                        <tbody>
-                            <tr v-for="r in renamePreview" :key="r.id">
-                                <td class="text-muted text-truncate" style="max-width: 280px">{{ r.from }}</td>
-                                <td class="text-center text-muted"><VibeIcon icon="arrow-right" /></td>
-                                <td class="fw-medium text-truncate" :class="{ 'text-danger': r.to !== r.from && renamePreview.filter(x => x.to === r.to).length > 1 }">{{ r.to }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="batchRenameOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="batchBusy" @click="submitBatchRename">Rename {{ selectedIds.size }}</VibeButton>
-            </template>
-        </VibeModal>
-
         <!-- Advanced search -->
         <AdvancedSearchModal v-model="advOpen" :filters="filters" :all-tags="allTags" />
     </AppLayout>
@@ -982,12 +848,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .select-check {
     cursor: pointer;
-}
-/* Batch action bar sticks to the top while scrolling a long selection. */
-.batch-bar {
-    position: sticky;
-    top: 0.5rem;
-    z-index: 5;
 }
 /* Brief confirmation pulse when a tag is added. */
 .tag-flash {
