@@ -1,0 +1,48 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { reactive } from 'vue';
+
+const { formPost, formReset, routerPost } = vi.hoisted(() => ({ formPost: vi.fn(), formReset: vi.fn(), routerPost: vi.fn() }));
+vi.mock('@inertiajs/vue3', () => ({
+    router: { post: routerPost },
+    // reactive() so the page's computed (needsCurrentPassword) tracks field edits.
+    useForm: (data: Record<string, unknown>) => reactive({ ...data, processing: false, errors: {}, post: formPost, reset: formReset }),
+}));
+vi.mock('vue-advanced-cropper', () => ({ Cropper: { name: 'Cropper', template: '<div class="cropper-stub" />' } }));
+vi.mock('vue-advanced-cropper/dist/style.css', () => ({}));
+
+import Profile from '@/Pages/Profile/Edit.vue';
+
+const user = { name: 'Ada Love', email: 'ada@x.test', avatar_url: null };
+
+describe('Profile/Edit page', () => {
+    beforeEach(() => { formPost.mockClear(); routerPost.mockClear(); });
+
+    it('shows initials when there is no avatar', () => {
+        const wrapper = mount(Profile, { props: { user } });
+        expect(wrapper.text()).toContain('AL');
+    });
+
+    it('submits the profile form to /profile', async () => {
+        const wrapper = mount(Profile, { props: { user } });
+        await wrapper.find('form').trigger('submit');
+        expect(formPost).toHaveBeenCalledWith('/profile', expect.anything());
+    });
+
+    it('reveals the current-password field after changing email', async () => {
+        const wrapper = mount(Profile, { props: { user } });
+        const before = wrapper.findAll('input[type=password]').length;
+        const emailInput = wrapper.findAll('input[type=email]')[0];
+        await emailInput.setValue('new@x.test');
+        expect(wrapper.findAll('input[type=password]').length).toBe(before + 1);
+    });
+
+    it('Change photo opens the file picker', async () => {
+        const wrapper = mount(Profile, { props: { user } });
+        const fileInput = wrapper.find('input[type=file]').element as HTMLInputElement;
+        const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {});
+        const btn = wrapper.findAll('button').find((b) => b.text().includes('Change photo'));
+        await btn!.trigger('click');
+        expect(clickSpy).toHaveBeenCalled();
+    });
+});

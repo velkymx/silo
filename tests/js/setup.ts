@@ -113,6 +113,17 @@ const components: Record<string, any> = {
     VibeTab: passthrough('VibeTab'),
     VibeDroppable: passthrough('VibeDroppable', { isOver: false }),
     VibeDraggable: passthrough('VibeDraggable', { isDragging: false }),
+
+    // Sortable list: render the #default slot once per item so item templates run.
+    VibeSortable: {
+        name: 'VibeSortable',
+        props: ['modelValue', 'itemKey'],
+        setup(props: { modelValue?: unknown[] }, { slots }: { slots: Slots }) {
+            return () => h('div', { 'data-stub': 'VibeSortable' },
+                (props.modelValue ?? []).map((item) => (slots.default ? slots.default({ item }) : null)),
+            );
+        },
+    },
 };
 
 config.global.components = components;

@@ -35,6 +35,7 @@ const props = defineProps({
     allFolders: { type: Array, default: () => [] },
     allTags: { type: Array, default: () => [] },
     searching: { type: Boolean, default: false },
+    advanced: { type: Boolean, default: false },
     starredOnly: { type: Boolean, default: false },
     recentOnly: { type: Boolean, default: false },
     flat: { type: Boolean, default: false },
