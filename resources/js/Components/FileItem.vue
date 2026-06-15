@@ -33,6 +33,7 @@ const emit = defineEmits<{
     action: [unknown];
     drop: [unknown, FileItemData];
     tag: [number];
+    context: [{ item: FileItemData; event: MouseEvent }];
 }>();
 </script>
 
@@ -53,6 +54,7 @@ const emit = defineEmits<{
                         :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver, 'border-primary border-2': selected }"
                         style="cursor: pointer"
                         @click="emit('open', item, $event)"
+                        @contextmenu.prevent="emit('context', { item, event: $event })"
                     >
                         <button
                             v-if="selectMode || selected"
@@ -91,6 +93,7 @@ const emit = defineEmits<{
                             :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || selected }"
                             style="cursor: pointer"
                             @click="emit('open', item, $event)"
+                            @contextmenu.prevent="emit('context', { item, event: $event })"
                         >
                             <VibeIcon
                                 :icon="selected ? 'check-square-fill' : 'square'"

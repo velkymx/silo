@@ -10,6 +10,7 @@ import ShareModal from '../../Components/ShareModal.vue';
 import EditorModal from '../../Components/EditorModal.vue';
 import RenameModal from '../../Components/RenameModal.vue';
 import QuickLookModal from '../../Components/QuickLookModal.vue';
+import ContextMenu from '../../Components/ContextMenu.vue';
 import { useSelection } from '../../composables/useSelection';
 import BatchActions from '../../Components/BatchActions.vue';
 import { useJobPolling } from '../../composables/useJobPolling';
@@ -214,6 +215,23 @@ const {
 } = useSelection(items, openItem);
 
 const { confirm } = useConfirm();
+
+// Right-click context menu over a file/folder row or card.
+const ctxOpen = ref(false);
+const ctxPos = ref({ x: 0, y: 0 });
+const ctxItem = ref(null);
+const ctxMenu = computed(() => {
+    if (!ctxItem.value) return [];
+    return ctxItem.value.is_dir ? folderActions : fileMenu(ctxItem.value);
+});
+function openContext({ item, event }) {
+    ctxItem.value = item;
+    ctxPos.value = { x: event.clientX, y: event.clientY };
+    ctxOpen.value = true;
+}
+function onContextSelect(action) {
+    if (ctxItem.value) onAction(ctxItem.value, { item: action });
+}
 
 function selectFile(item) {
     if (item.is_dir) return;
@@ -632,6 +650,7 @@ onBeforeUnmount(() => {
                         @star="toggleStar"
                         @action="onAction(item, $event)"
                         @drop="onDropToFolder"
+                        @context="openContext"
                     />
                 </VibeCol>
                 <VibeCol v-if="!items.length" :cols="12">
@@ -678,6 +697,7 @@ onBeforeUnmount(() => {
                     @toggle-select="toggleSel"
                     @drop="onDropToFolder"
                     @tag="filterByTag"
+                    @context="openContext"
                 />
             </template>
 
@@ -856,6 +876,15 @@ onBeforeUnmount(() => {
 
         <!-- Advanced search -->
         <AdvancedSearchModal v-model="advOpen" :filters="filters" :all-tags="allTags" />
+
+        <!-- Right-click context menu -->
+        <ContextMenu
+            v-model="ctxOpen"
+            :x="ctxPos.x"
+            :y="ctxPos.y"
+            :items="ctxMenu"
+            @select="onContextSelect"
+        />
     </AppLayout>
 </template>
 
