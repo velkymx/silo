@@ -14,5 +14,9 @@ abstract class TestCase extends BaseTestCase
         // file-manager disk to it so controllers store where the tests assert.
         // Production defaults to the private "local" disk (see C1 / config).
         config(['filemanager.disk' => 'public']);
+
+        // Backend tests must not depend on a compiled front end; stub @vite so
+        // page-rendering requests don't require public/build/manifest.json.
+        $this->withoutVite();
     }
 }
