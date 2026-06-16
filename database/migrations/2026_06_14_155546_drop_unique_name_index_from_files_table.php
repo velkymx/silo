@@ -18,6 +18,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('files', function (Blueprint $table) {
+            // The parent_id foreign key uses this composite unique as its covering
+            // index, so add a plain parent_id index before dropping it (MySQL
+            // refuses to drop an index a foreign key still needs).
+            $table->index('parent_id');
             $table->dropUnique(['parent_id', 'name', 'owner_id']);
         });
     }
@@ -26,6 +30,7 @@ return new class extends Migration
     {
         Schema::table('files', function (Blueprint $table) {
             $table->unique(['parent_id', 'name', 'owner_id']);
+            $table->dropIndex(['parent_id']);
         });
     }
 };
