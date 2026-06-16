@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { ref } from 'vue';
 
 const h = vi.hoisted(() => ({
     viewerCtor: vi.fn(),
@@ -12,6 +11,8 @@ const h = vi.hoisted(() => ({
     superDocCtor: vi.fn(),
     getText: vi.fn(() => Promise.resolve('# Title')),
     getArrayBuffer: vi.fn(() => Promise.resolve(new ArrayBuffer(8))),
+    editor: null as null | { emitChange: (md: string) => void },
+    colorMode: null as null | { value: string },
 }));
 
 vi.mock('@/lib/http', () => ({ getText: h.getText, getArrayBuffer: h.getArrayBuffer }));
@@ -21,8 +22,15 @@ vi.mock('@toast-ui/editor/viewer', () => ({
 vi.mock('@toast-ui/editor', () => ({
     default: class {
         _md: string;
-        constructor(o: { initialValue: string }) { h.editorCtor(o); this._md = o.initialValue; }
-        on() {} getMarkdown() { return this._md; } setMarkdown(v: string) { h.setMarkdown(v); this._md = v; } destroy() {}
+        _change: (() => void) | null = null;
+        constructor(o: { initialValue: string }) { h.editorCtor(o); this._md = o.initialValue; h.editor = this; }
+        on(evt: string, cb: () => void) { if (evt === 'change') this._change = cb; }
+        getMarkdown() { return this._md; }
+        setMarkdown(v: string) { h.setMarkdown(v); this._md = v; }
+        destroy() {}
+        // simulate a toolbar/user edit producing new markdown (Toast UI normalizes,
+        // so the value the editor reports differs from what a parent stored)
+        emitChange(md: string) { this._md = md; this._change?.(); }
     },
 }));
 vi.mock('@toast-ui/editor/dist/toastui-editor-viewer.css', () => ({}));
@@ -34,14 +42,22 @@ vi.mock('@harbour-enterprises/superdoc', () => ({
     SuperDoc: class { constructor(c: { onReady?: () => void }) { h.superDocCtor(c); c.onReady?.(); } },
 }));
 vi.mock('@harbour-enterprises/superdoc/style.css', () => ({}));
-vi.mock('@velkymx/vibeui', () => ({ useColorMode: () => ({ colorMode: ref('light') }) }));
+vi.mock('@velkymx/vibeui', async () => {
+    const { ref } = await import('vue');
+    const cm = ref('light');
+    h.colorMode = cm;
+    return { useColorMode: () => ({ colorMode: cm }) };
+});
 
 import MarkdownViewer from '@/Components/MarkdownViewer.vue';
 import MarkdownEditor from '@/Components/MarkdownEditor.vue';
 import DocViewer from '@/Components/DocViewer.vue';
 import DocxEditor from '@/Components/DocxEditor.vue';
 
-beforeEach(() => Object.values(h).forEach((f) => f.mockClear?.()));
+beforeEach(() => {
+    Object.values(h).forEach((f) => (f as { mockClear?: () => void })?.mockClear?.());
+    if (h.colorMode) h.colorMode.value = 'light';
+});
 
 describe('MarkdownViewer', () => {
     it('renders the fetched markdown via Toast UI Viewer', async () => {
@@ -69,6 +85,29 @@ describe('MarkdownEditor', () => {
         const wrapper = mount(MarkdownEditor, { props: { modelValue: 'a' } });
         await wrapper.setProps({ modelValue: 'b' });
         expect(h.setMarkdown).toHaveBeenCalledWith('b');
+    });
+
+    it('does not feed the editor its own output back (no toolbar revert)', async () => {
+        // v-model: the editor's change emit flows back into modelValue.
+        const wrapper = mount(MarkdownEditor, {
+            props: { modelValue: 'hi', 'onUpdate:modelValue': (v: string) => wrapper.setProps({ modelValue: v }) },
+        });
+        h.setMarkdown.mockClear();
+        // A toolbar action emits new markdown; it round-trips through v-model.
+        h.editor!.emitChange('hi **bold**');
+        await flushPromises();
+        expect(wrapper.props('modelValue')).toBe('hi **bold**');
+        // The editor's own emit must NOT trigger setMarkdown (which would revert it).
+        expect(h.setMarkdown).not.toHaveBeenCalled();
+    });
+
+    it('toggles theme in place — no destroy/rebuild on color-mode flip', async () => {
+        mount(MarkdownEditor, { props: { modelValue: 'x' } });
+        expect(h.editorCtor).toHaveBeenCalledTimes(1);
+        h.colorMode!.value = 'dark';
+        await flushPromises();
+        // Old behavior rebuilt the editor (a 2nd construction); the fix toggles a class.
+        expect(h.editorCtor).toHaveBeenCalledTimes(1);
     });
 });
 

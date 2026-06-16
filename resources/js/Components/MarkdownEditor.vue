@@ -12,6 +12,11 @@ const emit = defineEmits(['update:modelValue']);
 
 const el = ref(null);
 let editor = null;
+// The last markdown WE emitted. Compared against incoming modelValue so the
+// editor's own output is never fed back into it — Toast UI normalizes markdown
+// in WYSIWYG, so comparing against getMarkdown() falsely fires setMarkdown(),
+// which rebuilds the document and drops toolbar formatting / jumps the caret.
+let lastEmitted = props.modelValue;
 const { colorMode } = useColorMode();
 
 // Resolve the effective theme (handles 'auto' via the html data-bs-theme attr).
@@ -36,7 +41,10 @@ function build() {
             ['code', 'codeblock'],
         ],
     });
-    editor.on('change', () => emit('update:modelValue', editor.getMarkdown()));
+    editor.on('change', () => {
+        lastEmitted = editor.getMarkdown();
+        emit('update:modelValue', lastEmitted);
+    });
 }
 
 onMounted(build);
@@ -44,18 +52,20 @@ onMounted(build);
 watch(
     () => props.modelValue,
     (val) => {
-        if (editor && val !== editor.getMarkdown()) editor.setMarkdown(val, false);
+        // Apply only genuinely external changes, never our own emit.
+        if (editor && val !== lastEmitted) {
+            lastEmitted = val;
+            editor.setMarkdown(val, false);
+        }
     }
 );
 
-// Toast UI bakes the theme in at construction — rebuild on color-mode flip.
+// Toast UI's dark theme is purely the `toastui-editor-dark` class on its root.
+// Toggle it live on color-mode flips instead of destroying/rebuilding the
+// editor (which would lose the caret, scroll, and undo history mid-edit).
 watch(colorMode, () => {
-    if (!editor) return;
-    const current = editor.getMarkdown();
-    editor.destroy();
-    editor = null;
-    build();
-    editor.setMarkdown(current, false);
+    const root = el.value?.querySelector('.toastui-editor-defaultUI');
+    root?.classList.toggle('toastui-editor-dark', isDark());
 });
 
 onBeforeUnmount(() => {

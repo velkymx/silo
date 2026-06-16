@@ -3,6 +3,7 @@
 ![File Manager Screenshot](screenshot.png)
 
 [![CI](https://github.com/velkymx/laravel-file-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/velkymx/laravel-file-manager/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](#quick-start-with-docker-recommended)
 [![Laravel 13](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![Vue 3](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
@@ -14,27 +15,41 @@
 
 # File Manager by AJBApps
 
-A self-hosted file manager built with Laravel 13 and an Inertia + Vue 3 single-page UI on [VibeUI](https://www.npmjs.com/package/@velkymx/vibeui) (Bootstrap 5.3). Files and folders are modelled in the database, every action is authorized by policy, uploads are virus-scanned and processed asynchronously for metadata and thumbnails, and common document types can be **edited in the browser**.
+**Your own private Dropbox — running on your server, owned by you.**
+
+A free, **open-source, self-hosted file manager** for Laravel — a privacy-first **alternative to Dropbox, Google Drive, and Nextcloud** that you run on your own server.
+
+Open it in any browser and you get the convenience of Dropbox or Google Drive without handing your files to anyone else. Drag in documents, photos, and spreadsheets; see them in a clean Finder-style grid; press **space** to preview almost anything; edit Word, Excel, and Markdown **right in the page**; then share a link or grant a teammate access. Every file lives in **your** database, on **your** storage — nothing leaves your server.
+
+Under the hood it's **Laravel 13 + Vue 3**, built for real use: every action is permission-checked, every upload is processed in the background for thumbnails and metadata (and optionally virus-scanned), every save is versioned, and every sensitive action is audit-logged. Point it at MySQL/MariaDB/Postgres/SQLite and a storage disk (local or S3), run one queue worker, and you have a production file platform.
+
+**For** teams, self-hosters, agencies, privacy-sensitive orgs, and homelabs who want Drive-grade UX on their own hardware.
 
 ---
 
 ## Features
 
-- **Unified file browser** — a Finder/Dropbox-style list or thumbnail grid (folders first, then files) with name/modified/size columns, colored type icons and image thumbnails, breadcrumb navigation, a collapsible folder-tree sidebar, and list/grid toggle.
+_Ordered by how much you'll touch them day to day._
+
+- **Browse & organize** — a Finder/Dropbox-style thumbnail grid or list (folders first), image thumbnails, colored type icons, breadcrumb navigation, and a list/grid toggle remembered per browser.
+- **Quick Look** — press **space** (or click) to preview images, PDFs, audio, video, rendered Markdown, Office docs, and text; arrow-key paging and a one-click **Actions** menu, no download needed.
+- **Edit in the browser** — Markdown (WYSIWYG + preview), HTML, Word (`.docx`), and spreadsheets (`.xlsx/.xls/.csv/.ods`) with formulas — see [Editing files](#editing-files).
+- **Upload, download, move, copy, rename, delete** — drag-and-drop multi-file upload; transactional database + disk operations so the tree never desyncs.
+- **Search that actually finds it** — match on file **name and content** (extracted text/metadata), then narrow by date (uploaded or edited), size, type, tag, or folder. Save any search as a **Smart Folder** in the sidebar.
+- **Sharing** — grant view/download/edit to a user (by email) or a group; grants on a folder **inherit** to everything inside. Create **public links** with optional password, expiry, and download toggle. "Shared with me" view included.
+- **Photos** — a timeline gallery grouped by month, **albums**, a full-screen lightbox with slideshow, drag-to-reorder, and in-browser **crop / rotate / flip** saved as a new version.
+- **Versioning with change notes** — every save keeps the prior content as a version with an optional "what changed" note; download or restore any earlier version.
+- **Tags & favorites** — colored tags and starring, each one-click to filter.
+- **Trash & restore** — deleted items go to Trash and restore cleanly; a scheduled job purges them after a retention window.
+- **Storage insight & quotas** — a per-type treemap of what's using space, largest-files list, and a per-user quota with a usage meter.
 - **Light / dark / auto theme** — follows the OS in auto mode, one-click toggle, persisted.
-- **Upload, download, copy, move, rename, delete** — transactional DB + disk operations; storage is flat per user with the hierarchy held in the database.
-- **In-browser editing** — Markdown (WYSIWYG + preview), HTML, Word (`.docx`), and spreadsheets (`.xlsx/.xls/.csv/.ods`) — see [Editing files](#editing-files).
-- **Quick Look** — inline preview for images, PDFs, audio, video, rendered Markdown, Office docs, and text (spacebar or click), with keyboard paging and a one-click **Actions** menu.
-- **Versioning with change notes** — every save keeps the previous content as a version with an optional Git-style "what changed" note; download or restore any prior version.
-- **Search** — full-text search (Laravel Scout) across every folder you own (file name, MIME type, extracted metadata).
-- **Tags & favorites** — colored tags and starring, with one-click filtering.
-- **Sharing** — per-file/per-folder access for users (by email) or groups, with permission **inheritance** down the tree, a "Shared with me" view, and **public share links** (optional expiry, optional password, view-only or download).
-- **Trash & restore** — soft-deleted items go to Trash and can be restored; a scheduled job purges them after a retention window.
-- **Antivirus scanning** — every upload is scanned (ClamAV) before it becomes available; infected files are quarantined and blocked.
+
+### Trust, security & operations
+
+- **Admin** — manage users and groups, read a security **audit log**, and create/schedule **compressed backups** (DB dump + blobs + manifest).
+- **Antivirus scanning** _(optional)_ — when enabled, every upload is scanned (ClamAV) before it becomes available; infected or unscannable files are quarantined and blocked (fail-closed).
 - **Metadata & thumbnails** — background jobs refine the MIME type, extract EXIF / image dimensions / ID3 audio tags / text snippets, and generate image (and PDF first-page) thumbnails.
-- **Quotas** — per-user storage limit with a usage indicator.
-- **Admin** — manage users and groups, view a security audit log, and create/schedule **compressed backups**.
-- **Hardened serving** — files are served as attachments unless safely previewable, with `nosniff` + a strict Content-Security-Policy; sensitive routes are rate-limited.
+- **Hardened serving** — files are served as attachments unless safely previewable, with `nosniff` and a strict Content-Security-Policy; public unlock and uploads are rate-limited.
 
 ---
 
@@ -112,7 +127,32 @@ Everything below is done from the UI — no shell access required.
 
 ---
 
+## Quick start with Docker (recommended)
+
+The fastest way to self-host. One image bundles nginx, PHP-FPM, and the queue worker; on first boot it migrates the database, creates your admin account, and starts serving — no manual steps.
+
+```bash
+git clone https://github.com/velkymx/laravel-file-manager.git
+cd laravel-file-manager
+
+# Set your admin login, then start.
+ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='change-me' docker compose up -d
+```
+
+Open **http://localhost:8080** and sign in with those credentials.
+
+- **Data persists** in the `app_storage` volume (uploads + the SQLite database + the app key survive container recreation).
+- **Change the port** with `APP_PORT` (e.g. `APP_PORT=9000 docker compose up -d`).
+- **Index an existing folder in place** — set `IMPORT_ENABLED=true` and mount it at `/import` (uncomment the volume in `docker-compose.yml`); files are referenced, never copied or deleted.
+- **Virus scanning** — uncomment the `clamav` service and set `FILEMANAGER_AV_ENABLED=true`.
+
+By default it runs on SQLite for a zero-dependency start; point `DB_*` at MySQL/MariaDB/PostgreSQL for production scale. For a manual (non-Docker) install, see [Setup](#setup) below.
+
+---
+
 ## Requirements
+
+> Skip this section if you're using Docker above — the image ships every dependency.
 
 - PHP **8.3+** with `gd`, `exif`, and `fileinfo` (thumbnails + metadata). `imagick` adds **PDF thumbnails**; `bz2` enables **ultra** backup compression.
 - Composer 2.x
