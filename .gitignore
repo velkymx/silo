@@ -3,9 +3,10 @@
 /vendor
 .editorconfig
 .env
+.env.qa
+.DS_Store
 .phpunit.result.cache
 todo.md
-/public/build
 /public/build
 /public/build/assets
 
@@ -15,5 +16,4 @@ todo.md
 /test-results
 /playwright-report
 /coverage
-/public/build
 todo-advancedsearch.md
