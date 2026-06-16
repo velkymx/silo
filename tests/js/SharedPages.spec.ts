@@ -1,0 +1,44 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount } from '@vue/test-utils';
+
+const { routerGet } = vi.hoisted(() => ({ routerGet: vi.fn() }));
+vi.mock('@inertiajs/vue3', () => ({
+    router: { get: routerGet, on: vi.fn(() => () => {}) },
+    usePage: () => ({ props: { flash: {}, errors: {} } }),
+}));
+
+import SharedIndex from '@/Pages/Shared/Index.vue';
+import SharedFolder from '@/Pages/Shared/Folder.vue';
+
+const files = [{ id: 21, name: 'photo.png', owner: 'Alice', size: 2048, type: 'png', abilities: ['view'], url: '/raw/21' }];
+
+describe('Shared pages', () => {
+    beforeEach(() => routerGet.mockClear());
+
+    it('Index shows an empty state when nothing is shared', () => {
+        const wrapper = mount(SharedIndex, { props: { folders: [], files: [] } });
+        expect(wrapper.text()).toContain('Nothing shared with you yet');
+    });
+
+    it('Index renders the listing when items exist', () => {
+        const wrapper = mount(SharedIndex, { props: { folders: [], files } });
+        expect(wrapper.text()).toContain('photo.png');
+    });
+
+    it('Folder breadcrumb navigates to an ancestor', async () => {
+        const wrapper = mount(SharedFolder, {
+            props: { current: { id: 5, name: 'Day1' }, trail: [{ id: 2, name: 'Trip' }], folders: [], files },
+        });
+        // Breadcrumb stub is a passthrough; trigger the handler directly.
+        wrapper.findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 2 } });
+        expect(routerGet).toHaveBeenCalledWith('/shared/2', {}, expect.anything());
+    });
+
+    it('Folder breadcrumb to root goes to /shared', async () => {
+        const wrapper = mount(SharedFolder, {
+            props: { current: { id: 5, name: 'Day1' }, trail: [], folders: [], files },
+        });
+        wrapper.findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: null } });
+        expect(routerGet).toHaveBeenCalledWith('/shared', {}, expect.anything());
+    });
+});

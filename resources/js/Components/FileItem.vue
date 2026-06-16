@@ -1,0 +1,147 @@
+<script setup lang="ts">
+import { iconFor, colorFor } from '../lib/fileTypes';
+import ItemActions from './ItemActions.vue';
+
+interface Tag { id: number; name: string; color?: string }
+interface FileItemData {
+    id: number;
+    name: string;
+    type?: string;
+    is_dir?: boolean;
+    starred?: boolean;
+    thumb_url?: string | null;
+    size?: number;
+    item_count?: number;
+    status?: string;
+    version?: number;
+    tags?: Tag[];
+}
+interface ActionItem { text: string; icon: string; action: string }
+
+defineProps<{
+    item: FileItemData;
+    view: 'grid' | 'list';
+    selectMode?: boolean;
+    selected?: boolean;
+    menu?: ActionItem[];
+}>();
+
+const emit = defineEmits<{
+    open: [FileItemData, MouseEvent];
+    'toggle-select': [number];
+    star: [FileItemData];
+    action: [unknown];
+    drop: [unknown, FileItemData];
+    tag: [number];
+    context: [{ item: FileItemData; event: MouseEvent }];
+}>();
+</script>
+
+<template>
+    <VibeDraggable :payload="item" group="files" tag="div" :class="view === 'grid' ? 'h-100' : ''">
+        <template #default="{ isDragging }">
+            <component
+                :is="item.is_dir ? 'VibeDroppable' : 'div'"
+                group="files"
+                :class="view === 'grid' ? 'h-100' : ''"
+                @drop="emit('drop', $event, item)"
+            >
+                <template #default="drop">
+                    <!-- GRID: card -->
+                    <div
+                        v-if="view === 'grid'"
+                        class="card h-100 text-center border position-relative"
+                        :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver, 'border-primary border-2': selected }"
+                        style="cursor: pointer"
+                        @click="emit('open', item, $event)"
+                        @contextmenu.prevent="emit('context', { item, event: $event })"
+                    >
+                        <button
+                            v-if="selectMode || selected"
+                            type="button"
+                            class="grid-select position-absolute top-0 start-0 m-1 btn btn-sm p-0 lh-1 bg-body rounded-circle"
+                            :class="selected ? 'text-primary' : 'text-muted'"
+                            :aria-pressed="selected"
+                            :aria-label="selected ? `Deselect ${item.name}` : `Select ${item.name}`"
+                            style="z-index: 3"
+                            @click.stop="emit('toggle-select', item.id)"
+                        >
+                            <VibeIcon :icon="selected ? 'check-circle-fill' : 'circle'" />
+                        </button>
+                        <div class="position-absolute top-0 end-0 m-1" style="z-index: 2">
+                            <ItemActions :item="item" :menu="menu" @star="emit('star', item)" @action="emit('action', $event)" />
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
+                            <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="w-100 h-100" style="object-fit: cover">
+                            <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="display-4" :style="{ color: colorFor(item) }" />
+                        </div>
+                        <div class="p-2">
+                            <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem">
+                                {{ item.is_dir ? `${item.item_count} items` : `${((item.size ?? 0) / 1024).toFixed(1)} KB` }}
+                            </div>
+                            <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
+                            <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="mt-1"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
+                            <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
+                        </div>
+                    </div>
+
+                    <!-- LIST: name cell -->
+                    <template v-else>
+                        <div
+                            class="list-row d-flex align-items-center rounded"
+                            :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || selected }"
+                            style="cursor: pointer"
+                            @click="emit('open', item, $event)"
+                            @contextmenu.prevent="emit('context', { item, event: $event })"
+                        >
+                            <VibeIcon
+                                :icon="selected ? 'check-square-fill' : 'square'"
+                                class="me-2 flex-shrink-0 select-check"
+                                :class="[selected ? 'text-primary' : 'text-muted', { 'check-idle': !selectMode && !selected }]"
+                                @click.stop="emit('toggle-select', item.id)"
+                            />
+                            <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
+                            <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="me-2 fs-4 flex-shrink-0" :style="{ color: colorFor(item) }" />
+                            <span class="text-truncate" :title="item.name">{{ item.name }}</span>
+                            <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
+                            <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
+                            <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
+                            <VibeBadge v-if="(item.version ?? 0) > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
+                        </div>
+                        <div v-if="item.tags?.length" class="d-flex flex-wrap gap-1 mt-1 ms-5">
+                            <span
+                                v-for="t in item.tags"
+                                :key="t.id"
+                                class="badge rounded-pill"
+                                :style="{ backgroundColor: t.color || '#6c757d', cursor: 'pointer' }"
+                                @click.stop="emit('tag', t.id)"
+                            >{{ t.name }}</span>
+                        </div>
+                    </template>
+                </template>
+            </component>
+        </template>
+    </VibeDraggable>
+</template>
+
+<style scoped>
+/* Subtle lift on grid cards for tactile hover feedback. */
+.card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12) !important;
+}
+/* Outside select mode the list checkbox stays hidden until the row is hovered
+   or focused, so it doesn't compete with the filename. */
+.select-check.check-idle {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.list-row:hover .select-check.check-idle,
+.list-row:focus-within .select-check.check-idle {
+    opacity: 1;
+}
+</style>

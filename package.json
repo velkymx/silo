@@ -3,18 +3,46 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:e2e": "playwright test",
+        "test:unit": "vitest run",
+        "test:unit:watch": "vitest",
+        "typecheck": "vue-tsc --noEmit"
     },
     "devDependencies": {
+        "@playwright/test": "^1.60.0",
         "@popperjs/core": "^2.11.6",
+        "@vitejs/plugin-vue": "^6.0.7",
+        "@vitest/coverage-v8": "^4.1.8",
+        "@vue/test-utils": "^2.4.11",
+        "@vue/tsconfig": "^0.9.1",
         "autoprefixer": "^10.4.20",
-        "axios": "^1.7.4",
-        "bootstrap": "^5.2.3",
-        "concurrently": "^9.0.1",
-        "laravel-vite-plugin": "^1.0",
+        "bootstrap": "^5.3.8",
+        "concurrently": "^10.0.3",
+        "jsdom": "^29.1.1",
+        "laravel-vite-plugin": "^3.1.0",
+        "playwright": "^1.60.0",
         "postcss": "^8.4.47",
         "sass": "^1.56.1",
-        "tailwindcss": "^3.4.13",
-        "vite": "^5.0"
+        "typescript": "^6.0.3",
+        "vite": "^8.0.16",
+        "vitest": "^4.1.8",
+        "vue-tsc": "^3.3.5"
+    },
+    "dependencies": {
+        "@harbour-enterprises/superdoc": "^1.40.1",
+        "@inertiajs/vue3": "^3.4.0",
+        "@toast-ui/editor": "^3.2.2",
+        "@velkymx/vibeui": "^1.0.2",
+        "bootstrap-icons": "^1.13.1",
+        "docx-preview": "^0.3.7",
+        "dompurify": "^3.4.10",
+        "jspreadsheet-ce": "^5.0.4",
+        "jsuites": "^6.4.0",
+        "material-icons": "^1.13.14",
+        "quill": "^2.0.3",
+        "vue": "^3.5.38",
+        "vue-advanced-cropper": "^2.8.9",
+        "xlsx": "^0.18.5"
     }
 }

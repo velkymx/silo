@@ -23,6 +23,7 @@ class User extends Authenticatable
         'password',
         'group_id',
         'is_admin',
+        'avatar_path',
     ];
 
     /**
@@ -45,6 +46,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
     }
 
@@ -53,5 +55,10 @@ class User extends Authenticatable
     public function group()
     {
         return $this->belongsTo(Group::class);
+    }
+
+    public function files()
+    {
+        return $this->hasMany(File::class, 'owner_id');
     }
 }

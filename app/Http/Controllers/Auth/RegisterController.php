@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Inertia\Inertia;
 
 class RegisterController extends Controller
 {
@@ -28,7 +29,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/';
 
     /**
      * Create a new controller instance.
@@ -38,6 +39,24 @@ class RegisterController extends Controller
     public function __construct()
     {
         $this->middleware('guest');
+
+        // Self-service registration is opt-in (admin-only by default).
+        $this->middleware(function ($request, $next) {
+            abort_unless(config('filemanager.allow_registration'), 404);
+
+            return $next($request);
+        })->only(['showRegistrationForm', 'register']);
+
+        // Throttle the signup endpoint against automated account creation.
+        $this->middleware('throttle:5,1')->only('register');
+    }
+
+    /**
+     * Show the application registration form.
+     */
+    public function showRegistrationForm()
+    {
+        return Inertia::render('Auth/Register');
     }
 
     /**

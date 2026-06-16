@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Group;
+use Inertia\Inertia;
 
 class AdminController extends Controller
 {
@@ -17,7 +18,7 @@ class AdminController extends Controller
             $user = auth()->user();
 
             // Abort if the user is not authenticated or not an admin
-            if (!$user || $user->is_admin != 1) {
+            if (! $user || ! $user->is_admin) {
                 abort(403, 'Access denied. Admins only.');
             }
 
@@ -33,9 +34,15 @@ class AdminController extends Controller
     public function index()
     {
         // Retrieve all users with their associated groups
-        $users = User::with('group')->get();
+        $users = User::with('group')->get()->map(fn (User $user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_admin' => (bool) $user->is_admin,
+            'group' => $user->group?->name,
+        ]);
 
-        return view('admin.users.index', compact('users'));
+        return Inertia::render('Admin/Users/Index', compact('users'));
     }
 
     /**
@@ -46,10 +53,10 @@ class AdminController extends Controller
      */
     public function edit(User $user)
     {
-        // Retrieve all available groups
-        $groups = Group::all();
-
-        return view('admin.users.edit', compact('user', 'groups'));
+        return Inertia::render('Admin/Users/Edit', [
+            'user' => $user->only('id', 'name', 'email', 'is_admin', 'group_id'),
+            'groups' => Group::all(['id', 'name']),
+        ]);
     }
 
     /**
@@ -86,11 +93,20 @@ class AdminController extends Controller
             'is_admin' => 'nullable|boolean',
         ]);
 
+        // Never let the final administrator strip their own (or the last) admin
+        // flag — that would lock everyone out of the admin area.
+        $wantsAdmin = $request->boolean('is_admin');
+        if ($user->is_admin && ! $wantsAdmin && User::where('is_admin', true)->count() <= 1) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'is_admin' => 'You cannot remove the last administrator.',
+            ]);
+        }
+
         // Update the user's basic info
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->group_id = $validated['group_id'];
-        $user->is_admin = $request->has('is_admin') ? 1 : 0;
+        $user->is_admin = $wantsAdmin;
 
         // Update password only if provided
         if (!empty($validated['password'])) {

@@ -1,0 +1,7 @@
+# File-manager scheduler. Drives scheduled tasks, including the daily
+# trash:purge that permanently removes items past the retention window.
+#
+# Install (as the deploy user):  crontab deploy/crontab
+# (adjust the path to artisan for your install location)
+
+* * * * * cd /var/www/file-manager && php artisan schedule:run >> /dev/null 2>&1

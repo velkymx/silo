@@ -45,6 +45,15 @@ return [
             'throw' => false,
         ],
 
+        // A read-only host folder to index in place (e.g. a Docker bind mount).
+        // Indexed via `files:import --disk=import`; blobs are referenced, never
+        // copied or deleted by the app.
+        'import' => [
+            'driver' => 'local',
+            'root' => env('IMPORT_PATH', storage_path('app/import')),
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

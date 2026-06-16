@@ -3,3 +3,17 @@
 /vendor
 .editorconfig
 .env
+.env.qa
+.DS_Store
+.phpunit.result.cache
+todo.md
+/public/build
+/public/build/assets
+
+/qa-drive*.mjs
+/tmp
+
+/test-results
+/playwright-report
+/coverage
+todo-advancedsearch.md
