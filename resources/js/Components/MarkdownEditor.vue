@@ -60,15 +60,12 @@ watch(
     }
 );
 
-// Toast UI bakes the theme in at construction — rebuild on color-mode flip.
+// Toast UI's dark theme is purely the `toastui-editor-dark` class on its root.
+// Toggle it live on color-mode flips instead of destroying/rebuilding the
+// editor (which would lose the caret, scroll, and undo history mid-edit).
 watch(colorMode, () => {
-    if (!editor) return;
-    const current = editor.getMarkdown();
-    lastEmitted = current;
-    editor.destroy();
-    editor = null;
-    build();
-    editor.setMarkdown(current, false);
+    const root = el.value?.querySelector('.toastui-editor-defaultUI');
+    root?.classList.toggle('toastui-editor-dark', isDark());
 });
 
 onBeforeUnmount(() => {

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { ref } from 'vue';
 
 const h = vi.hoisted(() => ({
     viewerCtor: vi.fn(),
@@ -13,6 +12,7 @@ const h = vi.hoisted(() => ({
     getText: vi.fn(() => Promise.resolve('# Title')),
     getArrayBuffer: vi.fn(() => Promise.resolve(new ArrayBuffer(8))),
     editor: null as null | { emitChange: (md: string) => void },
+    colorMode: null as null | { value: string },
 }));
 
 vi.mock('@/lib/http', () => ({ getText: h.getText, getArrayBuffer: h.getArrayBuffer }));
@@ -42,14 +42,22 @@ vi.mock('@harbour-enterprises/superdoc', () => ({
     SuperDoc: class { constructor(c: { onReady?: () => void }) { h.superDocCtor(c); c.onReady?.(); } },
 }));
 vi.mock('@harbour-enterprises/superdoc/style.css', () => ({}));
-vi.mock('@velkymx/vibeui', () => ({ useColorMode: () => ({ colorMode: ref('light') }) }));
+vi.mock('@velkymx/vibeui', async () => {
+    const { ref } = await import('vue');
+    const cm = ref('light');
+    h.colorMode = cm;
+    return { useColorMode: () => ({ colorMode: cm }) };
+});
 
 import MarkdownViewer from '@/Components/MarkdownViewer.vue';
 import MarkdownEditor from '@/Components/MarkdownEditor.vue';
 import DocViewer from '@/Components/DocViewer.vue';
 import DocxEditor from '@/Components/DocxEditor.vue';
 
-beforeEach(() => Object.values(h).forEach((f) => (f as { mockClear?: () => void })?.mockClear?.()));
+beforeEach(() => {
+    Object.values(h).forEach((f) => (f as { mockClear?: () => void })?.mockClear?.());
+    if (h.colorMode) h.colorMode.value = 'light';
+});
 
 describe('MarkdownViewer', () => {
     it('renders the fetched markdown via Toast UI Viewer', async () => {
@@ -91,6 +99,15 @@ describe('MarkdownEditor', () => {
         expect(wrapper.props('modelValue')).toBe('hi **bold**');
         // The editor's own emit must NOT trigger setMarkdown (which would revert it).
         expect(h.setMarkdown).not.toHaveBeenCalled();
+    });
+
+    it('toggles theme in place — no destroy/rebuild on color-mode flip', async () => {
+        mount(MarkdownEditor, { props: { modelValue: 'x' } });
+        expect(h.editorCtor).toHaveBeenCalledTimes(1);
+        h.colorMode!.value = 'dark';
+        await flushPromises();
+        // Old behavior rebuilt the editor (a 2nd construction); the fix toggles a class.
+        expect(h.editorCtor).toHaveBeenCalledTimes(1);
     });
 });
 
