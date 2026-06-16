@@ -20,6 +20,13 @@ vi.mock('@/lib/http', () => ({
     getArrayBuffer: vi.fn(() => Promise.resolve(new ArrayBuffer(0))),
 }));
 
+// Stub heavy modal children (each covered by its own spec) so their internal
+// async handlers don't fire during Files/Index interaction tests.
+vi.mock('@/Components/EditorModal.vue', () => ({ default: { name: 'EditorModal', template: '<div />' } }));
+vi.mock('@/Components/ShareModal.vue', () => ({ default: { name: 'ShareModal', template: '<div />' } }));
+vi.mock('@/Components/QuickLookModal.vue', () => ({ default: { name: 'QuickLookModal', template: '<div />' } }));
+vi.mock('@/Components/UploadModal.vue', () => ({ default: { name: 'UploadModal', template: '<div />' } }));
+
 import FilesIndex from '@/Pages/Files/Index.vue';
 import { useDialogHost } from '@/composables/useConfirm';
 
@@ -150,6 +157,59 @@ describe('Files/Index item actions (grid view)', () => {
         const word = w.findAll('button.dd-item').find((b) => b.text().includes('Word document'));
         await word!.trigger('click');
         expect(s.get).toHaveBeenCalledWith('/files/new/docx', {});
+    });
+
+    const grid = (extra = {}) => { localStorage.setItem('fm-view', 'grid'); return mountIndex(extra); };
+
+    it('action → move submits the transfer', async () => {
+        const w = grid();
+        fileItem(w).vm.$emit('action', { item: { action: 'move' } });
+        await flushPromises();
+        const moveBtn = w.findAll('button').find((b) => b.text().trim() === 'Move' && !b.classes().includes('dd-item'));
+        await moveBtn!.trigger('click');
+        expect(s.formPost).toHaveBeenCalledWith('/files/21/move', expect.anything());
+    });
+
+    it('action → tags then Save puts the tag list', async () => {
+        const w = grid();
+        fileItem(w).vm.$emit('action', { item: { action: 'tags' } });
+        await flushPromises();
+        const save = w.findAll('button').find((b) => b.text().trim() === 'Save');
+        await save!.trigger('click');
+        expect(s.put).toHaveBeenCalledWith('/files/21/tags', { tags: [] }, expect.anything());
+    });
+
+    it('action → versions then Restore confirms + posts', async () => {
+        const w = grid({ files: [{ ...files[0], version: 2, versions: [{ id: 5, version: 1, note: 'x', size: 1024, created_at: 't' }] }] });
+        fileItem(w).vm.$emit('action', { item: { action: 'versions' } });
+        await flushPromises();
+        const restore = w.findAll('button').find((b) => b.text().includes('Restore'));
+        await restore!.trigger('click');
+        const host = useDialogHost();
+        host.accept();
+        await flushPromises();
+        expect(s.post).toHaveBeenCalledWith('/files/21/versions/5/restore', {}, expect.anything());
+    });
+
+    it('right-click context → delete confirms + deletes', async () => {
+        const w = grid();
+        fileItem(w).vm.$emit('context', { item: files[0], event: { clientX: 5, clientY: 6 } });
+        await flushPromises();
+        w.findComponent({ name: 'ContextMenu' }).vm.$emit('select', { action: 'delete' });
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.accept();
+        await flushPromises();
+        expect(s.del).toHaveBeenCalledWith('/delete/21', expect.anything());
+    });
+
+    it('space opens Quick Look and arrows page through', () => {
+        grid();
+        expect(() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        }).not.toThrow();
     });
 
     it('creating a folder posts to /folders', async () => {
