@@ -49,7 +49,18 @@ const components: Record<string, any> = {
         template: '<input type="checkbox" role="switch" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
     },
     VibeFormGroup: passthrough('VibeFormGroup'),
-    VibeInputGroup: passthrough('VibeInputGroup'),
+    // Render prepend + default + append so input-group affixes (buttons, dropdowns) mount.
+    VibeInputGroup: {
+        name: 'VibeInputGroup',
+        inheritAttrs: false,
+        setup(_: unknown, { slots }: { slots: Slots }) {
+            return () => h('div', { 'data-stub': 'VibeInputGroup' }, [
+                slots.prepend ? slots.prepend() : null,
+                slots.default ? slots.default() : null,
+                slots.append ? slots.append() : null,
+            ]);
+        },
+    },
     VibeAutocomplete: inputStub('VibeAutocomplete'),
     VibeFormWysiwyg: inputStub('VibeFormWysiwyg'),
 
@@ -100,6 +111,7 @@ const components: Record<string, any> = {
     },
 
     VibeCard: passthrough('VibeCard'),
+    VibeContainer: passthrough('VibeContainer'),
     VibeRow: passthrough('VibeRow'),
     VibeCol: passthrough('VibeCol'),
     VibeAlert: passthrough('VibeAlert'),
@@ -161,6 +173,10 @@ if (!window.matchMedia) {
             return false;
         },
     })) as unknown as typeof window.matchMedia;
+}
+
+if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = function scrollIntoView() {};
 }
 
 if (!globalThis.ResizeObserver) {

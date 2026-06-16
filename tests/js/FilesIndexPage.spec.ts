@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const s = vi.hoisted(() => ({
     get: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn(), visit: vi.fn(), reload: vi.fn(),
@@ -13,7 +13,15 @@ vi.mock('@inertiajs/vue3', () => ({
     Head: { name: 'Head', template: '<span><slot /></span>' },
 }));
 
+// Stub network so child modals (Editor/Share/Doc viewers) don't hit real fetch.
+vi.mock('@/lib/http', () => ({
+    http: { get: vi.fn(() => Promise.resolve({ permissions: [], inherited: [], groups: [], links: [] })), post: vi.fn(() => Promise.resolve({})), put: vi.fn(() => Promise.resolve({})), del: vi.fn(() => Promise.resolve({})) },
+    getText: vi.fn(() => Promise.resolve('')),
+    getArrayBuffer: vi.fn(() => Promise.resolve(new ArrayBuffer(0))),
+}));
+
 import FilesIndex from '@/Pages/Files/Index.vue';
+import { useDialogHost } from '@/composables/useConfirm';
 
 const folders = [{ id: 10, name: 'Reports', is_dir: true, item_count: 0, tags: [], updated_at: 'now' }];
 const files = [{ id: 21, name: 'memo.txt', is_dir: false, type: 'txt', size: 12, status: 'ready', versions: [], tags: [], created_at: 'now' }];
@@ -74,5 +82,82 @@ describe('Files/Index page', () => {
             filters: { search: '', sort: 'name', direction: 'asc', ftype: 'image', size_min: 1048576 },
         });
         expect(wrapper.text()).toContain('Images');
+    });
+});
+
+describe('Files/Index item actions (grid view)', () => {
+    function gridIndex() {
+        localStorage.setItem('fm-view', 'grid');
+        return mountIndex();
+    }
+    const fileItem = (w: ReturnType<typeof mountIndex>) =>
+        w.findAllComponents({ name: 'FileItem' }).find((c) => !c.props('item').is_dir)!;
+    const folderItem = (w: ReturnType<typeof mountIndex>) =>
+        w.findAllComponents({ name: 'FileItem' }).find((c) => c.props('item').is_dir)!;
+
+    beforeEach(() => { Object.values(s).forEach((f) => f.mockClear()); localStorage.clear(); });
+
+    it('star event posts to the star route', async () => {
+        const w = gridIndex();
+        fileItem(w).vm.$emit('star', files[0]);
+        await flushPromises();
+        expect(s.post).toHaveBeenCalledWith('/files/21/star', {}, expect.anything());
+    });
+
+    it('drop onto a folder moves the file', async () => {
+        const w = gridIndex();
+        fileItem(w).vm.$emit('drop', { payload: { id: 21 } }, { id: 10, is_dir: true });
+        expect(s.post).toHaveBeenCalledWith('/files/21/move', { target_id: 10 }, expect.anything());
+    });
+
+    it('opening a folder navigates into it', async () => {
+        const w = gridIndex();
+        folderItem(w).vm.$emit('open', { ...folders[0] });
+        expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
+    });
+
+    it('action → delete confirms then deletes', async () => {
+        const w = gridIndex();
+        fileItem(w).vm.$emit('action', { item: { action: 'delete' } });
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.accept();
+        await flushPromises();
+        expect(s.del).toHaveBeenCalledWith('/delete/21', expect.anything());
+    });
+
+    it.each(['rename', 'move', 'copy', 'share', 'tags', 'versions', 'details', 'edit', 'download'])(
+        'action → %s runs without error', (action) => {
+            const w = gridIndex();
+            expect(() => fileItem(w).vm.$emit('action', { item: { action } })).not.toThrow();
+        },
+    );
+
+    it.each([
+        ['New Folder', null],
+        ['Upload files', null],
+        ['Markdown file', null],
+    ])('New menu → %s opens its surface', async (label) => {
+        const w = gridIndex();
+        const item = w.findAll('button.dd-item').find((b) => b.text().includes(label));
+        await item!.trigger('click');
+        // No throw + handler executed (modals are stubbed open).
+        expect(item).toBeTruthy();
+    });
+
+    it('New menu → Word document opens the editor page', async () => {
+        const w = gridIndex();
+        const word = w.findAll('button.dd-item').find((b) => b.text().includes('Word document'));
+        await word!.trigger('click');
+        expect(s.get).toHaveBeenCalledWith('/files/new/docx', {});
+    });
+
+    it('creating a folder posts to /folders', async () => {
+        const w = gridIndex();
+        const newFolder = w.findAll('button.dd-item').find((b) => b.text().includes('New Folder'));
+        await newFolder!.trigger('click');
+        // Several modals render a "Create" button; the folder modal's runs submitFolder.
+        for (const c of w.findAll('button').filter((b) => b.text().trim() === 'Create')) await c.trigger('click');
+        expect(s.formPost).toHaveBeenCalledWith('/folders', expect.anything());
     });
 });

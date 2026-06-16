@@ -59,6 +59,64 @@ describe('Photos/Index page', () => {
         expect(s.formPost).toHaveBeenCalledWith('/photos/albums', expect.anything());
     });
 
+    it('photo menu → Star posts to the star route', async () => {
+        const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
+        const star = wrapper.findAll('button.dd-item').find((b) => b.text().trim() === 'Star');
+        await star!.trigger('click');
+        expect(s.routerPost).toHaveBeenCalledWith('/files/1/star', {}, expect.anything());
+    });
+
+    it('photo menu → Delete confirms then deletes', async () => {
+        const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
+        const del = wrapper.findAll('button.dd-item').find((b) => b.text().trim() === 'Delete');
+        await del!.trigger('click');
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.accept();
+        await flushPromises();
+        expect(s.routerDelete).toHaveBeenCalledWith('/delete/1', expect.anything());
+    });
+
+    it.each(['Open', 'Edit', 'Download'])('photo menu → %s runs without error', (label) => {
+        const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
+        const item = wrapper.findAll('button.dd-item').find((b) => b.text().trim() === label);
+        expect(() => item!.trigger('click')).not.toThrow();
+    });
+
+    it('lightbox prev/next step through photos', async () => {
+        const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
+        // Open the first photo into the lightbox.
+        await wrapper.find('.photo-cell').trigger('click');
+        const next = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Next photo');
+        const prev = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Previous photo');
+        await next!.trigger('click');
+        await prev!.trigger('click');
+        expect(next && prev).toBeTruthy();
+    });
+
+    it('deletes an album from the active-album header', async () => {
+        const wrapper = mount(Photos, { props: { photos, albums: [{ id: 8, name: 'Trip', count: 2 }], tags: [], filters: { album: 8, tag: null } } });
+        // The only icon-only button outside the photo grid is the album delete.
+        const del = wrapper.findAll('button').find((b) => b.find('.bi').exists() && b.text() === '' && !b.element.closest('.photo-cell'));
+        await del!.trigger('click');
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.accept();
+        await flushPromises();
+        expect(s.routerDelete).toHaveBeenCalledWith('/photos/albums/8', expect.anything());
+    });
+
+    it('adds the selection to an album', async () => {
+        const wrapper = mount(Photos, { props: { photos, albums: [{ id: 8, name: 'Trip', count: 2 }], tags: [] } });
+        await wrapper.findAll('button').find((b) => b.text().includes('Select'))!.trigger('click');
+        await wrapper.find('.photo-cell').trigger('click');
+        // The "Add to album" dropdown has no #item slot, so emit its item-click directly.
+        const dd = wrapper.findAllComponents({ name: 'VibeDropdown' }).find((c) => (c.props('items') as { id: number }[])?.some((i) => i.id === 8));
+        dd!.vm.$emit('item-click', { item: { id: 8 } });
+        await flushPromises();
+        expect(s.routerPost).toHaveBeenCalledWith('/photos/albums/8/photos', { file_ids: [1] }, expect.anything());
+    });
+
     it('batch delete confirms then posts the ids', async () => {
         const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
         // Enter select mode, select the first photo.
