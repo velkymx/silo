@@ -869,18 +869,7 @@ class FileController extends Controller
     // Archive the file's current blob as a historical version row.
     protected function snapshotVersion(File $file, ?int $createdBy = null, ?string $note = null): void
     {
-        FileVersion::create([
-            'file_id' => $file->id,
-            'version' => $file->version,
-            'note' => $note,
-            'name' => $file->name,
-            'path' => $file->path,
-            'disk' => $file->disk,
-            'mime' => $file->mime,
-            'size' => $file->size,
-            'hash' => $file->hash,
-            'created_by' => $createdBy ?? $file->owner_id,
-        ]);
+        app(\App\Services\FileVersioning::class)->snapshot($file, $createdBy, $note);
     }
 
     // Resolve a folder owned by the user, or null for the root.

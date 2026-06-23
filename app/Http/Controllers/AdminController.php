@@ -91,6 +91,14 @@ class AdminController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'group_id' => 'required|exists:groups,id',
             'is_admin' => 'nullable|boolean',
+            // Directory profile fields (admins may edit others').
+            'title' => 'nullable|string|max:120',
+            'department' => 'nullable|string|max:120',
+            'phone' => 'nullable|string|max:40',
+            'location' => 'nullable|string|max:120',
+            'bio' => 'nullable|string|max:2000',
+            'start_date' => 'nullable|date',
+            'manager_id' => 'nullable|exists:users,id',
         ]);
 
         // Never let the final administrator strip their own (or the last) admin
@@ -107,6 +115,8 @@ class AdminController extends Controller
         $user->email = $validated['email'];
         $user->group_id = $validated['group_id'];
         $user->is_admin = $wantsAdmin;
+        $user->fill(collect($validated)
+            ->only(['title', 'department', 'phone', 'location', 'bio', 'start_date', 'manager_id'])->all());
 
         // Update password only if provided
         if (!empty($validated['password'])) {

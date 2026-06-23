@@ -151,6 +151,30 @@ class File extends Model
     }
 
     /**
+     * Wikilinks this note points at (outbound).
+     */
+    public function outgoingLinks(): HasMany
+    {
+        return $this->hasMany(NoteLink::class, 'source_file_id');
+    }
+
+    /**
+     * Notes that link to this note — the backlinks / "Linked Mentions" set.
+     */
+    public function incomingLinks(): HasMany
+    {
+        return $this->hasMany(NoteLink::class, 'target_file_id');
+    }
+
+    /**
+     * @user mentions contained in this note.
+     */
+    public function mentions(): HasMany
+    {
+        return $this->hasMany(NoteMention::class, 'file_id');
+    }
+
+    /**
      * Scope to folders only.
      */
     public function scopeFolders($query)

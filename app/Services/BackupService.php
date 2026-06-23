@@ -362,12 +362,24 @@ class BackupService
     private function restoreJsonSnapshot(array $data): void
     {
         Schema::disableForeignKeyConstraints();
+        // SQLite ignores the disable PRAGMA inside a transaction (e.g. tests), so
+        // also defer FK checks to commit — by then every table is repopulated and
+        // consistent, making restore order independent of table creation order.
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA defer_foreign_keys = ON');
+        }
         try {
+            // Clear all tables, then repopulate. Deferred/disabled FK checks keep
+            // this safe regardless of parent/child ordering in the snapshot.
+            foreach (array_reverse(array_keys($data)) as $table) {
+                if (Schema::hasTable($table)) {
+                    DB::table($table)->delete();
+                }
+            }
             foreach ($data as $table => $rows) {
                 if (! Schema::hasTable($table)) {
                     continue;
                 }
-                DB::table($table)->truncate();
                 foreach (array_chunk($rows, 500) as $chunk) {
                     if ($chunk) {
                         DB::table($table)->insert($chunk);

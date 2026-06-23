@@ -19,6 +19,12 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     current_password: '',
+    title: props.user.title || '',
+    department: props.user.department || '',
+    phone: props.user.phone || '',
+    location: props.user.location || '',
+    bio: props.user.bio || '',
+    start_date: props.user.start_date || '',
 });
 
 // Changing the email or password requires the current password.
@@ -147,6 +153,29 @@ function applyCrop() {
                                 help-text="Required to change your email or password."
                             />
                         </VibeFormGroup>
+
+                        <hr class="my-4">
+                        <h2 class="h6 text-muted text-uppercase mb-3">Directory profile</h2>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <VibeFormGroup label="Job title"><VibeFormInput v-model="form.title" /></VibeFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <VibeFormGroup label="Department"><VibeFormInput v-model="form.department" /></VibeFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <VibeFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></VibeFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <VibeFormGroup label="Location"><VibeFormInput v-model="form.location" /></VibeFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <VibeFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></VibeFormGroup>
+                            </div>
+                            <div class="col-12">
+                                <VibeFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></VibeFormGroup>
+                            </div>
+                        </div>
 
                         <VibeButton type="submit" variant="primary" class="mt-4" :disabled="form.processing">
                             <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save Changes' }}

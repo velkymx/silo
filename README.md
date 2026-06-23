@@ -242,6 +242,13 @@ Key options in `config/filemanager.php` (overridable via `.env`):
 | `FILEMANAGER_AV_ENABLED` | `false` | Scan uploads with the configured antivirus command. |
 | `FILEMANAGER_AV_COMMAND` | `clamdscan --no-summary --fdpass` | Scanner command (the file path is appended). |
 | `FILEMANAGER_AV_TIMEOUT` | `120` | Scan timeout in seconds. |
+| `FILEMANAGER_NOTES_FOLDER` | `Notes` | Name of the per-user root folder for the Notes surface. |
+| `FILEMANAGER_NOTES_SNAPSHOT_INTERVAL` | `10` | Minutes of continuous editing before notes autosave archives a new version (explicit "Save version" always snapshots). |
+| `VAULT_KEY` | _(falls back to `APP_KEY`)_ | Base64 32-byte key for encrypting Secrets Vault entries at rest (`php artisan vault:key`). Server-side encryption, not zero-knowledge; back it up. |
+| `ALLOW_REGISTRATION` | `false` | Open self-service signup. When `false`, the `/register` routes return 404 and accounts are created by an admin. |
+| `ADMIN_EMAIL` | `admin@example.com` | Email of the admin account created by `db:seed` on a clean build. |
+| `ADMIN_PASSWORD` | `password` | Password for the seeded admin (change for any non-local deploy). |
+| `ADMIN_NAME` | `Administrator` | Display name for the seeded admin. |
 | `SCOUT_DRIVER` | `database` | Search engine (`database`, `meilisearch`, `typesense`, …). |
 
 ---

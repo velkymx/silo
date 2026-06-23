@@ -85,11 +85,14 @@ const { pct: storagePct, bars: storageBars } = useStorageMeter(
 
 // Footer legalese.
 const year = new Date().getFullYear();
-const appName = import.meta.env.VITE_APP_NAME || 'File Manager';
+const appName = import.meta.env.VITE_APP_NAME || 'Silo';
+const tagline = 'Your Files Ready to Launch';
 const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 
 const path = computed(() => page.url.split('?')[0]);
 const query = computed(() => page.url.split('?')[1] || '');
+// The Notes surface is a full-bleed 3-pane app — drop the main content padding.
+const isNotes = computed(() => path.value.startsWith('/notes'));
 
 const { colorMode, toggleColorMode } = useColorMode();
 const themeIcon = computed(() => ({
@@ -106,8 +109,12 @@ const baseNav = computed(() => [
     { text: 'Home', href: '/', icon: 'house-door-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
     { text: 'Recent', href: '/?recent=1', icon: 'clock-history', active: active((p, q) => q.includes('recent=1')) },
     { text: 'Starred', href: '/?starred=1', icon: 'star-fill', active: active((p, q) => q.includes('starred=1')) },
+    { text: 'Launchpad', href: '/bookmarks', icon: 'grid-1x2-fill', active: active((p) => p.startsWith('/bookmarks')) },
+    { text: 'Notes', href: '/notes', icon: 'journal-text', active: active((p) => p.startsWith('/notes')) },
+    { text: 'Vault', href: '/vault', icon: 'key-fill', active: active((p) => p.startsWith('/vault')) },
     { text: 'Photos', href: '/photos', icon: 'images', active: active((p) => p.startsWith('/photos')) },
     { text: 'Shared with me', href: '/shared', icon: 'people-fill', active: active((p) => p.startsWith('/shared')) },
+    { text: 'Directory', href: '/directory', icon: 'person-rolodex', active: active((p) => p.startsWith('/directory')) },
 ]);
 
 const trashNav = computed(() => [
@@ -147,9 +154,12 @@ function onUserMenu({ item }) {
             <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
             </VibeButton>
-            <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; width: 218px" @click="router.visit('/')">
-                <VibeIcon icon="folder-fill" class="text-primary fs-4 me-2" />
-                <span class="fw-bold fs-5 text-body d-none d-md-inline">{{ appName }}</span>
+            <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; min-width: 218px" @click="router.visit('/')" :title="`${appName} — ${tagline}`">
+                <VibeIcon icon="rocket-takeoff-fill" class="text-primary fs-4 me-2" />
+                <span class="d-none d-md-flex flex-column lh-1">
+                    <span class="fw-bold fs-5 text-body">{{ appName }}</span>
+                    <span class="text-muted" style="font-size: 0.62rem; letter-spacing: 0.02em">{{ tagline }}</span>
+                </span>
             </a>
             <div class="flex-grow-1 min-vw-0">
                 <VibeInputGroup class="mx-auto" style="max-width: 620px">
@@ -264,7 +274,7 @@ function onUserMenu({ item }) {
             </aside>
 
             <!-- Content -->
-            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0 bg-body d-flex flex-column">
+            <main class="flex-grow-1 min-vw-0 bg-body d-flex flex-column" :class="isNotes ? 'p-0' : 'p-3 p-lg-4'">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
                 <VibeAlert v-if="flash.error" variant="danger" dismissible>{{ flash.error }}</VibeAlert>
                 <div class="flex-grow-1">
