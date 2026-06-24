@@ -112,6 +112,10 @@ async function remove(b) {
     }
 }
 
+function toggleStar(b) {
+    router.post(`/bookmarks/${b.id}/star`, {}, { preserveScroll: true, preserveState: true });
+}
+
 async function addFolder() {
     const name = await prompt({ title: 'New folder', message: 'Folder name:', confirmLabel: 'Create' });
     if (!name || !name.trim()) return;
@@ -231,6 +235,7 @@ async function runMaintenance(action) {
                             <span class="d-block fw-medium text-truncate">{{ b.title }}</span>
                             <span class="d-block small text-muted text-truncate">{{ b.url }}</span>
                         </span>
+                        <VibeIcon v-if="b.starred" icon="star-fill" class="text-warning small" title="Starred" />
                         <VibeIcon v-if="b.feed_url" icon="rss-fill" class="text-warning small" title="Has an RSS feed" />
                         <VibeIcon v-if="b.status === 'dead'" icon="exclamation-triangle-fill" class="text-danger" title="Link unreachable" />
                         <VibeIcon v-if="b.shared" icon="people-fill" class="text-muted small" title="Shared" />
@@ -277,6 +282,9 @@ async function runMaintenance(action) {
                                 <VibeIcon icon="box-arrow-up-right" class="me-1" />Open
                             </a>
                             <template v-if="selectedBookmark.can_edit">
+                                <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
+                                    <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
+                                </VibeButton>
                                 <VibeButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</VibeButton>
                                 <VibeButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Remove</VibeButton>
                             </template>

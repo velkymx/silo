@@ -125,6 +125,27 @@ class BookmarkTest extends TestCase
         $this->assertModelExists($keep);
     }
 
+    public function test_star_toggles(): void
+    {
+        $user = User::factory()->create();
+        $bookmark = Bookmark::factory()->for($user, 'owner')->create(['starred' => false]);
+
+        $this->actingAs($user)->post(route('bookmarks.star', $bookmark))->assertRedirect();
+        $this->assertTrue($bookmark->fresh()->starred);
+
+        $this->actingAs($user)->post(route('bookmarks.star', $bookmark))->assertRedirect();
+        $this->assertFalse($bookmark->fresh()->starred);
+    }
+
+    public function test_non_owner_cannot_star(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $bookmark = Bookmark::factory()->for($owner, 'owner')->create();
+
+        $this->actingAs($other)->post(route('bookmarks.star', $bookmark))->assertForbidden();
+    }
+
     public function test_prune_removes_dead_bookmarks_only(): void
     {
         $user = User::factory()->create();

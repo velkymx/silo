@@ -162,6 +162,15 @@ class BookmarkController extends Controller
         return back()->with('success', "Hydrating {$ids->count()} bookmark(s) in the background…");
     }
 
+    /** Toggle the starred flag. */
+    public function star(Bookmark $bookmark)
+    {
+        $this->authorize('update', $bookmark);
+        $bookmark->update(['starred' => ! $bookmark->starred]);
+
+        return back();
+    }
+
     /** Count a click and bounce to the target URL. */
     public function go(Bookmark $bookmark)
     {
@@ -254,6 +263,7 @@ class BookmarkController extends Controller
             'color' => $bookmark->color,
             'category' => $bookmark->category,
             'shared' => $bookmark->shared,
+            'starred' => $bookmark->starred,
             'click_count' => $bookmark->click_count,
             'can_edit' => $bookmark->owner_id === $userId || auth()->user()->is_admin,
         ];

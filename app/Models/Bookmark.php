@@ -34,6 +34,7 @@ class Bookmark extends Model
         'color',
         'category',
         'shared',
+        'starred',
         'status',
         'last_checked_at',
         'click_count',
@@ -44,6 +45,7 @@ class Bookmark extends Model
     {
         return [
             'shared' => 'boolean',
+            'starred' => 'boolean',
             'click_count' => 'integer',
             'sort_order' => 'integer',
             'last_checked_at' => 'datetime',

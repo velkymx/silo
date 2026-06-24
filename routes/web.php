@@ -124,6 +124,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'update'])->name('bookmarks.update');
     Route::delete('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
     Route::get('/bookmarks/{bookmark}/go', [\App\Http\Controllers\BookmarkController::class, 'go'])->whereNumber('bookmark')->name('bookmarks.go');
+    Route::post('/bookmarks/{bookmark}/star', [\App\Http\Controllers\BookmarkController::class, 'star'])->whereNumber('bookmark')->name('bookmarks.star');
     Route::get('/bookmarks/{bookmark}/icon', [\App\Http\Controllers\BookmarkController::class, 'icon'])->whereNumber('bookmark')->name('bookmarks.icon');
     Route::get('/bookmarks/{bookmark}/screenshot', [\App\Http\Controllers\BookmarkController::class, 'screenshot'])->whereNumber('bookmark')->name('bookmarks.screenshot');
     Route::post('/bookmarks/import', [\App\Http\Controllers\BookmarkController::class, 'import'])
