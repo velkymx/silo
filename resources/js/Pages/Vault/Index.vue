@@ -96,14 +96,33 @@ async function remove(item) {
         router.delete(`/vault/${item.id}`, { preserveScroll: true });
     }
 }
+
+const importInput = ref(null);
+async function onImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!await confirm({
+        title: 'Import passwords',
+        message: 'Import this Chrome password CSV? Secrets are encrypted on save. Delete the CSV file afterwards.',
+        confirmLabel: 'Import',
+    })) return;
+    router.post('/vault/import', { file }, { forceFormData: true, preserveScroll: true });
+}
 </script>
 
 <template>
     <AppLayout>
         <div class="p-3 p-lg-4">
             <div class="d-flex align-items-center justify-content-between mb-3">
-                <h1 class="h4 mb-0"><VibeIcon icon="key-fill" class="text-primary me-2" />Vault</h1>
-                <VibeButton variant="primary" @click="openAdd"><VibeIcon icon="plus-lg" class="me-1" />Add secret</VibeButton>
+                <h1 class="h4 mb-0"><VibeIcon icon="lock-fill" class="text-primary me-2" />Vault</h1>
+                <div class="d-flex gap-2">
+                    <VibeButton variant="secondary" outline title="Import a Chrome password CSV export" @click="importInput?.click()">
+                        <VibeIcon icon="upload" class="me-1" />Import
+                    </VibeButton>
+                    <VibeButton variant="primary" @click="openAdd"><VibeIcon icon="plus-lg" class="me-1" />Add secret</VibeButton>
+                    <input ref="importInput" type="file" accept=".csv,text/csv" class="d-none" @change="onImportFile">
+                </div>
             </div>
 
             <p v-if="!items.length" class="text-muted">No secrets yet.</p>

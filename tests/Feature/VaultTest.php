@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\VaultItem;
 use App\Services\VaultCrypto;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -90,6 +91,22 @@ class VaultTest extends TestCase
         // Updating without a secret keeps the old one.
         $this->actingAs($user)->put(route('vault.update', $item), ['name' => 'GitHub PAT'])->assertRedirect();
         $this->assertSame('tok', $item->fresh()->secret);
+    }
+
+    public function test_import_creates_encrypted_items_from_chrome_csv(): void
+    {
+        $user = User::factory()->create();
+        $csv = "name,url,username,password,note\nGitHub,https://github.com,octo,tok123,work\n";
+        $file = UploadedFile::fake()->createWithContent('passwords.csv', $csv);
+
+        $this->actingAs($user)->post(route('vault.import'), ['file' => $file])->assertRedirect();
+
+        $item = VaultItem::where('owner_id', $user->id)->where('name', 'GitHub')->firstOrFail();
+        $this->assertSame('tok123', $item->secret);
+        // Stored ciphertext, not plaintext.
+        $raw = DB::table('vault_items')->where('id', $item->id)->value('secret');
+        $this->assertStringNotContainsString('tok123', $raw);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'vault.import']);
     }
 
     public function test_generate_returns_a_password(): void

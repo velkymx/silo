@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\VaultItem;
 use App\Services\Audit;
+use App\Services\VaultImporter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 /**
@@ -81,6 +83,37 @@ class VaultController extends Controller
         return response()
             ->json(['secret' => $vaultItem->secret, 'notes' => $vaultItem->notes])
             ->header('Cache-Control', 'no-store, max-age=0');
+    }
+
+    /**
+     * Import a Chrome password CSV. Parsed in memory and encrypted on write —
+     * the uploaded plaintext file is never stored beyond the request.
+     */
+    public function import(Request $request, VaultImporter $importer)
+    {
+        $this->authorize('create', VaultItem::class);
+        $request->validate(['file' => 'required|file|max:10240']);
+
+        $userId = auth()->id();
+        $count = 0;
+
+        foreach ($importer->parse($request->file('file')->get()) as $row) {
+            VaultItem::create([
+                'owner_id' => $userId,
+                'name' => Str::limit($row['name'], 120, ''),
+                'username' => $row['username'] ? Str::limit($row['username'], 255, '') : null,
+                'url' => $row['url'],
+                'secret' => $row['secret'],
+                'notes' => $row['notes'],
+                'last_rotated_at' => now(),
+            ]);
+            $count++;
+        }
+
+        // Never include secret material in the audit metadata.
+        Audit::log('vault.import', null, ['count' => $count]);
+
+        return back()->with('success', "Imported {$count} secret(s).");
     }
 
     /** Server-side strong-password generator. */
