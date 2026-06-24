@@ -323,8 +323,8 @@ function saveEdit() {
         <VibeModal v-model="lightboxOpen" fullscreen hide-footer>
             <template #header>
                 <div class="d-flex align-items-center w-100">
-                    <span class="text-truncate" :title="currentPhoto?.name">{{ currentPhoto?.name }}</span>
-                    <div v-if="currentPhoto" class="ms-auto d-flex flex-wrap justify-content-end gap-2">
+                    <span class="text-truncate flex-grow-1 me-3" style="min-width: 0" :title="currentPhoto?.name">{{ currentPhoto?.name }}</span>
+                    <div v-if="currentPhoto" class="flex-shrink-0 d-flex flex-wrap justify-content-end gap-2">
                         <VibeButton variant="secondary" size="sm" outline :title="ride ? 'Stop' : 'Slideshow'" :aria-label="ride ? 'Stop slideshow' : 'Start slideshow'" @click="ride = !ride">
                             <VibeIcon :icon="ride ? 'pause-fill' : 'play-fill'" />
                         </VibeButton>
