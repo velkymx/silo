@@ -111,6 +111,8 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('vaultItem')->middleware('throttle:20,1')->name('vault.reveal');
     Route::get('/vault/generate', [\App\Http\Controllers\VaultController::class, 'generate'])
         ->middleware('throttle:60,1')->name('vault.generate');
+    Route::post('/vault/import', [\App\Http\Controllers\VaultController::class, 'import'])
+        ->middleware('throttle:10,1')->name('vault.import');
 
     // Staff directory.
     Route::get('/directory', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');
@@ -121,7 +123,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/bookmarks', [\App\Http\Controllers\BookmarkController::class, 'store'])->name('bookmarks.store');
     Route::put('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'update'])->name('bookmarks.update');
     Route::delete('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
-    Route::get('/bookmarks/{bookmark}/go', [\App\Http\Controllers\BookmarkController::class, 'go'])->name('bookmarks.go');
+    Route::get('/bookmarks/{bookmark}/go', [\App\Http\Controllers\BookmarkController::class, 'go'])->whereNumber('bookmark')->name('bookmarks.go');
+    Route::get('/bookmarks/{bookmark}/icon', [\App\Http\Controllers\BookmarkController::class, 'icon'])->whereNumber('bookmark')->name('bookmarks.icon');
+    Route::get('/bookmarks/{bookmark}/screenshot', [\App\Http\Controllers\BookmarkController::class, 'screenshot'])->whereNumber('bookmark')->name('bookmarks.screenshot');
+    Route::post('/bookmarks/import', [\App\Http\Controllers\BookmarkController::class, 'import'])
+        ->middleware('throttle:10,1')->name('bookmarks.import');
+    Route::post('/bookmarks/dedup', [\App\Http\Controllers\BookmarkController::class, 'dedup'])->name('bookmarks.dedup');
+    Route::post('/bookmarks/prune', [\App\Http\Controllers\BookmarkController::class, 'prune'])->name('bookmarks.prune');
+    Route::post('/bookmarks/validate', [\App\Http\Controllers\BookmarkController::class, 'validateAll'])
+        ->middleware('throttle:6,1')->name('bookmarks.validate');
+    Route::post('/bookmarks/hydrate', [\App\Http\Controllers\BookmarkController::class, 'hydrate'])
+        ->middleware('throttle:6,1')->name('bookmarks.hydrate');
 
     // Notes — a note-centric surface over markdown files.
     Route::get('/notes', [NoteController::class, 'index'])->name('notes.index');

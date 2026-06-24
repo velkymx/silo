@@ -67,7 +67,9 @@ class SecurityHeaders
             'style-src '.implode(' ', $style),
             'font-src '.implode(' ', $font),
             'connect-src '.implode(' ', $connect),
-            "img-src 'self' data: blob:",
+            // Bookmark previews/favicons hotlink these external services
+            // (WordPress mShots screenshots, DuckDuckGo icons).
+            "img-src 'self' data: blob: https://s.wordpress.com https://icons.duckduckgo.com",
             "media-src 'self' blob:",
             "worker-src 'self' blob:",
             "frame-src 'self'",

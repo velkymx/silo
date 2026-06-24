@@ -91,8 +91,8 @@ const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 
 const path = computed(() => page.url.split('?')[0]);
 const query = computed(() => page.url.split('?')[1] || '');
-// The Notes surface is a full-bleed 3-pane app — drop the main content padding.
-const isNotes = computed(() => path.value.startsWith('/notes'));
+// Full-bleed 3-pane surfaces (Notes, Bookmarks) drop the main content padding.
+const isNotes = computed(() => path.value.startsWith('/notes') || path.value.startsWith('/bookmarks'));
 
 const { colorMode, toggleColorMode } = useColorMode();
 const themeIcon = computed(() => ({
@@ -109,9 +109,9 @@ const baseNav = computed(() => [
     { text: 'Home', href: '/', icon: 'house-door-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
     { text: 'Recent', href: '/?recent=1', icon: 'clock-history', active: active((p, q) => q.includes('recent=1')) },
     { text: 'Starred', href: '/?starred=1', icon: 'star-fill', active: active((p, q) => q.includes('starred=1')) },
-    { text: 'Launchpad', href: '/bookmarks', icon: 'grid-1x2-fill', active: active((p) => p.startsWith('/bookmarks')) },
+    { text: 'Bookmarks', href: '/bookmarks', icon: 'bookmark-fill', active: active((p) => p.startsWith('/bookmarks')) },
     { text: 'Notes', href: '/notes', icon: 'journal-text', active: active((p) => p.startsWith('/notes')) },
-    { text: 'Vault', href: '/vault', icon: 'key-fill', active: active((p) => p.startsWith('/vault')) },
+    { text: 'Vault', href: '/vault', icon: 'lock-fill', active: active((p) => p.startsWith('/vault')) },
     { text: 'Photos', href: '/photos', icon: 'images', active: active((p) => p.startsWith('/photos')) },
     { text: 'Shared with me', href: '/shared', icon: 'people-fill', active: active((p) => p.startsWith('/shared')) },
     { text: 'Directory', href: '/directory', icon: 'person-rolodex', active: active((p) => p.startsWith('/directory')) },

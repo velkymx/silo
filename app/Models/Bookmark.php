@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Scout\Searchable;
 
 /**
  * An internal link on the launchpad. Personal by default; `shared` makes it
@@ -13,7 +14,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Bookmark extends Model
 {
     /** @use HasFactory<\Database\Factories\BookmarkFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_ALIVE = 'alive';
+
+    public const STATUS_DEAD = 'dead';
 
     protected $fillable = [
         'owner_id',
@@ -21,9 +28,14 @@ class Bookmark extends Model
         'url',
         'description',
         'icon',
+        'icon_path',
+        'screenshot_path',
+        'feed_url',
         'color',
         'category',
         'shared',
+        'status',
+        'last_checked_at',
         'click_count',
         'sort_order',
     ];
@@ -34,6 +46,22 @@ class Bookmark extends Model
             'shared' => 'boolean',
             'click_count' => 'integer',
             'sort_order' => 'integer',
+            'last_checked_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Columns Scout (database driver) matches a query against.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'title' => $this->title,
+            'url' => $this->url,
+            'description' => $this->description,
+            'category' => $this->category,
         ];
     }
 
