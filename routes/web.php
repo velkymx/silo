@@ -15,6 +15,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\BackupController;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
@@ -57,6 +58,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/photos/reorder', [PhotoController::class, 'reorder'])->name('photos.reorder');
 
     Route::get('/usage', [\App\Http\Controllers\StorageController::class, 'index'])->name('storage.index');
+
+    Route::get('/break/crush', fn () => Inertia::render('Break/Crush'))->name('break.crush');
+
+    Route::get('/break/dwg', [\App\Http\Controllers\DailyWordGameController::class, 'index'])->name('break.dwg');
+    Route::post('/break/dwg/guess', [\App\Http\Controllers\DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
+    Route::get('/break/soduku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.soduku');
+
         Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 

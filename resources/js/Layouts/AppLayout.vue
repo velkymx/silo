@@ -121,6 +121,12 @@ const trashNav = computed(() => [
     { text: 'Trash', href: '/trash', icon: 'trash-fill', active: active((p) => p.startsWith('/trash')) },
 ]);
 
+const breakNav = computed(() => [
+    { text: 'Crush', href: '/break/crush', icon: 'joystick', active: active((p) => p.startsWith('/break/crush')) },
+    { text: 'Word', href: '/break/dwg', icon: 'type', active: active((p) => p.startsWith('/break/dwg')) },
+    { text: 'Sodoku', href: '/break/soduku', icon: 'grid-3x3', active: active((p) => p.startsWith('/break/soduku')) },
+]);
+
 const adminNav = computed(() => (user.value?.is_admin ? [
     { text: 'Users', href: '/users', icon: 'person-gear', active: active((p) => p.startsWith('/users')) },
     { text: 'Groups', href: '/groups', icon: 'diagram-3-fill', active: active((p) => p.startsWith('/groups')) },
@@ -248,6 +254,13 @@ function onUserMenu({ item }) {
                             <VibeIcon icon="x" class="del-btn text-muted" title="Remove" @click.stop="deleteSavedSearch(s)" />
                         </div>
                     </template>
+
+                    <div class="side-heading"><VibeIcon icon="controller" />Break Room</div>
+                    <VibeNav pills vertical :items="breakNav" @item-click="onNav">
+                        <template #item="{ item }">
+                            <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
+                        </template>
+                    </VibeNav>
 
                     <slot name="sidebar" />
                 </div>

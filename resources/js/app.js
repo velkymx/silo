@@ -12,9 +12,19 @@ import VibeUI, { useColorMode } from '@velkymx/vibeui';
 useColorMode().initColorMode();
 
 createInertiaApp({
-    resolve: (name) => {
-        const pages = import.meta.glob('./Pages/**/*.vue', { eager: true });
-        return pages[`./Pages/${name}.vue`];
+    // Lazy glob: each page is its own chunk, code-split on demand instead of
+    // bundling every page into the initial payload.
+    resolve: async (name) => {
+        const pages = import.meta.glob('./Pages/**/*.vue');
+        const path = `./Pages/${name}.vue`;
+        const match = pages[path];
+
+        if (!match) {
+            throw new Error(`Inertia page component not found: ${path}`);
+        }
+
+        const page = await match();
+        return page.default;
     },
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) })
