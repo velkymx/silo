@@ -89,7 +89,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
-            'group_id' => 'required|exists:groups,id',
+            'group_id' => 'nullable|exists:groups,id',
             'is_admin' => 'nullable|boolean',
             // Directory profile fields (admins may edit others').
             'title' => 'nullable|string|max:120',
