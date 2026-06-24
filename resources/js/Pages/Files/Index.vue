@@ -132,8 +132,10 @@ const activeFilters = computed(() => {
 // ----- Unified Finder/Dropbox-style listing -----
 // Folders and files share one list; folders sort ahead of files by default.
 const items = computed(() => [
-    ...props.folders.map((f) => ({ ...f, is_dir: true, modified: f.updated_at, _sort: 0 })),
-    ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1 })),
+    // A folder and a file can share a DB id; `_key` disambiguates sibling keys so
+    // Vue's patch reconciliation doesn't collide on duplicate `:key` values.
+    ...props.folders.map((f) => ({ ...f, is_dir: true, modified: f.updated_at, _sort: 0, _key: `dir-${f.id}` })),
+    ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1, _key: `file-${f.id}` })),
 ]);
 
 const columns = computed(() => [
@@ -670,7 +672,7 @@ onBeforeUnmount(() => {
         <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
         <template v-if="viewMode === 'grid'">
             <VibeRow class="g-3">
-                <VibeCol v-for="item in gridItems" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
+                <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
                     <FileItem
                         :item="item"
                         view="grid"
@@ -704,7 +706,7 @@ onBeforeUnmount(() => {
             v-else
             :items="items"
             :columns="columns"
-            row-key="id"
+            row-key="_key"
             hover
             :searchable="false"
             :per-page="25"
@@ -821,7 +823,7 @@ onBeforeUnmount(() => {
                 v-if="versionsItem?.versions?.length"
                 :items="versionsItem.versions"
                 :columns="versionColumns"
-                row-key="id"
+                row-key="_key"
                 hover
                 :searchable="false"
                 :show-per-page="false"
