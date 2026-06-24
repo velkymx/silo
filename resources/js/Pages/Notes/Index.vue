@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
@@ -29,6 +29,7 @@ const selectedFolder = ref(null);
 const sortOrder = ref('name-asc');
 let suppressSave = false;
 let saveTimer = null;
+let suppressTimer = null;
 
 const filteredNotes = computed(() => {
     let list = props.notes;
@@ -86,9 +87,15 @@ async function loadContent(note) {
         content.value = '';
     } finally {
         // Let the editor settle before re-enabling autosave.
-        setTimeout(() => { suppressSave = false; }, 0);
+        if (suppressTimer) clearTimeout(suppressTimer);
+        suppressTimer = setTimeout(() => { suppressSave = false; }, 0);
     }
 }
+
+onBeforeUnmount(() => {
+    if (saveTimer) clearTimeout(saveTimer);
+    if (suppressTimer) clearTimeout(suppressTimer);
+});
 
 function selectNote(id) {
     selectedId.value = id;
