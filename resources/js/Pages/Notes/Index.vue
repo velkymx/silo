@@ -30,6 +30,7 @@ const sortOrder = ref('name-asc');
 let suppressSave = false;
 let saveTimer = null;
 let suppressTimer = null;
+let loadSeq = 0;
 
 const filteredNotes = computed(() => {
     let list = props.notes;
@@ -81,14 +82,21 @@ function jumpToHeading(line) {
 async function loadContent(note) {
     suppressSave = true;
     saveState.value = 'idle';
+    // Race guard: a newer selection must win even if an older fetch resolves later.
+    const token = ++loadSeq;
     try {
-        content.value = await getText(note.raw_url);
+        const text = await getText(note.raw_url);
+        if (token !== loadSeq) return;
+        content.value = text;
     } catch {
+        if (token !== loadSeq) return;
         content.value = '';
     } finally {
-        // Let the editor settle before re-enabling autosave.
-        if (suppressTimer) clearTimeout(suppressTimer);
-        suppressTimer = setTimeout(() => { suppressSave = false; }, 0);
+        if (token === loadSeq) {
+            // Let the editor settle before re-enabling autosave.
+            if (suppressTimer) clearTimeout(suppressTimer);
+            suppressTimer = setTimeout(() => { suppressSave = false; }, 0);
+        }
     }
 }
 
