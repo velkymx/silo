@@ -187,6 +187,20 @@ class NoteSurfaceTest extends TestCase
         $this->actingAs($other)->get(route('notes.content', $note))->assertForbidden();
     }
 
+    public function test_index_exposes_starred_state(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $this->actingAs($user)->get(route('notes.index'));
+        $root = File::where('owner_id', $user->id)->where('name', 'Notes')->firstOrFail();
+        File::factory()->for($user, 'owner')->create([
+            'name' => 'Star.md', 'mime' => 'text/markdown', 'parent_id' => $root->id, 'starred' => true,
+        ]);
+
+        $this->actingAs($user)->get(route('notes.index'))
+            ->assertInertia(fn ($page) => $page->where('notes.0.starred', true));
+    }
+
     public function test_backlinks_returns_linking_sources(): void
     {
         Storage::fake('public');

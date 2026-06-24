@@ -320,6 +320,7 @@ class NoteController extends Controller
             'parent_id' => $note->parent_id,
             'raw_url' => route('notes.content', $note),
             'status' => $note->status,
+            'starred' => (bool) $note->starred,
             'updated_at' => ($note->content_edited_at ?? $note->updated_at)->format('Y-m-d H:i'),
             'tags' => $note->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values(),
         ];

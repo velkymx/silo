@@ -47,7 +47,10 @@ const sortOptions = [
                 :class="{ active: note.id === selectedId }"
                 @click="emit('select', note.id)"
             >
-                <div class="fw-medium text-truncate">{{ note.title }}</div>
+                <div class="fw-medium text-truncate d-flex align-items-center gap-1">
+                    <VibeIcon v-if="note.starred" icon="star-fill" class="text-warning small" title="Starred" />
+                    <span class="text-truncate">{{ note.title }}</span>
+                </div>
                 <div class="small text-muted d-flex align-items-center gap-2">
                     <span>{{ note.updated_at }}</span>
                     <span v-for="tag in note.tags" :key="tag.id" class="badge text-bg-light">#{{ tag.name }}</span>

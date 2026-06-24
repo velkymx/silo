@@ -122,6 +122,10 @@ function saveVersion() {
     autosave({ checkpoint: true });
 }
 
+function toggleStar(note) {
+    router.post(`/files/${note.id}/star`, {}, { preserveScroll: true, preserveState: true });
+}
+
 async function renameNote() {
     const note = selectedNote.value;
     if (!note) return;
@@ -183,6 +187,9 @@ onMounted(() => {
                                 <span v-if="saveState === 'saving'">Saving…</span>
                                 <span v-else-if="saveState === 'saved'">Saved</span>
                             </small>
+                            <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
+                                <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />
+                            </VibeButton>
                             <VibeDropdown
                                 size="sm"
                                 variant="secondary"
