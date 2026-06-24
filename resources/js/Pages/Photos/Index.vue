@@ -191,10 +191,17 @@ function openEditor(p) {
 function rotate(deg) { cropper.value?.rotate(deg); }
 function flip(h, v) { cropper.value?.flip(h, v); }
 function saveEdit() {
-    const { canvas } = cropper.value.getResult();
+    if (!cropper.value) return;
+    const canvas = cropper.value.getResult()?.canvas;
     if (!canvas) return;
     editorSaving.value = true;
     canvas.toBlob((blob) => {
+        // Guard the async callback: a null blob or a closed editor must reset the
+        // saving flag, otherwise the Save button stays disabled forever.
+        if (!blob || !editorPhoto.value) {
+            editorSaving.value = false;
+            return;
+        }
         const form = new FormData();
         form.append('file', new File([blob], editorPhoto.value.name));
         form.append('note', 'Photo edit');
