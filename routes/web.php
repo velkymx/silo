@@ -114,6 +114,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vault/import', [\App\Http\Controllers\VaultController::class, 'import'])
         ->middleware('throttle:10,1')->name('vault.import');
 
+    // Starred — cross-app view of starred notes, bookmarks, and files.
+    Route::get('/starred', [\App\Http\Controllers\StarredController::class, 'index'])->name('starred.index');
+
     // Staff directory.
     Route::get('/directory', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');
     Route::get('/directory/{user}', [\App\Http\Controllers\DirectoryController::class, 'show'])->whereNumber('user')->name('directory.show');
