@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import ThreePane from '../../Components/ThreePane.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
 import NotesList from '../../Components/Notes/NotesList.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
@@ -165,27 +166,32 @@ onMounted(() => {
 
 <template>
     <AppLayout>
-        <div class="notes-app d-flex border rounded overflow-hidden bg-body">
-            <NotesSidebar
-                :folders="folders"
-                :root-id="rootId"
-                :tags="tags"
-                :active-tag="activeTag"
-                :selected-folder="selectedFolder"
-                @select-folder="selectFolder"
-                @select-tag="selectTag"
-                @new-folder="newFolder"
-            />
-            <NotesList
-                :notes="filteredNotes"
-                :selected-id="selectedId"
-                :sort="sortOrder"
-                @select="selectNote"
-                @new="newNote"
-                @update:sort="sortOrder = $event"
-            />
+        <ThreePane>
+            <template #sidebar>
+                <NotesSidebar
+                    :folders="folders"
+                    :root-id="rootId"
+                    :tags="tags"
+                    :active-tag="activeTag"
+                    :selected-folder="selectedFolder"
+                    @select-folder="selectFolder"
+                    @select-tag="selectTag"
+                    @new-folder="newFolder"
+                />
+            </template>
 
-            <div class="notes-editor d-flex flex-column">
+            <template #list>
+                <NotesList
+                    :notes="filteredNotes"
+                    :selected-id="selectedId"
+                    :sort="sortOrder"
+                    @select="selectNote"
+                    @new="newNote"
+                    @update:sort="sortOrder = $event"
+                />
+            </template>
+
+            <template #detail>
                 <template v-if="selectedNote">
                     <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom flex-shrink-0">
                         <button
@@ -235,23 +241,12 @@ onMounted(() => {
                     <VibeIcon icon="journal-text" class="fs-1 mb-2" />
                     <p class="mb-0">Select a note, or create a new one.</p>
                 </div>
-            </div>
-        </div>
+            </template>
+        </ThreePane>
     </AppLayout>
 </template>
 
 <style scoped>
-.notes-app {
-    height: calc(100vh - 140px);
-    min-height: 480px;
-}
-/* Editor column grows to fill remaining width and lets its body shrink so the
-   editor (not the page) owns the vertical scroll. */
-.notes-editor {
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-}
 .notes-editor-body {
     flex: 1 1 auto;
     min-height: 0;

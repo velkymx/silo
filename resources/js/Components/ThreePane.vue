@@ -16,7 +16,7 @@ defineProps({
         <div class="tp-list h-100 border-end bg-body d-flex flex-column" :style="{ width: listWidth }">
             <slot name="list" />
         </div>
-        <div class="tp-detail flex-grow-1 d-flex flex-column" style="min-width: 0">
+        <div class="tp-detail flex-grow-1 d-flex flex-column" style="min-width: 0; min-height: 0">
             <slot name="detail" />
         </div>
     </div>
