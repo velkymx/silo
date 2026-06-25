@@ -16,7 +16,7 @@ function submit() {
 <AppFormGroup
                 label="Name"
                 :error="form.errors.name"
-            >
+             required>
                 <VibeFormInput v-model="form.name" required autocomplete="name" />
             </AppFormGroup>
 
@@ -24,7 +24,7 @@ function submit() {
                 label="Email"
                 class="mt-3"
                 :error="form.errors.email"
-            >
+             required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
             </AppFormGroup>
 
@@ -32,11 +32,11 @@ function submit() {
                 label="Password"
                 class="mt-3"
                 :error="form.errors.password"
-            >
+             required>
                 <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
             </AppFormGroup>
 
-            <AppFormGroup label="Confirm Password" class="mt-3">
+            <AppFormGroup label="Confirm Password" class="mt-3" required>
                 <VibeFormInput
                     v-model="form.password_confirmation"
                     type="password"

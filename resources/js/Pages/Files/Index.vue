@@ -886,7 +886,7 @@ onBeforeUnmount(() => {
 <AppFormGroup
                     label="Folder Name"
                     :error="folderForm.errors.folder_name"
-                >
+                 required>
                     <VibeFormInput v-model="folderForm.folder_name" required />
                 </AppFormGroup>
             </form>

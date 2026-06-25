@@ -30,7 +30,7 @@ function submit(): void {
 <AppFormGroup
                 label="New Name"
                 :error="form.errors.name"
-            >
+             required>
                 <VibeFormInput v-model="form.name" required />
             </AppFormGroup>
         </form>

@@ -109,7 +109,7 @@ function applyCrop() {
                         <AppFormGroup
                             label="Name"
                             :error="form.errors.name"
-                        >
+                         required>
                             <VibeFormInput v-model="form.name" required />
                         </AppFormGroup>
 
@@ -117,7 +117,7 @@ function applyCrop() {
                             label="Email"
                             class="mt-3"
                             :error="form.errors.email"
-                        >
+                         required>
                             <VibeFormInput v-model="form.email" type="email" required />
                         </AppFormGroup>
 

@@ -20,7 +20,7 @@ function submit() {
 <AppFormGroup
                 label="Email"
                 :error="form.errors.email"
-            >
+             required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
             </AppFormGroup>
 
