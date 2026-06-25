@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useConfirm } from '../composables/useConfirm';
+import { useToast } from '../composables/useToast';
 import { useBusyGuard } from '../composables/useBusyGuard';
 import { useBatchRename } from '../composables/useBatchRename';
 
@@ -20,6 +21,7 @@ const count = computed(() => props.selectedItems.length);
 const batchIds = computed(() => props.selectedItems.map((i) => i.id));
 
 const { confirm } = useConfirm();
+const toast = useToast();
 // Single-flight guard: only one batch op runs at a time.
 const { busy: batchBusy, run: runBatch, release: releaseBatch } = useBusyGuard({ autoRelease: false });
 
@@ -33,9 +35,15 @@ function finishAndClose(close: () => void) {
 
 async function batchDelete(): Promise<void> {
     if (!await confirm({ title: 'Move to trash', message: `Move ${count.value} item(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    runBatch(() => router.post('/files/batch/delete', { ids: batchIds.value }, {
+    const ids = [...batchIds.value];
+    runBatch(() => router.post('/files/batch/delete', { ids }, {
         preserveScroll: true,
-        onSuccess: () => emit('done'),
+        onSuccess: () => {
+            emit('done');
+            toast.push(`${ids.length} item(s) moved to trash`, {
+                undo: () => router.post('/trash/batch/restore', { ids }, { preserveScroll: true }),
+            });
+        },
         onFinish: releaseBatch,
     }));
 }

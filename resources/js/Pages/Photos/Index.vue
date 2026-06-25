@@ -6,6 +6,7 @@ import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
 import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 import { useQuickLook } from '../../composables/useQuickLook';
 import QuickLookModal from '../../Components/QuickLookModal.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
@@ -13,6 +14,7 @@ import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { loading } = usePageLoading();
 
 const props = defineProps({
@@ -157,7 +159,15 @@ function onPhotoMenu(p, { item }) {
 async function destroyPhoto(p) {
     if (!p) return;
     if (!await confirm({ title: 'Move to trash', message: `Move “${p.name}” to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    router.delete(`/delete/${p.id}`, { preserveScroll: true, onSuccess: () => { qlClose(); } });
+    router.delete(`/delete/${p.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            qlClose();
+            toast.push(`"${p.name}" moved to trash`, {
+                undo: () => router.post(`/trash/${p.id}/restore`, {}, { preserveScroll: true }),
+            });
+        },
+    });
 }
 
 // ----- Upload -----

@@ -4,9 +4,11 @@ import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../../composables/useConfirm';
+import { useToast } from '../../../composables/useToast';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { loading } = usePageLoading();
 
 defineProps({
@@ -42,7 +44,10 @@ function saveEdit() {
 
 async function destroy(group) {
     if (!await confirm({ title: 'Delete group', message: `Delete group "${group.name}"? Members will be unassigned.`, confirmLabel: 'Delete', variant: 'danger' })) return;
-    useForm({}).delete(`/groups/${group.id}`, { preserveScroll: true });
+    useForm({}).delete(`/groups/${group.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`Group "${group.name}" deleted`, { variant: 'danger' }),
+    });
 }
 </script>
 

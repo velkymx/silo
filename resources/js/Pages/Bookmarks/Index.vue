@@ -4,6 +4,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -12,6 +13,7 @@ const props = defineProps({
 });
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { prompt } = usePrompt();
 
 // ----- Server-side Scout search (debounced) -----
@@ -104,12 +106,14 @@ function save() {
 }
 
 async function remove(b) {
-    if (await confirm({ title: 'Remove bookmark', message: `Remove “${b.title}”?`, confirmLabel: 'Remove', variant: 'danger' })) {
-        router.delete(`/bookmarks/${b.id}`, {
-            preserveScroll: true,
-            onSuccess: () => { if (selectedId.value === b.id) selectedId.value = null; },
-        });
-    }
+    if (!await confirm({ title: 'Remove bookmark', message: `Remove “${b.title}”?`, confirmLabel: 'Remove', variant: 'danger' })) return;
+    router.delete(`/bookmarks/${b.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (selectedId.value === b.id) selectedId.value = null;
+            toast.push(`”${b.title}” removed`, { variant: 'danger' });
+        },
+    });
 }
 
 function toggleStar(b) {

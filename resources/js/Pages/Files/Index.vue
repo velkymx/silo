@@ -19,6 +19,7 @@ import { descendantIds } from '../../lib/folderTree';
 import { useStorageMeter } from '../../composables/useStorageMeter';
 import EmptyState from '../../Components/EmptyState.vue';
 import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
 import { fmtBytes } from '../../lib/format';
@@ -239,6 +240,7 @@ const {
 } = useSelection(items, openItem);
 
 const { confirm } = useConfirm();
+const toast = useToast();
 
 // Right-click context menu over a file/folder row or card.
 const ctxOpen = ref(false);
@@ -553,7 +555,12 @@ async function destroy(item) {
         ? `Delete folder "${item.name}" and its ${item.item_count} item(s)? Everything inside moves to trash.`
         : `Move "${item.name}" to trash?`;
     if (!await confirm({ title: 'Move to trash', message: msg, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    router.delete(`/delete/${item.id}`, { preserveScroll: true });
+    router.delete(`/delete/${item.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`"${item.name}" moved to trash`, {
+            undo: () => router.post(`/trash/${item.id}/restore`, {}, { preserveScroll: true }),
+        }),
+    });
 }
 
 // ----- Background-job status polling -----

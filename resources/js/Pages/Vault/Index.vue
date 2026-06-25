@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -12,6 +13,7 @@ const props = defineProps({
 });
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { prompt } = usePrompt();
 
 const revealError = ref('');
@@ -100,9 +102,11 @@ async function generate() {
 }
 
 async function remove(item) {
-    if (await confirm({ title: 'Remove secret', message: `Remove “${item.name}”?`, confirmLabel: 'Remove', variant: 'danger' })) {
-        router.delete(`/vault/${item.id}`, { preserveScroll: true });
-    }
+    if (!await confirm({ title: 'Remove secret', message: `Remove “${item.name}”?`, confirmLabel: 'Remove', variant: 'danger' })) return;
+    router.delete(`/vault/${item.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`”${item.name}” removed`, { variant: 'danger' }),
+    });
 }
 
 const importInput = ref(null);

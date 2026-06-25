@@ -4,9 +4,11 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { loading } = usePageLoading();
 
 const props = defineProps({
@@ -32,12 +34,18 @@ function restore(item) {
 
 async function purge(item) {
     if (!await confirm({ title: 'Permanently delete', message: `Permanently delete "${item.name}"? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
-    router.delete(`/trash/${item.id}`, { preserveScroll: true });
+    router.delete(`/trash/${item.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`"${item.name}" permanently deleted`, { variant: 'danger' }),
+    });
 }
 
 async function emptyTrash() {
     if (!await confirm({ title: 'Empty trash', message: 'Permanently delete everything in the trash? This cannot be undone.', confirmLabel: 'Empty trash', variant: 'danger' })) return;
-    router.delete('/trash/empty', { preserveScroll: true });
+    router.delete('/trash/empty', {
+        preserveScroll: true,
+        onSuccess: () => toast.push('Trash emptied', { variant: 'danger' }),
+    });
 }
 </script>
 

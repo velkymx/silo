@@ -7,9 +7,12 @@ import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
 import { useStorageMeter } from '../composables/useStorageMeter';
 import PageError from '../Components/PageError.vue';
+import ToastHost from '../Components/ToastHost.vue';
+import { useToast } from '../composables/useToast';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
+const toast = useToast();
 
 const { isMobile } = useBreakpoints();
 const mobileNavOpen = ref(false);
@@ -354,6 +357,12 @@ function onUserMenu({ item }) {
                 <VibeButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</VibeButton>
             </template>
         </VibeModal>
+
+        <ToastHost
+            :items="toast.state.items"
+            @dismiss="toast.dismiss($event)"
+            @undo="(t) => { t.undo?.(); toast.dismiss(t.id); }"
+        />
     </div>
 </template>
 

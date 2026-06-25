@@ -70,6 +70,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
     Route::delete('/trash/empty', [TrashController::class, 'empty'])->name('trash.empty');
+    Route::post('/trash/batch/restore', [TrashController::class, 'batchRestore'])->name('trash.batch.restore');
     Route::post('/trash/{file}/restore', [TrashController::class, 'restore'])->withTrashed()->name('trash.restore');
     Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
     Route::post('/upload', [FileController::class, 'upload'])
