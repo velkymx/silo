@@ -7,6 +7,7 @@ import 'vue-advanced-cropper/dist/style.css';
 import { initials } from '../../lib/initials';
 import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
+import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -106,6 +107,7 @@ function applyCrop() {
                     </div>
 
                     <form @submit.prevent="submit">
+                        <FormErrorSummary :errors="form.errors" />
                         <AppFormGroup
                             label="Name"
                             :error="form.errors.name"

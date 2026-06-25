@@ -7,6 +7,7 @@ import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
+import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -305,7 +306,7 @@ async function runMaintenance(action) {
         </ThreePane>
 
         <AppModal v-model="showModal" :title="editingId ? 'Edit bookmark' : 'Add bookmark'">
-            <AppFormGroup label="Title" :error="form.errors.title">
+            <FormErrorSummary :errors="form.errors" /><AppFormGroup label="Title" :error="form.errors.title">
                 <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
             </AppFormGroup>
             <AppFormGroup label="URL" :error="form.errors.url">

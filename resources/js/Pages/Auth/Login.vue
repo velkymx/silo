@@ -2,6 +2,7 @@
 import { useForm, Link } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
+import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const form = useForm({ email: '', password: '', remember: false });
 
@@ -13,6 +14,7 @@ function submit() {
 <template>
     <GuestLayout title="Sign in">
         <form @submit.prevent="submit">
+<FormErrorSummary :errors="form.errors" />
 <AppFormGroup
                 label="Email"
                 :error="form.errors.email"

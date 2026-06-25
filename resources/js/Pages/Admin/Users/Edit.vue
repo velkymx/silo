@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import AppFormGroup from '../../../Components/AppFormGroup.vue';
+import FormErrorSummary from '../../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -33,6 +34,7 @@ function submit() {
             <VibeCol :md="8" :lg="6">
                 <VibeCard :header="`Edit User: ${user.name}`">
                     <form @submit.prevent="submit">
+                        <FormErrorSummary :errors="form.errors" />
                         <AppFormGroup
                             label="Name"
                             :error="form.errors.name"
