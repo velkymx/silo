@@ -66,34 +66,34 @@ async function saveSmartFolder(): Promise<void> {
 <template>
     <AppModal v-model="open" title="Advanced Search" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 640px">
-            <VibeFormGroup label="Contains text">
+            <AppFormGroup label="Contains text">
                 <VibeFormInput v-model="adv.search" placeholder="Name or content…" />
-            </VibeFormGroup>
+            </AppFormGroup>
 
-            <VibeFormGroup label="Date" class="mt-1">
+            <AppFormGroup label="Date" class="mt-1">
                 <div class="row g-2">
                     <div class="col-12 col-sm-4"><VibeFormSelect v-model="adv.date_target" :options="dateTargetOptions" /></div>
                     <div class="col"><VibeFormInput v-model="adv.date_from" type="date" aria-label="Date from" /></div>
                     <div class="col"><VibeFormInput v-model="adv.date_to" type="date" aria-label="Date to" /></div>
                 </div>
-            </VibeFormGroup>
+            </AppFormGroup>
 
-            <VibeFormGroup label="Size" class="mt-1">
+            <AppFormGroup label="Size" class="mt-1">
                 <div class="row g-2">
                     <div class="col"><VibeFormInput v-model="adv.size_min" type="number" min="0" step="any" placeholder="Min" aria-label="Min size" /></div>
                     <div class="col"><VibeFormInput v-model="adv.size_max" type="number" min="0" step="any" placeholder="Max" aria-label="Max size" /></div>
                     <div class="col-4 col-sm-3"><VibeFormSelect v-model="adv.size_unit" :options="sizeUnitOptions" aria-label="Size unit" /></div>
                 </div>
-            </VibeFormGroup>
+            </AppFormGroup>
 
             <div class="row g-2 mt-1">
-                <div class="col"><VibeFormGroup label="Type"><VibeFormSelect v-model="adv.ftype" :options="typeOptions" /></VibeFormGroup></div>
-                <div class="col"><VibeFormGroup label="Tag"><VibeFormSelect v-model="adv.tag" :options="tagFilterOptions" /></VibeFormGroup></div>
+                <div class="col"><AppFormGroup label="Type"><VibeFormSelect v-model="adv.ftype" :options="typeOptions" /></AppFormGroup></div>
+                <div class="col"><AppFormGroup label="Tag"><VibeFormSelect v-model="adv.tag" :options="tagFilterOptions" /></AppFormGroup></div>
             </div>
 
-            <VibeFormGroup v-if="canScopeFolder" label="Where" class="mt-1">
+            <AppFormGroup v-if="canScopeFolder" label="Where" class="mt-1">
                 <VibeFormSwitch v-model="scopeFolder" :label="scopeLabel" />
-            </VibeFormGroup>
+            </AppFormGroup>
         </div>
         <template #footer>
             <div class="d-flex w-100 gap-2">

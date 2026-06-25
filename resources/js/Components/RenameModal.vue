@@ -27,13 +27,12 @@ function submit(): void {
 <template>
     <AppModal v-model="open" title="Rename" centered>
         <form @submit.prevent="submit">
-            <VibeFormGroup
+<AppFormGroup
                 label="New Name"
-                :validation-state="form.errors.name ? 'invalid' : null"
-                :validation-message="form.errors.name"
+                :error="form.errors.name"
             >
                 <VibeFormInput v-model="form.name" required />
-            </VibeFormGroup>
+            </AppFormGroup>
         </form>
         <template #footer>
             <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>

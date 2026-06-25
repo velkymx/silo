@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
 import { fmtBytes } from '../../lib/format';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const props = defineProps({
     locked: { type: Boolean, default: false },
@@ -29,13 +30,12 @@ function unlock() {
         <template v-if="locked">
             <p class="text-muted small">This link is password-protected.</p>
             <form @submit.prevent="unlock">
-                <VibeFormGroup
+<AppFormGroup
                     label="Password"
-                    :validation-state="form.errors.password ? 'invalid' : null"
-                    :validation-message="form.errors.password"
+                    :error="form.errors.password"
                 >
                     <VibeFormInput v-model="form.password" type="password" required />
-                </VibeFormGroup>
+                </AppFormGroup>
                 <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                     Unlock
                 </VibeButton>

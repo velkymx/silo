@@ -6,6 +6,7 @@ import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { initials } from '../../lib/initials';
 import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -105,28 +106,25 @@ function applyCrop() {
                     </div>
 
                     <form @submit.prevent="submit">
-                        <VibeFormGroup
+                        <AppFormGroup
                             label="Name"
-                            :validation-state="form.errors.name ? 'invalid' : null"
-                            :validation-message="form.errors.name"
+                            :error="form.errors.name"
                         >
                             <VibeFormInput v-model="form.name" required />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup
+                        <AppFormGroup
                             label="Email"
                             class="mt-3"
-                            :validation-state="form.errors.email ? 'invalid' : null"
-                            :validation-message="form.errors.email"
+                            :error="form.errors.email"
                         >
                             <VibeFormInput v-model="form.email" type="email" required />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup
+                        <AppFormGroup
                             label="New Password"
                             class="mt-3"
-                            :validation-state="form.errors.password ? 'invalid' : null"
-                            :validation-message="form.errors.password"
+                            :error="form.errors.password"
                         >
                             <VibeFormInput
                                 v-model="form.password"
@@ -134,18 +132,17 @@ function applyCrop() {
                                 autocomplete="new-password"
                                 help-text="Leave blank to keep your current password."
                             />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup label="Confirm Password" class="mt-3">
+                        <AppFormGroup label="Confirm Password" class="mt-3">
                             <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup
+                        <AppFormGroup
                             v-if="needsCurrentPassword"
                             label="Current Password"
                             class="mt-3"
-                            :validation-state="form.errors.current_password ? 'invalid' : null"
-                            :validation-message="form.errors.current_password"
+                            :error="form.errors.current_password"
                         >
                             <VibeFormInput
                                 v-model="form.current_password"
@@ -153,28 +150,28 @@ function applyCrop() {
                                 autocomplete="current-password"
                                 help-text="Required to change your email or password."
                             />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
                         <hr class="my-4">
                         <h2 class="h6 text-muted text-uppercase mb-3">Directory profile</h2>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <VibeFormGroup label="Job title"><VibeFormInput v-model="form.title" /></VibeFormGroup>
+                                <AppFormGroup label="Job title"><VibeFormInput v-model="form.title" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <VibeFormGroup label="Department"><VibeFormInput v-model="form.department" /></VibeFormGroup>
+                                <AppFormGroup label="Department"><VibeFormInput v-model="form.department" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <VibeFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></VibeFormGroup>
+                                <AppFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <VibeFormGroup label="Location"><VibeFormInput v-model="form.location" /></VibeFormGroup>
+                                <AppFormGroup label="Location"><VibeFormInput v-model="form.location" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <VibeFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></VibeFormGroup>
+                                <AppFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></AppFormGroup>
                             </div>
                             <div class="col-12">
-                                <VibeFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></VibeFormGroup>
+                                <AppFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></AppFormGroup>
                             </div>
                         </div>
 

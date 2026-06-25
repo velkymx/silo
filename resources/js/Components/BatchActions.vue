@@ -96,9 +96,9 @@ function submitRename(): void {
     <!-- New folder from selection -->
     <AppModal v-model="folderOpen" title="New Folder from Selection" centered>
         <div class="mx-auto" style="max-width: 520px">
-            <VibeFormGroup label="Folder name">
+            <AppFormGroup label="Folder name">
                 <VibeFormInput v-model="folderName" />
-            </VibeFormGroup>
+            </AppFormGroup>
             <p class="text-muted small mt-2">{{ count }} item(s) will be moved into it.</p>
         </div>
         <template #footer>
@@ -110,9 +110,9 @@ function submitRename(): void {
     <!-- Batch move -->
     <AppModal v-model="moveOpen" title="Move Selection To" centered>
         <div class="mx-auto" style="max-width: 520px">
-            <VibeFormGroup label="Destination folder">
+            <AppFormGroup label="Destination folder">
                 <VibeFormSelect v-model="moveTarget" :options="destinationOptions" />
-            </VibeFormGroup>
+            </AppFormGroup>
         </div>
         <template #footer>
             <VibeButton variant="secondary" outline @click="moveOpen = false">Cancel</VibeButton>
@@ -130,21 +130,21 @@ function submitRename(): void {
             </VibeButtonGroup>
 
             <div v-if="renameOpts.mode === 'replace'" class="row g-2">
-                <div class="col"><VibeFormGroup label="Find"><VibeFormInput v-model="renameOpts.find" /></VibeFormGroup></div>
-                <div class="col"><VibeFormGroup label="Replace with"><VibeFormInput v-model="renameOpts.replace" /></VibeFormGroup></div>
+                <div class="col"><AppFormGroup label="Find"><VibeFormInput v-model="renameOpts.find" /></AppFormGroup></div>
+                <div class="col"><AppFormGroup label="Replace with"><VibeFormInput v-model="renameOpts.replace" /></AppFormGroup></div>
             </div>
             <div v-else-if="renameOpts.mode === 'add'" class="row g-2 align-items-end">
-                <div class="col"><VibeFormGroup label="Text"><VibeFormInput v-model="renameOpts.text" /></VibeFormGroup></div>
+                <div class="col"><AppFormGroup label="Text"><VibeFormInput v-model="renameOpts.text" /></AppFormGroup></div>
                 <div class="col-auto">
-                    <VibeFormGroup label="Position">
+                    <AppFormGroup label="Position">
                         <VibeFormSelect v-model="renameOpts.position" :options="[{ value: 'before', text: 'Before name' }, { value: 'after', text: 'After name' }]" />
-                    </VibeFormGroup>
+                    </AppFormGroup>
                 </div>
             </div>
             <div v-else class="row g-2 align-items-end">
-                <div class="col"><VibeFormGroup label="Base name"><VibeFormInput v-model="renameOpts.base" placeholder="(keep original)" /></VibeFormGroup></div>
-                <div class="col-auto"><VibeFormGroup label="Start at"><VibeFormInput v-model.number="renameOpts.start" type="number" style="width: 90px" /></VibeFormGroup></div>
-                <div class="col-auto"><VibeFormGroup label="Digits"><VibeFormInput v-model.number="renameOpts.pad" type="number" style="width: 80px" /></VibeFormGroup></div>
+                <div class="col"><AppFormGroup label="Base name"><VibeFormInput v-model="renameOpts.base" placeholder="(keep original)" /></AppFormGroup></div>
+                <div class="col-auto"><AppFormGroup label="Start at"><VibeFormInput v-model.number="renameOpts.start" type="number" style="width: 90px" /></AppFormGroup></div>
+                <div class="col-auto"><AppFormGroup label="Digits"><VibeFormInput v-model.number="renameOpts.pad" type="number" style="width: 80px" /></AppFormGroup></div>
             </div>
 
             <h6 class="mt-3 text-muted">Preview</h6>

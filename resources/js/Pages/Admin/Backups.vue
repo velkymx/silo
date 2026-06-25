@@ -6,6 +6,7 @@ import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { fmtBytes } from '../../lib/format';
 import { useConfirm } from '../../composables/useConfirm';
 import { usePageLoading } from '../../composables/usePageLoading';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const { confirm } = useConfirm();
 const { loading } = usePageLoading();
@@ -86,12 +87,12 @@ onBeforeUnmount(() => clearInterval(poll));
                         Automatic, compressed backups of the database and all stored files.
                         Older backups beyond the retention count are pruned.
                     </p>
-                    <VibeFormGroup label="Frequency">
+                    <AppFormGroup label="Frequency">
                         <VibeFormSelect v-model="scheduleForm.frequency" :options="frequencyOptions" />
-                    </VibeFormGroup>
-                    <VibeFormGroup label="Keep last (count)" class="mt-3">
+                    </AppFormGroup>
+                    <AppFormGroup label="Keep last (count)" class="mt-3">
                         <VibeFormInput v-model="scheduleForm.retention" type="number" min="1" max="365" />
-                    </VibeFormGroup>
+                    </AppFormGroup>
                     <VibeButton
                         variant="secondary"
                         class="mt-3"

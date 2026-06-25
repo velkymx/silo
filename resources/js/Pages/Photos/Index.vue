@@ -13,6 +13,7 @@ import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const { confirm } = useConfirm();
 const toast = useToast();
@@ -390,9 +391,9 @@ function saveEdit() {
 
         <!-- New album -->
         <AppModal v-model="albumOpen" title="New Album" centered>
-            <VibeFormGroup label="Album name">
+            <AppFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
-            </VibeFormGroup>
+            </AppFormGroup>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="albumOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="albumForm.processing || !albumForm.name" @click="createAlbum">Create</VibeButton>

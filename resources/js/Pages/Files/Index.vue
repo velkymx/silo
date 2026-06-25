@@ -25,6 +25,7 @@ import { triggerDownload } from '../../lib/download';
 import { fmtBytes } from '../../lib/format';
 import { TYPE_OPTIONS } from '../../composables/useAdvancedSearch';
 import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 // Office formats edited on the full-screen editor page (binary, versioned).
 const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -882,13 +883,12 @@ onBeforeUnmount(() => {
         <!-- Create folder modal -->
         <AppModal v-model="folderOpen" title="Create Folder" centered>
             <form @submit.prevent="submitFolder">
-                <VibeFormGroup
+<AppFormGroup
                     label="Folder Name"
-                    :validation-state="folderForm.errors.folder_name ? 'invalid' : null"
-                    :validation-message="folderForm.errors.folder_name"
+                    :error="folderForm.errors.folder_name"
                 >
                     <VibeFormInput v-model="folderForm.folder_name" required />
-                </VibeFormGroup>
+                </AppFormGroup>
             </form>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
@@ -902,13 +902,12 @@ onBeforeUnmount(() => {
         <!-- Move / Copy modal -->
         <AppModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
             <form @submit.prevent="submitTransfer">
-                <VibeFormGroup
+<AppFormGroup
                     label="Destination Folder"
-                    :validation-state="transferForm.errors.target_id ? 'invalid' : null"
-                    :validation-message="transferForm.errors.target_id"
+                    :error="transferForm.errors.target_id"
                 >
                     <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
-                </VibeFormGroup>
+                </AppFormGroup>
             </form>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>

@@ -6,6 +6,7 @@ import ThreePane from '../../Components/ThreePane.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -304,28 +305,28 @@ async function runMaintenance(action) {
         </ThreePane>
 
         <AppModal v-model="showModal" :title="editingId ? 'Edit bookmark' : 'Add bookmark'">
-            <VibeFormGroup label="Title" :error="form.errors.title">
+            <AppFormGroup label="Title" :error="form.errors.title">
                 <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
-            </VibeFormGroup>
-            <VibeFormGroup label="URL" :error="form.errors.url">
+            </AppFormGroup>
+            <AppFormGroup label="URL" :error="form.errors.url">
                 <VibeFormInput v-model="form.url" placeholder="https://…" />
-            </VibeFormGroup>
-            <VibeFormGroup label="Description" :error="form.errors.description">
+            </AppFormGroup>
+            <AppFormGroup label="Description" :error="form.errors.description">
                 <VibeFormInput v-model="form.description" placeholder="Optional" />
-            </VibeFormGroup>
+            </AppFormGroup>
             <div class="row">
                 <div class="col-6">
-                    <VibeFormGroup label="Folder" :error="form.errors.category" help-text="Type a name to create a folder">
+                    <AppFormGroup label="Folder" :error="form.errors.category" help-text="Type a name to create a folder">
                         <VibeFormInput v-model="form.category" placeholder="e.g. Tools" list="bm-folders" />
                         <datalist id="bm-folders">
                             <option v-for="f in folders" :key="f" :value="f" />
                         </datalist>
-                    </VibeFormGroup>
+                    </AppFormGroup>
                 </div>
                 <div class="col-6">
-                    <VibeFormGroup label="Icon" :error="form.errors.icon" help-text="Bootstrap icon name (blank = auto favicon)">
+                    <AppFormGroup label="Icon" :error="form.errors.icon" help-text="Bootstrap icon name (blank = auto favicon)">
                         <VibeFormInput v-model="form.icon" placeholder="link-45deg" />
-                    </VibeFormGroup>
+                    </AppFormGroup>
                 </div>
             </div>
             <VibeFormCheckbox v-model="form.shared">Share with everyone</VibeFormCheckbox>
