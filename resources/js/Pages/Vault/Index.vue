@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { http } from '../../lib/http';
@@ -26,6 +26,11 @@ const grouped = computed(() => {
 // Currently revealed secrets, keyed by item id (cleared on hide / timeout).
 const revealed = reactive({});
 const timers = {};
+
+// Clear any pending auto-hide timers so they can't fire after unmount.
+onBeforeUnmount(() => {
+    Object.values(timers).forEach((id) => clearTimeout(id));
+});
 
 async function reveal(item) {
     if (revealed[item.id]) return hide(item.id);
