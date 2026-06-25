@@ -113,6 +113,23 @@
     font-size: 0.85rem;
 }
 
+/* FE-P0-33: Disabled buttons must pass WCAG 1.4.3 (4.5:1) — override Bootstrap's
+   0.65-alpha which pushes contrast to ~2.8:1. */
+.btn:disabled,
+.btn.disabled {
+    color: var(--bs-secondary-color) !important;
+    background-color: var(--bs-tertiary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    opacity: 1 !important;
+}
+
+/* FE-P0-34: Placeholder contrast — browser default is ~2.6:1.
+   Target: ≥ 4.5:1 against both light and dark input backgrounds. */
+::placeholder {
+    color: var(--bs-secondary-color) !important;
+    opacity: 1 !important;
+}
+
 /* FE-P4-2/P4-8: subtle motion polish. Respects reduced-motion. */
 .modal.fade .modal-dialog {
     transform: scale(0.97) translateY(-6px);
