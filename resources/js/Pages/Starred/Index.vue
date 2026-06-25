@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import { iconFor } from '../../lib/fileTypes';
 
 const props = defineProps({
@@ -16,7 +17,7 @@ const empty = computed(() => !props.notes.length && !props.bookmarks.length && !
 <template>
     <AppLayout>
         <div class="p-3 p-lg-4">
-            <h1 class="h4 mb-3"><VibeIcon icon="star-fill" class="text-warning me-2" />Starred</h1>
+            <PageHeader title="Starred" icon="star-fill" />
 
             <p v-if="empty" class="text-muted">Nothing starred yet. Star notes, bookmarks, or files to pin them here.</p>
 

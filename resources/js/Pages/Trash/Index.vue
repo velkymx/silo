@@ -1,6 +1,7 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import PageError from '../../Components/PageError.vue';
 import { useConfirm } from '../../composables/useConfirm';
@@ -44,12 +45,13 @@ async function emptyTrash() {
 <template>
     <AppLayout>
         <PageError />
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0"><VibeIcon icon="trash" class="me-2" />Trash</h4>
-            <VibeButton v-if="items.length" variant="danger" outline @click="emptyTrash">
-                <VibeIcon icon="trash" class="me-1" />Empty Trash
-            </VibeButton>
-        </div>
+        <PageHeader title="Trash" icon="trash">
+            <template #actions>
+                <VibeButton v-if="items.length" variant="danger" outline @click="emptyTrash">
+                    <VibeIcon icon="trash" class="me-1" />Empty Trash
+                </VibeButton>
+            </template>
+        </PageHeader>
         <p class="text-muted small">Items are permanently removed after the retention period.</p>
 
         <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />

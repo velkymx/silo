@@ -1,6 +1,7 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import PageError from '../../../Components/PageError.vue';
 import { usePageLoading } from '../../../composables/usePageLoading';
@@ -27,7 +28,7 @@ function edit(id) {
 <template>
     <AppLayout>
         <PageError />
-        <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Users</h4>
+        <PageHeader title="Users" icon="people" />
         <LoadingSkeleton v-if="loading" :rows="6" :cols="5" />
         <VibeDataTable v-else :items="users" :columns="columns" row-key="id" hover striped empty-text="No users.">
             <template #cell(is_admin)="{ item }">

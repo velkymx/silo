@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 
@@ -121,16 +122,15 @@ async function onImportFile(e) {
 <template>
     <AppLayout>
         <div class="p-3 p-lg-4">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h1 class="h4 mb-0"><VibeIcon icon="lock-fill" class="text-primary me-2" />Vault</h1>
-                <div class="d-flex gap-2">
+            <PageHeader title="Vault" icon="lock-fill">
+                <template #actions>
                     <VibeButton variant="secondary" outline title="Import a Chrome password CSV export" @click="importInput?.click()">
                         <VibeIcon icon="upload" class="me-1" />Import
                     </VibeButton>
                     <VibeButton variant="primary" @click="openAdd"><VibeIcon icon="plus-lg" class="me-1" />Add secret</VibeButton>
                     <input ref="importInput" type="file" accept=".csv,text/csv" class="d-none" @change="onImportFile">
-                </div>
-            </div>
+                </template>
+            </PageHeader>
 
             <VibeAlert v-if="revealError" variant="danger" dismissible class="mb-3" @dismiss="revealError = ''">
                 {{ revealError }}

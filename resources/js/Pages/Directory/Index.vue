@@ -2,6 +2,7 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import { http } from '../../lib/http';
 import { initials } from '../../lib/initials';
 
@@ -56,7 +57,7 @@ async function open(person) {
 <template>
     <AppLayout>
         <div class="p-3 p-lg-4">
-            <h1 class="h4 mb-3"><VibeIcon icon="person-rolodex" class="text-primary me-2" />Directory</h1>
+            <PageHeader title="Directory" icon="person-rolodex" />
 
             <div class="row g-2 mb-3">
                 <div class="col-12 col-md-6">
