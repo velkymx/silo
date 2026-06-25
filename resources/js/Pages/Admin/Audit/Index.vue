@@ -1,7 +1,6 @@
 <script setup>
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
-import PageError from '../../../Components/PageError.vue';
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { usePageLoading } from '../../../composables/usePageLoading';
@@ -56,7 +55,6 @@ const variant = (action) => {
 
 <template>
     <AppLayout>
-        <PageError />
         <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
 
         <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">

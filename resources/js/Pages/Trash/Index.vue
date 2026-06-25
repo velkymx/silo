@@ -3,7 +3,6 @@ import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
-import PageError from '../../Components/PageError.vue';
 import { useConfirm } from '../../composables/useConfirm';
 import { usePageLoading } from '../../composables/usePageLoading';
 
@@ -44,7 +43,6 @@ async function emptyTrash() {
 
 <template>
     <AppLayout>
-        <PageError />
         <PageHeader title="Trash" icon="trash">
             <template #actions>
                 <VibeButton v-if="items.length" variant="danger" outline @click="emptyTrash">

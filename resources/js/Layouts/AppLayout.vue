@@ -6,6 +6,7 @@ import { useConfirm, useDialogHost } from '../composables/useConfirm';
 import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
 import { useStorageMeter } from '../composables/useStorageMeter';
+import PageError from '../Components/PageError.vue';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
@@ -299,7 +300,8 @@ function onUserMenu({ item }) {
             <!-- Content -->
             <main class="flex-grow-1 min-vw-0 bg-body d-flex flex-column" :class="isNotes ? 'p-0' : 'p-3 p-lg-4'">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
-                <VibeAlert v-if="flash.error" variant="danger" dismissible>{{ flash.error }}</VibeAlert>
+                <!-- Single error surface (flash.error + validation errors) for every page. -->
+                <PageError />
                 <div class="flex-grow-1">
                     <slot />
                 </div>

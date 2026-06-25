@@ -7,7 +7,6 @@ import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
 import { useConfirm } from '../../composables/useConfirm';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
-import PageError from '../../Components/PageError.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 
@@ -217,7 +216,6 @@ function saveEdit() {
 
 <template>
     <AppLayout>
-        <PageError />
         <!-- Toolbar -->
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <h4 class="mb-0 me-2"><VibeIcon icon="images" class="me-2" />Photos</h4>
