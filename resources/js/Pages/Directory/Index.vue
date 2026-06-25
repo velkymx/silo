@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { http } from '../../lib/http';
 import { initials } from '../../lib/initials';
@@ -7,22 +8,27 @@ import { initials } from '../../lib/initials';
 const props = defineProps({
     people: { type: Array, default: () => [] },
     departments: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
 });
 
-const search = ref('');
-const department = ref('');
+// Drive the server-side search the controller already supports — no giant
+// client-side payload to filter.
+const search = ref(props.filters?.search ?? '');
+const department = ref(props.filters?.department ?? '');
+let filterTimer = null;
+watch([search, department], ([s, d]) => {
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(() => {
+        router.get('/directory', { search: s || undefined, department: d || undefined },
+            { preserveState: true, preserveScroll: true, replace: true });
+    }, 250);
+});
+onBeforeUnmount(() => clearTimeout(filterTimer));
 
-const filtered = computed(() => props.people.filter((p) => {
-    const q = search.value.trim().toLowerCase();
-    const matchesQ = !q || [p.name, p.title, p.department].some((v) => (v || '').toLowerCase().includes(q));
-    const matchesDept = !department.value || p.department === department.value;
-    return matchesQ && matchesDept;
-}));
-
-// Group filtered people under their department heading.
+// Group the server-filtered people under their department heading.
 const grouped = computed(() => {
     const map = new Map();
-    for (const p of filtered.value) {
+    for (const p of props.people) {
         const key = p.department || 'Unassigned';
         if (!map.has(key)) map.set(key, []);
         map.get(key).push(p);
@@ -64,7 +70,7 @@ async function open(person) {
                 </div>
             </div>
 
-            <p v-if="!filtered.length" class="text-muted">No people found.</p>
+            <p v-if="!people.length" class="text-muted">No people found.</p>
 
             <div v-for="[dept, items] in grouped" :key="dept" class="mb-4">
                 <div class="text-uppercase small text-muted fw-semibold mb-2">{{ dept }}</div>

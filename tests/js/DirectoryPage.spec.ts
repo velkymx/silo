@@ -3,8 +3,11 @@ import { mount, flushPromises } from '@vue/test-utils';
 
 const h = vi.hoisted(() => ({
     get: vi.fn(() => Promise.resolve({ person: { id: 2, name: 'Alice', title: 'Engineer', email: 'a@x.co' } })),
+    routerGet: vi.fn(),
 }));
 vi.mock('@/lib/http', () => ({ http: { get: h.get }, getText: vi.fn() }));
+vi.mock('@inertiajs/vue3', () => ({ router: { get: h.routerGet } }));
+vi.useFakeTimers();
 
 import DirectoryIndex from '@/Pages/Directory/Index.vue';
 
@@ -13,7 +16,10 @@ const people = [
     { id: 2, name: 'Alice Eng', title: 'Engineer', department: 'Engineering', phone: null, avatar_url: null },
 ];
 
-beforeEach(() => h.get.mockClear());
+beforeEach(() => {
+    h.get.mockClear();
+    h.routerGet.mockClear();
+});
 
 describe('Directory/Index', () => {
     it('renders people grouped by department', () => {
@@ -24,11 +30,12 @@ describe('Directory/Index', () => {
         expect(wrapper.text()).toContain('Sales');
     });
 
-    it('filters people by the search box', async () => {
+    it('drives a debounced server-side search', async () => {
         const wrapper = mount(DirectoryIndex, { props: { people, departments: [] } });
         await wrapper.get('input[type="search"]').setValue('alice');
-        expect(wrapper.text()).toContain('Alice Eng');
-        expect(wrapper.text()).not.toContain('Bob Sales');
+        vi.advanceTimersByTime(300);
+        expect(h.routerGet).toHaveBeenCalledWith('/directory',
+            { search: 'alice', department: undefined }, expect.any(Object));
     });
 
     it('opens a profile by fetching the show endpoint', async () => {
