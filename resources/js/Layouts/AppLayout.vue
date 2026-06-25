@@ -229,7 +229,7 @@ function onUserMenu({ item }) {
 
         <div class="d-flex flex-grow-1" style="min-height: 0">
             <!-- Sidebar (collapsible on desktop, offcanvas on mobile) -->
-            <aside v-if="!isMobile && sidebarOpen" class="app-sidebar d-flex flex-column flex-shrink-0 border-end bg-body p-2" style="width: 250px">
+            <aside v-if="!isMobile && sidebarOpen && !isNotes" class="app-sidebar d-flex flex-column flex-shrink-0 border-end bg-body p-2" style="width: 250px">
                 <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
@@ -284,6 +284,16 @@ function onUserMenu({ item }) {
                         <a href="/usage" class="small text-decoration-none d-inline-block mt-1" @click.prevent="router.visit('/usage')">Manage storage</a>
                     </div>
                 </div>
+            </aside>
+
+            <!-- Icon rail on full-bleed 3-pane surfaces: keeps app nav without
+                 adding a wide second sidebar next to the ThreePane sidebar. -->
+            <aside v-else-if="!isMobile && sidebarOpen && isNotes" class="app-sidebar app-rail d-flex flex-column flex-shrink-0 border-end bg-body p-1 align-items-center" style="width: 56px">
+                <VibeNav pills vertical :items="[...baseNav, ...adminNav, ...trashNav]" @item-click="onNav">
+                    <template #item="{ item }">
+                        <VibeIcon :icon="item.icon" class="fs-5" :title="item.text" />
+                    </template>
+                </VibeNav>
             </aside>
 
             <!-- Content -->
