@@ -28,6 +28,7 @@ const saveState = ref('idle'); // 'idle' | 'saving' | 'saved'
 const activeTag = ref(null);
 const selectedFolder = ref(null);
 const sortOrder = ref('name-asc');
+const activePane = ref(props.open ? 'detail' : 'list');
 let suppressSave = false;
 let saveTimer = null;
 let suppressTimer = null;
@@ -109,7 +110,7 @@ onBeforeUnmount(() => {
 function selectNote(id) {
     selectedId.value = id;
     const note = props.notes.find((n) => n.id === id);
-    if (note) loadContent(note);
+    if (note) { loadContent(note); activePane.value = 'detail'; }
 }
 
 function newNote() {
@@ -166,7 +167,7 @@ onMounted(() => {
 
 <template>
     <AppLayout>
-        <ThreePane>
+        <ThreePane v-model:activePane="activePane">
             <template #sidebar>
                 <NotesSidebar
                     :folders="folders"

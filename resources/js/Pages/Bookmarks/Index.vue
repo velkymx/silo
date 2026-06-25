@@ -70,6 +70,12 @@ const listed = computed(() => {
 // ----- Selection / detail -----
 const selectedId = ref(null);
 const selectedBookmark = computed(() => props.bookmarks.find((b) => b.id === selectedId.value) || null);
+const activePane = ref('list');
+
+function selectBookmark(id) {
+    selectedId.value = id;
+    activePane.value = 'detail';
+}
 
 // ----- Favicon fallback -----
 const failedIcons = ref(new Set());
@@ -161,7 +167,7 @@ async function runMaintenance(action) {
 
 <template>
     <AppLayout>
-        <ThreePane>
+        <ThreePane v-model:activePane="activePane">
             <template #sidebar>
                 <div class="d-flex flex-column p-2">
                 <div class="d-flex align-items-center justify-content-between px-1 mb-1">
@@ -234,7 +240,7 @@ async function runMaintenance(action) {
                         type="button"
                         class="bm-row w-100 text-start border-0 border-bottom px-3 py-2 bg-transparent d-flex align-items-center gap-2"
                         :class="{ active: b.id === selectedId }"
-                        @click="selectedId = b.id"
+                        @click="selectBookmark(b.id)"
                     >
                         <img v-if="b.icon_url && !failedIcons.has(b.id)" :src="b.icon_url" alt="" width="18" height="18" @error="onIconError(b.id)">
                         <VibeIcon v-else :icon="b.icon_name || 'link-45deg'" class="text-muted" />
