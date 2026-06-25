@@ -13,6 +13,8 @@ const props = defineProps({
 const { confirm } = useConfirm();
 const { prompt } = usePrompt();
 
+const revealError = ref('');
+
 const grouped = computed(() => {
     const map = new Map();
     for (const i of props.items) {
@@ -40,6 +42,7 @@ async function reveal(item) {
         confirmLabel: 'Reveal',
     });
     if (!password) return;
+    revealError.value = '';
     try {
         const data = await http.post(`/vault/${item.id}/reveal`, { password });
         revealed[item.id] = data.secret;
@@ -47,9 +50,8 @@ async function reveal(item) {
         clearTimeout(timers[item.id]);
         timers[item.id] = setTimeout(() => hide(item.id), 20000);
     } catch (e) {
-        // 422 = wrong password; surface a minimal message.
-        revealed[item.id] = undefined;
-        alert(e?.data?.errors?.password?.[0] || 'Could not reveal secret.');
+        // 422 = wrong password; surface it in-app, not via a native alert().
+        revealError.value = e?.data?.errors?.password?.[0] || 'Could not reveal secret.';
     }
 }
 
@@ -129,6 +131,10 @@ async function onImportFile(e) {
                     <input ref="importInput" type="file" accept=".csv,text/csv" class="d-none" @change="onImportFile">
                 </div>
             </div>
+
+            <VibeAlert v-if="revealError" variant="danger" dismissible class="mb-3" @dismiss="revealError = ''">
+                {{ revealError }}
+            </VibeAlert>
 
             <p v-if="!items.length" class="text-muted">No secrets yet.</p>
 
