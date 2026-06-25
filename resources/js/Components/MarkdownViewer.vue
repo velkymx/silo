@@ -4,9 +4,12 @@ import Viewer from '@toast-ui/editor/viewer';
 import '@toast-ui/editor/dist/toastui-editor-viewer.css';
 import '@toast-ui/editor/dist/theme/toastui-editor-dark.css';
 import { getText } from '../lib/http';
+import { linkifyNotes } from '../lib/linkifyNotes';
 
 const props = defineProps({
     url: { type: String, required: true },
+    // Rewrite [[wikilinks]] / @mentions into clickable markdown (Notes surface).
+    notes: { type: Boolean, default: false },
 });
 
 const el = ref(null);
@@ -24,8 +27,9 @@ async function load() {
     error.value = '';
     const token = ++loadSeq;
     try {
-        const markdown = await getText(props.url);
+        const raw = await getText(props.url);
         if (token !== loadSeq || !el.value) return;
+        const markdown = props.notes ? linkifyNotes(raw) : raw;
 
         viewer?.destroy();
         viewer = new Viewer({

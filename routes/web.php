@@ -1,7 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BatchController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\FolderController;
+use App\Http\Controllers\VersionController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\FilePermissionController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\PhotoController;
@@ -14,6 +18,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\BackupController;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
@@ -56,11 +61,19 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/photos/reorder', [PhotoController::class, 'reorder'])->name('photos.reorder');
 
     Route::get('/usage', [\App\Http\Controllers\StorageController::class, 'index'])->name('storage.index');
+
+    Route::get('/break/crush', fn () => Inertia::render('Break/Crush'))->name('break.crush');
+
+    Route::get('/break/dwg', [\App\Http\Controllers\DailyWordGameController::class, 'index'])->name('break.dwg');
+    Route::post('/break/dwg/guess', [\App\Http\Controllers\DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
+    Route::get('/break/soduku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.soduku');
+
         Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 
     Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
     Route::delete('/trash/empty', [TrashController::class, 'empty'])->name('trash.empty');
+    Route::post('/trash/batch/restore', [TrashController::class, 'batchRestore'])->name('trash.batch.restore');
     Route::post('/trash/{file}/restore', [TrashController::class, 'restore'])->withTrashed()->name('trash.restore');
     Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
     Route::post('/upload', [FileController::class, 'upload'])
@@ -86,19 +99,74 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/files/{file}/links', [ShareLinkController::class, 'index'])->name('files.links.index');
     Route::post('/files/{file}/links', [ShareLinkController::class, 'store'])->name('files.links.store');
     Route::delete('/files/{file}/links/{link}', [ShareLinkController::class, 'destroy'])->name('files.links.destroy');
-    Route::get('/files/{file}/versions/{version}/download', [FileController::class, 'downloadVersion'])->name('files.versions.download');
-    Route::post('/files/{file}/versions/{version}/restore', [FileController::class, 'restoreVersion'])->name('files.versions.restore');
+    Route::get('/files/{file}/versions/{version}/download', [VersionController::class, 'download'])->name('files.versions.download');
+    Route::post('/files/{file}/versions/{version}/restore', [VersionController::class, 'restore'])->name('files.versions.restore');
 
-    Route::post('/files/batch/move', [FileController::class, 'batchMove'])->name('files.batch.move');
-    Route::post('/files/batch/delete', [FileController::class, 'batchDelete'])->name('files.batch.delete');
-    Route::post('/files/batch/folder', [FileController::class, 'batchFolder'])->name('files.batch.folder');
-    Route::post('/files/batch/rename', [FileController::class, 'batchRename'])->name('files.batch.rename');
+    Route::post('/files/batch/move', [BatchController::class, 'move'])->name('files.batch.move');
+    Route::post('/files/batch/delete', [BatchController::class, 'delete'])->name('files.batch.delete');
+    Route::post('/files/batch/folder', [BatchController::class, 'folder'])->name('files.batch.folder');
+    Route::post('/files/batch/rename', [BatchController::class, 'rename'])->name('files.batch.rename');
 
     Route::post('/saved-searches', [\App\Http\Controllers\SavedSearchController::class, 'store'])->name('saved-searches.store');
     Route::delete('/saved-searches/{savedSearch}', [\App\Http\Controllers\SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
 
-    Route::post('/folders', [FileController::class, 'createFolder'])->name('folders.create');
-    Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
+    Route::post('/folders', [FolderController::class, 'store'])->name('folders.create');
+    Route::get('/folders/{folder}', [FolderController::class, 'show'])->name('folders.view');
+
+    // Secrets vault. Reveal/generate are rate-limited; reveal also re-checks the
+    // user's password (in the controller) and is audited.
+    Route::get('/vault', [\App\Http\Controllers\VaultController::class, 'index'])->name('vault.index');
+    Route::post('/vault', [\App\Http\Controllers\VaultController::class, 'store'])->name('vault.store');
+    Route::put('/vault/{vaultItem}', [\App\Http\Controllers\VaultController::class, 'update'])->whereNumber('vaultItem')->name('vault.update');
+    Route::delete('/vault/{vaultItem}', [\App\Http\Controllers\VaultController::class, 'destroy'])->whereNumber('vaultItem')->name('vault.destroy');
+    Route::post('/vault/{vaultItem}/reveal', [\App\Http\Controllers\VaultController::class, 'reveal'])
+        ->whereNumber('vaultItem')->middleware('throttle:20,1')->name('vault.reveal');
+    Route::get('/vault/generate', [\App\Http\Controllers\VaultController::class, 'generate'])
+        ->middleware('throttle:60,1')->name('vault.generate');
+    Route::post('/vault/import', [\App\Http\Controllers\VaultController::class, 'import'])
+        ->middleware('throttle:10,1')->name('vault.import');
+
+    // Starred — cross-app view of starred notes, bookmarks, and files.
+    Route::get('/starred', [\App\Http\Controllers\StarredController::class, 'index'])->name('starred.index');
+
+    // Staff directory.
+    Route::get('/directory', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');
+    Route::get('/directory/{user}', [\App\Http\Controllers\DirectoryController::class, 'show'])->whereNumber('user')->name('directory.show');
+
+    // Bookmarks — the internal-links launchpad.
+    Route::get('/bookmarks', [\App\Http\Controllers\BookmarkController::class, 'index'])->name('bookmarks.index');
+    Route::post('/bookmarks', [\App\Http\Controllers\BookmarkController::class, 'store'])->name('bookmarks.store');
+    Route::put('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'update'])->name('bookmarks.update');
+    Route::delete('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
+    Route::get('/bookmarks/{bookmark}/go', [\App\Http\Controllers\BookmarkController::class, 'go'])->whereNumber('bookmark')->name('bookmarks.go');
+    Route::post('/bookmarks/{bookmark}/star', [\App\Http\Controllers\BookmarkController::class, 'star'])->whereNumber('bookmark')->name('bookmarks.star');
+    Route::get('/bookmarks/{bookmark}/icon', [\App\Http\Controllers\BookmarkController::class, 'icon'])->whereNumber('bookmark')->name('bookmarks.icon');
+    Route::get('/bookmarks/{bookmark}/screenshot', [\App\Http\Controllers\BookmarkController::class, 'screenshot'])->whereNumber('bookmark')->name('bookmarks.screenshot');
+    Route::post('/bookmarks/import', [\App\Http\Controllers\BookmarkController::class, 'import'])
+        ->middleware('throttle:10,1')->name('bookmarks.import');
+    Route::post('/bookmarks/dedup', [\App\Http\Controllers\BookmarkController::class, 'dedup'])->name('bookmarks.dedup');
+    Route::post('/bookmarks/prune', [\App\Http\Controllers\BookmarkController::class, 'prune'])->name('bookmarks.prune');
+    Route::post('/bookmarks/validate', [\App\Http\Controllers\BookmarkController::class, 'validateAll'])
+        ->middleware('throttle:6,1')->name('bookmarks.validate');
+    Route::post('/bookmarks/hydrate', [\App\Http\Controllers\BookmarkController::class, 'hydrate'])
+        ->middleware('throttle:6,1')->name('bookmarks.hydrate');
+
+    // Notes — a note-centric surface over markdown files.
+    Route::get('/notes', [NoteController::class, 'index'])->name('notes.index');
+    Route::post('/notes', [NoteController::class, 'store'])->name('notes.store');
+    Route::post('/notes/folders', [NoteController::class, 'createFolder'])->name('notes.folders.create');
+    Route::put('/notes/{file}/autosave', [NoteController::class, 'autosave'])
+        ->whereNumber('file')->name('notes.autosave');
+    Route::put('/notes/{file}/rename', [NoteController::class, 'rename'])
+        ->whereNumber('file')->name('notes.rename');
+    Route::get('/notes/{file}/content', [NoteController::class, 'content'])
+        ->whereNumber('file')->name('notes.content');
+    Route::get('/notes/{file}/backlinks', [NoteController::class, 'backlinks'])
+        ->whereNumber('file')->name('notes.backlinks');
+    Route::get('/notes/search/notes', [NoteController::class, 'searchNotes'])
+        ->middleware('throttle:120,1')->name('notes.search.notes');
+    Route::get('/notes/search/users', [NoteController::class, 'searchUsers'])
+        ->middleware('throttle:120,1')->name('notes.search.users');
 });
 
 // Public share links (no authentication). Rate-limited: the unlock endpoint

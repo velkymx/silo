@@ -89,4 +89,21 @@ return [
         'timeout' => (int) env('FILEMANAGER_AV_TIMEOUT', 120),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Notes
+    |--------------------------------------------------------------------------
+    |
+    | Notes are markdown files living under a per-user "Notes" folder, edited
+    | on the /notes surface. To avoid one saved version per autosave tick, the
+    | autosave path snapshots a new version at most once every this many minutes
+    | of continuous editing (explicit "Save version" always snapshots).
+    |
+    */
+
+    'notes' => [
+        'root_folder' => env('FILEMANAGER_NOTES_FOLDER', 'Notes'),
+        'snapshot_interval' => (int) env('FILEMANAGER_NOTES_SNAPSHOT_INTERVAL', 10),
+    ],
+
 ];

@@ -41,6 +41,7 @@
         "jsuites": "^6.4.0",
         "material-icons": "^1.13.14",
         "quill": "^2.0.3",
+        "sudoku-gen": "^1.0.2",
         "vue": "^3.5.38",
         "vue-advanced-cropper": "^2.8.9",
         "xlsx": "^0.18.5"

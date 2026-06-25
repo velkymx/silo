@@ -4,7 +4,6 @@ import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import SharedListing from '../../Components/SharedListing.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
-import PageError from '../../Components/PageError.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 
 const { loading } = usePageLoading();
@@ -30,7 +29,6 @@ function onCrumb({ item }) {
 
 <template>
     <AppLayout>
-        <PageError />
         <VibeBreadcrumb :items="crumbs" class="mb-3" @item-click="onCrumb" />
         <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />
         <SharedListing v-else :folders="folders" :files="files" />

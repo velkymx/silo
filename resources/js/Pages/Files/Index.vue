@@ -19,10 +19,13 @@ import { descendantIds } from '../../lib/folderTree';
 import { useStorageMeter } from '../../composables/useStorageMeter';
 import EmptyState from '../../Components/EmptyState.vue';
 import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
 import { fmtBytes } from '../../lib/format';
 import { TYPE_OPTIONS } from '../../composables/useAdvancedSearch';
+import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 // Office formats edited on the full-screen editor page (binary, versioned).
 const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -132,8 +135,10 @@ const activeFilters = computed(() => {
 // ----- Unified Finder/Dropbox-style listing -----
 // Folders and files share one list; folders sort ahead of files by default.
 const items = computed(() => [
-    ...props.folders.map((f) => ({ ...f, is_dir: true, modified: f.updated_at, _sort: 0 })),
-    ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1 })),
+    // A folder and a file can share a DB id; `_key` disambiguates sibling keys so
+    // Vue's patch reconciliation doesn't collide on duplicate `:key` values.
+    ...props.folders.map((f) => ({ ...f, is_dir: true, modified: f.updated_at, _sort: 0, _key: `dir-${f.id}` })),
+    ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1, _key: `file-${f.id}` })),
 ]);
 
 const columns = computed(() => [
@@ -237,6 +242,7 @@ const {
 } = useSelection(items, openItem);
 
 const { confirm } = useConfirm();
+const toast = useToast();
 
 // Right-click context menu over a file/folder row or card.
 const ctxOpen = ref(false);
@@ -551,7 +557,12 @@ async function destroy(item) {
         ? `Delete folder "${item.name}" and its ${item.item_count} item(s)? Everything inside moves to trash.`
         : `Move "${item.name}" to trash?`;
     if (!await confirm({ title: 'Move to trash', message: msg, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    router.delete(`/delete/${item.id}`, { preserveScroll: true });
+    router.delete(`/delete/${item.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`"${item.name}" moved to trash`, {
+            undo: () => router.post(`/trash/${item.id}/restore`, {}, { preserveScroll: true }),
+        }),
+    });
 }
 
 // ----- Background-job status polling -----
@@ -670,7 +681,7 @@ onBeforeUnmount(() => {
         <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
         <template v-if="viewMode === 'grid'">
             <VibeRow class="g-3">
-                <VibeCol v-for="item in gridItems" :key="item.id" :xs="6" :sm="4" :md="3" :xl="2">
+                <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
                     <FileItem
                         :item="item"
                         view="grid"
@@ -704,12 +715,12 @@ onBeforeUnmount(() => {
             v-else
             :items="items"
             :columns="columns"
-            row-key="id"
+            row-key="_key"
             hover
             :searchable="false"
             :per-page="25"
             :per-page-options="[10, 25, 50, 100]"
-            :responsive="false"
+            :responsive="true"
             :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
             @row-clicked="selectFile"
         >
@@ -763,7 +774,7 @@ onBeforeUnmount(() => {
         <EditorModal v-model="editOpen" :item="editItem" :creating="editCreating" :kind="editKind" :parent-id="currentId" />
 
         <!-- Details modal -->
-        <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
+        <AppModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
             <table class="table table-sm mb-0">
                 <tbody>
                     <tr v-for="row in detailsRows" :key="row.label">
@@ -772,13 +783,13 @@ onBeforeUnmount(() => {
                     </tr>
                 </tbody>
             </table>
-        </VibeModal>
+        </AppModal>
 
         <!-- Share modal -->
         <ShareModal v-model="shareOpen" :item="shareTarget" />
 
         <!-- Tags modal -->
-        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
+        <AppModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <VibeBadge
                     v-for="name in tagList"
@@ -809,10 +820,10 @@ onBeforeUnmount(() => {
                 <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Versions modal -->
-        <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
+        <AppModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
             <p class="text-muted small">
                 Current: version {{ versionsItem?.version }}.
                 <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
@@ -821,12 +832,12 @@ onBeforeUnmount(() => {
                 v-if="versionsItem?.versions?.length"
                 :items="versionsItem.versions"
                 :columns="versionColumns"
-                row-key="id"
+                row-key="_key"
                 hover
                 :searchable="false"
                 :show-per-page="false"
                 :per-page="100"
-                :responsive="false"
+                :responsive="true"
             >
                 <template #cell(version)="{ item }">v{{ item.version }}</template>
                 <template #cell(note)="{ item }">
@@ -851,7 +862,7 @@ onBeforeUnmount(() => {
                     </div>
                 </template>
             </VibeDataTable>
-        </VibeModal>
+        </AppModal>
 
         <!-- Quick Look modal -->
         <QuickLookModal
@@ -870,35 +881,33 @@ onBeforeUnmount(() => {
         <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" :storage="storage" />
 
         <!-- Create folder modal -->
-        <VibeModal v-model="folderOpen" title="Create Folder" centered>
+        <AppModal v-model="folderOpen" title="Create Folder" centered>
             <form @submit.prevent="submitFolder">
-                <VibeFormGroup
+<AppFormGroup
                     label="Folder Name"
-                    :validation-state="folderForm.errors.folder_name ? 'invalid' : null"
-                    :validation-message="folderForm.errors.folder_name"
-                >
+                    :error="folderForm.errors.folder_name"
+                 required>
                     <VibeFormInput v-model="folderForm.folder_name" required />
-                </VibeFormGroup>
+                </AppFormGroup>
             </form>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Rename modal -->
         <RenameModal v-model="renameOpen" :item="renameTarget" />
 
         <!-- Move / Copy modal -->
-        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
+        <AppModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
             <form @submit.prevent="submitTransfer">
-                <VibeFormGroup
+<AppFormGroup
                     label="Destination Folder"
-                    :validation-state="transferForm.errors.target_id ? 'invalid' : null"
-                    :validation-message="transferForm.errors.target_id"
+                    :error="transferForm.errors.target_id"
                 >
                     <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
-                </VibeFormGroup>
+                </AppFormGroup>
             </form>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>
@@ -906,7 +915,7 @@ onBeforeUnmount(() => {
                     <VibeSpinner v-if="transferForm.processing" size="sm" class="me-1" />{{ transferForm.processing ? (transferMode === 'move' ? 'Moving…' : 'Copying…') : (transferMode === 'move' ? 'Move' : 'Copy') }}
                 </VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Advanced search -->
         <AdvancedSearchModal

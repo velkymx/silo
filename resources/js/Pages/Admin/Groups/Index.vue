@@ -3,11 +3,13 @@ import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
-import PageError from '../../../Components/PageError.vue';
 import { useConfirm } from '../../../composables/useConfirm';
+import { useToast } from '../../../composables/useToast';
 import { usePageLoading } from '../../../composables/usePageLoading';
+import AppFormGroup from '../../../Components/AppFormGroup.vue';
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { loading } = usePageLoading();
 
 defineProps({
@@ -43,24 +45,25 @@ function saveEdit() {
 
 async function destroy(group) {
     if (!await confirm({ title: 'Delete group', message: `Delete group "${group.name}"? Members will be unassigned.`, confirmLabel: 'Delete', variant: 'danger' })) return;
-    useForm({}).delete(`/groups/${group.id}`, { preserveScroll: true });
+    useForm({}).delete(`/groups/${group.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`Group "${group.name}" deleted`, { variant: 'danger' }),
+    });
 }
 </script>
 
 <template>
     <AppLayout>
-        <PageError />
         <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Groups</h4>
 
         <VibeRow class="g-2 align-items-end mb-4">
             <VibeCol :md="6">
-                <VibeFormGroup
+<AppFormGroup
                     label="New group name"
-                    :validation-state="createForm.errors.name ? 'invalid' : null"
-                    :validation-message="createForm.errors.name"
+                    :error="createForm.errors.name"
                 >
                     <VibeFormInput v-model="createForm.name" @keyup.enter="create" />
-                </VibeFormGroup>
+                </AppFormGroup>
             </VibeCol>
             <VibeCol :md="2">
                 <VibeButton variant="primary" :disabled="createForm.processing" @click="create"><VibeSpinner v-if="createForm.processing" size="sm" class="me-1" />{{ createForm.processing ? 'Adding…' : 'Add group' }}</VibeButton>

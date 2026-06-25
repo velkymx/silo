@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ManagesFilesystem;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
@@ -11,7 +12,6 @@ use App\Services\QuotaService;
 use App\Support\FileResponse;
 use App\Support\Uploads;
 use Illuminate\Http\Request;
-use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +21,7 @@ use Inertia\Inertia;
 
 class FileController extends Controller
 {
+    use ManagesFilesystem;
     // Display files and folders for the current (DB-backed) folder.
     public function index(Request $request, \App\Services\FileSearch $search)
     {
@@ -330,133 +331,6 @@ class FileController extends Controller
             ->with('success', 'Saved.');
     }
 
-    // ---- Batch operations (multi-select) ----
-
-    /** Load files by id that the current user owns, preserving the given order. */
-    private function ownedBatch(array $ids): \Illuminate\Support\Collection
-    {
-        $userId = auth()->id();
-        $files = File::whereIn('id', $ids)->where('owner_id', $userId)->get()->keyBy('id');
-
-        return collect($ids)->map(fn ($id) => $files->get($id))->filter()->values();
-    }
-
-    public function batchMove(Request $request)
-    {
-        $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'integer',
-            'target_id' => 'nullable|integer|exists:files,id',
-        ]);
-
-        $userId = auth()->id();
-        $target = $this->resolveFolder($request->input('target_id'), $userId);
-
-        $this->withFolderLock($userId, $target?->id, function () use ($request, $target) {
-            DB::transaction(function () use ($request, $target) {
-                foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                    if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
-                        throw ValidationException::withMessages(['target_id' => "Cannot move \"{$file->name}\" into itself."]);
-                    }
-                    $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
-                    $file->update(['parent_id' => $target?->id]);
-                }
-            });
-        });
-
-        return redirect()->route('files.index', ['folder' => $target?->id])
-            ->with('success', 'Moved selected items.');
-    }
-
-    public function batchDelete(Request $request)
-    {
-        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
-
-        DB::transaction(function () use ($request) {
-            foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                if ($file->is_dir) {
-                    $this->trashSubtree($file);
-                }
-                $file->delete();
-                Audit::log('file.trash', $file);
-            }
-        });
-
-        return back()->with('success', 'Moved selected items to trash.');
-    }
-
-    // New Folder From Selection: create a folder in the current location and
-    // move the selected items into it (Finder-style).
-    public function batchFolder(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'ids' => 'required|array',
-            'ids.*' => 'integer',
-            'parent_id' => 'nullable|integer|exists:files,id',
-        ]);
-
-        $userId = auth()->id();
-        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
-        $name = trim((string) $request->string('name'));
-
-        $folder = $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId, $request) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
-
-            return DB::transaction(function () use ($name, $parent, $userId, $request) {
-                $folder = File::create([
-                    'name' => $name,
-                    'path' => $name,
-                    'disk' => config('filemanager.disk'),
-                    'is_dir' => true,
-                    'parent_id' => $parent?->id,
-                    'owner_id' => $userId,
-                ]);
-
-                foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                    if ($file->id === $folder->id) {
-                        continue;
-                    }
-                    $this->assertNoCollision($folder->id, $file->name, $userId, $file->id);
-                    $file->update(['parent_id' => $folder->id]);
-                }
-
-                return $folder;
-            });
-        });
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Created “{$folder->name}” from selection.");
-    }
-
-    // Batch rename: the client computes the final names (find/replace, prefix/
-    // suffix, numbering) and previews them; we apply with collision checks.
-    public function batchRename(Request $request)
-    {
-        $request->validate([
-            'renames' => 'required|array',
-            'renames.*.id' => 'required|integer',
-            'renames.*.name' => 'required|string|max:255',
-        ]);
-
-        $userId = auth()->id();
-        $byId = collect($request->input('renames'))->keyBy('id');
-
-        DB::transaction(function () use ($byId, $userId) {
-            $files = File::whereIn('id', $byId->keys())->where('owner_id', $userId)->get();
-            foreach ($files as $file) {
-                $name = trim((string) $byId[$file->id]['name']);
-                if ($name === '' || $name === $file->name) {
-                    continue;
-                }
-                $this->assertNoCollision($file->parent_id, $name, $userId, $file->id);
-                $file->update(['name' => $name]);
-            }
-        });
-
-        return back()->with('success', 'Renamed selected items.');
-    }
-
     // Toggle a file's or folder's starred (favorite) flag.
     public function star(File $file)
     {
@@ -707,35 +581,6 @@ class FileController extends Controller
             ->with('success', 'Moved to trash.');
     }
 
-    // Create a new folder inside the current folder.
-    public function createFolder(Request $request)
-    {
-        $request->validate([
-            'folder_name' => 'required|string|max:255',
-            'parent_id' => 'nullable|integer|exists:files,id',
-        ]);
-
-        $userId = auth()->id();
-        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
-        $name = trim((string) $request->string('folder_name'));
-
-        $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
-
-            File::create([
-                'name' => $name,
-                'path' => $name, // informational only; folders have no disk directory
-                'disk' => config('filemanager.disk'),
-                'is_dir' => true,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
-        });
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Folder '{$name}' created successfully!");
-    }
-
     // Rename a file or folder (display name only; storage path is stable).
     public function rename(Request $request, File $file)
     {
@@ -805,53 +650,6 @@ class FileController extends Controller
             ->with('success', 'Copied successfully!');
     }
 
-    // Download a specific historical version of a file.
-    public function downloadVersion(File $file, FileVersion $version)
-    {
-        $this->authorize('view', $file);
-
-        abort_unless($version->file_id === $file->id, 404);
-        abort_unless(Storage::disk($version->disk)->exists($version->path), 404);
-
-        return Storage::disk($version->disk)->download($version->path, $version->name);
-    }
-
-    // Restore a historical version as the file's current content.
-    public function restoreVersion(File $file, FileVersion $version)
-    {
-        $this->authorize('update', $file);
-
-        abort_unless($version->file_id === $file->id, 404);
-
-        DB::transaction(function () use ($file, $version) {
-            // Preserve the current content as a version before overwriting it.
-            $this->snapshotVersion($file);
-
-            $file->update([
-                'path' => $version->path,
-                'disk' => $version->disk,
-                'mime' => $version->mime,
-                'size' => $version->size,
-                'hash' => $version->hash,
-                'version' => $file->version + 1,
-                'status' => File::STATUS_PENDING,
-                'content_edited_at' => now(),
-            ]);
-        });
-
-        ProcessUploadedFile::dispatch($file->id);
-
-        return back()->with('success', "Restored version {$version->version}.");
-    }
-
-    // Navigate into a folder resolved by DB id.
-    public function viewFolder(File $folder)
-    {
-        $this->authorize('view', $folder);
-
-        return redirect()->route('files.index', ['folder' => $folder->id]);
-    }
-
     // Replace a file's content, archiving its current blob as a version.
     protected function overwrite(File $file, array $attributes, int $userId): File
     {
@@ -869,43 +667,7 @@ class FileController extends Controller
     // Archive the file's current blob as a historical version row.
     protected function snapshotVersion(File $file, ?int $createdBy = null, ?string $note = null): void
     {
-        FileVersion::create([
-            'file_id' => $file->id,
-            'version' => $file->version,
-            'note' => $note,
-            'name' => $file->name,
-            'path' => $file->path,
-            'disk' => $file->disk,
-            'mime' => $file->mime,
-            'size' => $file->size,
-            'hash' => $file->hash,
-            'created_by' => $createdBy ?? $file->owner_id,
-        ]);
-    }
-
-    // Resolve a folder owned by the user, or null for the root.
-    protected function resolveFolder($id, int $userId): ?File
-    {
-        if (! $id) {
-            return null;
-        }
-
-        $folder = File::folders()->where('owner_id', $userId)->findOrFail($id);
-        $this->authorize('update', $folder);
-
-        return $folder;
-    }
-
-    // Recursively soft-delete a folder's descendants into the trash (blobs kept).
-    protected function trashSubtree(File $folder): void
-    {
-        foreach ($folder->children as $child) {
-            if ($child->is_dir) {
-                $this->trashSubtree($child);
-            }
-
-            $child->delete();
-        }
+        app(\App\Services\FileVersioning::class)->snapshot($file, $createdBy, $note);
     }
 
     // Recursively copy a node under a new parent, duplicating file blobs.
@@ -944,47 +706,6 @@ class FileController extends Controller
         }
 
         return $copy;
-    }
-
-    // True when $target is $folder itself or sits inside its subtree.
-    protected function isSelfOrDescendant(File $folder, File $target): bool
-    {
-        for ($node = $target; $node; $node = $node->parent) {
-            if ($node->id === $folder->id) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // Reject a name that already exists among siblings.
-    protected function assertNoCollision(?int $parentId, string $name, int $ownerId, ?int $ignoreId = null): void
-    {
-        $exists = File::where('owner_id', $ownerId)
-            ->where('parent_id', $parentId)
-            ->where('name', $name)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->exists();
-
-        if ($exists) {
-            throw ValidationException::withMessages([
-                'name' => "An item named \"{$name}\" already exists here.",
-            ]);
-        }
-    }
-
-    // Produce a non-colliding name by appending "(copy)" / "(copy N)".
-    /**
-     * Serialize name-sensitive writes (create/copy/rename/move) within one
-     * folder so concurrent requests can't both pass the uniqueness check and
-     * insert a duplicate. Uses an atomic cross-process cache lock.
-     */
-    protected function withFolderLock(int $ownerId, ?int $parentId, Closure $callback): mixed
-    {
-        $key = "file-write:{$ownerId}:".($parentId ?? 'root');
-
-        return Cache::lock($key, 10)->block(5, $callback);
     }
 
     protected function uniqueName(?int $parentId, string $name, int $ownerId): string

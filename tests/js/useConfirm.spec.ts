@@ -41,4 +41,27 @@ describe('useConfirm / usePrompt', () => {
         cancel();
         await expect(p).resolves.toBeNull();
     });
+
+    it('queues a second dialog instead of clobbering the first resolver', async () => {
+        const { confirm } = useConfirm();
+        const { state, accept } = useDialogHost();
+
+        const p1 = confirm({ message: 'First?' });
+        const p2 = confirm({ message: 'Second?' });
+
+        // Only the first is shown; the second is queued.
+        expect(state.open).toBe(true);
+        expect(state.message).toBe('First?');
+
+        accept();
+        await expect(p1).resolves.toBe(true);
+
+        // The queued dialog opens next.
+        await new Promise((r) => setTimeout(r, 0));
+        expect(state.open).toBe(true);
+        expect(state.message).toBe('Second?');
+
+        accept();
+        await expect(p2).resolves.toBe(true);
+    });
 });

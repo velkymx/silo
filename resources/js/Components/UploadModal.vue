@@ -2,6 +2,7 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { fmtBytes } from '../lib/format';
+import AppModal from './AppModal.vue';
 
 const open = defineModel<boolean>({ required: true });
 const props = withDefaults(
@@ -98,7 +99,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
 </script>
 
 <template>
-    <VibeModal v-model="open" title="Upload Files" size="lg" centered scrollable>
+    <AppModal v-model="open" title="Upload Files" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 720px">
             <div
                 class="upload-dropzone"
@@ -152,7 +153,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                 </VibeButton>
             </div>
         </template>
-    </VibeModal>
+    </AppModal>
 </template>
 
 <style scoped>

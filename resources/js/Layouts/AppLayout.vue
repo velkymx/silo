@@ -6,9 +6,13 @@ import { useConfirm, useDialogHost } from '../composables/useConfirm';
 import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
 import { useStorageMeter } from '../composables/useStorageMeter';
+import PageError from '../Components/PageError.vue';
+import ToastHost from '../Components/ToastHost.vue';
+import { useToast } from '../composables/useToast';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
+const toast = useToast();
 
 const { isMobile } = useBreakpoints();
 const mobileNavOpen = ref(false);
@@ -85,11 +89,14 @@ const { pct: storagePct, bars: storageBars } = useStorageMeter(
 
 // Footer legalese.
 const year = new Date().getFullYear();
-const appName = import.meta.env.VITE_APP_NAME || 'File Manager';
+const appName = import.meta.env.VITE_APP_NAME || 'Silo';
+const tagline = 'Your Files Ready to Launch';
 const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 
 const path = computed(() => page.url.split('?')[0]);
 const query = computed(() => page.url.split('?')[1] || '');
+// Full-bleed 3-pane surfaces (Notes, Bookmarks) drop the main content padding.
+const isNotes = computed(() => path.value.startsWith('/notes') || path.value.startsWith('/bookmarks'));
 
 const { colorMode, toggleColorMode } = useColorMode();
 const themeIcon = computed(() => ({
@@ -105,13 +112,23 @@ function active(test) {
 const baseNav = computed(() => [
     { text: 'Home', href: '/', icon: 'house-door-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
     { text: 'Recent', href: '/?recent=1', icon: 'clock-history', active: active((p, q) => q.includes('recent=1')) },
-    { text: 'Starred', href: '/?starred=1', icon: 'star-fill', active: active((p, q) => q.includes('starred=1')) },
+    { text: 'Starred', href: '/starred', icon: 'star-fill', active: active((p) => p.startsWith('/starred')) },
+    { text: 'Bookmarks', href: '/bookmarks', icon: 'bookmark-fill', active: active((p) => p.startsWith('/bookmarks')) },
+    { text: 'Notes', href: '/notes', icon: 'journal-text', active: active((p) => p.startsWith('/notes')) },
+    { text: 'Vault', href: '/vault', icon: 'lock-fill', active: active((p) => p.startsWith('/vault')) },
     { text: 'Photos', href: '/photos', icon: 'images', active: active((p) => p.startsWith('/photos')) },
     { text: 'Shared with me', href: '/shared', icon: 'people-fill', active: active((p) => p.startsWith('/shared')) },
+    { text: 'Directory', href: '/directory', icon: 'person-rolodex', active: active((p) => p.startsWith('/directory')) },
 ]);
 
 const trashNav = computed(() => [
     { text: 'Trash', href: '/trash', icon: 'trash-fill', active: active((p) => p.startsWith('/trash')) },
+]);
+
+const breakNav = computed(() => [
+    { text: 'Crush', href: '/break/crush', icon: 'joystick', active: active((p) => p.startsWith('/break/crush')) },
+    { text: 'Word', href: '/break/dwg', icon: 'type', active: active((p) => p.startsWith('/break/dwg')) },
+    { text: 'Sodoku', href: '/break/soduku', icon: 'grid-3x3', active: active((p) => p.startsWith('/break/soduku')) },
 ]);
 
 const adminNav = computed(() => (user.value?.is_admin ? [
@@ -147,9 +164,12 @@ function onUserMenu({ item }) {
             <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
             </VibeButton>
-            <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; width: 218px" @click="router.visit('/')">
-                <VibeIcon icon="folder-fill" class="text-primary fs-4 me-2" />
-                <span class="fw-bold fs-5 text-body d-none d-md-inline">{{ appName }}</span>
+            <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; min-width: 218px" @click="router.visit('/')" :title="`${appName} — ${tagline}`">
+                <VibeIcon icon="rocket-takeoff-fill" class="text-primary fs-4 me-2" />
+                <span class="d-none d-md-flex flex-column lh-1">
+                    <span class="fw-bold fs-5 text-body">{{ appName }}</span>
+                    <span class="text-muted" style="font-size: 0.62rem; letter-spacing: 0.02em">{{ tagline }}</span>
+                </span>
             </a>
             <div class="flex-grow-1 min-vw-0">
                 <VibeInputGroup class="mx-auto" style="max-width: 620px">
@@ -213,7 +233,7 @@ function onUserMenu({ item }) {
 
         <div class="d-flex flex-grow-1" style="min-height: 0">
             <!-- Sidebar (collapsible on desktop, offcanvas on mobile) -->
-            <aside v-if="!isMobile && sidebarOpen" class="app-sidebar d-flex flex-column flex-shrink-0 border-end bg-body p-2" style="width: 250px">
+            <aside v-if="!isMobile && sidebarOpen && !isNotes" class="app-sidebar d-flex flex-column flex-shrink-0 border-end bg-body p-2" style="width: 250px">
                 <VibeNav pills vertical :items="baseNav" @item-click="onNav">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
@@ -239,6 +259,13 @@ function onUserMenu({ item }) {
                         </div>
                     </template>
 
+                    <div class="side-heading"><VibeIcon icon="controller" />Break Room</div>
+                    <VibeNav pills vertical :items="breakNav" @item-click="onNav">
+                        <template #item="{ item }">
+                            <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
+                        </template>
+                    </VibeNav>
+
                     <slot name="sidebar" />
                 </div>
 
@@ -263,10 +290,21 @@ function onUserMenu({ item }) {
                 </div>
             </aside>
 
+            <!-- Icon rail on full-bleed 3-pane surfaces: keeps app nav without
+                 adding a wide second sidebar next to the ThreePane sidebar. -->
+            <aside v-else-if="!isMobile && sidebarOpen && isNotes" class="app-sidebar app-rail d-flex flex-column flex-shrink-0 border-end bg-body p-1 align-items-center" style="width: 56px">
+                <VibeNav pills vertical :items="[...baseNav, ...adminNav, ...trashNav]" @item-click="onNav">
+                    <template #item="{ item }">
+                        <VibeIcon :icon="item.icon" class="fs-5" :title="item.text" />
+                    </template>
+                </VibeNav>
+            </aside>
+
             <!-- Content -->
-            <main class="p-3 p-lg-4 flex-grow-1 min-vw-0 bg-body d-flex flex-column">
+            <main class="flex-grow-1 min-vw-0 bg-body d-flex flex-column" :class="isNotes ? 'p-0' : 'p-3 p-lg-4'">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
-                <VibeAlert v-if="flash.error" variant="danger" dismissible>{{ flash.error }}</VibeAlert>
+                <!-- Single error surface (flash.error + validation errors) for every page. -->
+                <PageError />
                 <div class="flex-grow-1">
                     <slot />
                 </div>
@@ -319,6 +357,12 @@ function onUserMenu({ item }) {
                 <VibeButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</VibeButton>
             </template>
         </VibeModal>
+
+        <ToastHost
+            :items="toast.state.items"
+            @dismiss="toast.dismiss($event)"
+            @undo="(t) => { t.undo?.(); toast.dismiss(t.id); }"
+        />
     </div>
 </template>
 

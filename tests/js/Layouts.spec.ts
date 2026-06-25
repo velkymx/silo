@@ -110,7 +110,7 @@ describe('AppLayout', () => {
 describe('GuestLayout', () => {
     it('renders branding and the slot', () => {
         const wrapper = mount(GuestLayout, { props: { title: 'Sign in' }, slots: { default: '<form>hello</form>' } });
-        expect(wrapper.text()).toContain('File Manager');
+        expect(wrapper.text()).toContain('Silo');
         expect(wrapper.text()).toContain('hello');
     });
 });

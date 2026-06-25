@@ -1,10 +1,10 @@
 <script setup>
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
-import PageError from '../../../Components/PageError.vue';
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { usePageLoading } from '../../../composables/usePageLoading';
+import AppFormGroup from '../../../Components/AppFormGroup.vue';
 
 const props = defineProps({
     logs: { type: Array, default: () => [] },
@@ -56,24 +56,23 @@ const variant = (action) => {
 
 <template>
     <AppLayout>
-        <PageError />
         <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
 
         <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
             <div class="col-sm-4">
-                <VibeFormGroup label="Action">
+                <AppFormGroup label="Action">
                     <VibeFormInput v-model="filterForm.action" placeholder="e.g. upload, file.delete" />
-                </VibeFormGroup>
+                </AppFormGroup>
             </div>
             <div class="col-sm-3">
-                <VibeFormGroup label="From">
+                <AppFormGroup label="From">
                     <VibeFormInput v-model="filterForm.from" type="date" />
-                </VibeFormGroup>
+                </AppFormGroup>
             </div>
             <div class="col-sm-3">
-                <VibeFormGroup label="To">
+                <AppFormGroup label="To">
                     <VibeFormInput v-model="filterForm.to" type="date" />
-                </VibeFormGroup>
+                </AppFormGroup>
             </div>
             <div class="col-sm-2 d-flex gap-2">
                 <VibeButton type="submit" variant="primary">Filter</VibeButton>

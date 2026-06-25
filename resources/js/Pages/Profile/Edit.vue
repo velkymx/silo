@@ -5,6 +5,9 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { initials } from '../../lib/initials';
+import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
+import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -19,6 +22,12 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     current_password: '',
+    title: props.user.title || '',
+    department: props.user.department || '',
+    phone: props.user.phone || '',
+    location: props.user.location || '',
+    bio: props.user.bio || '',
+    start_date: props.user.start_date || '',
 });
 
 // Changing the email or password requires the current password.
@@ -98,28 +107,26 @@ function applyCrop() {
                     </div>
 
                     <form @submit.prevent="submit">
-                        <VibeFormGroup
+                        <FormErrorSummary :errors="form.errors" />
+                        <AppFormGroup
                             label="Name"
-                            :validation-state="form.errors.name ? 'invalid' : null"
-                            :validation-message="form.errors.name"
-                        >
+                            :error="form.errors.name"
+                         required>
                             <VibeFormInput v-model="form.name" required />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup
+                        <AppFormGroup
                             label="Email"
                             class="mt-3"
-                            :validation-state="form.errors.email ? 'invalid' : null"
-                            :validation-message="form.errors.email"
-                        >
+                            :error="form.errors.email"
+                         required>
                             <VibeFormInput v-model="form.email" type="email" required />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup
+                        <AppFormGroup
                             label="New Password"
                             class="mt-3"
-                            :validation-state="form.errors.password ? 'invalid' : null"
-                            :validation-message="form.errors.password"
+                            :error="form.errors.password"
                         >
                             <VibeFormInput
                                 v-model="form.password"
@@ -127,18 +134,17 @@ function applyCrop() {
                                 autocomplete="new-password"
                                 help-text="Leave blank to keep your current password."
                             />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup label="Confirm Password" class="mt-3">
+                        <AppFormGroup label="Confirm Password" class="mt-3">
                             <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
-                        </VibeFormGroup>
+                        </AppFormGroup>
 
-                        <VibeFormGroup
+                        <AppFormGroup
                             v-if="needsCurrentPassword"
                             label="Current Password"
                             class="mt-3"
-                            :validation-state="form.errors.current_password ? 'invalid' : null"
-                            :validation-message="form.errors.current_password"
+                            :error="form.errors.current_password"
                         >
                             <VibeFormInput
                                 v-model="form.current_password"
@@ -146,7 +152,30 @@ function applyCrop() {
                                 autocomplete="current-password"
                                 help-text="Required to change your email or password."
                             />
-                        </VibeFormGroup>
+                        </AppFormGroup>
+
+                        <hr class="my-4">
+                        <h2 class="h6 text-muted text-uppercase mb-3">Directory profile</h2>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <AppFormGroup label="Job title"><VibeFormInput v-model="form.title" /></AppFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <AppFormGroup label="Department"><VibeFormInput v-model="form.department" /></AppFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <AppFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></AppFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <AppFormGroup label="Location"><VibeFormInput v-model="form.location" /></AppFormGroup>
+                            </div>
+                            <div class="col-md-6">
+                                <AppFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></AppFormGroup>
+                            </div>
+                            <div class="col-12">
+                                <AppFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></AppFormGroup>
+                            </div>
+                        </div>
 
                         <VibeButton type="submit" variant="primary" class="mt-4" :disabled="form.processing">
                             <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save Changes' }}
@@ -157,7 +186,7 @@ function applyCrop() {
         </VibeRow>
 
         <!-- Crop modal -->
-        <VibeModal v-model="cropOpen" title="Crop photo" size="lg" centered hide-footer>
+        <AppModal v-model="cropOpen" title="Crop photo" size="lg" centered hide-footer>
             <Cropper
                 ref="cropper"
                 :src="cropSrc"
@@ -169,6 +198,6 @@ function applyCrop() {
                 <VibeButton variant="secondary" outline class="me-2" @click="cropOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</VibeButton>
             </div>
-        </VibeModal>
+        </AppModal>
     </AppLayout>
 </template>

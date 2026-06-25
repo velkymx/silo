@@ -134,6 +134,7 @@ function isImage(f: QuickFile | null): boolean {
                 <div class="small mt-2">{{ file.mime || 'unknown type' }} · {{ ((file.size ?? 0) / 1024).toFixed(1) }} KB</div>
             </div>
         </div>
+        <slot name="below" />
     </VibeModal>
 </template>
 

@@ -24,6 +24,13 @@ class User extends Authenticatable
         'group_id',
         'is_admin',
         'avatar_path',
+        'title',
+        'department',
+        'phone',
+        'location',
+        'bio',
+        'start_date',
+        'manager_id',
     ];
 
     /**
@@ -47,6 +54,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'start_date' => 'date',
         ];
     }
 
@@ -60,5 +68,17 @@ class User extends Authenticatable
     public function files()
     {
         return $this->hasMany(File::class, 'owner_id');
+    }
+
+    /** The user this person reports to (org chart). */
+    public function manager()
+    {
+        return $this->belongsTo(self::class, 'manager_id');
+    }
+
+    /** People who report to this user. */
+    public function reports()
+    {
+        return $this->hasMany(self::class, 'manager_id');
     }
 }

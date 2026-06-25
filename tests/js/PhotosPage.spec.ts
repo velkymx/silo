@@ -86,9 +86,9 @@ describe('Photos/Index page', () => {
     it('lightbox prev/next step through photos', async () => {
         const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
         // Open the first photo into the lightbox.
-        await wrapper.find('.photo-cell').trigger('click');
-        const next = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Next photo');
-        const prev = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Previous photo');
+        await wrapper.find('button.photo-thumb').trigger('click');
+        const next = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Next file');
+        const prev = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Previous file');
         await next!.trigger('click');
         await prev!.trigger('click');
         expect(next && prev).toBeTruthy();
@@ -109,7 +109,7 @@ describe('Photos/Index page', () => {
     it('adds the selection to an album', async () => {
         const wrapper = mount(Photos, { props: { photos, albums: [{ id: 8, name: 'Trip', count: 2 }], tags: [] } });
         await wrapper.findAll('button').find((b) => b.text().includes('Select'))!.trigger('click');
-        await wrapper.find('.photo-cell').trigger('click');
+        await wrapper.find('button.photo-thumb').trigger('click');
         // The "Add to album" dropdown has no #item slot, so emit its item-click directly.
         const dd = wrapper.findAllComponents({ name: 'VibeDropdown' }).find((c) => (c.props('items') as { id: number }[])?.some((i) => i.id === 8));
         dd!.vm.$emit('item-click', { item: { id: 8 } });
@@ -122,7 +122,7 @@ describe('Photos/Index page', () => {
         // Enter select mode, select the first photo.
         const selectToggle = wrapper.findAll('button').find((b) => b.text().includes('Select'));
         await selectToggle!.trigger('click');
-        await wrapper.find('.photo-cell').trigger('click');
+        await wrapper.find('button.photo-thumb').trigger('click');
         const del = wrapper.findAll('button').find((b) => b.text().includes('Delete'));
         await del!.trigger('click');
         const host = useDialogHost();

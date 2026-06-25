@@ -6,12 +6,17 @@ import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
 import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
+import { useQuickLook } from '../../composables/useQuickLook';
+import QuickLookModal from '../../Components/QuickLookModal.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
-import PageError from '../../Components/PageError.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
+import AppModal from '../../Components/AppModal.vue';
+import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const { confirm } = useConfirm();
+const toast = useToast();
 const { loading } = usePageLoading();
 
 const props = defineProps({
@@ -63,68 +68,73 @@ async function batchDeleteSelected() {
 }
 
 // ----- Lightbox -----
-const lightboxOpen = ref(false);
-const slide = ref(0);
-const ride = ref(false);
-const carouselItems = computed(() => props.photos.map((p) => ({ src: p.url, alt: p.name })));
-const currentPhoto = computed(() => props.photos[slide.value] || null);
+const photosRef = computed(() => props.photos);
+const { quickOpen, quickIndex, quickFile, step, close: qlClose } = useQuickLook(photosRef);
+
+const prevPhoto = computed(() => props.photos[quickIndex.value - 1] ?? null);
+const nextPhoto = computed(() => props.photos[quickIndex.value + 1] ?? null);
+const lightboxMenu = computed(() => {
+    if (!quickFile.value) return [];
+    return [
+        { text: quickFile.value.starred ? 'Unstar' : 'Star', action: 'star', icon: quickFile.value.starred ? 'star-fill' : 'star' },
+        { text: 'Edit', action: 'edit', icon: 'pencil' },
+        { text: 'Delete', action: 'delete', icon: 'trash' },
+    ];
+});
+function onLightboxAction({ item }) {
+    const p = quickFile.value;
+    if (!p) return;
+    if (item.action === 'star') star(p);
+    if (item.action === 'edit') openEditor(p);
+    if (item.action === 'delete') destroyPhoto(p);
+}
 
 function openPhoto(p) {
     if (selectMode.value) { toggleSelect(p.id); return; }
-    slide.value = props.photos.findIndex((x) => x.id === p.id);
-    lightboxOpen.value = true;
-}
-function step(d) {
-    const n = props.photos.length;
-    if (n) slide.value = (slide.value + d + n) % n;
-}
-function jumpTo(i) {
-    slide.value = i;
+    const idx = props.photos.findIndex((x) => x.id === p.id);
+    quickIndex.value = idx >= 0 ? idx : 0;
+    quickOpen.value = true;
 }
 
-// Drag-to-reorder the filmstrip. The strip binds a local ordered copy; on drop
-// we persist the new id sequence and reload so the gallery reflects it.
+// Drag-to-reorder the filmstrip.
 const filmPhotos = ref([...props.photos]);
 watch(() => props.photos, (next) => { filmPhotos.value = [...next]; });
 
 function onFilmstripReorder() {
-    const currentId = currentPhoto.value?.id ?? null;
+    const currentId = quickFile.value?.id ?? null;
     const ids = filmPhotos.value.map((p) => p.id);
     router.post('/photos/reorder', { ids }, {
         preserveScroll: true,
         preserveState: true,
         only: ['photos'],
         onSuccess: () => {
-            // Keep the lightbox on the same photo after the order changes.
             if (currentId !== null) {
                 const idx = props.photos.findIndex((p) => p.id === currentId);
-                if (idx >= 0) slide.value = idx;
+                if (idx >= 0) quickIndex.value = idx;
             }
         },
     });
 }
 
-// Keyboard navigation while the lightbox is open (mirrors Files Quick Look).
+// Keyboard navigation while the lightbox is open.
 function onLightboxKey(e) {
-    if (!lightboxOpen.value) return;
+    if (!quickOpen.value) return;
     const tag = (e.target?.tagName || '').toLowerCase();
     if (['input', 'textarea', 'select'].includes(tag) || e.target?.isContentEditable) return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); step(1); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
-    else if (e.key === 'Escape') lightboxOpen.value = false;
+    else if (e.key === 'Escape') qlClose();
 }
 onMounted(() => window.addEventListener('keydown', onLightboxKey));
 onBeforeUnmount(() => window.removeEventListener('keydown', onLightboxKey));
 
-// Keep the active filmstrip thumbnail scrolled into view (never off-screen).
+// Keep the active filmstrip thumbnail scrolled into view.
 const filmstripEl = ref(null);
-watch(slide, async () => {
+watch(quickIndex, async () => {
     await nextTick();
-    // filmstripEl is a VibeSortable component → reach its root element, then the
-    // thumbnail at the active slide.
     const root = filmstripEl.value?.$el ?? filmstripEl.value;
     const strip = root?.querySelector?.('.filmstrip') ?? root;
-    strip?.children?.[slide.value]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    strip?.children?.[quickIndex.value]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
 });
 
 function star(p) {
@@ -151,7 +161,15 @@ function onPhotoMenu(p, { item }) {
 async function destroyPhoto(p) {
     if (!p) return;
     if (!await confirm({ title: 'Move to trash', message: `Move “${p.name}” to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    router.delete(`/delete/${p.id}`, { preserveScroll: true, onSuccess: () => { lightboxOpen.value = false; } });
+    router.delete(`/delete/${p.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            qlClose();
+            toast.push(`"${p.name}" moved to trash`, {
+                undo: () => router.post(`/trash/${p.id}/restore`, {}, { preserveScroll: true }),
+            });
+        },
+    });
 }
 
 // ----- Upload -----
@@ -191,17 +209,24 @@ function openEditor(p) {
 function rotate(deg) { cropper.value?.rotate(deg); }
 function flip(h, v) { cropper.value?.flip(h, v); }
 function saveEdit() {
-    const { canvas } = cropper.value.getResult();
+    if (!cropper.value) return;
+    const canvas = cropper.value.getResult()?.canvas;
     if (!canvas) return;
     editorSaving.value = true;
     canvas.toBlob((blob) => {
+        // Guard the async callback: a null blob or a closed editor must reset the
+        // saving flag, otherwise the Save button stays disabled forever.
+        if (!blob || !editorPhoto.value) {
+            editorSaving.value = false;
+            return;
+        }
         const form = new FormData();
         form.append('file', new File([blob], editorPhoto.value.name));
         form.append('note', 'Photo edit');
         form.append('_method', 'put');
         router.post(`/files/${editorPhoto.value.id}/content`, form, {
             forceFormData: true,
-            onSuccess: () => { editorOpen.value = false; lightboxOpen.value = false; },
+            onSuccess: () => { editorOpen.value = false; qlClose(); },
             onFinish: () => { editorSaving.value = false; },
         });
     }, 'image/jpeg', 0.92);
@@ -210,7 +235,6 @@ function saveEdit() {
 
 <template>
     <AppLayout>
-        <PageError />
         <!-- Toolbar -->
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <h4 class="mb-0 me-2"><VibeIcon icon="images" class="me-2" />Photos</h4>
@@ -289,11 +313,10 @@ function saveEdit() {
                     :key="p.id"
                     class="photo-cell"
                     :class="{ selected: selected.has(p.id) }"
-                    @click="openPhoto(p)"
                 >
-                    <div class="photo-thumb">
+                    <button type="button" class="photo-thumb" :aria-label="`Open ${p.name}`" @click="openPhoto(p)">
                         <img :src="p.thumb_url" :alt="p.name" loading="lazy">
-                    </div>
+                    </button>
 
                     <!-- Star (click to toggle) -->
                     <VibeButton
@@ -320,93 +343,64 @@ function saveEdit() {
         </div>
 
         <!-- Lightbox -->
-        <VibeModal v-model="lightboxOpen" fullscreen hide-footer>
-            <template #header>
-                <div class="d-flex align-items-center w-100">
-                    <span class="text-truncate" :title="currentPhoto?.name">{{ currentPhoto?.name }}</span>
-                    <div v-if="currentPhoto" class="ms-auto d-flex flex-wrap justify-content-end gap-2">
-                        <VibeButton variant="secondary" size="sm" outline :title="ride ? 'Stop' : 'Slideshow'" :aria-label="ride ? 'Stop slideshow' : 'Start slideshow'" @click="ride = !ride">
-                            <VibeIcon :icon="ride ? 'pause-fill' : 'play-fill'" />
-                        </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Star" :aria-label="(currentPhoto?.starred ? 'Unstar ' : 'Star ') + (currentPhoto?.name || 'photo')" @click="star(currentPhoto)">
-                            <VibeIcon :icon="currentPhoto?.starred ? 'star-fill' : 'star'" />
-                        </VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline title="Edit" :aria-label="`Edit ${currentPhoto?.name || 'photo'}`" @click="openEditor(currentPhoto)">
-                            <VibeIcon icon="pencil" />
-                        </VibeButton>
-                        <VibeButton variant="success" size="sm" :href="`/download/${currentPhoto?.id}`" title="Download" :aria-label="`Download ${currentPhoto?.name || 'photo'}`">
-                            <VibeIcon icon="download" />
-                        </VibeButton>
-                        <VibeButton variant="danger" size="sm" outline title="Delete" :aria-label="`Delete ${currentPhoto?.name || 'photo'}`" @click="destroyPhoto(currentPhoto)">
-                            <VibeIcon icon="trash" />
-                        </VibeButton>
-                    </div>
-                </div>
+        <QuickLookModal
+            v-model="quickOpen"
+            :file="quickFile"
+            :index="quickIndex"
+            :total="photos.length"
+            :prev-file="prevPhoto"
+            :next-file="nextPhoto"
+            :menu="lightboxMenu"
+            @step="step($event)"
+            @action="onLightboxAction($event)"
+        >
+            <template #below>
+                <!-- Thumbnail filmstrip (drag to reorder) -->
+                <VibeSortable
+                    ref="filmstripEl"
+                    v-model="filmPhotos"
+                    item-key="id"
+                    tag="div"
+                    item-tag="div"
+                    class="filmstrip"
+                    @update:model-value="onFilmstripReorder"
+                >
+                    <template #default="{ item: p }">
+                        <img
+                            :src="p.thumb_url"
+                            :alt="p.name"
+                            class="film-thumb"
+                            :class="{ active: quickFile && p.id === quickFile.id }"
+                            @click="quickIndex = photos.findIndex((x) => x.id === p.id)"
+                        >
+                    </template>
+                </VibeSortable>
             </template>
-            <div class="lightbox-stage">
-                <VibeButton variant="dark" class="nav-btn nav-prev" title="Previous (←)" aria-label="Previous photo" @click="step(-1)">
-                    <VibeIcon icon="chevron-left" />
-                </VibeButton>
-                <VibeCarousel
-                    v-if="lightboxOpen"
-                    v-model="slide"
-                    :items="carouselItems"
-                    :controls="false"
-                    :indicators="false"
-                    :ride="ride ? 'carousel' : false"
-                    :interval="ride ? 4000 : false"
-                    dark
-                />
-                <VibeButton variant="dark" class="nav-btn nav-next" title="Next (→)" aria-label="Next photo" @click="step(1)">
-                    <VibeIcon icon="chevron-right" />
-                </VibeButton>
-            </div>
-
-            <!-- Thumbnail filmstrip (drag to reorder) -->
-            <VibeSortable
-                ref="filmstripEl"
-                v-model="filmPhotos"
-                item-key="id"
-                tag="div"
-                item-tag="div"
-                class="filmstrip"
-                @update:model-value="onFilmstripReorder"
-            >
-                <template #default="{ item: p }">
-                    <img
-                        :src="p.thumb_url"
-                        :alt="p.name"
-                        class="film-thumb"
-                        :class="{ active: currentPhoto && p.id === currentPhoto.id }"
-                        @click="jumpTo(photos.findIndex((x) => x.id === p.id))"
-                    >
-                </template>
-            </VibeSortable>
-        </VibeModal>
+        </QuickLookModal>
 
         <!-- Upload -->
-        <VibeModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
+        <AppModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
             <VibeFileInput v-model="uploadForm.files" label="Choose images" multiple drag-drop accept="image/*" />
             <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">{{ uploadForm.errors['files.0'] }}</p>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadForm.files.length" @click="submitUpload">Upload</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- New album -->
-        <VibeModal v-model="albumOpen" title="New Album" centered>
-            <VibeFormGroup label="Album name">
+        <AppModal v-model="albumOpen" title="New Album" centered>
+            <AppFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
-            </VibeFormGroup>
+            </AppFormGroup>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="albumOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="albumForm.processing || !albumForm.name" @click="createAlbum">Create</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Photo editor -->
-        <VibeModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
+        <AppModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
             <div class="d-flex gap-2 mb-2 flex-wrap">
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(-90)"><VibeIcon icon="arrow-counterclockwise" /> Left</VibeButton>
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(90)"><VibeIcon icon="arrow-clockwise" /> Right</VibeButton>
@@ -426,7 +420,7 @@ function saveEdit() {
                 class="bg-dark"
                 style="height: calc(100vh - 180px)"
             />
-        </VibeModal>
+        </AppModal>
     </AppLayout>
 </template>
 
@@ -439,14 +433,21 @@ function saveEdit() {
 .photo-cell {
     position: relative;
     aspect-ratio: 1;
-    cursor: pointer;
 }
 .photo-thumb {
+    display: block;
     width: 100%;
     height: 100%;
+    padding: 0;
+    border: 0;
     border-radius: 6px;
     overflow: hidden;
     background: var(--bs-tertiary-bg);
+    cursor: pointer;
+}
+.photo-thumb:focus-visible {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 0;
 }
 .photo-cell img {
     width: 100%;
@@ -503,57 +504,7 @@ function saveEdit() {
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
 }
 
-/* Lightbox nav + filmstrip */
-.lightbox-stage {
-    position: relative;
-    height: calc(100vh - 220px); /* leave room for header + filmstrip */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-/* Cap the carousel image to the stage so it never pushes the filmstrip off-screen. */
-.lightbox-stage :deep(.carousel),
-.lightbox-stage :deep(.carousel-inner),
-.lightbox-stage :deep(.carousel-item) {
-    height: 100%;
-    width: 100%;
-}
-/* Center only the slides Bootstrap is actually showing — flexing every
-   .carousel-item overrides Bootstrap's display:none and stacks all images. */
-.lightbox-stage :deep(.carousel-item.active),
-.lightbox-stage :deep(.carousel-item-next),
-.lightbox-stage :deep(.carousel-item-prev) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.lightbox-stage :deep(.carousel-item img) {
-    max-height: 100%;
-    max-width: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    margin: 0 auto;
-}
-.nav-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 5;
-    opacity: 0.75;
-    border-radius: 50%;
-    width: 46px;
-    height: 46px;
-}
-.nav-btn:hover {
-    opacity: 1;
-}
-.nav-prev {
-    left: 8px;
-}
-.nav-next {
-    right: 8px;
-}
+/* Filmstrip */
 .filmstrip {
     display: flex;
     gap: 6px;

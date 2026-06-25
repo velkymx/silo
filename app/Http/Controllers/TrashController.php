@@ -38,6 +38,24 @@ class TrashController extends Controller
         return back()->with('success', 'Restored.');
     }
 
+    // Restore multiple trashed items (undo for batch-delete).
+    public function batchRestore(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+        $files = File::withTrashed()
+            ->whereIn('id', $request->ids)
+            ->where('owner_id', auth()->id())
+            ->get();
+
+        foreach ($files as $file) {
+            $this->authorize('restore', $file);
+            $this->trash->restore($file);
+            Audit::log('file.restore', $file);
+        }
+
+        return back()->with('success', count($files) . ' item(s) restored.');
+    }
+
     // Permanently delete a trashed item (and its subtree + blobs).
     public function destroy(File $file)
     {

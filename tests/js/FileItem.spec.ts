@@ -13,7 +13,7 @@ describe('FileItem', () => {
         const wrapper = mount(FileItem, { props: { item: file, view: 'grid', selected: false, menu } });
         expect(wrapper.find('.card').exists()).toBe(true);
         expect(wrapper.text()).toContain('photo.png');
-        await wrapper.find('.card').trigger('click');
+        await wrapper.find('.card-body-btn').trigger('click');
         expect(wrapper.emitted('open')?.[0]?.[0]).toMatchObject({ id: 7 });
     });
 

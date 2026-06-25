@@ -1,22 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { fmtBytes } from '../lib/format';
+import { iconFor } from '../lib/fileTypes';
+import QuickLookModal from './QuickLookModal.vue';
 
 const props = defineProps({
     folders: { type: Array, default: () => [] },
     files: { type: Array, default: () => [] },
 });
-
-const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-function iconFor(type) {
-    if (imageTypes.includes(type)) return 'file-earmark-image';
-    if (type === 'pdf') return 'file-earmark-pdf';
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(type)) return 'file-earmark-zip';
-    if (['doc', 'docx', 'txt', 'md'].includes(type)) return 'file-earmark-text';
-    return 'file-earmark';
-}
 
 function openFolder(id) {
     router.get(`/shared/${id}`, {}, { preserveScroll: true });
@@ -39,7 +31,7 @@ const fileColumns = [
 
 const previewOpen = ref(false);
 const previewFile = ref(null);
-const canPreview = (f) => f && (imageTypes.includes(f.type) || f.type === 'pdf');
+const canPreview = (f) => f && (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'].includes(f.type));
 
 function quickLook(file) {
     previewFile.value = file;
@@ -119,21 +111,12 @@ function quickLook(file) {
         </template>
     </VibeDataTable>
 
-    <VibeModal v-model="previewOpen" size="xl" centered hide-footer :title="previewFile?.name">
-        <div v-if="previewFile" class="text-center" style="min-height: 50vh">
-            <img
-                v-if="imageTypes.includes(previewFile.type)"
-                :src="previewFile.url"
-                :alt="previewFile.name"
-                class="img-fluid rounded"
-                style="max-height: 72vh"
-            >
-            <iframe
-                v-else-if="previewFile.type === 'pdf'"
-                :src="previewFile.url"
-                class="w-100 border rounded"
-                style="height: 72vh"
-            ></iframe>
-        </div>
-    </VibeModal>
+    <QuickLookModal
+        v-model="previewOpen"
+        :file="previewFile"
+        :index="0"
+        :total="1"
+        :menu="[]"
+        @step="previewOpen = false"
+    />
 </template>
