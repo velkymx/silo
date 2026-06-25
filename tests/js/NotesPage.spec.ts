@@ -8,11 +8,12 @@ const h = vi.hoisted(() => ({
     get: vi.fn(() => Promise.resolve({ backlinks: [] as Array<Record<string, unknown>> })),
     getText: vi.fn(() => Promise.resolve('# Hello')),
     prompt: vi.fn(() => Promise.resolve('Projects')),
+    confirm: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('@inertiajs/vue3', () => ({ router: { post: h.post, visit: h.visit } }));
 vi.mock('@/lib/http', () => ({ http: { get: h.get, put: h.put }, getText: h.getText }));
-vi.mock('@/composables/useConfirm', () => ({ usePrompt: () => ({ prompt: h.prompt }) }));
+vi.mock('@/composables/useConfirm', () => ({ usePrompt: () => ({ prompt: h.prompt }), useConfirm: () => ({ confirm: h.confirm }) }));
 
 import NotesIndex from '@/Pages/Notes/Index.vue';
 import NotesList from '@/Components/Notes/NotesList.vue';

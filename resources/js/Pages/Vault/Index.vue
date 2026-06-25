@@ -3,9 +3,11 @@ import { ref, reactive, computed, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
+import SelectBar from '../../Components/SelectBar.vue';
 import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
+import { useSelection } from '../../composables/useSelection';
 import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
@@ -112,6 +114,19 @@ async function remove(item) {
     });
 }
 
+// ----- Multi-select -----
+const vaultItemsRef = computed(() => props.items);
+const { selectMode: vaultSelectMode, selectedItems: selectedVaultItems, isSelected: vaultIsSelected, toggleSel: vaultToggle, clearSelection: vaultClearSel } = useSelection(vaultItemsRef, openEdit);
+
+async function bulkDeleteVault() {
+    if (!await confirm({ title: `Remove ${selectedVaultItems.value.length} secrets`, message: 'Permanently remove the selected secrets?', confirmLabel: 'Remove', variant: 'danger' })) return;
+    for (const item of selectedVaultItems.value) {
+        router.delete(`/vault/${item.id}`, { preserveScroll: true });
+    }
+    toast.push(`${selectedVaultItems.value.length} secret(s) removed`, { variant: 'danger' });
+    vaultClearSel();
+}
+
 const importInput = ref(null);
 async function onImportFile(e) {
     const file = e.target.files?.[0];
@@ -131,6 +146,14 @@ async function onImportFile(e) {
         <div class="p-3 p-lg-4">
             <PageHeader title="Vault" icon="lock-fill">
                 <template #actions>
+                    <VibeButton
+                        :variant="vaultSelectMode ? 'primary' : 'secondary'"
+                        outline
+                        title="Select secrets"
+                        @click="vaultSelectMode = !vaultSelectMode"
+                    >
+                        <VibeIcon icon="check2-square" class="me-1" />Select
+                    </VibeButton>
                     <VibeButton variant="secondary" outline title="Import a Chrome password CSV export" @click="importInput?.click()">
                         <VibeIcon icon="upload" class="me-1" />Import
                     </VibeButton>
@@ -143,13 +166,37 @@ async function onImportFile(e) {
                 {{ revealError }}
             </VibeAlert>
 
+            <SelectBar :count="selectedVaultItems.length" class="mb-3" @clear="vaultClearSel">
+                <VibeButton variant="danger" size="sm" outline @click="bulkDeleteVault">
+                    <VibeIcon icon="trash" class="me-1" />Remove
+                </VibeButton>
+            </SelectBar>
+
             <p v-if="!items.length" class="text-muted">No secrets yet.</p>
 
             <div v-for="[category, list] in grouped" :key="category" class="mb-4">
                 <div class="text-uppercase small text-muted fw-semibold mb-2">{{ category }}</div>
                 <div class="list-group">
-                    <div v-for="item in list" :key="item.id" class="list-group-item d-flex align-items-center gap-3">
-                        <VibeIcon icon="shield-lock" class="text-muted fs-5" />
+                    <div
+                        v-for="item in list"
+                        :key="item.id"
+                        class="list-group-item d-flex align-items-center gap-3"
+                        :class="{ 'bg-primary-subtle': vaultIsSelected(item.id) }"
+                    >
+                        <button
+                            v-if="vaultSelectMode"
+                            type="button"
+                            class="btn btn-sm p-0 lh-1 bg-transparent border-0"
+                            :aria-pressed="vaultIsSelected(item.id)"
+                            :aria-label="vaultIsSelected(item.id) ? `Deselect ${item.name}` : `Select ${item.name}`"
+                            @click="vaultToggle(item.id)"
+                        >
+                            <VibeIcon
+                                :icon="vaultIsSelected(item.id) ? 'check-circle-fill' : 'circle'"
+                                :class="vaultIsSelected(item.id) ? 'text-primary' : 'text-muted'"
+                            />
+                        </button>
+                        <VibeIcon v-else icon="shield-lock" class="text-muted fs-5" />
                         <div class="flex-grow-1 min-vw-0">
                             <div class="fw-semibold text-truncate">
                                 {{ item.name }}

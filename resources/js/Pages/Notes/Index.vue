@@ -7,11 +7,16 @@ import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
 import NotesList from '../../Components/Notes/NotesList.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
+import SelectBar from '../../Components/SelectBar.vue';
 import { getText, http } from '../../lib/http';
 import { extractHeadings } from '../../lib/markdownOutline';
-import { usePrompt } from '../../composables/useConfirm';
+import { usePrompt, useConfirm } from '../../composables/useConfirm';
+import { useSelection } from '../../composables/useSelection';
+import { useToast } from '../../composables/useToast';
 
 const { prompt } = usePrompt();
+const { confirm } = useConfirm();
+const toast = useToast();
 
 const props = defineProps({
     rootId: { type: Number, default: null },
@@ -33,6 +38,18 @@ let suppressSave = false;
 let saveTimer = null;
 let suppressTimer = null;
 let loadSeq = 0;
+
+const notesRef = computed(() => props.notes);
+const { selectMode: noteSelectMode, selectedItems: selectedNotes, isSelected: noteIsSelected, toggleSel: noteToggle, clearSelection: noteClearSel } = useSelection(notesRef, (n) => selectNote(n.id));
+
+async function bulkDeleteNotes() {
+    if (!await confirm({ title: `Delete ${selectedNotes.value.length} note(s)`, message: 'Move selected notes to trash?', confirmLabel: 'Delete', variant: 'danger' })) return;
+    for (const n of selectedNotes.value) {
+        router.delete(`/notes/${n.id}`, { preserveScroll: true });
+    }
+    toast.push(`${selectedNotes.value.length} note(s) deleted`);
+    noteClearSel();
+}
 
 const filteredNotes = computed(() => {
     let list = props.notes;
@@ -182,13 +199,22 @@ onMounted(() => {
             </template>
 
             <template #list>
+                <SelectBar :count="selectedNotes.length" @clear="noteClearSel">
+                    <VibeButton variant="danger" size="sm" outline @click="bulkDeleteNotes">
+                        <VibeIcon icon="trash" class="me-1" />Delete
+                    </VibeButton>
+                </SelectBar>
                 <NotesList
                     :notes="filteredNotes"
                     :selected-id="selectedId"
                     :sort="sortOrder"
+                    :select-mode="noteSelectMode"
+                    :is-selected="noteIsSelected"
                     @select="selectNote"
                     @new="newNote"
                     @update:sort="sortOrder = $event"
+                    @toggle-select="noteToggle"
+                    @update:select-mode="noteSelectMode = $event"
                 />
             </template>
 

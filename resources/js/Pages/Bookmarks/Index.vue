@@ -3,8 +3,10 @@ import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ThreePane from '../../Components/ThreePane.vue';
+import SelectBar from '../../Components/SelectBar.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
+import { useSelection } from '../../composables/useSelection';
 import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
@@ -75,6 +77,19 @@ const activePane = ref('list');
 function selectBookmark(id) {
     selectedId.value = id;
     activePane.value = 'detail';
+}
+
+// ----- Multi-select -----
+const bookmarksRef = computed(() => props.bookmarks);
+const { selectMode: bmSelectMode, selectedItems: selectedBms, isSelected: bmIsSelected, toggleSel: bmToggle, clearSelection: bmClearSel } = useSelection(bookmarksRef, (b) => selectBookmark(b.id));
+
+async function bulkDeleteBms() {
+    if (!await confirm({ title: `Remove ${selectedBms.value.length} bookmarks`, message: 'Remove the selected bookmarks?', confirmLabel: 'Remove', variant: 'danger' })) return;
+    for (const b of selectedBms.value) {
+        router.delete(`/bookmarks/${b.id}`, { preserveScroll: true });
+    }
+    toast.push(`${selectedBms.value.length} bookmark(s) removed`, { variant: 'danger' });
+    bmClearSel();
 }
 
 // ----- Favicon fallback -----
@@ -226,11 +241,26 @@ async function runMaintenance(action) {
                     <VibeButton size="sm" variant="secondary" outline title="Import a Chrome/Firefox bookmarks HTML export" @click="importInput?.click()">
                         <VibeIcon icon="upload" />
                     </VibeButton>
+                    <VibeButton
+                        size="sm"
+                        :variant="bmSelectMode ? 'primary' : 'secondary'"
+                        outline
+                        title="Select bookmarks"
+                        @click="bmSelectMode = !bmSelectMode"
+                    >
+                        <VibeIcon icon="check2-square" />
+                    </VibeButton>
                     <VibeButton size="sm" variant="primary" title="New bookmark" @click="openAdd">
                         <VibeIcon icon="plus-lg" />
                     </VibeButton>
                     <input ref="importInput" type="file" accept=".html,.htm,text/html" class="d-none" @change="onImportFile">
                 </div>
+
+                <SelectBar :count="selectedBms.length" class="mx-3 mt-2" @clear="bmClearSel">
+                    <VibeButton variant="danger" size="sm" outline @click="bulkDeleteBms">
+                        <VibeIcon icon="trash" class="me-1" />Remove
+                    </VibeButton>
+                </SelectBar>
 
                 <div class="flex-grow-1 overflow-auto">
                     <p v-if="!listed.length" class="text-muted small px-3 py-4 text-center mb-0">No bookmarks here.</p>
@@ -239,9 +269,14 @@ async function runMaintenance(action) {
                         :key="b.id"
                         type="button"
                         class="bm-row w-100 text-start border-0 border-bottom px-3 py-2 bg-transparent d-flex align-items-center gap-2"
-                        :class="{ active: b.id === selectedId }"
-                        @click="selectBookmark(b.id)"
+                        :class="{ active: b.id === selectedId, 'bg-primary-subtle': bmIsSelected(b.id) }"
+                        @click="bmSelectMode ? bmToggle(b.id) : selectBookmark(b.id)"
                     >
+                        <VibeIcon
+                            v-if="bmSelectMode"
+                            :icon="bmIsSelected(b.id) ? 'check-circle-fill' : 'circle'"
+                            :class="bmIsSelected(b.id) ? 'text-primary' : 'text-muted'"
+                        />
                         <img v-if="b.icon_url && !failedIcons.has(b.id)" :src="b.icon_url" alt="" width="18" height="18" @error="onIconError(b.id)">
                         <VibeIcon v-else :icon="b.icon_name || 'link-45deg'" class="text-muted" />
                         <span class="flex-grow-1" style="min-width: 0">
