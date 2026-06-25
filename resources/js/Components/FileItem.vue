@@ -52,8 +52,6 @@ const emit = defineEmits<{
                         v-if="view === 'grid'"
                         class="card h-100 text-center border position-relative"
                         :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver, 'border-primary border-2': selected }"
-                        style="cursor: pointer"
-                        @click="emit('open', item, $event)"
                         @contextmenu.prevent="emit('context', { item, event: $event })"
                     >
                         <button
@@ -71,27 +69,34 @@ const emit = defineEmits<{
                         <div class="position-absolute top-0 end-0 m-1" style="z-index: 2">
                             <ItemActions :item="item" :menu="menu" @star="emit('star', item)" @action="emit('action', $event)" />
                         </div>
-                        <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
-                            <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="w-100 h-100" style="object-fit: cover">
-                            <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="display-4" :style="{ color: colorFor(item) }" />
-                        </div>
-                        <div class="p-2">
-                            <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
-                            <div class="text-muted" style="font-size: 0.7rem">
-                                {{ item.is_dir ? `${item.item_count} items` : `${((item.size ?? 0) / 1024).toFixed(1)} KB` }}
+                        <button
+                            type="button"
+                            class="card-body-btn"
+                            :aria-label="item.name"
+                            @click="emit('open', item, $event)"
+                        >
+                            <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
+                                <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="w-100 h-100" style="object-fit: cover">
+                                <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="display-4" :style="{ color: colorFor(item) }" />
                             </div>
-                            <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
-                            <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="mt-1"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
-                            <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
-                        </div>
+                            <div class="p-2">
+                                <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem">
+                                    {{ item.is_dir ? `${item.item_count} items` : `${((item.size ?? 0) / 1024).toFixed(1)} KB` }}
+                                </div>
+                                <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
+                                <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="mt-1"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
+                                <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
+                            </div>
+                        </button>
                     </div>
 
                     <!-- LIST: name cell -->
                     <template v-else>
-                        <div
-                            class="list-row d-flex align-items-center rounded"
+                        <button
+                            type="button"
+                            class="list-row d-flex align-items-center rounded w-100 border-0 bg-transparent text-body text-start p-0"
                             :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || selected }"
-                            style="cursor: pointer"
                             @click="emit('open', item, $event)"
                             @contextmenu.prevent="emit('context', { item, event: $event })"
                         >
@@ -108,7 +113,7 @@ const emit = defineEmits<{
                             <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
                             <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
                             <VibeBadge v-if="(item.version ?? 0) > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
-                        </div>
+                        </button>
                         <div v-if="item.tags?.length" class="d-flex flex-wrap gap-1 mt-1 ms-5">
                             <span
                                 v-for="t in item.tags"
@@ -134,6 +139,22 @@ const emit = defineEmits<{
     transform: translateY(-2px);
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12) !important;
 }
+/* Primary open button fills the card body; resets all button chrome. */
+.card-body-btn {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: inherit;
+    cursor: pointer;
+}
+.card-body-btn:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: -2px;
+    border-radius: 0 0 var(--bs-card-border-radius, 0.375rem) var(--bs-card-border-radius, 0.375rem);
+}
 /* Outside select mode the list checkbox stays hidden until the row is hovered
    or focused, so it doesn't compete with the filename. */
 .select-check.check-idle {
@@ -143,5 +164,12 @@ const emit = defineEmits<{
 .list-row:hover .select-check.check-idle,
 .list-row:focus-within .select-check.check-idle {
     opacity: 1;
+}
+button.list-row {
+    cursor: pointer;
+}
+button.list-row:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 1px;
 }
 </style>

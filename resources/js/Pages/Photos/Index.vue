@@ -313,11 +313,10 @@ function saveEdit() {
                     :key="p.id"
                     class="photo-cell"
                     :class="{ selected: selected.has(p.id) }"
-                    @click="openPhoto(p)"
                 >
-                    <div class="photo-thumb">
+                    <button type="button" class="photo-thumb" :aria-label="`Open ${p.name}`" @click="openPhoto(p)">
                         <img :src="p.thumb_url" :alt="p.name" loading="lazy">
-                    </div>
+                    </button>
 
                     <!-- Star (click to toggle) -->
                     <VibeButton
@@ -434,14 +433,21 @@ function saveEdit() {
 .photo-cell {
     position: relative;
     aspect-ratio: 1;
-    cursor: pointer;
 }
 .photo-thumb {
+    display: block;
     width: 100%;
     height: 100%;
+    padding: 0;
+    border: 0;
     border-radius: 6px;
     overflow: hidden;
     background: var(--bs-tertiary-bg);
+    cursor: pointer;
+}
+.photo-thumb:focus-visible {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 0;
 }
 .photo-cell img {
     width: 100%;
