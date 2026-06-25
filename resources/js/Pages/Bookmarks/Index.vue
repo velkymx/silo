@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
+import { useUrlFilter } from '../../composables/useUrlFilter';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import SelectBar from '../../Components/SelectBar.vue';
@@ -21,16 +22,14 @@ const toast = useToast();
 const { prompt } = usePrompt();
 
 // ----- Server-side Scout search (debounced) -----
-const search = ref(props.filters?.search ?? '');
-let searchTimer = null;
-watch(search, (v) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-        router.get('/bookmarks', { search: v || undefined },
-            { preserveState: true, preserveScroll: true, replace: true });
-    }, 250);
+const { filters: urlFilters, setFilter: setUrlFilter } = useUrlFilter({
+    basePath: '/bookmarks',
+    initialFilters: { search: props.filters?.search ?? '' },
 });
-onBeforeUnmount(() => clearTimeout(searchTimer));
+const search = computed({
+    get: () => urlFilters.value.search,
+    set: (v) => setUrlFilter('search', v),
+});
 
 // ----- Folders (categories) -----
 const selectedFolder = ref(null); // null = All

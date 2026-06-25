@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { useUrlFilter } from '../../composables/useUrlFilter';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import { http } from '../../lib/http';
@@ -15,17 +16,12 @@ const props = defineProps({
 
 // Drive the server-side search the controller already supports — no giant
 // client-side payload to filter.
-const search = ref(props.filters?.search ?? '');
-const department = ref(props.filters?.department ?? '');
-let filterTimer = null;
-watch([search, department], ([s, d]) => {
-    clearTimeout(filterTimer);
-    filterTimer = setTimeout(() => {
-        router.get('/directory', { search: s || undefined, department: d || undefined },
-            { preserveState: true, preserveScroll: true, replace: true });
-    }, 250);
+const { filters: urlFilters, setFilter: setUrlFilter } = useUrlFilter({
+    basePath: '/directory',
+    initialFilters: { search: props.filters?.search ?? '', department: props.filters?.department ?? '' },
 });
-onBeforeUnmount(() => clearTimeout(filterTimer));
+const search = computed({ get: () => urlFilters.value.search, set: (v) => setUrlFilter('search', v) });
+const department = computed({ get: () => urlFilters.value.department, set: (v) => setUrlFilter('department', v) });
 
 // Group the server-filtered people under their department heading.
 const grouped = computed(() => {
