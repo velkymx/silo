@@ -59,6 +59,11 @@ class HandleInertiaRequests extends Middleware
                 ? \App\Models\SavedSearch::where('owner_id', $request->user()->id)
                     ->orderBy('name')->get(['id', 'name', 'params'])
                 : [],
+            // File-type category keys + labels, mirroring JS FILE_CATEGORIES.
+            'fileCategories' => array_map(
+                fn ($cat) => $cat['label'],
+                config('file_categories', []),
+            ),
         ];
     }
 }

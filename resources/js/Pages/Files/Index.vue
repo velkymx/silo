@@ -369,7 +369,7 @@ const detailsRows = computed(() => {
     if (!item) return [];
     const rows = [
         { label: 'Type', value: item.mime || 'folder' },
-        { label: 'Size', value: `${(item.size / 1024).toFixed(2)} KB` },
+        { label: 'Size', value: fmtBytes(item.size) },
         { label: 'Uploaded', value: item.created_at },
     ];
     if (item.hash) rows.push({ label: 'SHA-256', value: item.hash });
@@ -844,7 +844,7 @@ onBeforeUnmount(() => {
                     <span v-if="item.note" class="small">{{ item.note }}</span>
                     <span v-else class="text-muted fst-italic small">—</span>
                 </template>
-                <template #cell(size)="{ item }">{{ (item.size / 1024).toFixed(2) }} KB</template>
+                <template #cell(size)="{ item }">{{ fmtBytes(item.size) }}</template>
                 <template #cell(created_at)="{ item }"><span class="small">{{ item.created_at }}</span></template>
                 <template #cell(actions)="{ item }">
                     <div class="d-flex justify-content-end gap-1">

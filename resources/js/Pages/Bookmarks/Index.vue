@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { useUrlFilter } from '../../composables/useUrlFilter';
+import { BookmarkStatus } from '../../lib/constants';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import SelectBar from '../../Components/SelectBar.vue';
@@ -146,7 +147,7 @@ function onImportFile(e) {
     e.target.value = '';
 }
 
-const deadCount = computed(() => props.bookmarks.filter((b) => b.status === 'dead').length);
+const deadCount = computed(() => props.bookmarks.filter((b) => b.status === BookmarkStatus.DEAD).length);
 const maintenanceItems = computed(() => [
     { text: 'Re-check all links', action: 'validate', icon: 'arrow-repeat' },
     { text: 'Hydrate missing', action: 'hydrate', icon: 'magic' },
@@ -271,7 +272,7 @@ async function runMaintenance(action) {
                         </span>
                         <VibeIcon v-if="b.starred" icon="star-fill" class="text-warning small" title="Starred" />
                         <VibeIcon v-if="b.feed_url" icon="rss-fill" class="text-warning small" title="Has an RSS feed" />
-                        <VibeIcon v-if="b.status === 'dead'" icon="exclamation-triangle-fill" class="text-danger" title="Link unreachable" />
+                        <VibeIcon v-if="b.status === BookmarkStatus.DEAD" icon="exclamation-triangle-fill" class="text-danger" title="Link unreachable" />
                         <VibeIcon v-if="b.shared" icon="people-fill" class="text-muted small" title="Shared" />
                     </button>
                 </div>
@@ -294,7 +295,7 @@ async function runMaintenance(action) {
                             </div>
                         </div>
 
-                        <VibeAlert v-if="selectedBookmark.status === 'dead'" variant="warning" class="py-2">
+                        <VibeAlert v-if="selectedBookmark.status === BookmarkStatus.DEAD" variant="warning" class="py-2">
                             <VibeIcon icon="exclamation-triangle-fill" class="me-1" />This link did not respond on the last check.
                         </VibeAlert>
 

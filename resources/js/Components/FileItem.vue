@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { iconFor, colorFor } from '../lib/fileTypes';
+import { fmtBytes } from '../lib/format';
+import { FileStatus } from '../lib/constants';
 import ItemActions from './ItemActions.vue';
 
 interface Tag { id: number; name: string; color?: string }
@@ -82,11 +84,11 @@ const emit = defineEmits<{
                             <div class="p-2">
                                 <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
                                 <div class="text-muted" style="font-size: 0.7rem">
-                                    {{ item.is_dir ? `${item.item_count} items` : `${((item.size ?? 0) / 1024).toFixed(1)} KB` }}
+                                    {{ item.is_dir ? `${item.item_count} items` : fmtBytes(item.size ?? 0) }}
                                 </div>
-                                <VibeBadge v-if="item.status === 'pending'" variant="info" class="mt-1">Processing</VibeBadge>
-                                <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="mt-1"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
-                                <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="mt-1">Failed</VibeBadge>
+                                <VibeBadge v-if="item.status === FileStatus.PENDING" variant="info" class="mt-1">Processing</VibeBadge>
+                                <VibeBadge v-else-if="item.status === FileStatus.INFECTED" variant="danger" class="mt-1"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
+                                <VibeBadge v-else-if="item.status === FileStatus.FAILED" variant="danger" class="mt-1">Failed</VibeBadge>
                             </div>
                         </button>
                     </div>
@@ -109,9 +111,9 @@ const emit = defineEmits<{
                             <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
                             <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="me-2 fs-4 flex-shrink-0" :style="{ color: colorFor(item) }" />
                             <span class="text-truncate" :title="item.name">{{ item.name }}</span>
-                            <VibeBadge v-if="item.status === 'pending'" variant="info" class="ms-2"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
-                            <VibeBadge v-else-if="item.status === 'infected'" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
-                            <VibeBadge v-else-if="item.status === 'failed'" variant="danger" class="ms-2">Failed</VibeBadge>
+                            <VibeBadge v-if="item.status === FileStatus.PENDING" variant="info" class="ms-2"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
+                            <VibeBadge v-else-if="item.status === FileStatus.INFECTED" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
+                            <VibeBadge v-else-if="item.status === FileStatus.FAILED" variant="danger" class="ms-2">Failed</VibeBadge>
                             <VibeBadge v-if="(item.version ?? 0) > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
                         </button>
                         <div v-if="item.tags?.length" class="d-flex flex-wrap gap-1 mt-1 ms-5">

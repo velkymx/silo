@@ -51,4 +51,10 @@ describe('FileItem', () => {
         expect(wrapper.find('img').exists()).toBe(false);
         expect(wrapper.find('i.bi').exists()).toBe(true);
     });
+
+    it('grid view formats large file sizes with fmtBytes (not raw KB)', () => {
+        const f = { ...file, size: 1048576 }; // 1 MiB → fmtBytes → "1.0 MB"
+        const wrapper = mount(FileItem, { props: { item: f, view: 'grid', selected: false, menu } });
+        expect(wrapper.text()).toContain('1.0 MB');
+    });
 });

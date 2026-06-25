@@ -15,17 +15,6 @@ use Illuminate\Support\Collection;
  */
 class FileSearch
 {
-    /** File-type categories → extension / mime matchers. */
-    public const TYPE_FILTERS = [
-        'image' => ['mime' => 'image/%'],
-        'video' => ['mime' => 'video/%'],
-        'audio' => ['mime' => 'audio/%'],
-        'pdf' => ['ext' => ['pdf']],
-        'document' => ['ext' => ['doc', 'docx', 'txt', 'md', 'rtf', 'odt']],
-        'spreadsheet' => ['ext' => ['xls', 'xlsx', 'csv', 'ods']],
-        'archive' => ['ext' => ['zip', 'rar', '7z', 'tar', 'gz']],
-    ];
-
     /** Build the filtered file query for the given owner. */
     public function build(Request $request, int $userId, Collection $allFolders): Builder
     {
@@ -65,8 +54,9 @@ class FileSearch
         }
 
         $ftype = $request->string('ftype')->toString();
-        if ($ftype !== '' && isset(self::TYPE_FILTERS[$ftype])) {
-            $rule = self::TYPE_FILTERS[$ftype];
+        $categories = config('file_categories', []);
+        if ($ftype !== '' && isset($categories[$ftype])) {
+            $rule = $categories[$ftype];
             if (isset($rule['mime'])) {
                 $q->where('mime', 'like', $rule['mime']);
             } else {

@@ -2,7 +2,8 @@
 import { ref } from 'vue';
 import MarkdownViewer from './MarkdownViewer.vue';
 import DocViewer from './DocViewer.vue';
-import { iconFor, imageTypes } from '../lib/fileTypes';
+import { iconFor, isImageType } from '../lib/fileTypes';
+import { fmtBytes } from '../lib/format';
 
 interface QuickFile {
     id: number;
@@ -36,7 +37,7 @@ const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 const previewMarkdownTypes = ['md', 'markdown'];
 
 function isImage(f: QuickFile | null): boolean {
-    return !!f && !!f.type && imageTypes.includes(f.type);
+    return isImageType(f?.type);
 }
 </script>
 
@@ -131,7 +132,7 @@ function isImage(f: QuickFile | null): boolean {
             <div v-else class="text-muted py-5">
                 <VibeIcon :icon="iconFor(file.type)" class="display-1 d-block mb-3" />
                 No inline preview for this file type.
-                <div class="small mt-2">{{ file.mime || 'unknown type' }} · {{ ((file.size ?? 0) / 1024).toFixed(1) }} KB</div>
+                <div class="small mt-2">{{ file.mime || 'unknown type' }} · {{ fmtBytes(file.size ?? 0) }}</div>
             </div>
         </div>
         <slot name="below" />

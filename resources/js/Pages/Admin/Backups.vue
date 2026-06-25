@@ -4,6 +4,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { fmtBytes } from '../../lib/format';
+import { BackupStatus } from '../../lib/constants';
 import { useConfirm } from '../../composables/useConfirm';
 import { usePageLoading } from '../../composables/usePageLoading';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
@@ -48,7 +49,7 @@ async function restore(b) {
 
 const human = (bytes) => (bytes ? fmtBytes(bytes) : '—');
 
-const statusVariant = (s) => ({ ready: 'success', pending: 'info', failed: 'danger' }[s] || 'secondary');
+const statusVariant = (s) => ({ [BackupStatus.READY]: 'success', [BackupStatus.PENDING]: 'info', [BackupStatus.FAILED]: 'danger' }[s] || 'secondary');
 
 const columns = [
     { key: 'filename', label: 'Backup' },
@@ -62,7 +63,7 @@ const columns = [
 
 // Auto-refresh while a backup is still being built.
 let poll = null;
-const hasPending = computed(() => props.backups.some((b) => b.status === 'pending'));
+const hasPending = computed(() => props.backups.some((b) => b.status === BackupStatus.PENDING));
 onMounted(() => {
     poll = setInterval(() => {
         if (hasPending.value) router.reload({ only: ['backups'] });
@@ -131,9 +132,9 @@ onBeforeUnmount(() => clearInterval(poll));
                         </template>
                         <template #cell(status)="{ item }">
                             <VibeBadge :variant="statusVariant(item.status)">
-                                <VibeSpinner v-if="item.status === 'pending'" size="sm" class="me-1" />{{ item.status }}
+                                <VibeSpinner v-if="item.status === BackupStatus.PENDING" size="sm" class="me-1" />{{ item.status }}
                             </VibeBadge>
-                            <div v-if="item.status === 'failed'" class="small text-danger text-truncate" style="max-width: 220px" :title="item.note">
+                            <div v-if="item.status === BackupStatus.FAILED" class="small text-danger text-truncate" style="max-width: 220px" :title="item.note">
                                 {{ item.note }}
                             </div>
                         </template>
