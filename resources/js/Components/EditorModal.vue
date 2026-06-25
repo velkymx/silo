@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import MarkdownEditor from './MarkdownEditor.vue';
 import { getText } from '../lib/http';
+import AppModal from './AppModal.vue';
 
 interface FileLike { id: number; name: string }
 
@@ -51,7 +52,7 @@ function save(): void {
 </script>
 
 <template>
-    <VibeModal
+    <AppModal
         v-model="open"
         :title="creating ? 'New Markdown file' : `Edit — ${item?.name || ''}`"
         fullscreen
@@ -72,5 +73,5 @@ function save(): void {
                 <VibeIcon icon="save" class="me-1" />{{ creating ? 'Create' : 'Save' }}
             </VibeButton>
         </template>
-    </VibeModal>
+    </AppModal>
 </template>

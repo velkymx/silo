@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
+import AppModal from '../../Components/AppModal.vue';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -302,7 +303,7 @@ async function runMaintenance(action) {
             </template>
         </ThreePane>
 
-        <VibeModal v-model="showModal" :title="editingId ? 'Edit bookmark' : 'Add bookmark'">
+        <AppModal v-model="showModal" :title="editingId ? 'Edit bookmark' : 'Add bookmark'">
             <VibeFormGroup label="Title" :error="form.errors.title">
                 <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
             </VibeFormGroup>
@@ -334,7 +335,7 @@ async function runMaintenance(action) {
                     {{ editingId ? 'Save' : 'Add' }}
                 </VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
     </AppLayout>
 </template>
 

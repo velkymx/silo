@@ -5,6 +5,7 @@ import { useConfirm } from '../composables/useConfirm';
 import { useToast } from '../composables/useToast';
 import { useBusyGuard } from '../composables/useBusyGuard';
 import { useBatchRename } from '../composables/useBatchRename';
+import AppModal from './AppModal.vue';
 
 interface Item { id: number; name: string }
 interface Option { value: number | null; text: string }
@@ -93,7 +94,7 @@ function submitRename(): void {
     </div>
 
     <!-- New folder from selection -->
-    <VibeModal v-model="folderOpen" title="New Folder from Selection" centered>
+    <AppModal v-model="folderOpen" title="New Folder from Selection" centered>
         <div class="mx-auto" style="max-width: 520px">
             <VibeFormGroup label="Folder name">
                 <VibeFormInput v-model="folderName" />
@@ -104,10 +105,10 @@ function submitRename(): void {
             <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
             <VibeButton variant="primary" :disabled="!folderName || batchBusy" @click="submitFolder">Create</VibeButton>
         </template>
-    </VibeModal>
+    </AppModal>
 
     <!-- Batch move -->
-    <VibeModal v-model="moveOpen" title="Move Selection To" centered>
+    <AppModal v-model="moveOpen" title="Move Selection To" centered>
         <div class="mx-auto" style="max-width: 520px">
             <VibeFormGroup label="Destination folder">
                 <VibeFormSelect v-model="moveTarget" :options="destinationOptions" />
@@ -117,10 +118,10 @@ function submitRename(): void {
             <VibeButton variant="secondary" outline @click="moveOpen = false">Cancel</VibeButton>
             <VibeButton variant="primary" :disabled="batchBusy" @click="submitMove">Move {{ count }}</VibeButton>
         </template>
-    </VibeModal>
+    </AppModal>
 
     <!-- Batch rename -->
-    <VibeModal v-model="renameOpen" title="Batch Rename" size="lg" centered scrollable>
+    <AppModal v-model="renameOpen" title="Batch Rename" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 760px">
             <VibeButtonGroup class="mb-3">
                 <VibeButton :variant="renameOpts.mode === 'replace' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'replace'" @click="renameOpts.mode = 'replace'">Find &amp; Replace</VibeButton>
@@ -163,7 +164,7 @@ function submitRename(): void {
             <VibeButton variant="secondary" outline @click="renameOpen = false">Cancel</VibeButton>
             <VibeButton variant="primary" :disabled="batchBusy" @click="submitRename">Rename {{ count }}</VibeButton>
         </template>
-    </VibeModal>
+    </AppModal>
 </template>
 
 <style scoped>

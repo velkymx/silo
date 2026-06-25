@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { initials } from '../../lib/initials';
+import AppModal from '../../Components/AppModal.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -186,7 +187,7 @@ function applyCrop() {
         </VibeRow>
 
         <!-- Crop modal -->
-        <VibeModal v-model="cropOpen" title="Crop photo" size="lg" centered hide-footer>
+        <AppModal v-model="cropOpen" title="Crop photo" size="lg" centered hide-footer>
             <Cropper
                 ref="cropper"
                 :src="cropSrc"
@@ -198,6 +199,6 @@ function applyCrop() {
                 <VibeButton variant="secondary" outline class="me-2" @click="cropOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</VibeButton>
             </div>
-        </VibeModal>
+        </AppModal>
     </AppLayout>
 </template>

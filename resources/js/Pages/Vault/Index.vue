@@ -6,6 +6,7 @@ import PageHeader from '../../Components/PageHeader.vue';
 import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
+import AppModal from '../../Components/AppModal.vue';
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -175,7 +176,7 @@ async function onImportFile(e) {
             </div>
         </div>
 
-        <VibeModal v-model="showModal" :title="editingId ? 'Edit secret' : 'Add secret'">
+        <AppModal v-model="showModal" :title="editingId ? 'Edit secret' : 'Add secret'">
             <VibeFormGroup label="Name" :error="form.errors.name"><VibeFormInput v-model="form.name" placeholder="AWS root" /></VibeFormGroup>
             <div class="row">
                 <div class="col-6"><VibeFormGroup label="Username" :error="form.errors.username"><VibeFormInput v-model="form.username" /></VibeFormGroup></div>
@@ -198,7 +199,7 @@ async function onImportFile(e) {
                 <VibeButton variant="secondary" outline @click="showModal = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="form.processing" @click="save">{{ editingId ? 'Save' : 'Add' }}</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
     </AppLayout>
 </template>
 

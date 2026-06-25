@@ -24,6 +24,7 @@ import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
 import { fmtBytes } from '../../lib/format';
 import { TYPE_OPTIONS } from '../../composables/useAdvancedSearch';
+import AppModal from '../../Components/AppModal.vue';
 
 // Office formats edited on the full-screen editor page (binary, versioned).
 const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
@@ -772,7 +773,7 @@ onBeforeUnmount(() => {
         <EditorModal v-model="editOpen" :item="editItem" :creating="editCreating" :kind="editKind" :parent-id="currentId" />
 
         <!-- Details modal -->
-        <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
+        <AppModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
             <table class="table table-sm mb-0">
                 <tbody>
                     <tr v-for="row in detailsRows" :key="row.label">
@@ -781,13 +782,13 @@ onBeforeUnmount(() => {
                     </tr>
                 </tbody>
             </table>
-        </VibeModal>
+        </AppModal>
 
         <!-- Share modal -->
         <ShareModal v-model="shareOpen" :item="shareTarget" />
 
         <!-- Tags modal -->
-        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
+        <AppModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <VibeBadge
                     v-for="name in tagList"
@@ -818,10 +819,10 @@ onBeforeUnmount(() => {
                 <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Versions modal -->
-        <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
+        <AppModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
             <p class="text-muted small">
                 Current: version {{ versionsItem?.version }}.
                 <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
@@ -860,7 +861,7 @@ onBeforeUnmount(() => {
                     </div>
                 </template>
             </VibeDataTable>
-        </VibeModal>
+        </AppModal>
 
         <!-- Quick Look modal -->
         <QuickLookModal
@@ -879,7 +880,7 @@ onBeforeUnmount(() => {
         <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" :storage="storage" />
 
         <!-- Create folder modal -->
-        <VibeModal v-model="folderOpen" title="Create Folder" centered>
+        <AppModal v-model="folderOpen" title="Create Folder" centered>
             <form @submit.prevent="submitFolder">
                 <VibeFormGroup
                     label="Folder Name"
@@ -893,13 +894,13 @@ onBeforeUnmount(() => {
                 <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Rename modal -->
         <RenameModal v-model="renameOpen" :item="renameTarget" />
 
         <!-- Move / Copy modal -->
-        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
+        <AppModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
             <form @submit.prevent="submitTransfer">
                 <VibeFormGroup
                     label="Destination Folder"
@@ -915,7 +916,7 @@ onBeforeUnmount(() => {
                     <VibeSpinner v-if="transferForm.processing" size="sm" class="me-1" />{{ transferForm.processing ? (transferMode === 'move' ? 'Moving…' : 'Copying…') : (transferMode === 'move' ? 'Move' : 'Copy') }}
                 </VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Advanced search -->
         <AdvancedSearchModal

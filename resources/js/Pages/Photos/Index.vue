@@ -12,6 +12,7 @@ import QuickLookModal from '../../Components/QuickLookModal.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
+import AppModal from '../../Components/AppModal.vue';
 
 const { confirm } = useConfirm();
 const toast = useToast();
@@ -378,17 +379,17 @@ function saveEdit() {
         </QuickLookModal>
 
         <!-- Upload -->
-        <VibeModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
+        <AppModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
             <VibeFileInput v-model="uploadForm.files" label="Choose images" multiple drag-drop accept="image/*" />
             <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">{{ uploadForm.errors['files.0'] }}</p>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadForm.files.length" @click="submitUpload">Upload</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- New album -->
-        <VibeModal v-model="albumOpen" title="New Album" centered>
+        <AppModal v-model="albumOpen" title="New Album" centered>
             <VibeFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
             </VibeFormGroup>
@@ -396,10 +397,10 @@ function saveEdit() {
                 <VibeButton variant="secondary" outline @click="albumOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="albumForm.processing || !albumForm.name" @click="createAlbum">Create</VibeButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <!-- Photo editor -->
-        <VibeModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
+        <AppModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
             <div class="d-flex gap-2 mb-2 flex-wrap">
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(-90)"><VibeIcon icon="arrow-counterclockwise" /> Left</VibeButton>
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(90)"><VibeIcon icon="arrow-clockwise" /> Right</VibeButton>
@@ -419,7 +420,7 @@ function saveEdit() {
                 class="bg-dark"
                 style="height: calc(100vh - 180px)"
             />
-        </VibeModal>
+        </AppModal>
     </AppLayout>
 </template>
 
