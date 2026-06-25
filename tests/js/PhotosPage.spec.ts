@@ -87,8 +87,8 @@ describe('Photos/Index page', () => {
         const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
         // Open the first photo into the lightbox.
         await wrapper.find('.photo-cell').trigger('click');
-        const next = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Next photo');
-        const prev = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Previous photo');
+        const next = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Next file');
+        const prev = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Previous file');
         await next!.trigger('click');
         await prev!.trigger('click');
         expect(next && prev).toBeTruthy();
