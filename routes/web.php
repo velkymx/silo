@@ -1,7 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BatchController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\FolderController;
+use App\Http\Controllers\VersionController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\FilePermissionController;
 use App\Http\Controllers\GroupController;
@@ -96,19 +99,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/files/{file}/links', [ShareLinkController::class, 'index'])->name('files.links.index');
     Route::post('/files/{file}/links', [ShareLinkController::class, 'store'])->name('files.links.store');
     Route::delete('/files/{file}/links/{link}', [ShareLinkController::class, 'destroy'])->name('files.links.destroy');
-    Route::get('/files/{file}/versions/{version}/download', [FileController::class, 'downloadVersion'])->name('files.versions.download');
-    Route::post('/files/{file}/versions/{version}/restore', [FileController::class, 'restoreVersion'])->name('files.versions.restore');
+    Route::get('/files/{file}/versions/{version}/download', [VersionController::class, 'download'])->name('files.versions.download');
+    Route::post('/files/{file}/versions/{version}/restore', [VersionController::class, 'restore'])->name('files.versions.restore');
 
-    Route::post('/files/batch/move', [FileController::class, 'batchMove'])->name('files.batch.move');
-    Route::post('/files/batch/delete', [FileController::class, 'batchDelete'])->name('files.batch.delete');
-    Route::post('/files/batch/folder', [FileController::class, 'batchFolder'])->name('files.batch.folder');
-    Route::post('/files/batch/rename', [FileController::class, 'batchRename'])->name('files.batch.rename');
+    Route::post('/files/batch/move', [BatchController::class, 'move'])->name('files.batch.move');
+    Route::post('/files/batch/delete', [BatchController::class, 'delete'])->name('files.batch.delete');
+    Route::post('/files/batch/folder', [BatchController::class, 'folder'])->name('files.batch.folder');
+    Route::post('/files/batch/rename', [BatchController::class, 'rename'])->name('files.batch.rename');
 
     Route::post('/saved-searches', [\App\Http\Controllers\SavedSearchController::class, 'store'])->name('saved-searches.store');
     Route::delete('/saved-searches/{savedSearch}', [\App\Http\Controllers\SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
 
-    Route::post('/folders', [FileController::class, 'createFolder'])->name('folders.create');
-    Route::get('/folders/{folder}', [FileController::class, 'viewFolder'])->name('folders.view');
+    Route::post('/folders', [FolderController::class, 'store'])->name('folders.create');
+    Route::get('/folders/{folder}', [FolderController::class, 'show'])->name('folders.view');
 
     // Secrets vault. Reveal/generate are rate-limited; reveal also re-checks the
     // user's password (in the controller) and is audited.
