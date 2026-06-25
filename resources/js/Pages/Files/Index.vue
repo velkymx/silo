@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
             :searchable="false"
             :per-page="25"
             :per-page-options="[10, 25, 50, 100]"
-            :responsive="false"
+            :responsive="true"
             :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
             @row-clicked="selectFile"
         >
@@ -828,7 +828,7 @@ onBeforeUnmount(() => {
                 :searchable="false"
                 :show-per-page="false"
                 :per-page="100"
-                :responsive="false"
+                :responsive="true"
             >
                 <template #cell(version)="{ item }">v{{ item.version }}</template>
                 <template #cell(note)="{ item }">
