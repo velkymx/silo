@@ -8,9 +8,8 @@ import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
-import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
-import FormErrorSummary from '../../Components/FormErrorSummary.vue';
+import ResourceModal from '../../Components/ResourceModal.vue';
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -73,32 +72,20 @@ function copy(id) {
 }
 
 // ----- Add / edit -----
-const showModal = ref(false);
-const editingId = ref(null);
+const vaultModal = ref(null);
 const form = useForm({ name: '', username: '', url: '', category: '', secret: '', notes: '', group_id: '' });
 
 function openAdd() {
-    editingId.value = null;
-    form.reset();
-    form.clearErrors();
-    showModal.value = true;
+    vaultModal.value?.openAdd();
 }
 
 function openEdit(item) {
-    editingId.value = item.id;
-    form.clearErrors();
     // The secret is never sent to the client; leave it blank (blank = keep existing).
     Object.assign(form, {
         name: item.name, username: item.username || '', url: item.url || '',
         category: item.category || '', secret: '', notes: '', group_id: item.group_id || '',
     });
-    showModal.value = true;
-}
-
-function save() {
-    const opts = { preserveScroll: true, onSuccess: () => { showModal.value = false; } };
-    if (editingId.value) form.put(`/vault/${editingId.value}`, opts);
-    else form.post('/vault', opts);
+    vaultModal.value?.openEdit(item);
 }
 
 async function generate() {
@@ -225,30 +212,35 @@ async function onImportFile(e) {
             </div>
         </div>
 
-        <AppModal v-model="showModal" :title="editingId ? 'Edit secret' : 'Add secret'">
-            <FormErrorSummary :errors="form.errors" /><AppFormGroup label="Name" :error="form.errors.name"><VibeFormInput v-model="form.name" placeholder="AWS root" /></AppFormGroup>
-            <div class="row">
-                <div class="col-6"><AppFormGroup label="Username" :error="form.errors.username"><VibeFormInput v-model="form.username" /></AppFormGroup></div>
-                <div class="col-6"><AppFormGroup label="Category" :error="form.errors.category"><VibeFormInput v-model="form.category" /></AppFormGroup></div>
-            </div>
-            <AppFormGroup label="URL" :error="form.errors.url"><VibeFormInput v-model="form.url" placeholder="https://…" /></AppFormGroup>
-            <AppFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
-                <div class="d-flex gap-2">
-                    <VibeFormInput v-model="form.secret" class="flex-grow-1" />
-                    <VibeButton variant="secondary" outline title="Generate" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
+        <ResourceModal
+            ref="vaultModal"
+            :form="form"
+            store-url="/vault"
+            :update-url="(id) => `/vault/${id}`"
+            add-title="Add secret"
+            edit-title="Edit secret"
+        >
+            <template #default="{ editingId }">
+                <AppFormGroup label="Name" :error="form.errors.name"><VibeFormInput v-model="form.name" placeholder="AWS root" /></AppFormGroup>
+                <div class="row">
+                    <div class="col-6"><AppFormGroup label="Username" :error="form.errors.username"><VibeFormInput v-model="form.username" /></AppFormGroup></div>
+                    <div class="col-6"><AppFormGroup label="Category" :error="form.errors.category"><VibeFormInput v-model="form.category" /></AppFormGroup></div>
                 </div>
-            </AppFormGroup>
-            <AppFormGroup label="Share with group" :error="form.errors.group_id">
-                <VibeFormSelect v-model="form.group_id">
-                    <option value="">Private (only me)</option>
-                    <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </VibeFormSelect>
-            </AppFormGroup>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="showModal = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="form.processing" @click="save">{{ editingId ? 'Save' : 'Add' }}</VibeButton>
+                <AppFormGroup label="URL" :error="form.errors.url"><VibeFormInput v-model="form.url" placeholder="https://…" /></AppFormGroup>
+                <AppFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
+                    <div class="d-flex gap-2">
+                        <VibeFormInput v-model="form.secret" class="flex-grow-1" />
+                        <VibeButton variant="secondary" outline title="Generate" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
+                    </div>
+                </AppFormGroup>
+                <AppFormGroup label="Share with group" :error="form.errors.group_id">
+                    <VibeFormSelect v-model="form.group_id">
+                        <option value="">Private (only me)</option>
+                        <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                    </VibeFormSelect>
+                </AppFormGroup>
             </template>
-        </AppModal>
+        </ResourceModal>
     </AppLayout>
 </template>
 

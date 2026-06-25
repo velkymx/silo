@@ -14,6 +14,7 @@ import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
+import ResourceModal from '../../Components/ResourceModal.vue';
 
 const { confirm } = useConfirm();
 const toast = useToast();
@@ -180,10 +181,10 @@ function submitUpload() {
 }
 
 // ----- Albums -----
-const albumOpen = ref(false);
+const albumModal = ref(null);
 const albumForm = useForm({ name: '' });
-function createAlbum() {
-    albumForm.post('/photos/albums', { onSuccess: () => { albumOpen.value = false; albumForm.reset(); } });
+function openNewAlbum() {
+    albumModal.value?.openAdd();
 }
 function addSelectedToAlbum(albumId) {
     router.post(`/photos/albums/${albumId}/photos`, { file_ids: [...selected.value] }, {
@@ -257,7 +258,7 @@ function saveEdit() {
                 <VibeButton :variant="selectMode ? 'primary' : 'secondary'" outline @click="selectMode = !selectMode; selected = new Set()">
                     <VibeIcon icon="check2-square" class="me-1" />Select
                 </VibeButton>
-                <VibeButton variant="secondary" outline @click="albumOpen = true">
+                <VibeButton variant="secondary" outline @click="openNewAlbum">
                     <VibeIcon icon="collection" class="me-1" />New Album
                 </VibeButton>
                 <VibeButton variant="primary" @click="uploadOpen = true">
@@ -389,15 +390,19 @@ function saveEdit() {
         </AppModal>
 
         <!-- New album -->
-        <AppModal v-model="albumOpen" title="New Album" centered>
+        <ResourceModal
+            ref="albumModal"
+            :form="albumForm"
+            store-url="/photos/albums"
+            :update-url="(id) => `/photos/albums/${id}`"
+            add-title="New Album"
+            edit-title="Edit Album"
+            add-label="Create"
+        >
             <AppFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
             </AppFormGroup>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="albumOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="albumForm.processing || !albumForm.name" @click="createAlbum">Create</VibeButton>
-            </template>
-        </AppModal>
+        </ResourceModal>
 
         <!-- Photo editor -->
         <AppModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>

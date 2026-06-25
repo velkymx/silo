@@ -7,9 +7,8 @@ import SelectBar from '../../Components/SelectBar.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
-import AppModal from '../../Components/AppModal.vue';
 import AppFormGroup from '../../Components/AppFormGroup.vue';
-import FormErrorSummary from '../../Components/FormErrorSummary.vue';
+import ResourceModal from '../../Components/ResourceModal.vue';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -101,32 +100,20 @@ function onIconError(id) {
 }
 
 // ----- Add / edit -----
-const showModal = ref(false);
-const editingId = ref(null);
+const bmModal = ref(null);
 const form = useForm({ title: '', url: '', description: '', icon: '', color: '', category: '', shared: false });
 
 function openAdd() {
-    editingId.value = null;
-    form.reset();
-    form.clearErrors();
-    form.category = selectedFolder.value && selectedFolder.value !== 'General' ? selectedFolder.value : '';
-    showModal.value = true;
+    const prefill = selectedFolder.value && selectedFolder.value !== 'General' ? { category: selectedFolder.value } : {};
+    bmModal.value?.openAdd(prefill);
 }
 
 function openEdit(b) {
-    editingId.value = b.id;
-    form.clearErrors();
     Object.assign(form, {
         title: b.title, url: b.url, description: b.description || '',
         icon: b.icon_name || '', color: b.color || '', category: b.category || '', shared: b.shared,
     });
-    showModal.value = true;
-}
-
-function save() {
-    const opts = { preserveScroll: true, preserveState: true, onSuccess: () => { showModal.value = false; } };
-    if (editingId.value) form.put(`/bookmarks/${editingId.value}`, opts);
-    else form.post('/bookmarks', opts);
+    bmModal.value?.openEdit(b);
 }
 
 async function remove(b) {
@@ -346,8 +333,15 @@ async function runMaintenance(action) {
             </template>
         </ThreePane>
 
-        <AppModal v-model="showModal" :title="editingId ? 'Edit bookmark' : 'Add bookmark'">
-            <FormErrorSummary :errors="form.errors" /><AppFormGroup label="Title" :error="form.errors.title">
+        <ResourceModal
+            ref="bmModal"
+            :form="form"
+            store-url="/bookmarks"
+            :update-url="(id) => `/bookmarks/${id}`"
+            add-title="Add bookmark"
+            edit-title="Edit bookmark"
+        >
+            <AppFormGroup label="Title" :error="form.errors.title">
                 <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
             </AppFormGroup>
             <AppFormGroup label="URL" :error="form.errors.url">
@@ -372,13 +366,7 @@ async function runMaintenance(action) {
                 </div>
             </div>
             <VibeFormCheckbox v-model="form.shared">Share with everyone</VibeFormCheckbox>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="showModal = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="form.processing" @click="save">
-                    {{ editingId ? 'Save' : 'Add' }}
-                </VibeButton>
-            </template>
-        </AppModal>
+        </ResourceModal>
     </AppLayout>
 </template>
 
