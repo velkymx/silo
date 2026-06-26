@@ -34,4 +34,46 @@ describe('EditorModal', () => {
         await save!.trigger('click');
         expect(routerPut).toHaveBeenCalledWith('/files/5/content', { content: '# hi' }, expect.anything());
     });
+
+    it('stale load result is dropped when a newer open fires first', async () => {
+        // First open: slow fetch for file 5
+        let resolveFirst!: (v: string) => void;
+        const first = new Promise<string>((res) => { resolveFirst = res; });
+        // Second open: fast fetch for file 7
+        getText
+            .mockReturnValueOnce(first)
+            .mockResolvedValueOnce('# file-7');
+
+        // Stub that actually reflects modelValue so we can assert on it.
+        const bindingOpts = {
+            global: {
+                stubs: {
+                    MarkdownEditor: {
+                        template: '<textarea class="md" :value="modelValue"></textarea>',
+                        props: ['modelValue'],
+                        emits: ['update:modelValue'],
+                    },
+                },
+            },
+        };
+
+        const wrapper = mount(EditorModal, {
+            props: { modelValue: false, item: { id: 5, name: 'a.md' }, creating: false, kind: 'markdown', parentId: null },
+            ...bindingOpts,
+        });
+
+        // Open → triggers fetch for file 5 (stalls).
+        await wrapper.setProps({ modelValue: true });
+        // Close then immediately re-open with file 7 — triggers a second fetch.
+        await wrapper.setProps({ modelValue: false });
+        await wrapper.setProps({ item: { id: 7, name: 'b.md' }, modelValue: true });
+        await flushPromises();
+
+        // Now resolve the stale file-5 response after file-7 already loaded.
+        resolveFirst('# file-5-stale');
+        await flushPromises();
+
+        // The textarea must NOT contain the stale file-5 content.
+        expect(wrapper.find('textarea.md').element.value).not.toContain('file-5-stale');
+    });
 });
