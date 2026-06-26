@@ -116,4 +116,17 @@ class SodokuGeneratorTest extends TestCase
         $b = $this->generator()->generate($seed, 'intermediate');
         $this->assertSame($a['puzzle'], $b['puzzle']);
     }
+
+    /** CR-03: generateCompleteGrid must never return a grid with zero cells. */
+    public function test_complete_grid_has_no_zeros_across_many_seeds(): void
+    {
+        $gen = $this->generator();
+        for ($seed = 1; $seed <= 50; $seed++) {
+            $result = $gen->generate($seed, 'advanced');
+            $this->assertTrue(
+                $this->isValidCompleteSolution($result['solution']),
+                "Seed $seed produced an invalid or incomplete solution: {$result['solution']}"
+            );
+        }
+    }
 }

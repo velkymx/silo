@@ -78,8 +78,15 @@ class SodokuGenerator
 
         // Backtrack-fill the rest. Start at (1, 0) because row 0 is already
         // populated by the shuffled permutation above.
-        $this->fillFromCell(1, 0, $grid);
-        return $grid;
+        // fillFromCell can theoretically return false if row 0 leads to a dead
+        // end — loop until a valid grid is produced.
+        if ($this->fillFromCell(1, 0, $grid)) {
+            return $grid;
+        }
+
+        // Retry with a new shuffle (extremely rare; any 1–9 permutation can be
+        // completed, but defensive against edge cases in the constraint checker).
+        return $this->generateCompleteGrid();
     }
 
     private function fillFromCell(int $r, int $c, array &$grid): bool
