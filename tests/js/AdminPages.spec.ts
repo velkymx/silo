@@ -9,9 +9,10 @@ const spies = vi.hoisted(() => ({
     formClearErrors: vi.fn(),
     routerGet: vi.fn(),
     routerVisit: vi.fn(),
+    routerDelete: vi.fn(),
 }));
 vi.mock('@inertiajs/vue3', () => ({
-    router: { get: spies.routerGet, visit: spies.routerVisit, on: vi.fn(() => () => {}), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+    router: { get: spies.routerGet, visit: spies.routerVisit, delete: spies.routerDelete, on: vi.fn(() => () => {}), post: vi.fn(), patch: vi.fn() },
     usePage: () => ({ props: { flash: {}, errors: {} } }),
     useForm: (data: Record<string, unknown>) => ({
         ...data, processing: false, errors: {},
@@ -102,6 +103,27 @@ describe('Admin/Groups', () => {
         expect(host.state.open).toBe(true);
         host.accept();
         await flushPromises();
-        expect(spies.formDelete).toHaveBeenCalledWith('/groups/3', expect.anything());
+        expect(spies.routerDelete).toHaveBeenCalledWith('/groups/3', expect.anything());
+    });
+
+    it('delete button is disabled while a delete is in flight', async () => {
+        // routerDelete stalls — never calls onFinish.
+        spies.routerDelete.mockImplementationOnce((_url: string, opts: { onFinish?: () => void }) => {
+            // do nothing — simulate pending request
+            void opts;
+        });
+        const wrapper = mount(GroupsIndex, { props: { groups } });
+        const iconButtons = wrapper.findAll('button').filter((b) => b.element.querySelector('.bi') && b.text() === '');
+        const trashBtn = iconButtons[iconButtons.length - 1];
+        await trashBtn.trigger('click');
+        const host = useDialogHost();
+        host.accept();
+        await flushPromises();
+        // Button must be disabled while in flight.
+        expect(trashBtn.element.disabled).toBe(true);
+        // A second click must not fire a second DELETE.
+        await trashBtn.trigger('click');
+        await flushPromises();
+        expect(spies.routerDelete).toHaveBeenCalledTimes(1);
     });
 });

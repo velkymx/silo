@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../../composables/useConfirm';
@@ -18,6 +18,7 @@ defineProps({
 const createForm = useForm({ name: '' });
 const editingId = ref(null);
 const editForm = useForm({ name: '' });
+const deletingId = ref(null);
 
 const columns = [
     { key: 'name', label: 'Name' },
@@ -43,10 +44,13 @@ function saveEdit() {
 }
 
 async function destroy(group) {
+    if (deletingId.value !== null) return;
     if (!await confirm({ title: 'Delete group', message: `Delete group "${group.name}"? Members will be unassigned.`, confirmLabel: 'Delete', variant: 'danger' })) return;
-    useForm({}).delete(`/groups/${group.id}`, {
+    deletingId.value = group.id;
+    router.delete(`/groups/${group.id}`, {
         preserveScroll: true,
         onSuccess: () => toast.push(`Group "${group.name}" deleted`, { variant: 'danger' }),
+        onFinish: () => { deletingId.value = null; },
     });
 }
 </script>
@@ -95,7 +99,7 @@ async function destroy(group) {
                     <VibeButton variant="primary" size="sm" outline @click="startEdit(item)">
                         <VibeIcon icon="pencil" />
                     </VibeButton>
-                    <VibeButton variant="danger" size="sm" outline @click="destroy(item)">
+                    <VibeButton variant="danger" size="sm" outline :disabled="deletingId === item.id" @click="destroy(item)">
                         <VibeIcon icon="trash" />
                     </VibeButton>
                 </div>
