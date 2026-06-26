@@ -488,7 +488,7 @@ class FileController extends Controller
                     ->where('owner_id', $userId)
                     ->where('parent_id', $parent?->id)
                     ->where('name', $cleanName)
-                    ->first();
+                    ->latest('id')->first();
 
                 $file = $existing
                     ? $this->overwrite($existing, $attributes, $userId)
