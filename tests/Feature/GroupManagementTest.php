@@ -49,6 +49,15 @@ class GroupManagementTest extends TestCase
         $this->actingAs($user)->post('/groups', ['name' => 'X'])->assertForbidden();
     }
 
+    public function test_non_admin_cannot_delete_a_group(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+        $group = Group::create(['name' => 'Finance']);
+
+        $this->actingAs($user)->delete("/groups/{$group->id}")->assertForbidden();
+        $this->assertDatabaseHas('groups', ['id' => $group->id]);
+    }
+
     public function test_folder_can_be_shared_and_tagged_via_the_same_endpoints(): void
     {
         $owner = User::factory()->create();

@@ -34,6 +34,8 @@ class GroupController extends Controller
 
     public function destroy(Group $group)
     {
+        abort_unless(auth()->user()?->is_admin, 403);
+
         $group->delete(); // users.group_id is set null via FK
 
         return back()->with('success', 'Group deleted.');
