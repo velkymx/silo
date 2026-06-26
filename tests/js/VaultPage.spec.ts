@@ -26,6 +26,7 @@ vi.mock('@/composables/useConfirm', () => ({
 }));
 
 import VaultIndex from '@/Pages/Vault/Index.vue';
+import { useToast } from '@/composables/useToast';
 
 const items = [
     { id: 1, name: 'Prod DB', username: 'admin', url: null, category: 'Infra', shared: false, group_id: null, last_rotated_at: '2026-01-01', can_edit: true },
@@ -35,6 +36,7 @@ beforeEach(() => {
     h.post.mockClear();
     h.get.mockClear();
     h.prompt.mockClear();
+    useToast().state.items.splice(0); // clear module-level toast state
 });
 
 describe('Vault/Index', () => {
@@ -71,6 +73,51 @@ describe('Vault/Index', () => {
         await flushPromises();
         // An error message must appear (revealError shown via VibeAlert).
         expect(wrapper.text()).toMatch(/could not generate|generate/i);
+    });
+
+    it('HI-12: auto-hide timer is cancelled on unmount — no post-unmount state mutation', async () => {
+        vi.useFakeTimers();
+        h.post.mockResolvedValueOnce({ secret: 'S3CR3T' });
+        h.prompt.mockResolvedValueOnce('pw');
+        const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
+        await wrapper.get('[title="Reveal"]').trigger('click');
+        await flushPromises();
+        // Secret revealed — 20s auto-hide timer is running.
+        wrapper.unmount();
+        // Advance past the 20s — must not throw or try to mutate dead state.
+        expect(() => vi.runAllTimers()).not.toThrow();
+        vi.useRealTimers();
+    });
+
+    it('ME-22: copy button shows a success toast when clipboard write succeeds', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, writable: true, configurable: true });
+
+        const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
+        await wrapper.get('[title="Reveal"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[title="Copy"]').trigger('click');
+        await flushPromises();
+
+        expect(writeText).toHaveBeenCalledWith('PLAINTEXT-SECRET');
+        const { state } = useToast();
+        expect(state.items.some((t) => /copied/i.test(t.text))).toBe(true);
+    });
+
+    it('ME-22: copy button shows a danger toast when clipboard is blocked', async () => {
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: vi.fn(() => Promise.reject(new DOMException('denied'))) },
+            writable: true, configurable: true,
+        });
+
+        const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
+        await wrapper.get('[title="Reveal"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[title="Copy"]').trigger('click');
+        await flushPromises();
+
+        const { state } = useToast();
+        expect(state.items.some((t) => /clipboard|could not copy/i.test(t.text))).toBe(true);
     });
 
     it('revealed secret is not inside a text-truncate container', async () => {

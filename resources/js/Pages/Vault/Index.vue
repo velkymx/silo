@@ -66,8 +66,14 @@ function hide(id) {
     clearTimeout(timers[id]);
 }
 
-function copy(id) {
-    if (revealed[id]) navigator.clipboard?.writeText(revealed[id]);
+async function copy(id) {
+    if (!revealed[id]) return;
+    try {
+        await navigator.clipboard.writeText(revealed[id]);
+        toast.push('Copied to clipboard', { variant: 'success' });
+    } catch {
+        toast.push('Could not copy — clipboard access denied', { variant: 'danger' });
+    }
 }
 
 // ----- Add / edit -----
