@@ -10,6 +10,7 @@ import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
 import ResourceModal from '../../Components/ResourceModal.vue';
+import EmptyState from '../../Components/EmptyState.vue';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -249,7 +250,7 @@ async function runMaintenance(action) {
                 </SelectBar>
 
                 <div class="flex-grow-1 overflow-auto">
-                    <p v-if="!listed.length" class="text-muted small px-3 py-4 text-center mb-0">No bookmarks here.</p>
+                    <EmptyState v-if="!listed.length" icon="bookmark-star" title="No bookmarks here" hint="Add a link to get started." />
                     <button
                         v-for="b in listed"
                         :key="b.id"

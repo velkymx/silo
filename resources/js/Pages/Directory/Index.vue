@@ -6,6 +6,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import UserAvatar from '../../Components/UserAvatar.vue';
 import { http } from '../../lib/http';
+import EmptyState from '../../Components/EmptyState.vue';
 
 const props = defineProps({
     people: { type: Array, default: () => [] },
@@ -70,7 +71,7 @@ async function open(person) {
                 </div>
             </div>
 
-            <p v-if="!people.length" class="text-muted">No people found.</p>
+            <EmptyState v-if="!people.length" icon="person-rolodex" title="No people found" hint="Try adjusting your search or department filter." />
 
             <div v-for="[dept, items] in grouped" :key="dept" class="mb-4">
                 <div class="text-uppercase small text-muted fw-semibold mb-2">{{ dept }}</div>

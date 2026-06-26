@@ -9,6 +9,7 @@ import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
 import ResourceModal from '../../Components/ResourceModal.vue';
+import EmptyState from '../../Components/EmptyState.vue';
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -168,7 +169,7 @@ async function onImportFile(e) {
                 </VibeButton>
             </SelectBar>
 
-            <p v-if="!items.length" class="text-muted">No secrets yet.</p>
+            <EmptyState v-if="!items.length" icon="key-fill" title="No secrets yet" hint="Add a password or API key to get started." />
 
             <div v-for="[category, list] in grouped" :key="category" class="mb-4">
                 <div class="text-uppercase small text-muted fw-semibold mb-2">{{ category }}</div>

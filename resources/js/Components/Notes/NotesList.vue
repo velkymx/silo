@@ -1,4 +1,5 @@
 <script setup>
+import EmptyState from '../EmptyState.vue';
 defineProps({
     notes: { type: Array, default: () => [] },
     selectedId: { type: Number, default: null },
@@ -47,9 +48,7 @@ const sortOptions = [
         </div>
 
         <div class="flex-grow-1 overflow-auto">
-            <p v-if="!notes.length" class="text-muted small px-3 py-4 text-center mb-0">
-                No notes yet. Create your first one.
-            </p>
+            <EmptyState v-if="!notes.length" icon="journal-text" title="No notes yet" hint="Create your first note to get started." />
             <button
                 v-for="note in notes"
                 :key="note.id"
