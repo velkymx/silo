@@ -18,6 +18,7 @@ const content = ref('');
 const name = ref('');
 const loading = ref(false);
 const saving = ref(false);
+let loadSeq = 0;
 
 watch(open, async (v) => {
     if (!v) return;
@@ -27,11 +28,13 @@ watch(open, async (v) => {
         loading.value = false;
         return;
     }
+    const seq = ++loadSeq;
     loading.value = true;
     try {
-        content.value = await getText(`/raw/${props.item!.id}`);
+        const text = await getText(`/raw/${props.item!.id}`);
+        if (seq === loadSeq) content.value = text;
     } finally {
-        loading.value = false;
+        if (seq === loadSeq) loading.value = false;
     }
 });
 
