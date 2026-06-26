@@ -20,6 +20,13 @@ use App\Http\Controllers\AuditController;
 use App\Http\Controllers\BackupController;
 use Inertia\Inertia;
 
+// HI-06: Constrain all numeric model-binding parameters globally so non-integer
+// segments return 404 instead of a model-not-found exception (consistent behaviour).
+foreach (['file', 'folder', 'user', 'group', 'backup', 'album', 'permission',
+          'link', 'version', 'bookmark', 'savedSearch', 'vaultItem'] as $param) {
+    Route::pattern($param, '[0-9]+');
+}
+
 Route::middleware(['auth'])->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
