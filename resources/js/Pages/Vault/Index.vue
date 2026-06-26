@@ -88,8 +88,12 @@ function openEdit(item) {
 }
 
 async function generate() {
-    const data = await http.get('/vault/generate?length=20');
-    form.secret = data.password;
+    try {
+        const data = await http.get('/vault/generate?length=20');
+        form.secret = data.password;
+    } catch {
+        revealError.value = 'Could not generate password. Try again.';
+    }
 }
 
 async function remove(item) {

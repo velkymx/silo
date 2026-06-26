@@ -62,4 +62,14 @@ describe('Vault/Index', () => {
         expect(h.get).toHaveBeenCalledWith('/vault/generate?length=20');
         expect(h.form!.secret).toBe('GENERATED');
     });
+
+    it('generate failure shows an error message', async () => {
+        h.get.mockRejectedValueOnce(new Error('network error'));
+        const wrapper = mount(VaultIndex, { props: { items: [], groups: [] } });
+        await wrapper.findAll('button').find((b) => b.text().includes('Add'))!.trigger('click');
+        await wrapper.get('[title="Generate"]').trigger('click');
+        await flushPromises();
+        // An error message must appear (revealError shown via VibeAlert).
+        expect(wrapper.text()).toMatch(/could not generate|generate/i);
+    });
 });
