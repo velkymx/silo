@@ -7,6 +7,10 @@ import './bootstrap';
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import VibeUI, { useColorMode } from '@velkymx/vibeui';
+import AppModal from './Components/AppModal.vue';
+import AppButton from './Components/AppButton.vue';
+import AppFormGroup from './Components/AppFormGroup.vue';
+import AppFormInput from './Components/AppFormInput.vue';
 
 // Restore the saved theme and follow the OS in "auto" mode.
 useColorMode().initColorMode();
@@ -30,6 +34,10 @@ createInertiaApp({
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(VibeUI)
+            .component('AppModal', AppModal)
+            .component('AppButton', AppButton)
+            .component('AppFormGroup', AppFormGroup)
+            .component('AppFormInput', AppFormInput)
             .mount(el);
     },
 });

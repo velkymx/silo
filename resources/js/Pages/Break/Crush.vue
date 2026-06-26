@@ -89,9 +89,9 @@ onMounted(() => {
                     <div class="small text-muted">Best</div>
                     <div class="fw-semibold fs-5">{{ bestScore }}</div>
                 </div>
-                <VibeButton variant="primary" class="ms-2" @click="newGame">
+                <AppButton variant="primary" class="ms-2" @click="newGame">
                     <VibeIcon icon="arrow-clockwise" class="me-1" />New Game
-                </VibeButton>
+                </AppButton>
             </div>
         </template>
 

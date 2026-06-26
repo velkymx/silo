@@ -89,22 +89,22 @@ async function commitSave() {
     <div class="editor-page d-flex flex-column vh-100">
         <!-- Top bar -->
         <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-body">
-            <VibeButton variant="light" size="sm" @click="back">
+            <AppButton variant="light" size="sm" @click="back">
                 <VibeIcon icon="arrow-left" class="me-1" />Back
-            </VibeButton>
+            </AppButton>
             <div class="fw-semibold text-truncate">
                 <VibeIcon icon="pencil-square" class="me-1 text-primary" />{{ docName }}
             </div>
             <VibeBadge v-if="creating" variant="success" class="ms-1">New</VibeBadge>
             <VibeBadge v-else variant="secondary" class="ms-1">v{{ file.version }}</VibeBadge>
             <div class="ms-auto d-flex gap-2">
-                <VibeButton variant="light" size="sm" :title="isFullscreen ? 'Exit full screen' : 'Full screen'" @click="toggleFullscreen">
+                <AppButton variant="light" size="sm" :title="isFullscreen ? 'Exit full screen' : 'Full screen'" @click="toggleFullscreen">
                     <VibeIcon :icon="isFullscreen ? 'fullscreen-exit' : 'arrows-fullscreen'" class="me-1" />
                     {{ isFullscreen ? 'Exit' : 'Full screen' }}
-                </VibeButton>
-                <VibeButton variant="primary" size="sm" :disabled="!ready || kind === 'unsupported' || !!loadError" @click="openSave">
+                </AppButton>
+                <AppButton variant="primary" size="sm" :disabled="!ready || kind === 'unsupported' || !!loadError" @click="openSave">
                     <VibeIcon icon="check2" class="me-1" />{{ creating ? 'Create' : 'Save' }}
-                </VibeButton>
+                </AppButton>
             </div>
         </div>
 
@@ -134,10 +134,10 @@ async function commitSave() {
         </div>
 
         <!-- GitHub-style save popup -->
-        <VibeModal v-model="saveOpen" :title="creating ? 'Create document' : 'Save changes'" centered hide-footer>
+        <AppModal v-model="saveOpen" :title="creating ? 'Create document' : 'Save changes'" centered hide-footer>
             <template v-if="creating">
                 <AppFormGroup label="File name">
-                    <VibeFormInput v-model="newName" :placeholder="`Untitled.${docType}`" />
+                    <AppFormInput v-model="newName" :placeholder="`Untitled.${docType}`" />
                 </AppFormGroup>
             </template>
             <template v-else>
@@ -150,13 +150,13 @@ async function commitSave() {
                 </AppFormGroup>
             </template>
             <div class="d-flex justify-content-end gap-2 mt-3">
-                <VibeButton variant="light" @click="saveOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="saving" @click="commitSave">
+                <AppButton variant="light" @click="saveOpen = false">Cancel</AppButton>
+                <AppButton variant="primary" :disabled="saving" @click="commitSave">
                     <VibeSpinner v-if="saving" size="sm" class="me-1" />
                     {{ creating ? 'Create' : 'Save version' }}
-                </VibeButton>
+                </AppButton>
             </div>
-        </VibeModal>
+        </AppModal>
     </div>
 </template>
 

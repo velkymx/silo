@@ -8,14 +8,14 @@ const emit = defineEmits<{ star: [FileLike]; action: [unknown] }>();
 
 <template>
     <div class="d-flex align-items-center gap-1" @click.stop>
-        <VibeButton
+        <AppButton
             v-vibe-tooltip="item.starred ? 'Unstar' : 'Star'"
             variant="link"
             class="p-0"
             @click="emit('star', item)"
         >
             <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
-        </VibeButton>
+        </AppButton>
         <VibeDropdown v-vibe-tooltip="'File Actions'" size="sm" variant="light" menu-end title="File Actions" :items="menu" @item-click="emit('action', $event)">
             <template #button>
                 <VibeIcon icon="three-dots-vertical" />

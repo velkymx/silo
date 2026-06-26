@@ -120,7 +120,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
             <div v-if="uploadFiles.length" class="mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="small text-muted">{{ uploadFiles.length }} file(s) · {{ fmtBytes(totalBytes) }}</span>
-                    <VibeButton variant="link" size="sm" class="p-0 text-decoration-none" @click="clearAllUploads">Clear all</VibeButton>
+                    <AppButton variant="link" size="sm" class="p-0 text-decoration-none" @click="clearAllUploads">Clear all</AppButton>
                 </div>
                 <div class="border rounded" style="max-height: 40vh; overflow: auto">
                     <div v-for="(f, i) in uploadFiles" :key="`${f.name}-${f.size}-${f.lastModified}`" class="d-flex align-items-center gap-2 p-2 border-bottom">
@@ -130,7 +130,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                             <div class="text-truncate small">{{ f.name }}</div>
                             <div class="text-muted" style="font-size: 0.72rem">{{ fmtBytes(f.size) }}</div>
                         </div>
-                        <VibeButton variant="link" size="sm" class="p-0 text-danger" @click="removeUploadFile(i)"><VibeIcon icon="x-lg" /></VibeButton>
+                        <AppButton variant="link" size="sm" class="p-0 text-danger" @click="removeUploadFile(i)"><VibeIcon icon="x-lg" /></AppButton>
                     </div>
                 </div>
             </div>
@@ -147,10 +147,10 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
         </div>
         <template #footer>
             <div class="d-flex justify-content-center gap-2 w-100">
-                <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadFiles.length || overQuota" @click="submitUpload">
+                <AppButton variant="secondary" outline @click="open = false">Cancel</AppButton>
+                <AppButton variant="primary" :disabled="uploadForm.processing || !uploadFiles.length || overQuota" @click="submitUpload">
                     <VibeIcon icon="upload" class="me-1" />Upload{{ uploadFiles.length ? ` ${uploadFiles.length}` : '' }}
-                </VibeButton>
+                </AppButton>
             </div>
         </template>
     </AppModal>

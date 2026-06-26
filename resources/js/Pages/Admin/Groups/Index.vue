@@ -62,11 +62,11 @@ async function destroy(group) {
                     label="New group name"
                     :error="createForm.errors.name"
                 >
-                    <VibeFormInput v-model="createForm.name" @keyup.enter="create" />
+                    <AppFormInput v-model="createForm.name" @keyup.enter="create" />
                 </AppFormGroup>
             </VibeCol>
             <VibeCol :md="2">
-                <VibeButton variant="primary" :disabled="createForm.processing" @click="create"><VibeSpinner v-if="createForm.processing" size="sm" class="me-1" />{{ createForm.processing ? 'Adding…' : 'Add group' }}</VibeButton>
+                <AppButton variant="primary" :disabled="createForm.processing" @click="create"><VibeSpinner v-if="createForm.processing" size="sm" class="me-1" />{{ createForm.processing ? 'Adding…' : 'Add group' }}</AppButton>
             </VibeCol>
         </VibeRow>
 
@@ -84,21 +84,21 @@ async function destroy(group) {
             <template #cell(name)="{ item }">
                 <template v-if="editingId === item.id">
                     <div class="d-flex gap-2">
-                        <VibeFormInput v-model="editForm.name" no-wrapper @keyup.enter="saveEdit" />
-                        <VibeButton variant="success" size="sm" :disabled="editForm.processing" @click="saveEdit"><VibeSpinner v-if="editForm.processing" size="sm" class="me-1" />{{ editForm.processing ? 'Saving…' : 'Save' }}</VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline @click="editingId = null">Cancel</VibeButton>
+                        <AppFormInput v-model="editForm.name" no-wrapper @keyup.enter="saveEdit" />
+                        <AppButton variant="success" size="sm" :disabled="editForm.processing" @click="saveEdit"><VibeSpinner v-if="editForm.processing" size="sm" class="me-1" />{{ editForm.processing ? 'Saving…' : 'Save' }}</AppButton>
+                        <AppButton variant="secondary" size="sm" outline @click="editingId = null">Cancel</AppButton>
                     </div>
                 </template>
                 <template v-else>{{ item.name }}</template>
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
-                    <VibeButton variant="primary" size="sm" outline @click="startEdit(item)">
+                    <AppButton variant="primary" size="sm" outline @click="startEdit(item)">
                         <VibeIcon icon="pencil" />
-                    </VibeButton>
-                    <VibeButton variant="danger" size="sm" outline @click="destroy(item)">
+                    </AppButton>
+                    <AppButton variant="danger" size="sm" outline @click="destroy(item)">
                         <VibeIcon icon="trash" />
-                    </VibeButton>
+                    </AppButton>
                 </div>
             </template>
         </VibeDataTable>

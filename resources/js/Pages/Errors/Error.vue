@@ -32,12 +32,12 @@ function goBack(): void {
             <div class="display-5 fw-bold">{{ status }}</div>
             <p class="text-muted">{{ copy.message }}</p>
             <div class="d-flex justify-content-center gap-2 mt-4">
-                <VibeButton variant="secondary" outline @click="router.visit('/')">
+                <AppButton variant="secondary" outline @click="router.visit('/')">
                     <VibeIcon icon="house-door-fill" class="me-1" />Home
-                </VibeButton>
-                <VibeButton variant="primary" @click="goBack">
+                </AppButton>
+                <AppButton variant="primary" @click="goBack">
                     <VibeIcon icon="arrow-left" class="me-1" />Go back
-                </VibeButton>
+                </AppButton>
             </div>
         </div>
     </GuestLayout>

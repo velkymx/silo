@@ -67,10 +67,10 @@ defineExpose({ openAdd, openEdit });
         <FormErrorSummary :errors="form.errors" />
         <slot :form="form" :editing-id="editingId" />
         <template #footer>
-            <VibeButton variant="secondary" outline @click="cancel">Cancel</VibeButton>
-            <VibeButton variant="primary" :disabled="form.processing" @click="save">
+            <AppButton variant="secondary" outline @click="cancel">Cancel</AppButton>
+            <AppButton variant="primary" :disabled="form.processing" @click="save">
                 {{ editingId ? (saveLabel ?? 'Save') : (addLabel ?? 'Add') }}
-            </VibeButton>
+            </AppButton>
         </template>
     </AppModal>
 </template>

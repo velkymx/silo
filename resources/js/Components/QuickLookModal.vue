@@ -42,7 +42,7 @@ function isImage(f: QuickFile | null): boolean {
 </script>
 
 <template>
-    <VibeModal v-model="open" fullscreen hide-footer>
+    <AppModal v-model="open" fullscreen hide-footer>
         <template #header>
             <div class="d-flex align-items-center justify-content-between w-100">
                 <h5 class="modal-title text-truncate mb-0">
@@ -52,9 +52,9 @@ function isImage(f: QuickFile | null): boolean {
                 <div class="d-flex gap-2 align-items-center ms-3">
                     <small class="text-muted">{{ index + 1 }} / {{ total }}</small>
                     <div class="position-relative" @mouseenter="hoverSide = 'prev'" @mouseleave="hoverSide = null">
-                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
+                        <AppButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
                             <VibeIcon icon="chevron-left" />
-                        </VibeButton>
+                        </AppButton>
                         <div v-if="hoverSide === 'prev' && prevFile" class="ql-peek">
                             <img v-if="prevFile.thumb_url" :src="prevFile.thumb_url" :alt="prevFile.name">
                             <VibeIcon v-else :icon="iconFor(prevFile.type)" class="fs-2" />
@@ -62,18 +62,18 @@ function isImage(f: QuickFile | null): boolean {
                         </div>
                     </div>
                     <div class="position-relative" @mouseenter="hoverSide = 'next'" @mouseleave="hoverSide = null">
-                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
+                        <AppButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
                             <VibeIcon icon="chevron-right" />
-                        </VibeButton>
+                        </AppButton>
                         <div v-if="hoverSide === 'next' && nextFile" class="ql-peek">
                             <img v-if="nextFile.thumb_url" :src="nextFile.thumb_url" :alt="nextFile.name">
                             <VibeIcon v-else :icon="iconFor(nextFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
                         </div>
                     </div>
-                    <VibeButton variant="success" size="sm" :href="`/download/${file?.id}`">
+                    <AppButton variant="success" size="sm" :href="`/download/${file?.id}`">
                         <VibeIcon icon="download" class="me-1" />Download
-                    </VibeButton>
+                    </AppButton>
                     <VibeDropdown
                         v-if="file"
                         variant="primary"
@@ -83,9 +83,9 @@ function isImage(f: QuickFile | null): boolean {
                     >
                         <VibeIcon icon="three-dots-vertical" class="me-1" />Actions
                     </VibeDropdown>
-                    <VibeButton variant="secondary" size="sm" outline title="Close" aria-label="Close preview" @click="open = false">
+                    <AppButton variant="secondary" size="sm" outline title="Close" aria-label="Close preview" @click="open = false">
                         <VibeIcon icon="x-lg" />
-                    </VibeButton>
+                    </AppButton>
                 </div>
             </div>
         </template>
@@ -136,7 +136,7 @@ function isImage(f: QuickFile | null): boolean {
             </div>
         </div>
         <slot name="below" />
-    </VibeModal>
+    </AppModal>
 </template>
 
 <style scoped>

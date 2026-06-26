@@ -86,7 +86,7 @@ describe('Admin/Groups', () => {
 
     it('Edit reveals the inline save control', async () => {
         const wrapper = mount(GroupsIndex, { props: { groups } });
-        const editBtn = wrapper.findAll('button').find((b) => b.find('.bi').exists() && b.classes().includes('vibe-btn'));
+        const editBtn = wrapper.findAll('button').find((b) => b.find('.bi').exists() && b.classes().includes('app-btn'));
         // The first icon-only button in the actions cell is the pencil (edit).
         await wrapper.findAll('button').find((b) => b.element.querySelector('.bi') && b.text() === '')!.trigger('click');
         expect(wrapper.findAll('button').some((b) => b.text().includes('Save'))).toBe(true);

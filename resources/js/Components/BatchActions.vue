@@ -77,19 +77,19 @@ function submitRename(): void {
         <strong>{{ count }} selected</strong>
         <div class="ms-auto d-flex flex-wrap gap-2">
             <!-- Move is the most common bulk action → the single primary. -->
-            <VibeButton variant="primary" size="sm" @click="moveTarget = null; moveOpen = true">
+            <AppButton variant="primary" size="sm" @click="moveTarget = null; moveOpen = true">
                 <VibeIcon icon="folder-symlink" class="me-1" />Move…
-            </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="folderName = 'New Folder'; folderOpen = true">
+            </AppButton>
+            <AppButton variant="secondary" size="sm" outline @click="folderName = 'New Folder'; folderOpen = true">
                 <VibeIcon icon="folder-plus" class="me-1" />New Folder
-            </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="renameOpen = true">
+            </AppButton>
+            <AppButton variant="secondary" size="sm" outline @click="renameOpen = true">
                 <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
-            </VibeButton>
-            <VibeButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
+            </AppButton>
+            <AppButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
                 <VibeIcon icon="trash" class="me-1" />Delete
-            </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="emit('cleared')">Clear</VibeButton>
+            </AppButton>
+            <AppButton variant="secondary" size="sm" outline @click="emit('cleared')">Clear</AppButton>
         </div>
     </div>
 
@@ -97,13 +97,13 @@ function submitRename(): void {
     <AppModal v-model="folderOpen" title="New Folder from Selection" centered>
         <div class="mx-auto" style="max-width: 520px">
             <AppFormGroup label="Folder name">
-                <VibeFormInput v-model="folderName" />
+                <AppFormInput v-model="folderName" />
             </AppFormGroup>
             <p class="text-muted small mt-2">{{ count }} item(s) will be moved into it.</p>
         </div>
         <template #footer>
-            <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
-            <VibeButton variant="primary" :disabled="!folderName || batchBusy" @click="submitFolder">Create</VibeButton>
+            <AppButton variant="secondary" outline @click="folderOpen = false">Cancel</AppButton>
+            <AppButton variant="primary" :disabled="!folderName || batchBusy" @click="submitFolder">Create</AppButton>
         </template>
     </AppModal>
 
@@ -115,8 +115,8 @@ function submitRename(): void {
             </AppFormGroup>
         </div>
         <template #footer>
-            <VibeButton variant="secondary" outline @click="moveOpen = false">Cancel</VibeButton>
-            <VibeButton variant="primary" :disabled="batchBusy" @click="submitMove">Move {{ count }}</VibeButton>
+            <AppButton variant="secondary" outline @click="moveOpen = false">Cancel</AppButton>
+            <AppButton variant="primary" :disabled="batchBusy" @click="submitMove">Move {{ count }}</AppButton>
         </template>
     </AppModal>
 
@@ -124,17 +124,17 @@ function submitRename(): void {
     <AppModal v-model="renameOpen" title="Batch Rename" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 760px">
             <VibeButtonGroup class="mb-3">
-                <VibeButton :variant="renameOpts.mode === 'replace' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'replace'" @click="renameOpts.mode = 'replace'">Find &amp; Replace</VibeButton>
-                <VibeButton :variant="renameOpts.mode === 'add' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'add'" @click="renameOpts.mode = 'add'">Add Text</VibeButton>
-                <VibeButton :variant="renameOpts.mode === 'number' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'number'" @click="renameOpts.mode = 'number'">Numbering</VibeButton>
+                <AppButton :variant="renameOpts.mode === 'replace' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'replace'" @click="renameOpts.mode = 'replace'">Find &amp; Replace</AppButton>
+                <AppButton :variant="renameOpts.mode === 'add' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'add'" @click="renameOpts.mode = 'add'">Add Text</AppButton>
+                <AppButton :variant="renameOpts.mode === 'number' ? 'primary' : 'secondary'" :outline="renameOpts.mode !== 'number'" @click="renameOpts.mode = 'number'">Numbering</AppButton>
             </VibeButtonGroup>
 
             <div v-if="renameOpts.mode === 'replace'" class="row g-2">
-                <div class="col"><AppFormGroup label="Find"><VibeFormInput v-model="renameOpts.find" /></AppFormGroup></div>
-                <div class="col"><AppFormGroup label="Replace with"><VibeFormInput v-model="renameOpts.replace" /></AppFormGroup></div>
+                <div class="col"><AppFormGroup label="Find"><AppFormInput v-model="renameOpts.find" /></AppFormGroup></div>
+                <div class="col"><AppFormGroup label="Replace with"><AppFormInput v-model="renameOpts.replace" /></AppFormGroup></div>
             </div>
             <div v-else-if="renameOpts.mode === 'add'" class="row g-2 align-items-end">
-                <div class="col"><AppFormGroup label="Text"><VibeFormInput v-model="renameOpts.text" /></AppFormGroup></div>
+                <div class="col"><AppFormGroup label="Text"><AppFormInput v-model="renameOpts.text" /></AppFormGroup></div>
                 <div class="col-auto">
                     <AppFormGroup label="Position">
                         <VibeFormSelect v-model="renameOpts.position" :options="[{ value: 'before', text: 'Before name' }, { value: 'after', text: 'After name' }]" />
@@ -142,9 +142,9 @@ function submitRename(): void {
                 </div>
             </div>
             <div v-else class="row g-2 align-items-end">
-                <div class="col"><AppFormGroup label="Base name"><VibeFormInput v-model="renameOpts.base" placeholder="(keep original)" /></AppFormGroup></div>
-                <div class="col-auto"><AppFormGroup label="Start at"><VibeFormInput v-model.number="renameOpts.start" type="number" style="width: 90px" /></AppFormGroup></div>
-                <div class="col-auto"><AppFormGroup label="Digits"><VibeFormInput v-model.number="renameOpts.pad" type="number" style="width: 80px" /></AppFormGroup></div>
+                <div class="col"><AppFormGroup label="Base name"><AppFormInput v-model="renameOpts.base" placeholder="(keep original)" /></AppFormGroup></div>
+                <div class="col-auto"><AppFormGroup label="Start at"><AppFormInput v-model.number="renameOpts.start" type="number" style="width: 90px" /></AppFormGroup></div>
+                <div class="col-auto"><AppFormGroup label="Digits"><AppFormInput v-model.number="renameOpts.pad" type="number" style="width: 80px" /></AppFormGroup></div>
             </div>
 
             <h6 class="mt-3 text-muted">Preview</h6>
@@ -161,8 +161,8 @@ function submitRename(): void {
             </div>
         </div>
         <template #footer>
-            <VibeButton variant="secondary" outline @click="renameOpen = false">Cancel</VibeButton>
-            <VibeButton variant="primary" :disabled="batchBusy" @click="submitRename">Rename {{ count }}</VibeButton>
+            <AppButton variant="secondary" outline @click="renameOpen = false">Cancel</AppButton>
+            <AppButton variant="primary" :disabled="batchBusy" @click="submitRename">Rename {{ count }}</AppButton>
         </template>
     </AppModal>
 </template>

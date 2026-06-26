@@ -23,12 +23,12 @@ function submit() {
                 label="Email"
                 :error="form.errors.email"
              required>
-                <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
+                <AppFormInput v-model="form.email" type="email" required autocomplete="username" />
             </AppFormGroup>
 
-            <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
+            <AppButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                 <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Sending…' : 'Send reset link' }}
-            </VibeButton>
+            </AppButton>
 
             <div class="text-center mt-3 small">
                 <Link href="/login" class="text-decoration-none">Back to sign in</Link>

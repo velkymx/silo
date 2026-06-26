@@ -255,15 +255,15 @@ function saveEdit() {
             />
 
             <div class="ms-auto d-flex gap-2">
-                <VibeButton :variant="selectMode ? 'primary' : 'secondary'" outline @click="selectMode = !selectMode; selected = new Set()">
+                <AppButton :variant="selectMode ? 'primary' : 'secondary'" outline @click="selectMode = !selectMode; selected = new Set()">
                     <VibeIcon icon="check2-square" class="me-1" />Select
-                </VibeButton>
-                <VibeButton variant="secondary" outline @click="openNewAlbum">
+                </AppButton>
+                <AppButton variant="secondary" outline @click="openNewAlbum">
                     <VibeIcon icon="collection" class="me-1" />New Album
-                </VibeButton>
-                <VibeButton variant="primary" @click="uploadOpen = true">
+                </AppButton>
+                <AppButton variant="primary" @click="uploadOpen = true">
                     <VibeIcon icon="upload" class="me-1" />Upload
-                </VibeButton>
+                </AppButton>
             </div>
         </div>
 
@@ -281,13 +281,13 @@ function saveEdit() {
 
         <!-- Active album header -->
         <div v-if="activeAlbum" class="d-flex align-items-center gap-2 mb-3">
-            <VibeButton variant="link" class="p-0 text-decoration-none" @click="applyFilter({ album: null })">
+            <AppButton variant="link" class="p-0 text-decoration-none" @click="applyFilter({ album: null })">
                 <VibeIcon icon="arrow-left" class="me-1" />All photos
-            </VibeButton>
+            </AppButton>
             <span class="fw-semibold">{{ activeAlbum.name }}</span>
-            <VibeButton variant="danger" size="sm" outline class="ms-2" @click="deleteAlbum(activeAlbum)">
+            <AppButton variant="danger" size="sm" outline class="ms-2" @click="deleteAlbum(activeAlbum)">
                 <VibeIcon icon="trash" />
-            </VibeButton>
+            </AppButton>
         </div>
 
         <!-- Selection action bar -->
@@ -296,10 +296,10 @@ function saveEdit() {
             <VibeDropdown variant="primary" size="sm" :items="albums.map((a) => ({ text: a.name, id: a.id }))" @item-click="addSelectedToAlbum($event.item.id)">
                 <VibeIcon icon="collection" class="me-1" />Add to album
             </VibeDropdown>
-            <VibeButton variant="danger" size="sm" outline @click="batchDeleteSelected">
+            <AppButton variant="danger" size="sm" outline @click="batchDeleteSelected">
                 <VibeIcon icon="trash" class="me-1" />Delete
-            </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="clearSelection">Clear</VibeButton>
+            </AppButton>
+            <AppButton variant="secondary" size="sm" outline @click="clearSelection">Clear</AppButton>
         </VibeAlert>
 
         <!-- Timeline -->
@@ -320,7 +320,7 @@ function saveEdit() {
                     </button>
 
                     <!-- Star (click to toggle) -->
-                    <VibeButton
+                    <AppButton
                         variant="link"
                         class="cell-star p-0"
                         :title="p.starred ? 'Unstar' : 'Star'"
@@ -328,7 +328,7 @@ function saveEdit() {
                         @click.stop="star(p)"
                     >
                         <VibeIcon :icon="p.starred ? 'star-fill' : 'star'" :class="p.starred ? 'text-warning' : 'text-white'" />
-                    </VibeButton>
+                    </AppButton>
 
                     <!-- Actions -->
                     <div class="cell-actions" @click.stop>
@@ -384,8 +384,8 @@ function saveEdit() {
             <VibeFileInput v-model="uploadForm.files" label="Choose images" multiple drag-drop accept="image/*" />
             <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">{{ uploadForm.errors['files.0'] }}</p>
             <template #footer>
-                <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadForm.files.length" @click="submitUpload">Upload</VibeButton>
+                <AppButton variant="secondary" outline @click="uploadOpen = false">Cancel</AppButton>
+                <AppButton variant="primary" :disabled="uploadForm.processing || !uploadForm.files.length" @click="submitUpload">Upload</AppButton>
             </template>
         </AppModal>
 
@@ -400,22 +400,22 @@ function saveEdit() {
             add-label="Create"
         >
             <AppFormGroup label="Album name">
-                <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
+                <AppFormInput v-model="albumForm.name" placeholder="Summer 2026" />
             </AppFormGroup>
         </ResourceModal>
 
         <!-- Photo editor -->
         <AppModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
             <div class="d-flex gap-2 mb-2 flex-wrap">
-                <VibeButton variant="secondary" outline size="sm" @click="rotate(-90)"><VibeIcon icon="arrow-counterclockwise" /> Left</VibeButton>
-                <VibeButton variant="secondary" outline size="sm" @click="rotate(90)"><VibeIcon icon="arrow-clockwise" /> Right</VibeButton>
-                <VibeButton variant="secondary" outline size="sm" @click="flip(true, false)"><VibeIcon icon="symmetry-vertical" /> Flip H</VibeButton>
-                <VibeButton variant="secondary" outline size="sm" @click="flip(false, true)"><VibeIcon icon="symmetry-horizontal" /> Flip V</VibeButton>
+                <AppButton variant="secondary" outline size="sm" @click="rotate(-90)"><VibeIcon icon="arrow-counterclockwise" /> Left</AppButton>
+                <AppButton variant="secondary" outline size="sm" @click="rotate(90)"><VibeIcon icon="arrow-clockwise" /> Right</AppButton>
+                <AppButton variant="secondary" outline size="sm" @click="flip(true, false)"><VibeIcon icon="symmetry-vertical" /> Flip H</AppButton>
+                <AppButton variant="secondary" outline size="sm" @click="flip(false, true)"><VibeIcon icon="symmetry-horizontal" /> Flip V</AppButton>
                 <div class="ms-auto d-flex gap-2">
-                    <VibeButton variant="secondary" outline @click="editorOpen = false">Cancel</VibeButton>
-                    <VibeButton variant="primary" :disabled="editorSaving" @click="saveEdit">
+                    <AppButton variant="secondary" outline @click="editorOpen = false">Cancel</AppButton>
+                    <AppButton variant="primary" :disabled="editorSaving" @click="saveEdit">
                         <VibeSpinner v-if="editorSaving" size="sm" class="me-1" />Save as new version
-                    </VibeButton>
+                    </AppButton>
                 </div>
             </div>
             <Cropper

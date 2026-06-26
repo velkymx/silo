@@ -110,9 +110,9 @@ onBeforeUnmount(() => {
         <template #subtitle>{{ date }}</template>
 
         <template #actions>
-            <VibeButton variant="primary" href="/break/crush">
+            <AppButton variant="primary" href="/break/crush">
                 <VibeIcon icon="joystick" class="me-1" />Crush
-            </VibeButton>
+            </AppButton>
         </template>
 
         <div class="alert alert-info small py-2 px-3 mb-3">

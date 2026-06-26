@@ -161,9 +161,9 @@ function onUserMenu({ item }) {
     <div class="d-flex flex-column min-vh-100 bg-body-tertiary">
         <!-- Full-width top bar -->
         <header class="d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2">
-            <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
+            <AppButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
-            </VibeButton>
+            </AppButton>
             <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; min-width: 218px" @click="router.visit('/')" :title="`${appName} — ${tagline}`">
                 <VibeIcon icon="rocket-takeoff-fill" class="text-primary fs-4 me-2" />
                 <span class="d-none d-md-flex flex-column lh-1">
@@ -176,7 +176,7 @@ function onUserMenu({ item }) {
                     <template #prepend>
                         <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
                     </template>
-                    <VibeFormInput
+                    <AppFormInput
                         id="global-search"
                         v-model="searchValue"
                         type="search"
@@ -200,18 +200,18 @@ function onUserMenu({ item }) {
                             </template>
                             <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                         </VibeDropdown>
-                        <VibeButton v-if="isSearching" variant="secondary" outline @click="clearGlobalSearch">
+                        <AppButton v-if="isSearching" variant="secondary" outline @click="clearGlobalSearch">
                             <VibeIcon icon="x-lg" />
-                        </VibeButton>
+                        </AppButton>
                         <span v-else class="input-group-text bg-body text-muted">
                             <kbd class="bg-body-secondary text-body-secondary border" style="font-size: 0.7rem">⌘K</kbd>
                         </span>
                     </template>
                 </VibeInputGroup>
             </div>
-            <VibeButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
+            <AppButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
                 <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
-            </VibeButton>
+            </AppButton>
             <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
                     <img
@@ -342,9 +342,9 @@ function onUserMenu({ item }) {
         </VibeOffcanvas>
 
         <!-- Single in-app confirm/prompt host (replaces native window.confirm/prompt). -->
-        <VibeModal v-model="dialog.open" :title="dialog.title" size="sm" centered @hide="dialogCancel">
+        <AppModal v-model="dialog.open" :title="dialog.title" size="sm" centered @hide="dialogCancel">
             <p class="mb-0">{{ dialog.message }}</p>
-            <VibeFormInput
+            <AppFormInput
                 v-if="dialog.mode === 'prompt'"
                 v-model="dialog.inputValue"
                 :placeholder="dialog.placeholder"
@@ -353,10 +353,10 @@ function onUserMenu({ item }) {
                 @keyup.enter="dialogAccept"
             />
             <template #footer>
-                <VibeButton variant="secondary" outline @click="dialogCancel">{{ dialog.cancelLabel }}</VibeButton>
-                <VibeButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</VibeButton>
+                <AppButton variant="secondary" outline @click="dialogCancel">{{ dialog.cancelLabel }}</AppButton>
+                <AppButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</AppButton>
             </template>
-        </VibeModal>
+        </AppModal>
 
         <ToastHost
             :items="toast.state.items"

@@ -52,17 +52,17 @@ function quickLook(file) {
         class="mb-4"
     >
         <template #cell(name)="{ item }">
-            <VibeButton variant="link" class="p-0 text-decoration-none" @click="openFolder(item.id)">
+            <AppButton variant="link" class="p-0 text-decoration-none" @click="openFolder(item.id)">
                 <VibeIcon icon="folder-fill" class="me-1 text-warning" />{{ item.name }}
-            </VibeButton>
+            </AppButton>
         </template>
         <template #cell(abilities)="{ item }">
             <VibeBadge v-for="a in item.abilities" :key="a" variant="secondary" class="me-1">{{ a }}</VibeBadge>
         </template>
         <template #cell(actions)="{ item }">
-            <VibeButton variant="info" size="sm" @click="openFolder(item.id)">
+            <AppButton variant="info" size="sm" @click="openFolder(item.id)">
                 <VibeIcon icon="box-arrow-in-right" class="me-1" />Open
-            </VibeButton>
+            </AppButton>
         </template>
     </VibeDataTable>
 
@@ -93,7 +93,7 @@ function quickLook(file) {
         </template>
         <template #cell(actions)="{ item }">
             <div class="d-flex justify-content-end gap-1">
-                <VibeButton
+                <AppButton
                     v-if="canPreview(item)"
                     variant="primary"
                     size="sm"
@@ -103,10 +103,10 @@ function quickLook(file) {
                     @click="quickLook(item)"
                 >
                     <VibeIcon icon="eye" />
-                </VibeButton>
-                <VibeButton variant="success" size="sm" :href="`/download/${item.id}`" :aria-label="`Download ${item.name}`">
+                </AppButton>
+                <AppButton variant="success" size="sm" :href="`/download/${item.id}`" :aria-label="`Download ${item.name}`">
                     <VibeIcon icon="download" />
-                </VibeButton>
+                </AppButton>
             </div>
         </template>
     </VibeDataTable>

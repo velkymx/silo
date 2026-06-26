@@ -50,18 +50,18 @@ function rescan() {
                         <dd class="col-sm-9">
                             <span v-if="fileCount === null" class="text-muted">Folder not mounted / empty.</span>
                             <VibeBadge v-else variant="secondary">{{ fileCount }}{{ fileCountCapped ? '+' : '' }}</VibeBadge>
-                            <VibeButton variant="link" size="sm" class="p-0 ms-2 text-decoration-none" @click="refreshCount">Refresh</VibeButton>
+                            <AppButton variant="link" size="sm" class="p-0 ms-2 text-decoration-none" @click="refreshCount">Refresh</AppButton>
                         </dd>
                     </dl>
 
                     <AppFormGroup label="Top-level folder name">
-                        <VibeFormInput v-model="name" placeholder="Imported" />
+                        <AppFormInput v-model="name" placeholder="Imported" />
                     </AppFormGroup>
 
-                    <VibeButton variant="primary" class="mt-3" :disabled="scanning" @click="rescan">
+                    <AppButton variant="primary" class="mt-3" :disabled="scanning" @click="rescan">
                         <VibeSpinner v-if="scanning" size="sm" class="me-1" />
                         <VibeIcon v-else icon="arrow-repeat" class="me-1" />Re-scan now
-                    </VibeButton>
+                    </AppButton>
 
                     <VibeAlert variant="info" class="mt-3 mb-0 small">
                         The scan runs in the background (queue worker required). Large folders take a

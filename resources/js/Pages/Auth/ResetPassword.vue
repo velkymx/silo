@@ -29,7 +29,7 @@ function submit() {
                 label="Email"
                 :error="form.errors.email"
              required>
-                <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
+                <AppFormInput v-model="form.email" type="email" required autocomplete="username" />
             </AppFormGroup>
 
 <AppFormGroup
@@ -37,11 +37,11 @@ function submit() {
                 class="mt-3"
                 :error="form.errors.password"
              required>
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
+                <AppFormInput v-model="form.password" type="password" required autocomplete="new-password" />
             </AppFormGroup>
 
             <AppFormGroup label="Confirm Password" class="mt-3" required>
-                <VibeFormInput
+                <AppFormInput
                     v-model="form.password_confirmation"
                     type="password"
                     required
@@ -49,9 +49,9 @@ function submit() {
                 />
             </AppFormGroup>
 
-            <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
+            <AppButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                 <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Resetting…' : 'Reset password' }}
-            </VibeButton>
+            </AppButton>
         </form>
     </GuestLayout>
 </template>

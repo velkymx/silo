@@ -494,9 +494,9 @@ function cellAriaLabel(r: number, c: number): string {
                     <div class="small text-muted">Mistakes</div>
                     <div class="fw-semibold fs-5">{{ MISTAKES }} / {{ MAX_MISTAKES }}</div>
                 </div>
-                <VibeButton variant="primary" class="ms-2" @click="newGame" title="New puzzle (N)">
+                <AppButton variant="primary" class="ms-2" @click="newGame" title="New puzzle (N)">
                     <VibeIcon icon="arrow-clockwise" class="me-1" />New Game
-                </VibeButton>
+                </AppButton>
             </div>
         </template>
 
@@ -507,7 +507,7 @@ function cellAriaLabel(r: number, c: number): string {
                 <strong>{{ HINT.technique }}</strong> at row {{ HINT.row + 1 }}, col {{ HINT.col + 1 }}.
                 <span v-if="HINT.technique === 'Naked Single'">Only one digit can go here.</span>
             </span>
-            <VibeButton size="sm" variant="primary" class="ms-auto" @click="applyHint">Fill {{ HINT.value }}</VibeButton>
+            <AppButton size="sm" variant="primary" class="ms-auto" @click="applyHint">Fill {{ HINT.value }}</AppButton>
         </div>
 
         <!-- Board. -->
@@ -559,7 +559,7 @@ function cellAriaLabel(r: number, c: number): string {
             <!-- Difficulty selector. -->
             <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
                 <VibeButtonGroup>
-                    <VibeButton
+                    <AppButton
                         v-for="opt in difficultyOptions"
                         :key="opt.value"
                         :variant="difficulty === opt.value ? 'primary' : 'secondary'"
@@ -569,33 +569,33 @@ function cellAriaLabel(r: number, c: number): string {
                         @click="changeDifficulty(opt.value)"
                     >
                         {{ opt.text }}
-                    </VibeButton>
+                    </AppButton>
                 </VibeButtonGroup>
             </div>
 
             <!-- Action buttons. -->
             <div class="d-flex flex-wrap justify-content-center gap-2">
-                <VibeButton size="sm" variant="secondary" outline :disabled="!state.selected" @click="erase" title="Clear (0/⌫)">Erase</VibeButton>
-                <VibeButton size="sm" variant="secondary" outline :disabled="state.history.length === 0" @click="undo" title="Undo (⌘Z)">Undo</VibeButton>
-                <VibeButton size="sm" :variant="state.pencilMode ? 'primary' : 'secondary'" :outline="!state.pencilMode" @click="togglePencil" :title="state.pencilMode ? 'Pencil on (P)' : 'Pencil off (P)'">Pencil</VibeButton>
-                <VibeButton size="sm" variant="secondary" outline @click="useHint" title="Hint (H)">Hint</VibeButton>
-                <VibeButton size="sm" variant="secondary" outline @click="check" title="Mark wrong cells">Check</VibeButton>
-                <VibeButton size="sm" variant="secondary" outline @click="togglePause" title="Pause (Space)">
+                <AppButton size="sm" variant="secondary" outline :disabled="!state.selected" @click="erase" title="Clear (0/⌫)">Erase</AppButton>
+                <AppButton size="sm" variant="secondary" outline :disabled="state.history.length === 0" @click="undo" title="Undo (⌘Z)">Undo</AppButton>
+                <AppButton size="sm" :variant="state.pencilMode ? 'primary' : 'secondary'" :outline="!state.pencilMode" @click="togglePencil" :title="state.pencilMode ? 'Pencil on (P)' : 'Pencil off (P)'">Pencil</AppButton>
+                <AppButton size="sm" variant="secondary" outline @click="useHint" title="Hint (H)">Hint</AppButton>
+                <AppButton size="sm" variant="secondary" outline @click="check" title="Mark wrong cells">Check</AppButton>
+                <AppButton size="sm" variant="secondary" outline @click="togglePause" title="Pause (Space)">
                     <VibeIcon :icon="STATUS === 'paused' ? 'play-fill' : 'pause-fill'" class="me-1" />
                     {{ STATUS === 'paused' ? 'Resume' : 'Pause' }}
-                </VibeButton>
+                </AppButton>
             </div>
 
             <!-- Mobile number pad. -->
             <div class="sodoku-pad d-md-none mt-3">
                 <div class="d-flex flex-wrap gap-2 justify-content-center">
-                    <VibeButton v-for="v in 9" :key="v" variant="light" size="lg" @click="setValue(v)">{{ v }}</VibeButton>
+                    <AppButton v-for="v in 9" :key="v" variant="light" size="lg" @click="setValue(v)">{{ v }}</AppButton>
                 </div>
             </div>
         </template>
 
         <!-- Win / lose overlays. -->
-        <VibeModal
+        <AppModal
             v-model="MODAL_OPEN"
             :title="STATUS === 'won' ? 'Solved!' : (STATUS === 'lost' ? 'Game over' : '')"
             centered
@@ -606,10 +606,10 @@ function cellAriaLabel(r: number, c: number): string {
                 <p class="mb-1">Solved in <strong>{{ formatElapsed(ELAPSED) }}</strong> with <strong>{{ MISTAKES }}</strong> mistake{{ MISTAKES === 1 ? '' : 's' }}.</p>
                 <p class="text-muted small mb-3">Silo Sodoku · {{ difficulty }} · {{ date }}</p>
                 <div class="d-flex gap-2 justify-content-center">
-                    <VibeButton variant="primary" @click="shareResult">
+                    <AppButton variant="primary" @click="shareResult">
                         <VibeIcon icon="clipboard" class="me-1" />Copy result
-                    </VibeButton>
-                    <VibeButton variant="secondary" outline @click="newGame">New puzzle</VibeButton>
+                    </AppButton>
+                    <AppButton variant="secondary" outline @click="newGame">New puzzle</AppButton>
                 </div>
             </div>
             <div v-else-if="STATUS === 'lost'" class="text-center">
@@ -617,10 +617,10 @@ function cellAriaLabel(r: number, c: number): string {
                 <p class="mb-1">Three mistakes. The solution is revealed.</p>
                 <p class="text-muted small mb-3">Better luck next time.</p>
                 <div class="d-flex gap-2 justify-content-center">
-                    <VibeButton variant="primary" @click="newGame">New puzzle</VibeButton>
+                    <AppButton variant="primary" @click="newGame">New puzzle</AppButton>
                 </div>
             </div>
-        </VibeModal>
+        </AppModal>
     </BreakGameShell>
 </template>
 

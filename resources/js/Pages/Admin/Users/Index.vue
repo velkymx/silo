@@ -35,9 +35,9 @@ function edit(id) {
                 </VibeBadge>
             </template>
             <template #cell(actions)="{ item }">
-                <VibeButton variant="primary" size="sm" outline @click="edit(item.id)">
+                <AppButton variant="primary" size="sm" outline @click="edit(item.id)">
                     <VibeIcon icon="pencil" class="me-1" />Edit
-                </VibeButton>
+                </AppButton>
             </template>
         </VibeDataTable>
     </AppLayout>

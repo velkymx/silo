@@ -30,9 +30,11 @@ const components: Record<string, any> = {
 
     // Forwards fallthrough @click to a real button.
     VibeButton: { name: 'VibeButton', template: '<button class="vibe-btn"><slot /></button>' },
+    AppButton: { name: 'AppButton', template: '<button class="app-btn"><slot /></button>' },
     VibeButtonGroup: passthrough('VibeButtonGroup'),
 
     VibeFormInput: inputStub('VibeFormInput'),
+    AppFormInput: inputStub('AppFormInput'),
     VibeFormTextarea: inputStub('VibeFormTextarea'),
     VibeFormSelect: inputStub('VibeFormSelect'),
     VibeFileInput: inputStub('VibeFileInput', 'file'),
@@ -70,6 +72,17 @@ const components: Record<string, any> = {
         props: ['modelValue'],
         setup(_: unknown, { slots }: { slots: Slots }) {
             return () => h('div', { 'data-stub': 'VibeModal' }, [
+                slots.header ? slots.header() : null,
+                slots.default ? slots.default() : null,
+                slots.footer ? slots.footer() : null,
+            ]);
+        },
+    },
+    AppModal: {
+        name: 'AppModal',
+        props: ['modelValue'],
+        setup(_: unknown, { slots }: { slots: Slots }) {
+            return () => h('div', { 'data-stub': 'AppModal' }, [
                 slots.header ? slots.header() : null,
                 slots.default ? slots.default() : null,
                 slots.footer ? slots.footer() : null,

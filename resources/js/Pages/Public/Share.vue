@@ -34,11 +34,11 @@ function unlock() {
                     label="Password"
                     :error="form.errors.password"
                  required>
-                    <VibeFormInput v-model="form.password" type="password" required />
+                    <AppFormInput v-model="form.password" type="password" required />
                 </AppFormGroup>
-                <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
+                <AppButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                     Unlock
-                </VibeButton>
+                </AppButton>
             </form>
         </template>
 
@@ -65,14 +65,14 @@ function unlock() {
                 </div>
                 <div class="small text-muted">{{ mime || 'file' }} · {{ fmtBytes(size) }}</div>
             </div>
-            <VibeButton
+            <AppButton
                 v-if="download_url"
                 variant="success"
                 class="w-100"
                 :href="download_url"
             >
                 <VibeIcon icon="download" class="me-1" />Download
-            </VibeButton>
+            </AppButton>
             <p v-else class="text-center text-muted small mb-0">Downloads are disabled for this link.</p>
         </template>
     </GuestLayout>
