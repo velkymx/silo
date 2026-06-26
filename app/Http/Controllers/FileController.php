@@ -387,7 +387,7 @@ class FileController extends Controller
             'name' => $folder->name,
             'is_dir' => true,
             'starred' => (bool) $folder->starred,
-            'item_count' => $folder->children_count ?? $folder->children()->count(),
+            'item_count' => $folder->children_count ?? 0,
             'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
             'tags' => $folder->relationLoaded('tags')
                 ? $folder->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
