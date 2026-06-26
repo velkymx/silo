@@ -9,20 +9,22 @@ const emit = defineEmits(['open']);
 
 const backlinks = ref([]);
 const loading = ref(false);
+let loadSeq = 0;
 
 watch(
     () => props.noteId,
     async (id) => {
+        const seq = ++loadSeq;
         backlinks.value = [];
         if (!id) return;
         loading.value = true;
         try {
             const data = await http.get(`/notes/${id}/backlinks`);
-            backlinks.value = data?.backlinks ?? [];
+            if (seq === loadSeq) backlinks.value = data?.backlinks ?? [];
         } catch {
-            backlinks.value = [];
+            if (seq === loadSeq) backlinks.value = [];
         } finally {
-            loading.value = false;
+            if (seq === loadSeq) loading.value = false;
         }
     },
     { immediate: true }
