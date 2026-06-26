@@ -56,6 +56,15 @@ class QuotaTest extends TestCase
         );
     }
 
+    public function test_used_bytes_includes_trashed_files(): void
+    {
+        $user = User::factory()->create();
+        $f = File::factory()->for($user, 'owner')->create(['size' => 800]);
+        $f->delete(); // soft-deleted — still counts toward quota
+
+        $this->assertSame(800, app(QuotaService::class)->usedBytes($user->id));
+    }
+
     public function test_unlimited_quota_never_blocks(): void
     {
         config(['filemanager.user_quota_mb' => 0]);
