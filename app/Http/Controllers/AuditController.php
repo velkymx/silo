@@ -18,7 +18,10 @@ class AuditController extends Controller
 
         // Server-side filtered; the VibeDataTable paginates the capped subset.
         $logs = AuditLog::with('user:id,name')
-            ->when($filters['action'] !== '', fn ($q) => $q->where('action', 'like', '%'.$filters['action'].'%'))
+            ->when($filters['action'] !== '', function ($q) use ($filters) {
+                $p = '%'.addcslashes($filters['action'], '%_\\').'%';
+                $q->whereRaw('action LIKE ? ESCAPE ?', [$p, '\\']);
+            })
             ->when($filters['from'], fn ($q) => $q->whereDate('created_at', '>=', $filters['from']))
             ->when($filters['to'], fn ($q) => $q->whereDate('created_at', '<=', $filters['to']))
             ->latest('id')
