@@ -22,10 +22,11 @@ class FileSearch
 
         // Free text spans the file name and its extracted metadata/snippet.
         if ($request->filled('search')) {
-            $term = $request->string('search')->toString();
-            $q->where(function ($w) use ($term) {
-                $w->where('name', 'like', "%{$term}%")
-                    ->orWhere('metadata', 'like', "%{$term}%");
+            $term = addcslashes($request->string('search')->toString(), '%_\\');
+            $pattern = "%{$term}%";
+            $q->where(function ($w) use ($pattern) {
+                $w->whereRaw('name LIKE ? ESCAPE ?', [$pattern, '\\'])
+                    ->orWhereRaw('metadata LIKE ? ESCAPE ?', [$pattern, '\\']);
             });
         }
 
