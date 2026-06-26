@@ -465,6 +465,9 @@ class FileController extends Controller
             foreach ($request->file('files', []) as $upload) {
                 // Storage is flat per user; the folder hierarchy lives entirely in the DB.
                 $path = $upload->store("uploads/{$userId}", $disk);
+                if ($path === false) {
+                    throw ValidationException::withMessages(['files' => 'One or more files could not be saved. Please try again.']);
+                }
 
                 $cleanName = $this->sanitizeFilename($upload->getClientOriginalName());
 
