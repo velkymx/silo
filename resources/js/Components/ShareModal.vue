@@ -18,6 +18,7 @@ const links = ref<Link[]>([]);
 const error = ref('');
 const busy = ref(false);
 const copied = ref<number | null>(null);
+let loadSeq = 0;
 
 const abilityOptions = ['read', 'write', 'delete', 'share'];
 const subjectTypeOptions = [
@@ -40,10 +41,12 @@ function reset(): void {
 }
 
 async function load(item: FileLike): Promise<void> {
+    const seq = ++loadSeq;
     const [perms, lk] = await Promise.all([
         http.get<{ permissions: Grant[]; inherited?: Inherited[]; groups: { id: number; name: string }[] }>(`/files/${item.id}/permissions`),
         http.get<{ links: Link[] }>(`/files/${item.id}/links`),
     ]);
+    if (seq !== loadSeq) return;
     grants.value = perms.permissions;
     inherited.value = perms.inherited ?? [];
     groups.value = perms.groups.map((g) => ({ value: g.id, text: g.name }));

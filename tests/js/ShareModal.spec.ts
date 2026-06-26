@@ -84,4 +84,30 @@ describe('ShareModal', () => {
         await btn!.trigger('click');
         expect(httpPost).toHaveBeenCalledWith('/files/5/links', expect.objectContaining({ allow_download: true }));
     });
+
+    it('stale load response is dropped when modal is closed and re-opened', async () => {
+        httpGet.mockReset();
+        let resolveStale!: (v: unknown) => void;
+        const stalePerms = new Promise((res) => { resolveStale = res; });
+        // First open: slow permissions fetch, fast links.
+        httpGet
+            .mockReturnValueOnce(stalePerms)
+            .mockResolvedValueOnce({ links: [] })
+            // Second open: fast permissions + links.
+            .mockResolvedValueOnce({ permissions: [{ id: 2, subject_type: 'user', subject_label: 'current@b.c', ability: 'read' }], inherited: [], groups: [] })
+            .mockResolvedValueOnce({ links: [] });
+
+        const wrapper = mount(ShareModal, { props: { modelValue: false, item: file } });
+        await wrapper.setProps({ modelValue: true });   // first open — stale perms stalls
+        await wrapper.setProps({ modelValue: false });  // close
+        await wrapper.setProps({ modelValue: true });   // re-open — fast perms
+        await flushPromises();
+
+        // Resolve the stale response after the current one already landed.
+        resolveStale({ permissions: [{ id: 1, subject_type: 'user', subject_label: 'stale@b.c', ability: 'read' }], inherited: [], groups: [] });
+        await flushPromises();
+
+        expect(wrapper.text()).not.toContain('stale@b.c');
+        expect(wrapper.text()).toContain('current@b.c');
+    });
 });
