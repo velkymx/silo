@@ -90,6 +90,27 @@ describe('Files/Index page', () => {
         });
         expect(wrapper.text()).toContain('Images');
     });
+
+    it('HI-17: mounts without throwing when localStorage.getItem throws SecurityError', () => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementationOnce(() => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+        });
+        let wrapper: ReturnType<typeof mountIndex> | undefined;
+        expect(() => { wrapper = mountIndex(); }).not.toThrow();
+        // grid-only template absent → defaulted to list view
+        expect(wrapper!.find('[data-view="grid"]').exists() || wrapper!.findAll('button').some((b) => b.attributes('title') === 'Thumbnail view')).toBe(true);
+        vi.restoreAllMocks();
+    });
+
+    it('HI-17: switching view does not throw when localStorage.setItem throws SecurityError', async () => {
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+        });
+        const wrapper = mountIndex();
+        const gridBtn = wrapper.findAll('button').find((b) => b.attributes('title') === 'Thumbnail view');
+        await expect(gridBtn!.trigger('click')).resolves.not.toThrow();
+        vi.restoreAllMocks();
+    });
 });
 
 describe('Files/Index item actions (grid view)', () => {

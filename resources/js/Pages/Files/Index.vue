@@ -264,9 +264,13 @@ function selectFile(item) {
     quickSetActive(item);
 }
 
-// List vs thumbnail grid view, remembered across visits.
-const viewMode = ref(localStorage.getItem('fm-view') === 'grid' ? 'grid' : 'list');
-watch(viewMode, (v) => localStorage.setItem('fm-view', v));
+// List vs thumbnail grid view, remembered across visits. Guarded against
+// SecurityError thrown by blocked localStorage (e.g. strict privacy mode).
+function safeLocalStorage(key, fallback = '') {
+    try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+}
+const viewMode = ref(safeLocalStorage('fm-view') === 'grid' ? 'grid' : 'list');
+watch(viewMode, (v) => { try { localStorage.setItem('fm-view', v); } catch { /* blocked */ } });
 
 // Grid windowing: render a bounded slice so a 1000-item folder doesn't mount
 // 1000 cards at once. "Show more" reveals the next page; reset when items change.
