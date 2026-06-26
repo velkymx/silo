@@ -95,4 +95,19 @@ describe('MarkdownEditor autocomplete', () => {
         await wrapper.get('.md-editor-fill').trigger('keydown', { key: 'Escape' });
         expect(wrapper.text()).not.toContain('Roadmap');
     });
+
+    it('cancels pending fetch timer on unmount', async () => {
+        h.httpGet.mockResolvedValue({ results: [{ id: 1, title: 'Roadmap' }] });
+        const wrapper = mount(MarkdownEditor, { props: { modelValue: '', enableLinks: true } });
+
+        // Trigger autocomplete — scheduleFetch sets a 150ms debounce timer.
+        h.editor!.type('[[Ro', [[0, 4], [0, 4]]);
+        // Unmount BEFORE the debounce fires.
+        wrapper.unmount();
+        // Advance past the debounce — timer must have been cleared, no http call.
+        await vi.runAllTimersAsync();
+        await flushPromises();
+
+        expect(h.httpGet).not.toHaveBeenCalled();
+    });
 });
