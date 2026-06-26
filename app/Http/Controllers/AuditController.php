@@ -8,15 +8,6 @@ use Inertia\Inertia;
 
 class AuditController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware(function ($request, $next) {
-            abort_unless(auth()->user()?->is_admin, 403, 'Access denied. Admins only.');
-
-            return $next($request);
-        });
-    }
-
     public function index(Request $request)
     {
         $filters = [

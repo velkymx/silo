@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\VaultItem;
+use App\Policies\VaultItemPolicy;
 use App\Services\Audit;
 use App\Services\VaultImporter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -161,7 +163,7 @@ class VaultController extends Controller
             'shared' => $item->group_id !== null,
             'group_id' => $item->group_id,
             'last_rotated_at' => $item->last_rotated_at?->format('Y-m-d'),
-            'can_edit' => $item->owner_id === $userId || auth()->user()->is_admin,
+            'can_edit' => Gate::check('update', $item),
         ];
     }
 }

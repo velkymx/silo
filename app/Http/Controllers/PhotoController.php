@@ -108,7 +108,7 @@ class PhotoController extends Controller
 
     public function destroyAlbum(Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $album->delete();
 
         return back()->with('success', 'Album deleted.');
@@ -116,7 +116,7 @@ class PhotoController extends Controller
 
     public function addToAlbum(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $ids = $this->ownedPhotoIds($request);
         $album->photos()->syncWithoutDetaching($ids);
         if (! $album->cover_file_id && $ids) {
@@ -128,7 +128,7 @@ class PhotoController extends Controller
 
     public function removeFromAlbum(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $album->photos()->detach($this->ownedPhotoIds($request));
 
         return back()->with('success', 'Removed from album.');
@@ -136,7 +136,7 @@ class PhotoController extends Controller
 
     public function setCover(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $id = $this->ownedPhotoIds($request)[0] ?? null;
         abort_unless($id, 404, 'Photo not found.');
         $album->update(['cover_file_id' => $id]);
@@ -164,11 +164,6 @@ class PhotoController extends Controller
         }
 
         return back()->with('success', 'Order updated.');
-    }
-
-    private function authorizeAlbum(Album $album): void
-    {
-        abort_unless($album->owner_id === auth()->id(), 403);
     }
 
     /** Validate + return file ids that are image files owned by the user. */

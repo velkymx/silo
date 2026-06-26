@@ -21,19 +21,19 @@ use App\Http\Controllers\BackupController;
 use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
-    Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('admin.users.edit');
-    Route::post('/users/{user}/update-group', [AdminController::class, 'updateGroup'])->name('admin.users.updateGroup');
-    Route::patch('/admin/users/{user}', [AdminController::class, 'update'])->name('admin.users.update');
-
-    Route::get('/groups', [GroupController::class, 'index'])->name('admin.groups.index');
-    Route::post('/groups', [GroupController::class, 'store'])->name('admin.groups.store');
-    Route::patch('/groups/{group}', [GroupController::class, 'update'])->name('admin.groups.update');
-    Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('admin.groups.destroy');
-
-    Route::get('/audit', [AuditController::class, 'index'])->name('admin.audit.index');
-
     Route::middleware('admin')->group(function () {
+        Route::get('/users', [AdminController::class, 'index'])->name('admin.users.index');
+        Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('admin.users.edit');
+        Route::post('/users/{user}/update-group', [AdminController::class, 'updateGroup'])->name('admin.users.updateGroup');
+        Route::patch('/admin/users/{user}', [AdminController::class, 'update'])->name('admin.users.update');
+
+        Route::get('/groups', [GroupController::class, 'index'])->name('admin.groups.index');
+        Route::post('/groups', [GroupController::class, 'store'])->name('admin.groups.store');
+        Route::patch('/groups/{group}', [GroupController::class, 'update'])->name('admin.groups.update');
+        Route::delete('/groups/{group}', [GroupController::class, 'destroy'])->name('admin.groups.destroy');
+
+        Route::get('/audit', [AuditController::class, 'index'])->name('admin.audit.index');
+
         Route::get('/import', [ImportController::class, 'index'])->name('admin.import.index');
         Route::post('/import/rescan', [ImportController::class, 'rescan'])->name('admin.import.rescan');
 

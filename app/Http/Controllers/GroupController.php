@@ -8,16 +8,6 @@ use Inertia\Inertia;
 
 class GroupController extends Controller
 {
-    public function __construct()
-    {
-        // Admins only.
-        $this->middleware(function ($request, $next) {
-            abort_unless(auth()->user()?->is_admin, 403, 'Access denied. Admins only.');
-
-            return $next($request);
-        });
-    }
-
     public function index()
     {
         return Inertia::render('Admin/Groups/Index', [

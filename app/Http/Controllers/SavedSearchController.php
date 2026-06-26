@@ -40,7 +40,7 @@ class SavedSearchController extends Controller
 
     public function destroy(SavedSearch $savedSearch)
     {
-        abort_unless($savedSearch->owner_id === auth()->id(), 403);
+        $this->authorize('delete', $savedSearch);
         $savedSearch->delete();
 
         return back()->with('success', 'Smart folder removed.');

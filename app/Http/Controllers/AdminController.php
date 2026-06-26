@@ -10,22 +10,6 @@ use Inertia\Inertia;
 
 class AdminController extends Controller
 {
-    // add a constructor that checks if the user is authenticated and if is_admin is set to 1
-    public function __construct()
-    {
-        // Add a closure-based middleware to check admin privileges
-        $this->middleware(function ($request, $next) {
-            $user = auth()->user();
-
-            // Abort if the user is not authenticated or not an admin
-            if (! $user || ! $user->is_admin) {
-                abort(403, 'Access denied. Admins only.');
-            }
-
-            return $next($request);
-        });
-    }
-
     /**
      * Display a list of all users.
      *

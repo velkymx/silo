@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Models\File;
+use App\Models\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -10,13 +12,33 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // The suite fakes the "public" disk (Storage::fake('public')); pin the
-        // file-manager disk to it so controllers store where the tests assert.
-        // Production defaults to the private "local" disk (see C1 / config).
         config(['filemanager.disk' => 'public']);
-
-        // Backend tests must not depend on a compiled front end; stub @vite so
-        // page-rendering requests don't require public/build/manifest.json.
         $this->withoutVite();
+    }
+
+    /** Create a regular user and authenticate as them. */
+    protected function asUser(array $attrs = []): User
+    {
+        $user = User::factory()->create($attrs);
+        $this->actingAs($user);
+        return $user;
+    }
+
+    /** Create an admin user and authenticate as them. */
+    protected function asAdmin(array $attrs = []): User
+    {
+        return $this->asUser(array_merge(['is_admin' => true], $attrs));
+    }
+
+    /** Create a file owned by $user. */
+    protected function withFile(User $user, array $attrs = []): File
+    {
+        return File::factory()->for($user, 'owner')->create($attrs);
+    }
+
+    /** Create a folder owned by $user. */
+    protected function withFolder(User $user, array $attrs = []): File
+    {
+        return File::factory()->for($user, 'owner')->folder()->create($attrs);
     }
 }

@@ -8,6 +8,7 @@ use App\Services\Audit;
 use App\Services\BookmarkImporter;
 use App\Support\FileResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -265,7 +266,7 @@ class BookmarkController extends Controller
             'shared' => $bookmark->shared,
             'starred' => $bookmark->starred,
             'click_count' => $bookmark->click_count,
-            'can_edit' => $bookmark->owner_id === $userId || auth()->user()->is_admin,
+            'can_edit' => Gate::check('update', $bookmark),
         ];
     }
 }
