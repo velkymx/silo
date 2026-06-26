@@ -8,6 +8,7 @@ import { fmtBytes } from '../lib/format';
 import { useStorageMeter } from '../composables/useStorageMeter';
 import PageError from '../Components/PageError.vue';
 import ToastHost from '../Components/ToastHost.vue';
+import UserAvatar from '../Components/UserAvatar.vue';
 import { useToast } from '../composables/useToast';
 
 const { confirm } = useConfirm();
@@ -214,18 +215,7 @@ function onUserMenu({ item }) {
             </VibeButton>
             <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
-                    <img
-                        v-if="user.avatar_url"
-                        :src="user.avatar_url"
-                        alt=""
-                        class="rounded-circle me-2"
-                        style="width: 22px; height: 22px; object-fit: cover"
-                    >
-                    <span
-                        v-else
-                        class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white me-2"
-                        style="width: 22px; height: 22px; font-size: 0.72rem"
-                    >{{ initials(user.name) }}</span>{{ user.name }}
+                    <UserAvatar :user="user" :size="22" class="me-2" />{{ user.name }}
                 </template>
                 <template #item="{ item }"><VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}</template>
             </VibeDropdown>

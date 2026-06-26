@@ -4,8 +4,8 @@ import { router } from '@inertiajs/vue3';
 import { useUrlFilter } from '../../composables/useUrlFilter';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
+import UserAvatar from '../../Components/UserAvatar.vue';
 import { http } from '../../lib/http';
-import { initials } from '../../lib/initials';
 
 const props = defineProps({
     people: { type: Array, default: () => [] },
@@ -78,9 +78,7 @@ async function open(person) {
                     <div v-for="p in items" :key="p.id" class="col-12 col-sm-6 col-lg-4 col-xxl-3">
                         <button type="button" class="card h-100 w-100 text-start border-0 shadow-sm person-card" @click="open(p)">
                             <div class="card-body d-flex align-items-center gap-3">
-                                <img v-if="p.avatar_url" :src="p.avatar_url" alt="" class="rounded-circle" style="width: 44px; height: 44px; object-fit: cover">
-                                <span v-else class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white"
-                                      style="width: 44px; height: 44px">{{ initials(p.name) }}</span>
+                                <UserAvatar :user="p" :size="44" />
                                 <div class="min-vw-0">
                                     <div class="fw-semibold text-truncate">{{ p.name }}</div>
                                     <div class="small text-muted text-truncate">{{ p.title || '—' }}</div>
@@ -96,9 +94,7 @@ async function open(person) {
             <p v-if="loading" class="text-muted mb-0">Loading…</p>
             <div v-else-if="profile">
                 <div class="d-flex align-items-center gap-3 mb-3">
-                    <img v-if="profile.avatar_url" :src="profile.avatar_url" alt="" class="rounded-circle" style="width: 64px; height: 64px; object-fit: cover">
-                    <span v-else class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white"
-                          style="width: 64px; height: 64px; font-size: 1.25rem">{{ initials(profile.name) }}</span>
+                    <UserAvatar :user="profile" :size="64" />
                     <div>
                         <div class="h5 mb-0">{{ profile.name }}</div>
                         <div class="text-muted">{{ profile.title }}<span v-if="profile.department"> · {{ profile.department }}</span></div>

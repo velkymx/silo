@@ -18,9 +18,9 @@ const user = { name: 'Ada Love', email: 'ada@x.test', avatar_url: null };
 describe('Profile/Edit page', () => {
     beforeEach(() => { formPost.mockClear(); routerPost.mockClear(); });
 
-    it('shows initials when there is no avatar', () => {
+    it('renders a UserAvatar for the profile picture', () => {
         const wrapper = mount(Profile, { props: { user } });
-        expect(wrapper.text()).toContain('AL');
+        expect(wrapper.find('.user-avatar-stub').exists()).toBe(true);
     });
 
     it('submits the profile form to /profile', async () => {

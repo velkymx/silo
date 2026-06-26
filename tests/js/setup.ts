@@ -145,6 +145,7 @@ config.global.directives = { 'vibe-tooltip': {} };
 // Locally-imported components (layouts) must be stubbed, not globally
 // registered, to override the import.
 config.global.stubs = {
+    UserAvatar: { name: 'UserAvatar', template: '<span class="user-avatar-stub" />', props: ['user', 'size'] },
     AppLayout: {
         name: 'AppLayout',
         setup(_: unknown, { slots }: { slots: Slots }) {

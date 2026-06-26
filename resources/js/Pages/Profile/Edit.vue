@@ -4,15 +4,13 @@ import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
-import { initials } from '../../lib/initials';
+import UserAvatar from '../../Components/UserAvatar.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
     groups: { type: Array, default: () => [] },
 });
-
-const initial = computed(() => initials(props.user.name) || '?');
 
 const form = useForm({
     name: props.user.name,
@@ -84,18 +82,7 @@ function applyCrop() {
             <VibeCol :md="8" :lg="6">
                 <VibeCard header="Edit Profile">
                     <div class="d-flex align-items-center gap-3 mb-4">
-                        <img
-                            v-if="user.avatar_url"
-                            :src="user.avatar_url"
-                            alt="Avatar"
-                            class="rounded-circle border"
-                            style="width: 72px; height: 72px; object-fit: cover"
-                        >
-                        <span
-                            v-else
-                            class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center fs-3"
-                            style="width: 72px; height: 72px"
-                        >{{ initial }}</span>
+                        <UserAvatar :user="user" :size="72" class="border" />
                         <div>
                             <VibeButton variant="secondary" outline size="sm" @click="pickPhoto">
                                 <VibeIcon icon="camera" class="me-1" />Change photo
