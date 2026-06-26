@@ -72,4 +72,15 @@ describe('Vault/Index', () => {
         // An error message must appear (revealError shown via VibeAlert).
         expect(wrapper.text()).toMatch(/could not generate|generate/i);
     });
+
+    it('revealed secret is not inside a text-truncate container', async () => {
+        const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
+        await wrapper.get('[title="Reveal"]').trigger('click');
+        await flushPromises();
+        // The element containing the revealed secret must NOT have text-truncate.
+        const secretEl = wrapper.find('code.vault-secret, pre.vault-secret');
+        expect(secretEl.exists()).toBe(true);
+        // Its closest ancestor with text-truncate class must not exist.
+        expect(secretEl.element.closest('.text-truncate')).toBeNull();
+    });
 });

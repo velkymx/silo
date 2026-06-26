@@ -193,10 +193,12 @@ async function onImportFile(e) {
                                 <VibeBadge v-if="item.shared" class="text-bg-light ms-1"><VibeIcon icon="people-fill" /></VibeBadge>
                             </div>
                             <div class="small text-muted text-truncate">
-                                <span v-if="item.username">{{ item.username }} · </span>
-                                <code v-if="revealed[item.id]" class="vault-secret">{{ revealed[item.id] }}</code>
-                                <span v-else>••••••••••</span>
+                                <span v-if="item.username">{{ item.username }}</span>
+                                <span v-if="!revealed[item.id]">
+                                    <span v-if="item.username"> · </span>••••••••••
+                                </span>
                             </div>
+                            <pre v-if="revealed[item.id]" class="vault-secret mb-0 small">{{ revealed[item.id] }}</pre>
                         </div>
                         <VibeButton size="sm" variant="secondary" outline :title="revealed[item.id] ? 'Hide' : 'Reveal'" @click="reveal(item)">
                             <VibeIcon :icon="revealed[item.id] ? 'eye-slash' : 'eye'" />
@@ -250,5 +252,12 @@ async function onImportFile(e) {
 <style scoped>
 .vault-secret {
     user-select: all;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: var(--bs-font-monospace);
 }
 </style>
