@@ -43,6 +43,7 @@ async function load() {
 
 // Export the live document back to a .docx Blob (no auto-download).
 async function serialize() {
+    if (!superdoc) throw new Error('Document not loaded');
     return await superdoc.export({ exportType: 'docx', triggerDownload: false });
 }
 

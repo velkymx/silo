@@ -190,6 +190,7 @@ function patchCell(sheet, ref, val) {
 // Serialize back to a Blob by patching the ORIGINAL workbook in place, so
 // number formats, styles, merged cells and column widths survive the edit.
 async function serialize() {
+    if (!originalWb) throw new Error('Workbook not loaded');
     const sheets = instance?.worksheets ?? [instance];
     sheets.forEach((ws, i) => {
         const name = ws.options?.worksheetName || originalWb?.SheetNames?.[i];
