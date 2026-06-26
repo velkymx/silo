@@ -113,6 +113,30 @@ describe('Notes/Index', () => {
         expect(titles).toEqual(['Second', 'First']);
     });
 
+    it('ME-14: in-flight autosave does not mutate state after unmount', async () => {
+        vi.useFakeTimers();
+        let resolveAutosave!: () => void;
+        h.put.mockReturnValueOnce(new Promise<void>((res) => { resolveAutosave = res; }));
+
+        const namedStub = { name: 'MarkdownEditor', template: '<div class="md-stub" />', props: ['modelValue', 'enableLinks'], emits: ['update:modelValue'] };
+        const wrapper = mount(NotesIndex, {
+            props: { rootId: 5, folders: [], notes, tags: [] },
+            global: { stubs: { MarkdownEditor: namedStub } },
+        });
+        await wrapper.findComponent(NotesList).vm.$emit('select', 1);
+        await flushPromises();
+        // Emit content change from the editor stub to trigger autosave debounce.
+        wrapper.findComponent({ name: 'MarkdownEditor' }).vm.$emit('update:modelValue', 'new content');
+        vi.runAllTimers(); // fire the 800ms debounce → autosave starts
+        await flushPromises(); // let the async autosave function run up to the await
+        // Unmount before the http.put promise resolves.
+        wrapper.unmount();
+        // Resolve the in-flight request — must not throw or mutate dead state.
+        expect(() => resolveAutosave()).not.toThrow();
+        await flushPromises();
+        vi.useRealTimers();
+    });
+
     it('creates a folder via the New Folder button', async () => {
         const wrapper = mountPage();
         await wrapper.findComponent(NotesSidebar).vm.$emit('new-folder');

@@ -38,6 +38,7 @@ let suppressSave = false;
 let saveTimer = null;
 let suppressTimer = null;
 let loadSeq = 0;
+let unmounted = false;
 
 const notesRef = computed(() => props.notes);
 const { selectMode: noteSelectMode, selectedItems: selectedNotes, isSelected: noteIsSelected, toggleSel: noteToggle, clearSelection: noteClearSel } = useSelection(notesRef, (n) => selectNote(n.id));
@@ -120,6 +121,7 @@ async function loadContent(note) {
 }
 
 onBeforeUnmount(() => {
+    unmounted = true;
     if (saveTimer) clearTimeout(saveTimer);
     if (suppressTimer) clearTimeout(suppressTimer);
 });
@@ -146,9 +148,9 @@ async function autosave(extra = {}) {
     saveState.value = 'saving';
     try {
         await http.put(`/notes/${selectedId.value}/autosave`, { content: content.value, ...extra });
-        saveState.value = 'saved';
+        if (!unmounted) saveState.value = 'saved';
     } catch {
-        saveState.value = 'idle';
+        if (!unmounted) saveState.value = 'idle';
     }
 }
 
