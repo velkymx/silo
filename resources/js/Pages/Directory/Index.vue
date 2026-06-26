@@ -36,16 +36,19 @@ const grouped = computed(() => {
 const showProfile = ref(false);
 const profile = ref(null);
 const loading = ref(false);
+let requestedId = 0;
 
 async function open(person) {
+    const id = person.id;
+    requestedId = id;
     showProfile.value = true;
     loading.value = true;
     profile.value = null;
     try {
-        const data = await http.get(`/directory/${person.id}`);
-        profile.value = data?.person ?? null;
+        const data = await http.get(`/directory/${id}`);
+        if (requestedId === id) profile.value = data?.person ?? null;
     } finally {
-        loading.value = false;
+        if (requestedId === id) loading.value = false;
     }
 }
 </script>
