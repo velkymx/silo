@@ -59,10 +59,11 @@ function onFileChosen(e) {
 }
 
 function applyCrop() {
-    const { canvas } = cropper.value.getResult();
+    const canvas = cropper.value?.getResult?.()?.canvas;
     if (!canvas) return;
     avatarSaving.value = true;
     canvas.toBlob((blob) => {
+        if (!blob) { avatarSaving.value = false; return; }
         router.post('/profile/avatar', { avatar: new File([blob], 'avatar.jpg', { type: 'image/jpeg' }) }, {
             forceFormData: true,
             preserveScroll: true,

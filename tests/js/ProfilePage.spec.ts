@@ -45,4 +45,48 @@ describe('Profile/Edit page', () => {
         await btn!.trigger('click');
         expect(clickSpy).toHaveBeenCalled();
     });
+
+    it('applyCrop does not call router.post when toBlob returns null', async () => {
+        // Cropper stub where toBlob calls back with null (simulates failed canvas export).
+        const cropperWithNullBlob = {
+            name: 'Cropper',
+            template: '<div class="cropper-stub" />',
+            methods: {
+                getResult() {
+                    return {
+                        canvas: { toBlob: (cb: (b: Blob | null) => void) => cb(null) },
+                    };
+                },
+            },
+        };
+        const wrapper = mount(Profile, {
+            props: { user },
+            global: { stubs: { Cropper: cropperWithNullBlob } },
+        });
+        const btn = wrapper.findAll('button').find((b) => b.text().includes('Use photo'));
+        await btn!.trigger('click');
+        expect(routerPost).not.toHaveBeenCalled();
+    });
+
+    it('applyCrop calls router.post when canvas and blob are valid', async () => {
+        const mockBlob = new Blob(['x'], { type: 'image/jpeg' });
+        const cropperOk = {
+            name: 'Cropper',
+            template: '<div class="cropper-stub" />',
+            methods: {
+                getResult() {
+                    return {
+                        canvas: { toBlob: (cb: (b: Blob | null) => void) => cb(mockBlob) },
+                    };
+                },
+            },
+        };
+        const wrapper = mount(Profile, {
+            props: { user },
+            global: { stubs: { Cropper: cropperOk } },
+        });
+        const btn = wrapper.findAll('button').find((b) => b.text().includes('Use photo'));
+        await btn!.trigger('click');
+        expect(routerPost).toHaveBeenCalledWith('/profile/avatar', expect.anything(), expect.anything());
+    });
 });
