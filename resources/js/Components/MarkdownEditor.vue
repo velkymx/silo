@@ -85,6 +85,7 @@ watch(colorMode, () => {
 });
 
 onBeforeUnmount(() => {
+    clearTimeout(fetchTimer);
     if (props.enableLinks && el.value) {
         el.value.removeEventListener('keyup', onKeyup, true);
         el.value.removeEventListener('keydown', onKeydown, true);
