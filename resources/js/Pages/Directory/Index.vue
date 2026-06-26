@@ -6,7 +6,6 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import { http } from '../../lib/http';
 import { initials } from '../../lib/initials';
-import AppModal from '../../Components/AppModal.vue';
 
 const props = defineProps({
     people: { type: Array, default: () => [] },
@@ -90,7 +89,7 @@ async function open(person) {
             </div>
         </div>
 
-        <AppModal v-model="showProfile" :title="profile?.name || 'Profile'">
+        <VibeModal v-model="showProfile" :title="profile?.name || 'Profile'">
             <p v-if="loading" class="text-muted mb-0">Loading…</p>
             <div v-else-if="profile">
                 <div class="d-flex align-items-center gap-3 mb-3">
@@ -111,7 +110,7 @@ async function open(person) {
                     <template v-if="profile.bio"><dt class="col-12 text-muted mt-2">About</dt><dd class="col-12">{{ profile.bio }}</dd></template>
                 </dl>
             </div>
-        </AppModal>
+        </VibeModal>
     </AppLayout>
 </template>
 

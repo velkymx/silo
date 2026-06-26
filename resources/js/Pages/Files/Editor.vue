@@ -3,7 +3,6 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import SpreadsheetEditor from '../../Components/SpreadsheetEditor.vue';
 import DocxEditor from '../../Components/DocxEditor.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const props = defineProps({
     file: { type: Object, default: null },
@@ -134,20 +133,20 @@ async function commitSave() {
         </div>
 
         <!-- GitHub-style save popup -->
-        <AppModal v-model="saveOpen" :title="creating ? 'Create document' : 'Save changes'" centered hide-footer>
+        <VibeModal v-model="saveOpen" :title="creating ? 'Create document' : 'Save changes'" centered hide-footer>
             <template v-if="creating">
-                <AppFormGroup label="File name">
+                <VibeFormGroup label="File name">
                     <VibeFormInput v-model="newName" :placeholder="`Untitled.${docType}`" />
-                </AppFormGroup>
+                </VibeFormGroup>
             </template>
             <template v-else>
                 <p class="text-muted small mb-2">
                     Describe what changed (optional). This creates a new version of
                     <strong>{{ file.name }}</strong>.
                 </p>
-                <AppFormGroup label="What changed?">
+                <VibeFormGroup label="What changed?">
                     <VibeFormTextarea v-model="note" :rows="3" placeholder="e.g. Updated Q3 totals, fixed typo…" />
-                </AppFormGroup>
+                </VibeFormGroup>
             </template>
             <div class="d-flex justify-content-end gap-2 mt-3">
                 <VibeButton variant="light" @click="saveOpen = false">Cancel</VibeButton>
@@ -156,7 +155,7 @@ async function commitSave() {
                     {{ creating ? 'Create' : 'Save version' }}
                 </VibeButton>
             </div>
-        </AppModal>
+        </VibeModal>
     </div>
 </template>
 

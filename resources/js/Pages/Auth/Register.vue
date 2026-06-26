@@ -1,7 +1,6 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const form = useForm({ name: '', email: '', password: '', password_confirmation: '' });
@@ -15,37 +14,37 @@ function submit() {
     <GuestLayout title="Create account">
         <form @submit.prevent="submit">
 <FormErrorSummary :errors="form.errors" />
-<AppFormGroup
+<VibeFormGroup
                 label="Name"
                 :error="form.errors.name"
              required>
                 <VibeFormInput v-model="form.name" required autocomplete="name" />
-            </AppFormGroup>
+            </VibeFormGroup>
 
-<AppFormGroup
+<VibeFormGroup
                 label="Email"
                 class="mt-3"
                 :error="form.errors.email"
              required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
-            </AppFormGroup>
+            </VibeFormGroup>
 
-<AppFormGroup
+<VibeFormGroup
                 label="Password"
                 class="mt-3"
                 :error="form.errors.password"
              required>
                 <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
-            </AppFormGroup>
+            </VibeFormGroup>
 
-            <AppFormGroup label="Confirm Password" class="mt-3" required>
+            <VibeFormGroup label="Confirm Password" class="mt-3" required>
                 <VibeFormInput
                     v-model="form.password_confirmation"
                     type="password"
                     required
                     autocomplete="new-password"
                 />
-            </AppFormGroup>
+            </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                 <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Creating account…' : 'Register' }}

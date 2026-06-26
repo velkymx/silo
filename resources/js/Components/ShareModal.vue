@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue';
 import { http, HttpError } from '../lib/http';
-import AppModal from './AppModal.vue';
 
 interface FileLike { id: number; name: string; is_dir?: boolean }
 interface Grant { id: number; subject_type: string; subject_label: string; ability: string }
@@ -118,7 +117,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <AppModal v-model="open" :title="`Share — ${item?.name || ''}`" fullscreen>
+    <VibeModal v-model="open" :title="`Share — ${item?.name || ''}`" fullscreen>
         <h6 class="text-muted">People &amp; groups with access</h6>
         <table v-if="grants.length" class="table table-sm align-middle">
             <tbody>
@@ -205,5 +204,5 @@ onBeforeUnmount(() => {
         <template #footer>
             <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
         </template>
-    </AppModal>
+    </VibeModal>
 </template>

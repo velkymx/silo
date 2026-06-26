@@ -42,7 +42,7 @@ function isImage(f: QuickFile | null): boolean {
 </script>
 
 <template>
-    <AppModal v-model="open" fullscreen hide-footer>
+    <VibeModal v-model="open" fullscreen hide-footer>
         <template #header>
             <div class="d-flex align-items-center justify-content-between w-100">
                 <h5 class="modal-title text-truncate mb-0">
@@ -136,7 +136,7 @@ function isImage(f: QuickFile | null): boolean {
             </div>
         </div>
         <slot name="below" />
-    </AppModal>
+    </VibeModal>
 </template>
 
 <style scoped>

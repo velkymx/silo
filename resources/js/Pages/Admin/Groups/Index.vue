@@ -6,7 +6,6 @@ import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../../composables/useConfirm';
 import { useToast } from '../../../composables/useToast';
 import { usePageLoading } from '../../../composables/usePageLoading';
-import AppFormGroup from '../../../Components/AppFormGroup.vue';
 
 const { confirm } = useConfirm();
 const toast = useToast();
@@ -58,12 +57,12 @@ async function destroy(group) {
 
         <VibeRow class="g-2 align-items-end mb-4">
             <VibeCol :md="6">
-<AppFormGroup
+<VibeFormGroup
                     label="New group name"
                     :error="createForm.errors.name"
                 >
                     <VibeFormInput v-model="createForm.name" @keyup.enter="create" />
-                </AppFormGroup>
+                </VibeFormGroup>
             </VibeCol>
             <VibeCol :md="2">
                 <VibeButton variant="primary" :disabled="createForm.processing" @click="create"><VibeSpinner v-if="createForm.processing" size="sm" class="me-1" />{{ createForm.processing ? 'Adding…' : 'Add group' }}</VibeButton>

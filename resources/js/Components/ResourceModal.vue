@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import AppModal from './AppModal.vue';
 import FormErrorSummary from './FormErrorSummary.vue';
 
 const props = defineProps<{
@@ -63,7 +62,7 @@ defineExpose({ openAdd, openEdit });
 </script>
 
 <template>
-    <AppModal v-model="showModal" :title="editingId ? editTitle : addTitle" :size="size">
+    <VibeModal v-model="showModal" :title="editingId ? editTitle : addTitle" :size="size">
         <FormErrorSummary :errors="form.errors" />
         <slot :form="form" :editing-id="editingId" />
         <template #footer>
@@ -72,5 +71,5 @@ defineExpose({ openAdd, openEdit });
                 {{ editingId ? (saveLabel ?? 'Save') : (addLabel ?? 'Add') }}
             </VibeButton>
         </template>
-    </AppModal>
+    </VibeModal>
 </template>

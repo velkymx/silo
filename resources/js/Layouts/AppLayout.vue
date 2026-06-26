@@ -342,7 +342,7 @@ function onUserMenu({ item }) {
         </VibeOffcanvas>
 
         <!-- Single in-app confirm/prompt host (replaces native window.confirm/prompt). -->
-        <AppModal v-model="dialog.open" :title="dialog.title" size="sm" centered @hide="dialogCancel">
+        <VibeModal v-model="dialog.open" :title="dialog.title" size="sm" centered @hide="dialogCancel">
             <p class="mb-0">{{ dialog.message }}</p>
             <VibeFormInput
                 v-if="dialog.mode === 'prompt'"
@@ -356,7 +356,7 @@ function onUserMenu({ item }) {
                 <VibeButton variant="secondary" outline @click="dialogCancel">{{ dialog.cancelLabel }}</VibeButton>
                 <VibeButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</VibeButton>
             </template>
-        </AppModal>
+        </VibeModal>
 
         <ToastHost
             :items="toast.state.items"

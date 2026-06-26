@@ -1,7 +1,6 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 defineProps({ status: { type: String, default: null } });
@@ -19,12 +18,12 @@ function submit() {
         <p class="text-muted small">Enter your email and we'll send a reset link.</p>
         <form @submit.prevent="submit">
 <FormErrorSummary :errors="form.errors" />
-<AppFormGroup
+<VibeFormGroup
                 label="Email"
                 :error="form.errors.email"
              required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
-            </AppFormGroup>
+            </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                 <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Sending…' : 'Send reset link' }}

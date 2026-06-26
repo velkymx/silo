@@ -76,18 +76,6 @@ const components: Record<string, any> = {
             ]);
         },
     },
-    AppModal: {
-        name: 'AppModal',
-        props: ['modelValue'],
-        setup(_: unknown, { slots }: { slots: Slots }) {
-            return () => h('div', { 'data-stub': 'AppModal' }, [
-                slots.header ? slots.header() : null,
-                slots.default ? slots.default() : null,
-                slots.footer ? slots.footer() : null,
-            ]);
-        },
-    },
-
     // DataTable: render the default slot + every #cell(*) / #empty slot once per
     // item so cell templates (and their handlers) execute.
     VibeDataTable: {

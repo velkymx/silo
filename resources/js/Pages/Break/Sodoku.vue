@@ -595,7 +595,7 @@ function cellAriaLabel(r: number, c: number): string {
         </template>
 
         <!-- Win / lose overlays. -->
-        <AppModal
+        <VibeModal
             v-model="MODAL_OPEN"
             :title="STATUS === 'won' ? 'Solved!' : (STATUS === 'lost' ? 'Game over' : '')"
             centered
@@ -620,7 +620,7 @@ function cellAriaLabel(r: number, c: number): string {
                     <VibeButton variant="primary" @click="newGame">New puzzle</VibeButton>
                 </div>
             </div>
-        </AppModal>
+        </VibeModal>
     </BreakGameShell>
 </template>
 

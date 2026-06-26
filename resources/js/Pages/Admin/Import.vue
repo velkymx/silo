@@ -2,7 +2,6 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 
 const props = defineProps({
     root: { type: String, default: '' },
@@ -54,9 +53,9 @@ function rescan() {
                         </dd>
                     </dl>
 
-                    <AppFormGroup label="Top-level folder name">
+                    <VibeFormGroup label="Top-level folder name">
                         <VibeFormInput v-model="name" placeholder="Imported" />
-                    </AppFormGroup>
+                    </VibeFormGroup>
 
                     <VibeButton variant="primary" class="mt-3" :disabled="scanning" @click="rescan">
                         <VibeSpinner v-if="scanning" size="sm" class="me-1" />

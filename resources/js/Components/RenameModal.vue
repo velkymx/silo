@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
-import AppModal from './AppModal.vue';
 
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ item: { id: number; name: string } | null }>();
@@ -25,18 +24,18 @@ function submit(): void {
 </script>
 
 <template>
-    <AppModal v-model="open" title="Rename" centered>
+    <VibeModal v-model="open" title="Rename" centered>
         <form @submit.prevent="submit">
-<AppFormGroup
+<VibeFormGroup
                 label="New Name"
                 :error="form.errors.name"
              required>
                 <VibeFormInput v-model="form.name" required />
-            </AppFormGroup>
+            </VibeFormGroup>
         </form>
         <template #footer>
             <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
             <VibeButton variant="primary" :disabled="form.processing" @click="submit">Rename</VibeButton>
         </template>
-    </AppModal>
+    </VibeModal>
 </template>

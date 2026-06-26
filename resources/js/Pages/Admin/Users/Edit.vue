@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
-import AppFormGroup from '../../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
@@ -35,32 +34,32 @@ function submit() {
                 <VibeCard :header="`Edit User: ${user.name}`">
                     <form @submit.prevent="submit">
                         <FormErrorSummary :errors="form.errors" />
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="Name"
                             :error="form.errors.name"
                          required>
                             <VibeFormInput v-model="form.name" required />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="Email"
                             class="mt-3"
                             :error="form.errors.email"
                          required>
                             <VibeFormInput v-model="form.email" type="email" required />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="Group"
                             class="mt-3"
                             :error="form.errors.group_id"
                         >
                             <VibeFormSelect v-model="form.group_id" :options="groupOptions" placeholder="Choose…" />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
                         <VibeFormSwitch v-model="form.is_admin" label="Administrator" class="mt-3" />
 
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="New Password"
                             class="mt-3"
                             :error="form.errors.password"
@@ -71,11 +70,11 @@ function submit() {
                                 autocomplete="new-password"
                                 help-text="Leave blank to keep the current password."
                             />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup label="Confirm Password" class="mt-3">
+                        <VibeFormGroup label="Confirm Password" class="mt-3">
                             <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
                         <div class="mt-4 d-flex gap-2">
                             <VibeButton type="submit" variant="primary" :disabled="form.processing"><VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save' }}</VibeButton>

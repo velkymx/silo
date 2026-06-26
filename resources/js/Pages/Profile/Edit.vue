@@ -5,8 +5,6 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { initials } from '../../lib/initials';
-import AppModal from '../../Components/AppModal.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
@@ -108,22 +106,22 @@ function applyCrop() {
 
                     <form @submit.prevent="submit">
                         <FormErrorSummary :errors="form.errors" />
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="Name"
                             :error="form.errors.name"
                          required>
                             <VibeFormInput v-model="form.name" required />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="Email"
                             class="mt-3"
                             :error="form.errors.email"
                          required>
                             <VibeFormInput v-model="form.email" type="email" required />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup
+                        <VibeFormGroup
                             label="New Password"
                             class="mt-3"
                             :error="form.errors.password"
@@ -134,13 +132,13 @@ function applyCrop() {
                                 autocomplete="new-password"
                                 help-text="Leave blank to keep your current password."
                             />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup label="Confirm Password" class="mt-3">
+                        <VibeFormGroup label="Confirm Password" class="mt-3">
                             <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
-                        <AppFormGroup
+                        <VibeFormGroup
                             v-if="needsCurrentPassword"
                             label="Current Password"
                             class="mt-3"
@@ -152,28 +150,28 @@ function applyCrop() {
                                 autocomplete="current-password"
                                 help-text="Required to change your email or password."
                             />
-                        </AppFormGroup>
+                        </VibeFormGroup>
 
                         <hr class="my-4">
                         <h2 class="h6 text-muted text-uppercase mb-3">Directory profile</h2>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <AppFormGroup label="Job title"><VibeFormInput v-model="form.title" /></AppFormGroup>
+                                <VibeFormGroup label="Job title"><VibeFormInput v-model="form.title" /></VibeFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Department"><VibeFormInput v-model="form.department" /></AppFormGroup>
+                                <VibeFormGroup label="Department"><VibeFormInput v-model="form.department" /></VibeFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></AppFormGroup>
+                                <VibeFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></VibeFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Location"><VibeFormInput v-model="form.location" /></AppFormGroup>
+                                <VibeFormGroup label="Location"><VibeFormInput v-model="form.location" /></VibeFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></AppFormGroup>
+                                <VibeFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></VibeFormGroup>
                             </div>
                             <div class="col-12">
-                                <AppFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></AppFormGroup>
+                                <VibeFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></VibeFormGroup>
                             </div>
                         </div>
 
@@ -186,7 +184,7 @@ function applyCrop() {
         </VibeRow>
 
         <!-- Crop modal -->
-        <AppModal v-model="cropOpen" title="Crop photo" size="lg" centered hide-footer>
+        <VibeModal v-model="cropOpen" title="Crop photo" size="lg" centered hide-footer>
             <Cropper
                 ref="cropper"
                 :src="cropSrc"
@@ -198,6 +196,6 @@ function applyCrop() {
                 <VibeButton variant="secondary" outline class="me-2" @click="cropOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</VibeButton>
             </div>
-        </AppModal>
+        </VibeModal>
     </AppLayout>
 </template>

@@ -8,7 +8,6 @@ import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 import ResourceModal from '../../Components/ResourceModal.vue';
 
 const props = defineProps({
@@ -221,24 +220,24 @@ async function onImportFile(e) {
             edit-title="Edit secret"
         >
             <template #default="{ editingId }">
-                <AppFormGroup label="Name" :error="form.errors.name"><VibeFormInput v-model="form.name" placeholder="AWS root" /></AppFormGroup>
+                <VibeFormGroup label="Name" :error="form.errors.name"><VibeFormInput v-model="form.name" placeholder="AWS root" /></VibeFormGroup>
                 <div class="row">
-                    <div class="col-6"><AppFormGroup label="Username" :error="form.errors.username"><VibeFormInput v-model="form.username" /></AppFormGroup></div>
-                    <div class="col-6"><AppFormGroup label="Category" :error="form.errors.category"><VibeFormInput v-model="form.category" /></AppFormGroup></div>
+                    <div class="col-6"><VibeFormGroup label="Username" :error="form.errors.username"><VibeFormInput v-model="form.username" /></VibeFormGroup></div>
+                    <div class="col-6"><VibeFormGroup label="Category" :error="form.errors.category"><VibeFormInput v-model="form.category" /></VibeFormGroup></div>
                 </div>
-                <AppFormGroup label="URL" :error="form.errors.url"><VibeFormInput v-model="form.url" placeholder="https://…" /></AppFormGroup>
-                <AppFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
+                <VibeFormGroup label="URL" :error="form.errors.url"><VibeFormInput v-model="form.url" placeholder="https://…" /></VibeFormGroup>
+                <VibeFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
                     <div class="d-flex gap-2">
                         <VibeFormInput v-model="form.secret" class="flex-grow-1" />
                         <VibeButton variant="secondary" outline title="Generate" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
                     </div>
-                </AppFormGroup>
-                <AppFormGroup label="Share with group" :error="form.errors.group_id">
+                </VibeFormGroup>
+                <VibeFormGroup label="Share with group" :error="form.errors.group_id">
                     <VibeFormSelect v-model="form.group_id">
                         <option value="">Private (only me)</option>
                         <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                     </VibeFormSelect>
-                </AppFormGroup>
+                </VibeFormGroup>
             </template>
         </ResourceModal>
     </AppLayout>

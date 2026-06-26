@@ -1,7 +1,6 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const form = useForm({ email: '', password: '', remember: false });
@@ -15,20 +14,20 @@ function submit() {
     <GuestLayout title="Sign in">
         <form @submit.prevent="submit">
 <FormErrorSummary :errors="form.errors" />
-<AppFormGroup
+<VibeFormGroup
                 label="Email"
                 :error="form.errors.email"
              required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
-            </AppFormGroup>
+            </VibeFormGroup>
 
-<AppFormGroup
+<VibeFormGroup
                 label="Password"
                 class="mt-3"
                 :error="form.errors.password"
              required>
                 <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" />
-            </AppFormGroup>
+            </VibeFormGroup>
 
             <VibeFormCheckbox v-model="form.remember" label="Remember me" class="mt-3" />
 

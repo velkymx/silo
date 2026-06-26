@@ -12,8 +12,6 @@ import QuickLookModal from '../../Components/QuickLookModal.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
-import AppModal from '../../Components/AppModal.vue';
-import AppFormGroup from '../../Components/AppFormGroup.vue';
 import ResourceModal from '../../Components/ResourceModal.vue';
 
 const { confirm } = useConfirm();
@@ -380,14 +378,14 @@ function saveEdit() {
         </QuickLookModal>
 
         <!-- Upload -->
-        <AppModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
+        <VibeModal v-model="uploadOpen" title="Upload Photos" size="lg" centered>
             <VibeFileInput v-model="uploadForm.files" label="Choose images" multiple drag-drop accept="image/*" />
             <p v-if="uploadForm.errors['files.0']" class="text-danger small mt-1">{{ uploadForm.errors['files.0'] }}</p>
             <template #footer>
                 <VibeButton variant="secondary" outline @click="uploadOpen = false">Cancel</VibeButton>
                 <VibeButton variant="primary" :disabled="uploadForm.processing || !uploadForm.files.length" @click="submitUpload">Upload</VibeButton>
             </template>
-        </AppModal>
+        </VibeModal>
 
         <!-- New album -->
         <ResourceModal
@@ -399,13 +397,13 @@ function saveEdit() {
             edit-title="Edit Album"
             add-label="Create"
         >
-            <AppFormGroup label="Album name">
+            <VibeFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />
-            </AppFormGroup>
+            </VibeFormGroup>
         </ResourceModal>
 
         <!-- Photo editor -->
-        <AppModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
+        <VibeModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
             <div class="d-flex gap-2 mb-2 flex-wrap">
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(-90)"><VibeIcon icon="arrow-counterclockwise" /> Left</VibeButton>
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(90)"><VibeIcon icon="arrow-clockwise" /> Right</VibeButton>
@@ -425,7 +423,7 @@ function saveEdit() {
                 class="bg-dark"
                 style="height: calc(100vh - 180px)"
             />
-        </AppModal>
+        </VibeModal>
     </AppLayout>
 </template>
 
