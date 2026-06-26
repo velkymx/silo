@@ -19,7 +19,7 @@ function submit() {
                 label="Name"
                 :error="form.errors.name"
              required>
-                <AppFormInput v-model="form.name" required autocomplete="name" />
+                <VibeFormInput v-model="form.name" required autocomplete="name" />
             </AppFormGroup>
 
 <AppFormGroup
@@ -27,7 +27,7 @@ function submit() {
                 class="mt-3"
                 :error="form.errors.email"
              required>
-                <AppFormInput v-model="form.email" type="email" required autocomplete="username" />
+                <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
             </AppFormGroup>
 
 <AppFormGroup
@@ -35,11 +35,11 @@ function submit() {
                 class="mt-3"
                 :error="form.errors.password"
              required>
-                <AppFormInput v-model="form.password" type="password" required autocomplete="new-password" />
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
             </AppFormGroup>
 
             <AppFormGroup label="Confirm Password" class="mt-3" required>
-                <AppFormInput
+                <VibeFormInput
                     v-model="form.password_confirmation"
                     type="password"
                     required
@@ -47,9 +47,9 @@ function submit() {
                 />
             </AppFormGroup>
 
-            <AppButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
+            <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                 <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Creating account…' : 'Register' }}
-            </AppButton>
+            </VibeButton>
 
             <div class="text-center mt-3 small">
                 <Link href="/login" class="text-decoration-none">Already have an account? Sign in</Link>

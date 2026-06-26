@@ -58,7 +58,7 @@ async function open(person) {
 
             <div class="row g-2 mb-3">
                 <div class="col-12 col-md-6">
-                    <AppFormInput v-model="search" type="search" placeholder="Search people, titles…" />
+                    <VibeFormInput v-model="search" type="search" placeholder="Search people, titles…" />
                 </div>
                 <div class="col-12 col-md-4">
                     <VibeFormSelect v-model="department">

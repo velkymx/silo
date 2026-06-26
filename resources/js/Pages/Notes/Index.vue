@@ -200,9 +200,9 @@ onMounted(() => {
 
             <template #list>
                 <SelectBar :count="selectedNotes.length" @clear="noteClearSel">
-                    <AppButton variant="danger" size="sm" outline @click="bulkDeleteNotes">
+                    <VibeButton variant="danger" size="sm" outline @click="bulkDeleteNotes">
                         <VibeIcon icon="trash" class="me-1" />Delete
-                    </AppButton>
+                    </VibeButton>
                 </SelectBar>
                 <NotesList
                     :notes="filteredNotes"
@@ -235,9 +235,9 @@ onMounted(() => {
                                 <span v-if="saveState === 'saving'">Saving…</span>
                                 <span v-else-if="saveState === 'saved'">Saved</span>
                             </small>
-                            <AppButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
+                            <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
                                 <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />
-                            </AppButton>
+                            </VibeButton>
                             <VibeDropdown
                                 size="sm"
                                 variant="secondary"
@@ -253,9 +253,9 @@ onMounted(() => {
                                     <span class="font-monospace text-muted me-1" style="white-space: pre">{{ item.text }}</span>
                                 </template>
                             </VibeDropdown>
-                            <AppButton size="sm" variant="secondary" outline title="Save a version" @click="saveVersion">
+                            <VibeButton size="sm" variant="secondary" outline title="Save a version" @click="saveVersion">
                                 <VibeIcon icon="bookmark-plus" class="me-1" />Save version
-                            </AppButton>
+                            </VibeButton>
                         </div>
                     </div>
                     <div class="notes-editor-body">

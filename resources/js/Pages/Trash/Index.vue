@@ -53,9 +53,9 @@ async function emptyTrash() {
     <AppLayout>
         <PageHeader title="Trash" icon="trash">
             <template #actions>
-                <AppButton v-if="items.length" variant="danger" outline @click="emptyTrash">
+                <VibeButton v-if="items.length" variant="danger" outline @click="emptyTrash">
                     <VibeIcon icon="trash" class="me-1" />Empty Trash
-                </AppButton>
+                </VibeButton>
             </template>
         </PageHeader>
         <p class="text-muted small">Items are permanently removed after the retention period.</p>
@@ -77,12 +77,12 @@ async function emptyTrash() {
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
-                    <AppButton variant="success" size="sm" outline @click="restore(item)">
+                    <VibeButton variant="success" size="sm" outline @click="restore(item)">
                         <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
-                    </AppButton>
-                    <AppButton variant="danger" size="sm" outline @click="purge(item)">
+                    </VibeButton>
+                    <VibeButton variant="danger" size="sm" outline @click="purge(item)">
                         <VibeIcon icon="trash" />
-                    </AppButton>
+                    </VibeButton>
                 </div>
             </template>
         </VibeDataTable>

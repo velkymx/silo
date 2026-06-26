@@ -20,12 +20,12 @@ function submit() {
                 label="Password"
                 :error="form.errors.password"
              required>
-                <AppFormInput v-model="form.password" type="password" required autocomplete="current-password" />
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" />
             </AppFormGroup>
 
-            <AppButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
+            <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                 <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Confirming…' : 'Confirm' }}
-            </AppButton>
+            </VibeButton>
         </form>
     </GuestLayout>
 </template>

@@ -174,9 +174,9 @@ async function runMaintenance(action) {
                 <div class="d-flex flex-column p-2">
                 <div class="d-flex align-items-center justify-content-between px-1 mb-1">
                     <span class="fw-semibold small text-uppercase text-muted">Folders</span>
-                    <AppButton size="sm" variant="light" title="New folder" @click="addFolder">
+                    <VibeButton size="sm" variant="light" title="New folder" @click="addFolder">
                         <VibeIcon icon="folder-plus" />
-                    </AppButton>
+                    </VibeButton>
                 </div>
                 <button
                     type="button"
@@ -216,7 +216,7 @@ async function runMaintenance(action) {
 
             <template #list>
                 <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
-                    <AppFormInput v-model="search" type="search" placeholder="Search…" no-wrapper class="flex-grow-1" />
+                    <VibeFormInput v-model="search" type="search" placeholder="Search…" no-wrapper class="flex-grow-1" />
                     <VibeDropdown size="sm" variant="light" menu-end title="Sort" :items="sortOptions" @item-click="sortOrder = $event.item.value">
                         <template #button><VibeIcon icon="sort-down" /></template>
                         <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
@@ -225,10 +225,10 @@ async function runMaintenance(action) {
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>
                         <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                     </VibeDropdown>
-                    <AppButton size="sm" variant="secondary" outline title="Import a Chrome/Firefox bookmarks HTML export" @click="importInput?.click()">
+                    <VibeButton size="sm" variant="secondary" outline title="Import a Chrome/Firefox bookmarks HTML export" @click="importInput?.click()">
                         <VibeIcon icon="upload" />
-                    </AppButton>
-                    <AppButton
+                    </VibeButton>
+                    <VibeButton
                         size="sm"
                         :variant="bmSelectMode ? 'primary' : 'secondary'"
                         outline
@@ -236,17 +236,17 @@ async function runMaintenance(action) {
                         @click="bmSelectMode = !bmSelectMode"
                     >
                         <VibeIcon icon="check2-square" />
-                    </AppButton>
-                    <AppButton size="sm" variant="primary" title="New bookmark" @click="openAdd">
+                    </VibeButton>
+                    <VibeButton size="sm" variant="primary" title="New bookmark" @click="openAdd">
                         <VibeIcon icon="plus-lg" />
-                    </AppButton>
+                    </VibeButton>
                     <input ref="importInput" type="file" accept=".html,.htm,text/html" class="d-none" @change="onImportFile">
                 </div>
 
                 <SelectBar :count="selectedBms.length" class="mx-3 mt-2" @clear="bmClearSel">
-                    <AppButton variant="danger" size="sm" outline @click="bulkDeleteBms">
+                    <VibeButton variant="danger" size="sm" outline @click="bulkDeleteBms">
                         <VibeIcon icon="trash" class="me-1" />Remove
-                    </AppButton>
+                    </VibeButton>
                 </SelectBar>
 
                 <div class="flex-grow-1 overflow-auto">
@@ -317,11 +317,11 @@ async function runMaintenance(action) {
                                 <VibeIcon icon="box-arrow-up-right" class="me-1" />Open
                             </a>
                             <template v-if="selectedBookmark.can_edit">
-                                <AppButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
+                                <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
                                     <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
-                                </AppButton>
-                                <AppButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</AppButton>
-                                <AppButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Remove</AppButton>
+                                </VibeButton>
+                                <VibeButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</VibeButton>
+                                <VibeButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Remove</VibeButton>
                             </template>
                         </div>
                     </div>
@@ -342,18 +342,18 @@ async function runMaintenance(action) {
             edit-title="Edit bookmark"
         >
             <AppFormGroup label="Title" :error="form.errors.title">
-                <AppFormInput v-model="form.title" placeholder="Payroll portal" />
+                <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
             </AppFormGroup>
             <AppFormGroup label="URL" :error="form.errors.url">
-                <AppFormInput v-model="form.url" placeholder="https://…" />
+                <VibeFormInput v-model="form.url" placeholder="https://…" />
             </AppFormGroup>
             <AppFormGroup label="Description" :error="form.errors.description">
-                <AppFormInput v-model="form.description" placeholder="Optional" />
+                <VibeFormInput v-model="form.description" placeholder="Optional" />
             </AppFormGroup>
             <div class="row">
                 <div class="col-6">
                     <AppFormGroup label="Folder" :error="form.errors.category" help-text="Type a name to create a folder">
-                        <AppFormInput v-model="form.category" placeholder="e.g. Tools" list="bm-folders" />
+                        <VibeFormInput v-model="form.category" placeholder="e.g. Tools" list="bm-folders" />
                         <datalist id="bm-folders">
                             <option v-for="f in folders" :key="f" :value="f" />
                         </datalist>
@@ -361,7 +361,7 @@ async function runMaintenance(action) {
                 </div>
                 <div class="col-6">
                     <AppFormGroup label="Icon" :error="form.errors.icon" help-text="Bootstrap icon name (blank = auto favicon)">
-                        <AppFormInput v-model="form.icon" placeholder="link-45deg" />
+                        <VibeFormInput v-model="form.icon" placeholder="link-45deg" />
                     </AppFormGroup>
                 </div>
             </div>

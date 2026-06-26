@@ -67,21 +67,21 @@ async function saveSmartFolder(): Promise<void> {
     <AppModal v-model="open" title="Advanced Search" size="lg" centered scrollable>
         <div class="mx-auto" style="max-width: 640px">
             <AppFormGroup label="Contains text">
-                <AppFormInput v-model="adv.search" placeholder="Name or content…" />
+                <VibeFormInput v-model="adv.search" placeholder="Name or content…" />
             </AppFormGroup>
 
             <AppFormGroup label="Date" class="mt-1">
                 <div class="row g-2">
                     <div class="col-12 col-sm-4"><VibeFormSelect v-model="adv.date_target" :options="dateTargetOptions" /></div>
-                    <div class="col"><AppFormInput v-model="adv.date_from" type="date" aria-label="Date from" /></div>
-                    <div class="col"><AppFormInput v-model="adv.date_to" type="date" aria-label="Date to" /></div>
+                    <div class="col"><VibeFormInput v-model="adv.date_from" type="date" aria-label="Date from" /></div>
+                    <div class="col"><VibeFormInput v-model="adv.date_to" type="date" aria-label="Date to" /></div>
                 </div>
             </AppFormGroup>
 
             <AppFormGroup label="Size" class="mt-1">
                 <div class="row g-2">
-                    <div class="col"><AppFormInput v-model="adv.size_min" type="number" min="0" step="any" placeholder="Min" aria-label="Min size" /></div>
-                    <div class="col"><AppFormInput v-model="adv.size_max" type="number" min="0" step="any" placeholder="Max" aria-label="Max size" /></div>
+                    <div class="col"><VibeFormInput v-model="adv.size_min" type="number" min="0" step="any" placeholder="Min" aria-label="Min size" /></div>
+                    <div class="col"><VibeFormInput v-model="adv.size_max" type="number" min="0" step="any" placeholder="Max" aria-label="Max size" /></div>
                     <div class="col-4 col-sm-3"><VibeFormSelect v-model="adv.size_unit" :options="sizeUnitOptions" aria-label="Size unit" /></div>
                 </div>
             </AppFormGroup>
@@ -97,12 +97,12 @@ async function saveSmartFolder(): Promise<void> {
         </div>
         <template #footer>
             <div class="d-flex w-100 gap-2">
-                <AppButton variant="secondary" outline @click="saveSmartFolder">
+                <VibeButton variant="secondary" outline @click="saveSmartFolder">
                     <VibeIcon icon="bookmark-plus" class="me-1" />Save as Smart Folder
-                </AppButton>
+                </VibeButton>
                 <div class="ms-auto d-flex gap-2">
-                    <AppButton variant="secondary" outline @click="open = false">Cancel</AppButton>
-                    <AppButton variant="primary" @click="applyAdvanced"><VibeIcon icon="search" class="me-1" />Search</AppButton>
+                    <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
+                    <VibeButton variant="primary" @click="applyAdvanced"><VibeIcon icon="search" class="me-1" />Search</VibeButton>
                 </div>
             </div>
         </template>

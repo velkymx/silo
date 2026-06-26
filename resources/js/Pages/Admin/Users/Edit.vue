@@ -39,7 +39,7 @@ function submit() {
                             label="Name"
                             :error="form.errors.name"
                          required>
-                            <AppFormInput v-model="form.name" required />
+                            <VibeFormInput v-model="form.name" required />
                         </AppFormGroup>
 
                         <AppFormGroup
@@ -47,7 +47,7 @@ function submit() {
                             class="mt-3"
                             :error="form.errors.email"
                          required>
-                            <AppFormInput v-model="form.email" type="email" required />
+                            <VibeFormInput v-model="form.email" type="email" required />
                         </AppFormGroup>
 
                         <AppFormGroup
@@ -65,7 +65,7 @@ function submit() {
                             class="mt-3"
                             :error="form.errors.password"
                         >
-                            <AppFormInput
+                            <VibeFormInput
                                 v-model="form.password"
                                 type="password"
                                 autocomplete="new-password"
@@ -74,12 +74,12 @@ function submit() {
                         </AppFormGroup>
 
                         <AppFormGroup label="Confirm Password" class="mt-3">
-                            <AppFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
+                            <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
                         </AppFormGroup>
 
                         <div class="mt-4 d-flex gap-2">
-                            <AppButton type="submit" variant="primary" :disabled="form.processing"><VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save' }}</AppButton>
-                            <AppButton variant="secondary" outline href="/users">Cancel</AppButton>
+                            <VibeButton type="submit" variant="primary" :disabled="form.processing"><VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save' }}</VibeButton>
+                            <VibeButton variant="secondary" outline href="/users">Cancel</VibeButton>
                         </div>
                     </form>
                 </VibeCard>

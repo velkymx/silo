@@ -8,7 +8,7 @@ const emit = defineEmits<{ clear: [] }>();
         <strong>{{ count }} selected</strong>
         <div class="ms-auto d-flex flex-wrap gap-2">
             <slot />
-            <AppButton variant="secondary" size="sm" outline @click="emit('clear')">Clear</AppButton>
+            <VibeButton variant="secondary" size="sm" outline @click="emit('clear')">Clear</VibeButton>
         </div>
     </div>
 </template>

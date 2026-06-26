@@ -614,42 +614,42 @@ onBeforeUnmount(() => {
                 </template>
             </VibeBreadcrumb>
             <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
-                <AppButton variant="primary" @click="uploadOpen = true">
+                <VibeButton variant="primary" @click="uploadOpen = true">
                     <VibeIcon icon="upload" class="me-1" />Upload
-                </AppButton>
+                </VibeButton>
                 <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
                     <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
-                <AppButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
+                <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
                     <VibeIcon icon="funnel" class="me-1" />Filters
-                </AppButton>
-                <AppButton
+                </VibeButton>
+                <VibeButton
                     :variant="selectMode ? 'primary' : 'secondary'"
                     :outline="!selectMode"
                     title="Select multiple"
                     @click="selectMode ? clearSelection() : (selectMode = true)"
                 >
                     <VibeIcon icon="check2-square" class="me-1" />Select
-                </AppButton>
+                </VibeButton>
                 <div class="vr mx-1 d-none d-sm-block"></div>
                 <VibeButtonGroup>
-                    <AppButton
+                    <VibeButton
                         :variant="viewMode === 'list' ? 'primary' : 'secondary'"
                         :outline="viewMode !== 'list'"
                         title="List view"
                         @click="viewMode = 'list'"
                     >
                         <VibeIcon icon="list-ul" />
-                    </AppButton>
-                    <AppButton
+                    </VibeButton>
+                    <VibeButton
                         :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
                         :outline="viewMode !== 'grid'"
                         title="Thumbnail view"
                         @click="viewMode = 'grid'"
                     >
                         <VibeIcon icon="grid-3x3-gap-fill" />
-                    </AppButton>
+                    </VibeButton>
                 </VibeButtonGroup>
             </div>
         </div>
@@ -675,7 +675,7 @@ onBeforeUnmount(() => {
                 <VibeIcon :icon="f.icon" />{{ f.label }}
                 <VibeIcon icon="x" style="cursor: pointer" :aria-label="`Clear ${f.label}`" @click="f.clear()" />
             </VibeBadge>
-            <AppButton variant="link" size="sm" class="ms-auto p-0 text-decoration-none" @click="clearAllFilters">Clear all</AppButton>
+            <VibeButton variant="link" size="sm" class="ms-auto p-0 text-decoration-none" @click="clearAllFilters">Clear all</VibeButton>
         </VibeAlert>
 
         <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
@@ -705,9 +705,9 @@ onBeforeUnmount(() => {
                 </VibeCol>
             </VibeRow>
             <div v-if="gridShown < items.length" class="text-center my-3">
-                <AppButton variant="secondary" outline @click="gridShown += gridPageSize">
+                <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
                     Show more ({{ items.length - gridShown }} more)
-                </AppButton>
+                </VibeButton>
             </div>
         </template>
 
@@ -725,9 +725,9 @@ onBeforeUnmount(() => {
             @row-clicked="selectFile"
         >
             <template v-if="flat" #cell(location)="{ item }">
-                <AppButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
+                <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
                     {{ item.location?.path }}
-                </AppButton>
+                </VibeButton>
             </template>
 
             <template #cell(name)="{ item }">
@@ -814,11 +814,11 @@ onBeforeUnmount(() => {
                         @keyup.enter="addTag()"
                     />
                 </div>
-                <AppButton variant="secondary" @click="addTag()">Add</AppButton>
+                <VibeButton variant="secondary" @click="addTag()">Add</VibeButton>
             </div>
             <template #footer>
-                <AppButton variant="secondary" outline @click="tagsOpen = false">Cancel</AppButton>
-                <AppButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</AppButton>
+                <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</VibeButton>
             </template>
         </AppModal>
 
@@ -848,17 +848,17 @@ onBeforeUnmount(() => {
                 <template #cell(created_at)="{ item }"><span class="small">{{ item.created_at }}</span></template>
                 <template #cell(actions)="{ item }">
                     <div class="d-flex justify-content-end gap-1">
-                        <AppButton
+                        <VibeButton
                             variant="success"
                             size="sm"
                             :href="`/files/${versionsItem.id}/versions/${item.id}/download`"
                             :aria-label="`Download version ${item.version}`"
                         >
                             <VibeIcon icon="download" />
-                        </AppButton>
-                        <AppButton variant="primary" size="sm" outline @click="restoreVersion(item)">
+                        </VibeButton>
+                        <VibeButton variant="primary" size="sm" outline @click="restoreVersion(item)">
                             <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
-                        </AppButton>
+                        </VibeButton>
                     </div>
                 </template>
             </VibeDataTable>
@@ -887,12 +887,12 @@ onBeforeUnmount(() => {
                     label="Folder Name"
                     :error="folderForm.errors.folder_name"
                  required>
-                    <AppFormInput v-model="folderForm.folder_name" required />
+                    <VibeFormInput v-model="folderForm.folder_name" required />
                 </AppFormGroup>
             </form>
             <template #footer>
-                <AppButton variant="secondary" outline @click="folderOpen = false">Cancel</AppButton>
-                <AppButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</AppButton>
+                <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</VibeButton>
             </template>
         </AppModal>
 
@@ -910,10 +910,10 @@ onBeforeUnmount(() => {
                 </AppFormGroup>
             </form>
             <template #footer>
-                <AppButton variant="secondary" outline @click="transferOpen = false">Cancel</AppButton>
-                <AppButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
+                <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
                     <VibeSpinner v-if="transferForm.processing" size="sm" class="me-1" />{{ transferForm.processing ? (transferMode === 'move' ? 'Moving…' : 'Copying…') : (transferMode === 'move' ? 'Move' : 'Copy') }}
-                </AppButton>
+                </VibeButton>
             </template>
         </AppModal>
 

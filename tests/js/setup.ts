@@ -30,11 +30,9 @@ const components: Record<string, any> = {
 
     // Forwards fallthrough @click to a real button.
     VibeButton: { name: 'VibeButton', template: '<button class="vibe-btn"><slot /></button>' },
-    AppButton: { name: 'AppButton', template: '<button class="app-btn"><slot /></button>' },
     VibeButtonGroup: passthrough('VibeButtonGroup'),
 
     VibeFormInput: inputStub('VibeFormInput'),
-    AppFormInput: inputStub('AppFormInput'),
     VibeFormTextarea: inputStub('VibeFormTextarea'),
     VibeFormSelect: inputStub('VibeFormSelect'),
     VibeFileInput: inputStub('VibeFileInput', 'file'),

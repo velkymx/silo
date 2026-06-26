@@ -133,18 +133,18 @@ async function onImportFile(e) {
         <div class="p-3 p-lg-4">
             <PageHeader title="Vault" icon="lock-fill">
                 <template #actions>
-                    <AppButton
+                    <VibeButton
                         :variant="vaultSelectMode ? 'primary' : 'secondary'"
                         outline
                         title="Select secrets"
                         @click="vaultSelectMode = !vaultSelectMode"
                     >
                         <VibeIcon icon="check2-square" class="me-1" />Select
-                    </AppButton>
-                    <AppButton variant="secondary" outline title="Import a Chrome password CSV export" @click="importInput?.click()">
+                    </VibeButton>
+                    <VibeButton variant="secondary" outline title="Import a Chrome password CSV export" @click="importInput?.click()">
                         <VibeIcon icon="upload" class="me-1" />Import
-                    </AppButton>
-                    <AppButton variant="primary" @click="openAdd"><VibeIcon icon="plus-lg" class="me-1" />Add secret</AppButton>
+                    </VibeButton>
+                    <VibeButton variant="primary" @click="openAdd"><VibeIcon icon="plus-lg" class="me-1" />Add secret</VibeButton>
                     <input ref="importInput" type="file" accept=".csv,text/csv" class="d-none" @change="onImportFile">
                 </template>
             </PageHeader>
@@ -154,9 +154,9 @@ async function onImportFile(e) {
             </VibeAlert>
 
             <SelectBar :count="selectedVaultItems.length" class="mb-3" @clear="vaultClearSel">
-                <AppButton variant="danger" size="sm" outline @click="bulkDeleteVault">
+                <VibeButton variant="danger" size="sm" outline @click="bulkDeleteVault">
                     <VibeIcon icon="trash" class="me-1" />Remove
-                </AppButton>
+                </VibeButton>
             </SelectBar>
 
             <p v-if="!items.length" class="text-muted">No secrets yet.</p>
@@ -195,18 +195,18 @@ async function onImportFile(e) {
                                 <span v-else>••••••••••</span>
                             </div>
                         </div>
-                        <AppButton size="sm" variant="secondary" outline :title="revealed[item.id] ? 'Hide' : 'Reveal'" @click="reveal(item)">
+                        <VibeButton size="sm" variant="secondary" outline :title="revealed[item.id] ? 'Hide' : 'Reveal'" @click="reveal(item)">
                             <VibeIcon :icon="revealed[item.id] ? 'eye-slash' : 'eye'" />
-                        </AppButton>
-                        <AppButton v-if="revealed[item.id]" size="sm" variant="secondary" outline title="Copy" @click="copy(item.id)">
+                        </VibeButton>
+                        <VibeButton v-if="revealed[item.id]" size="sm" variant="secondary" outline title="Copy" @click="copy(item.id)">
                             <VibeIcon icon="clipboard" />
-                        </AppButton>
-                        <AppButton v-if="item.can_edit" size="sm" variant="light" title="Edit" @click="openEdit(item)">
+                        </VibeButton>
+                        <VibeButton v-if="item.can_edit" size="sm" variant="light" title="Edit" @click="openEdit(item)">
                             <VibeIcon icon="pencil" />
-                        </AppButton>
-                        <AppButton v-if="item.can_edit" size="sm" variant="light" title="Remove" @click="remove(item)">
+                        </VibeButton>
+                        <VibeButton v-if="item.can_edit" size="sm" variant="light" title="Remove" @click="remove(item)">
                             <VibeIcon icon="trash" />
-                        </AppButton>
+                        </VibeButton>
                     </div>
                 </div>
             </div>
@@ -221,16 +221,16 @@ async function onImportFile(e) {
             edit-title="Edit secret"
         >
             <template #default="{ editingId }">
-                <AppFormGroup label="Name" :error="form.errors.name"><AppFormInput v-model="form.name" placeholder="AWS root" /></AppFormGroup>
+                <AppFormGroup label="Name" :error="form.errors.name"><VibeFormInput v-model="form.name" placeholder="AWS root" /></AppFormGroup>
                 <div class="row">
-                    <div class="col-6"><AppFormGroup label="Username" :error="form.errors.username"><AppFormInput v-model="form.username" /></AppFormGroup></div>
-                    <div class="col-6"><AppFormGroup label="Category" :error="form.errors.category"><AppFormInput v-model="form.category" /></AppFormGroup></div>
+                    <div class="col-6"><AppFormGroup label="Username" :error="form.errors.username"><VibeFormInput v-model="form.username" /></AppFormGroup></div>
+                    <div class="col-6"><AppFormGroup label="Category" :error="form.errors.category"><VibeFormInput v-model="form.category" /></AppFormGroup></div>
                 </div>
-                <AppFormGroup label="URL" :error="form.errors.url"><AppFormInput v-model="form.url" placeholder="https://…" /></AppFormGroup>
+                <AppFormGroup label="URL" :error="form.errors.url"><VibeFormInput v-model="form.url" placeholder="https://…" /></AppFormGroup>
                 <AppFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
                     <div class="d-flex gap-2">
-                        <AppFormInput v-model="form.secret" class="flex-grow-1" />
-                        <AppButton variant="secondary" outline title="Generate" @click="generate"><VibeIcon icon="shuffle" /></AppButton>
+                        <VibeFormInput v-model="form.secret" class="flex-grow-1" />
+                        <VibeButton variant="secondary" outline title="Generate" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
                     </div>
                 </AppFormGroup>
                 <AppFormGroup label="Share with group" :error="form.errors.group_id">

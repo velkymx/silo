@@ -61,22 +61,22 @@ const variant = (action) => {
         <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
             <div class="col-sm-4">
                 <AppFormGroup label="Action">
-                    <AppFormInput v-model="filterForm.action" placeholder="e.g. upload, file.delete" />
+                    <VibeFormInput v-model="filterForm.action" placeholder="e.g. upload, file.delete" />
                 </AppFormGroup>
             </div>
             <div class="col-sm-3">
                 <AppFormGroup label="From">
-                    <AppFormInput v-model="filterForm.from" type="date" />
+                    <VibeFormInput v-model="filterForm.from" type="date" />
                 </AppFormGroup>
             </div>
             <div class="col-sm-3">
                 <AppFormGroup label="To">
-                    <AppFormInput v-model="filterForm.to" type="date" />
+                    <VibeFormInput v-model="filterForm.to" type="date" />
                 </AppFormGroup>
             </div>
             <div class="col-sm-2 d-flex gap-2">
-                <AppButton type="submit" variant="primary">Filter</AppButton>
-                <AppButton variant="secondary" outline @click="clearFilters">Clear</AppButton>
+                <VibeButton type="submit" variant="primary">Filter</VibeButton>
+                <VibeButton variant="secondary" outline @click="clearFilters">Clear</VibeButton>
             </div>
         </form>
 
@@ -105,13 +105,13 @@ const variant = (action) => {
                         :class="expanded.has(item.id) ? 'text-break' : 'text-truncate'"
                         :style="expanded.has(item.id) ? 'white-space: pre-wrap; max-width: 360px' : 'max-width: 220px'"
                     >{{ JSON.stringify(item.meta, null, expanded.has(item.id) ? 2 : 0) }}</code>
-                    <AppButton
+                    <VibeButton
                         variant="link"
                         size="sm"
                         class="p-0 ms-1 text-decoration-none"
                         :aria-label="expanded.has(item.id) ? 'Collapse details' : 'Expand details'"
                         @click="toggleMeta(item.id)"
-                    >{{ expanded.has(item.id) ? 'less' : 'more' }}</AppButton>
+                    >{{ expanded.has(item.id) ? 'less' : 'more' }}</VibeButton>
                 </template>
             </template>
         </VibeDataTable>

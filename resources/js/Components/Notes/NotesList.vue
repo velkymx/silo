@@ -20,7 +20,7 @@ const sortOptions = [
         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom gap-2">
             <span class="fw-semibold">Notes</span>
             <div class="d-flex align-items-center gap-1">
-                <AppButton
+                <VibeButton
                     size="sm"
                     :variant="selectMode ? 'primary' : 'secondary'"
                     outline
@@ -28,7 +28,7 @@ const sortOptions = [
                     @click="emit('update:select-mode', !selectMode)"
                 >
                     <VibeIcon icon="check2-square" />
-                </AppButton>
+                </VibeButton>
                 <VibeDropdown
                     size="sm"
                     variant="light"
@@ -40,9 +40,9 @@ const sortOptions = [
                     <template #button><VibeIcon icon="sort-down" /></template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
-                <AppButton size="sm" variant="primary" title="New note" @click="emit('new')">
+                <VibeButton size="sm" variant="primary" title="New note" @click="emit('new')">
                     <VibeIcon icon="plus-lg" />
-                </AppButton>
+                </VibeButton>
             </div>
         </div>
 

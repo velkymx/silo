@@ -98,9 +98,9 @@ function applyCrop() {
                             style="width: 72px; height: 72px"
                         >{{ initial }}</span>
                         <div>
-                            <AppButton variant="secondary" outline size="sm" @click="pickPhoto">
+                            <VibeButton variant="secondary" outline size="sm" @click="pickPhoto">
                                 <VibeIcon icon="camera" class="me-1" />Change photo
-                            </AppButton>
+                            </VibeButton>
                             <div class="small text-muted mt-1">JPG/PNG, square crop.</div>
                         </div>
                         <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="onFileChosen">
@@ -112,7 +112,7 @@ function applyCrop() {
                             label="Name"
                             :error="form.errors.name"
                          required>
-                            <AppFormInput v-model="form.name" required />
+                            <VibeFormInput v-model="form.name" required />
                         </AppFormGroup>
 
                         <AppFormGroup
@@ -120,7 +120,7 @@ function applyCrop() {
                             class="mt-3"
                             :error="form.errors.email"
                          required>
-                            <AppFormInput v-model="form.email" type="email" required />
+                            <VibeFormInput v-model="form.email" type="email" required />
                         </AppFormGroup>
 
                         <AppFormGroup
@@ -128,7 +128,7 @@ function applyCrop() {
                             class="mt-3"
                             :error="form.errors.password"
                         >
-                            <AppFormInput
+                            <VibeFormInput
                                 v-model="form.password"
                                 type="password"
                                 autocomplete="new-password"
@@ -137,7 +137,7 @@ function applyCrop() {
                         </AppFormGroup>
 
                         <AppFormGroup label="Confirm Password" class="mt-3">
-                            <AppFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
+                            <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
                         </AppFormGroup>
 
                         <AppFormGroup
@@ -146,7 +146,7 @@ function applyCrop() {
                             class="mt-3"
                             :error="form.errors.current_password"
                         >
-                            <AppFormInput
+                            <VibeFormInput
                                 v-model="form.current_password"
                                 type="password"
                                 autocomplete="current-password"
@@ -158,28 +158,28 @@ function applyCrop() {
                         <h2 class="h6 text-muted text-uppercase mb-3">Directory profile</h2>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <AppFormGroup label="Job title"><AppFormInput v-model="form.title" /></AppFormGroup>
+                                <AppFormGroup label="Job title"><VibeFormInput v-model="form.title" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Department"><AppFormInput v-model="form.department" /></AppFormGroup>
+                                <AppFormGroup label="Department"><VibeFormInput v-model="form.department" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Phone"><AppFormInput v-model="form.phone" /></AppFormGroup>
+                                <AppFormGroup label="Phone"><VibeFormInput v-model="form.phone" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Location"><AppFormInput v-model="form.location" /></AppFormGroup>
+                                <AppFormGroup label="Location"><VibeFormInput v-model="form.location" /></AppFormGroup>
                             </div>
                             <div class="col-md-6">
-                                <AppFormGroup label="Start date"><AppFormInput v-model="form.start_date" type="date" /></AppFormGroup>
+                                <AppFormGroup label="Start date"><VibeFormInput v-model="form.start_date" type="date" /></AppFormGroup>
                             </div>
                             <div class="col-12">
                                 <AppFormGroup label="About"><VibeFormTextarea v-model="form.bio" :rows="3" /></AppFormGroup>
                             </div>
                         </div>
 
-                        <AppButton type="submit" variant="primary" class="mt-4" :disabled="form.processing">
+                        <VibeButton type="submit" variant="primary" class="mt-4" :disabled="form.processing">
                             <VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save Changes' }}
-                        </AppButton>
+                        </VibeButton>
                     </form>
                 </VibeCard>
             </VibeCol>
@@ -195,8 +195,8 @@ function applyCrop() {
                 style="height: 360px"
             />
             <div class="text-end mt-3">
-                <AppButton variant="secondary" outline class="me-2" @click="cropOpen = false">Cancel</AppButton>
-                <AppButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</AppButton>
+                <VibeButton variant="secondary" outline class="me-2" @click="cropOpen = false">Cancel</VibeButton>
+                <VibeButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</VibeButton>
             </div>
         </AppModal>
     </AppLayout>

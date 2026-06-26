@@ -76,9 +76,9 @@ onBeforeUnmount(() => clearInterval(poll));
     <AppLayout>
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h4 class="mb-0"><VibeIcon icon="archive" class="me-2" />Backups</h4>
-            <AppButton variant="primary" @click="runNow">
+            <VibeButton variant="primary" @click="runNow">
                 <VibeIcon icon="play-fill" class="me-1" />Back up now
-            </AppButton>
+            </VibeButton>
         </div>
 
         <VibeRow class="g-3">
@@ -92,16 +92,16 @@ onBeforeUnmount(() => clearInterval(poll));
                         <VibeFormSelect v-model="scheduleForm.frequency" :options="frequencyOptions" />
                     </AppFormGroup>
                     <AppFormGroup label="Keep last (count)" class="mt-3">
-                        <AppFormInput v-model="scheduleForm.retention" type="number" min="1" max="365" />
+                        <VibeFormInput v-model="scheduleForm.retention" type="number" min="1" max="365" />
                     </AppFormGroup>
-                    <AppButton
+                    <VibeButton
                         variant="secondary"
                         class="mt-3"
                         :disabled="scheduleForm.processing"
                         @click="saveSchedule"
                     >
                         <VibeSpinner v-if="scheduleForm.processing" size="sm" class="me-1" />{{ scheduleForm.processing ? 'Saving…' : 'Save schedule' }}
-                    </AppButton>
+                    </VibeButton>
                     <VibeAlert variant="info" class="mt-3 mb-0 small">
                         Archives use <strong>ultra</strong> compression (bzip2 when available,
                         otherwise deflate). Requires the scheduler + a queue worker to be running.
@@ -140,7 +140,7 @@ onBeforeUnmount(() => clearInterval(poll));
                         </template>
                         <template #cell(actions)="{ item }">
                             <div class="d-flex justify-content-end gap-1">
-                                <AppButton
+                                <VibeButton
                                     v-if="item.status === 'ready'"
                                     variant="success"
                                     size="sm"
@@ -149,8 +149,8 @@ onBeforeUnmount(() => clearInterval(poll));
                                     :aria-label="`Download backup ${item.filename}`"
                                 >
                                     <VibeIcon icon="download" />
-                                </AppButton>
-                                <AppButton
+                                </VibeButton>
+                                <VibeButton
                                     v-if="item.status === 'ready'"
                                     variant="warning"
                                     size="sm"
@@ -160,10 +160,10 @@ onBeforeUnmount(() => clearInterval(poll));
                                     @click="restore(item)"
                                 >
                                     <VibeIcon icon="arrow-counterclockwise" />
-                                </AppButton>
-                                <AppButton variant="danger" size="sm" outline title="Delete" :aria-label="`Delete backup ${item.filename}`" @click="remove(item)">
+                                </VibeButton>
+                                <VibeButton variant="danger" size="sm" outline title="Delete" :aria-label="`Delete backup ${item.filename}`" @click="remove(item)">
                                     <VibeIcon icon="trash" />
-                                </AppButton>
+                                </VibeButton>
                             </div>
                         </template>
                     </VibeDataTable>

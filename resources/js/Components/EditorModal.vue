@@ -62,16 +62,16 @@ function save(): void {
         </div>
         <template v-else>
             <AppFormGroup v-if="creating" label="File name" class="mb-3">
-                <AppFormInput v-model="name" placeholder="untitled.md" />
+                <VibeFormInput v-model="name" placeholder="untitled.md" />
             </AppFormGroup>
             <MarkdownEditor v-if="kind === 'markdown'" v-model="content" />
             <VibeFormWysiwyg v-else v-model="content" height="60vh" />
         </template>
         <template #footer>
-            <AppButton variant="secondary" outline @click="open = false">Cancel</AppButton>
-            <AppButton variant="primary" :disabled="saving || loading" @click="save">
+            <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
+            <VibeButton variant="primary" :disabled="saving || loading" @click="save">
                 <VibeIcon icon="save" class="me-1" />{{ creating ? 'Create' : 'Save' }}
-            </AppButton>
+            </VibeButton>
         </template>
     </AppModal>
 </template>

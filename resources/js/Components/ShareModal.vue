@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
                     <td><VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ g.subject_label }}</td>
                     <td><VibeBadge variant="secondary">{{ g.ability }}</VibeBadge></td>
                     <td class="text-end">
-                        <AppButton variant="danger" size="sm" outline @click="removeGrant(g.id)"><VibeIcon icon="x" /></AppButton>
+                        <VibeButton variant="danger" size="sm" outline @click="removeGrant(g.id)"><VibeIcon icon="x" /></VibeButton>
                     </td>
                 </tr>
             </tbody>
@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
         <div class="row g-2">
             <div class="col-5"><VibeFormSelect v-model="grant.subject_type" :options="subjectTypeOptions" /></div>
             <div class="col-7">
-                <AppFormInput v-if="grant.subject_type === 'user'" v-model="grant.email" type="email" placeholder="person@example.com" />
+                <VibeFormInput v-if="grant.subject_type === 'user'" v-model="grant.email" type="email" placeholder="person@example.com" />
                 <VibeFormSelect v-else v-model="grant.group_id" :options="groups" placeholder="Choose a group…" />
             </div>
         </div>
@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
             />
         </div>
         <div class="text-end mt-3">
-            <AppButton variant="primary" :disabled="busy" @click="addGrant">Grant</AppButton>
+            <VibeButton variant="primary" :disabled="busy" @click="addGrant">Grant</VibeButton>
         </div>
 
         <template v-if="!item?.is_dir">
@@ -185,10 +185,10 @@ onBeforeUnmount(() => {
                             </div>
                         </td>
                         <td class="text-end text-nowrap">
-                            <AppButton variant="secondary" size="sm" outline @click="copyLink(link.url, link.id)">
+                            <VibeButton variant="secondary" size="sm" outline @click="copyLink(link.url, link.id)">
                                 <VibeIcon :icon="copied === link.id ? 'check' : 'clipboard'" />
-                            </AppButton>
-                            <AppButton variant="danger" size="sm" outline class="ms-1" @click="revokeLink(link.id)"><VibeIcon icon="x" /></AppButton>
+                            </VibeButton>
+                            <VibeButton variant="danger" size="sm" outline class="ms-1" @click="revokeLink(link.id)"><VibeIcon icon="x" /></VibeButton>
                         </td>
                     </tr>
                 </tbody>
@@ -197,13 +197,13 @@ onBeforeUnmount(() => {
 
             <div class="row g-2 align-items-center">
                 <div class="col-auto"><VibeFormCheckbox v-model="linkForm.allow_download" label="Allow download" /></div>
-                <div class="col"><AppFormInput v-model="linkForm.expires_in_days" type="number" placeholder="Expires in N days (optional)" /></div>
-                <div class="col"><AppFormInput v-model="linkForm.password" type="password" placeholder="Password (optional)" /></div>
-                <div class="col-auto"><AppButton variant="primary" @click="createLink">Create link</AppButton></div>
+                <div class="col"><VibeFormInput v-model="linkForm.expires_in_days" type="number" placeholder="Expires in N days (optional)" /></div>
+                <div class="col"><VibeFormInput v-model="linkForm.password" type="password" placeholder="Password (optional)" /></div>
+                <div class="col-auto"><VibeButton variant="primary" @click="createLink">Create link</VibeButton></div>
             </div>
         </template>
         <template #footer>
-            <AppButton variant="secondary" outline @click="open = false">Cancel</AppButton>
+            <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
         </template>
     </AppModal>
 </template>
