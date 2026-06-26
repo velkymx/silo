@@ -207,9 +207,8 @@ class BackupService
                     '--host='.($config['host'] ?? '127.0.0.1'),
                     '--port='.($config['port'] ?? 3306),
                     '--user='.($config['username'] ?? 'root'),
-                    '--password='.($config['password'] ?? ''),
                     $config['database'],
-                ], $tmp);
+                ], $tmp, ['MYSQL_PWD' => $config['password'] ?? '']);
 
                 return ['abs' => $tmp, 'name' => 'database.sql', 'cleanup' => true];
             }
@@ -239,9 +238,8 @@ class BackupService
     private function jsonSnapshot(): array
     {
         $tmp = tempnam(sys_get_temp_dir(), 'dbjson_');
-        $tables = collect(DB::select('SELECT name FROM sqlite_master WHERE type = "table"'))
-            ->pluck('name')
-            ->reject(fn ($t) => str_starts_with($t, 'sqlite_'));
+        $tables = collect(Schema::getTables())
+            ->pluck('name');
 
         $data = [];
         foreach ($tables as $table) {
