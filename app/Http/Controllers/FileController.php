@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ManagesFilesystem;
+use App\Http\Controllers\Concerns\SanitizesFilename;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
@@ -21,7 +22,7 @@ use Inertia\Inertia;
 
 class FileController extends Controller
 {
-    use ManagesFilesystem;
+    use ManagesFilesystem, SanitizesFilename;
     // Display files and folders for the current (DB-backed) folder.
     public function index(Request $request, \App\Services\FileSearch $search)
     {
@@ -498,20 +499,6 @@ class FileController extends Controller
             return redirect()->route('files.index', ['folder' => $parent?->id])
                 ->with('success', 'Files uploaded successfully!');
         });
-    }
-
-    /**
-     * Allowlist-sanitize an uploaded filename: strip any path components, keep
-     * only word chars, dash, dot, space and parens, collapse the rest to '_',
-     * and never allow a leading dot / empty result.
-     */
-    protected function sanitizeFilename(string $name): string
-    {
-        $name = basename(str_replace('\\', '/', $name));
-        $name = preg_replace('/[^\w\-. ()]+/u', '_', $name) ?? '';
-        $name = ltrim(trim($name), '.');
-
-        return $name !== '' ? mb_substr($name, 0, 255) : 'file';
     }
 
     // Download a file resolved by DB id (no client-supplied paths).

@@ -62,6 +62,42 @@ class PhotoTest extends TestCase
         $this->assertDatabaseMissing('album_file', ['album_id' => $album->id, 'file_id' => $photo->id]);
     }
 
+    public function test_upload_sanitizes_special_characters_in_filename(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        // FileController::sanitizeFilename() allowlists to [\w\-. ()] and strips leading dots.
+        // PhotoController skipped that step, so special chars survived in the DB name.
+        $tmp = tempnam(sys_get_temp_dir(), 'photo_test_');
+        imagejpeg(imagecreatetruecolor(1, 1), $tmp);
+        $upload = new UploadedFile($tmp, 'shell<xss>.jpg', 'image/jpeg', null, true);
+
+        $this->actingAs($user)->post(route('photos.upload'), [
+            'files' => [$upload],
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('files', ['name' => 'shell<xss>.jpg']);
+        $this->assertDatabaseHas('files', ['name' => 'shell_xss_.jpg', 'owner_id' => $user->id]);
+    }
+
+    public function test_upload_strips_leading_dot_from_filename(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $tmp = tempnam(sys_get_temp_dir(), 'photo_test_');
+        imagejpeg(imagecreatetruecolor(1, 1), $tmp);
+        $upload = new UploadedFile($tmp, '.htaccess.jpg', 'image/jpeg', null, true);
+
+        $this->actingAs($user)->post(route('photos.upload'), [
+            'files' => [$upload],
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('files', ['name' => '.htaccess.jpg']);
+        $this->assertDatabaseHas('files', ['name' => 'htaccess.jpg', 'owner_id' => $user->id]);
+    }
+
     public function test_cannot_touch_another_users_album(): void
     {
         $album = Album::create(['owner_id' => User::factory()->create()->id, 'name' => 'Private']);

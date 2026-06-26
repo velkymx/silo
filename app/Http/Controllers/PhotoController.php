@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\SanitizesFilename;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\Album;
 use App\Models\File;
@@ -15,6 +16,8 @@ use Inertia\Inertia;
 
 class PhotoController extends Controller
 {
+    use SanitizesFilename;
+
     private const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'tiff'];
 
     // The timeline grid + filters (album / tag).
@@ -80,7 +83,7 @@ class PhotoController extends Controller
         foreach ($request->file('files', []) as $upload) {
             $path = $upload->store("uploads/{$userId}", $disk);
             $file = File::create([
-                'name' => $upload->getClientOriginalName(),
+                'name' => $this->sanitizeFilename($upload->getClientOriginalName()),
                 'path' => $path,
                 'disk' => $disk,
                 'is_dir' => false,
