@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 
             <template #cell(size)="{ item }">
                 <span class="text-muted small">
-                    {{ item.is_dir ? `${item.item_count} item${item.item_count === 1 ? '' : 's'}` : `${(item.size / 1024).toFixed(1)} KB` }}
+                    {{ item.is_dir ? `${item.item_count} item${item.item_count === 1 ? '' : 's'}` : fmtBytes(item.size) }}
                 </span>
             </template>
 

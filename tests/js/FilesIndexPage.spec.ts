@@ -220,4 +220,12 @@ describe('Files/Index item actions (grid view)', () => {
         for (const c of w.findAll('button').filter((b) => b.text().trim() === 'Create')) await c.trigger('click');
         expect(s.formPost).toHaveBeenCalledWith('/folders', expect.anything());
     });
+
+    it('CR-05: size cell uses fmtBytes not raw division — 2 GB shows "2 GB" not "2097152.0 KB"', () => {
+        const bigFile = { id: 99, name: 'big.bin', is_dir: false, type: 'bin', size: 2 * 1024 * 1024 * 1024, status: 'ready', versions: [], tags: [], created_at: 'now' };
+        const w = mountIndex({ files: [bigFile] });
+        // Table view renders the size cell.
+        expect(w.text()).not.toContain('2097152.0 KB');
+        expect(w.text()).toContain('GB');
+    });
 });
