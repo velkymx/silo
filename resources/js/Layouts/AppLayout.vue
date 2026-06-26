@@ -129,7 +129,7 @@ const trashNav = computed(() => [
 const breakNav = computed(() => [
     { text: 'Crush', href: '/break/crush', icon: 'joystick', active: active((p) => p.startsWith('/break/crush')) },
     { text: 'Word', href: '/break/dwg', icon: 'type', active: active((p) => p.startsWith('/break/dwg')) },
-    { text: 'Sodoku', href: '/break/soduku', icon: 'grid-3x3', active: active((p) => p.startsWith('/break/soduku')) },
+    { text: 'Sodoku', href: '/break/sodoku', icon: 'grid-3x3', active: active((p) => p.startsWith('/break/sodoku')) },
 ]);
 
 const adminNav = computed(() => (user.value?.is_admin ? [

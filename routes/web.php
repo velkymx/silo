@@ -66,7 +66,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/break/dwg', [\App\Http\Controllers\DailyWordGameController::class, 'index'])->name('break.dwg');
     Route::post('/break/dwg/guess', [\App\Http\Controllers\DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
-    Route::get('/break/soduku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.soduku');
+    Route::get('/break/sodoku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.sodoku');
 
         Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
