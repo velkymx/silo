@@ -35,7 +35,14 @@ class VaultCrypto
     /** Prefer the dedicated VAULT_KEY; fall back to APP_KEY. Supports base64: prefix. */
     private function resolveKey(): string
     {
-        $key = (string) (config('vault.key') ?: config('app.key'));
+        $vaultKey = config('vault.key');
+
+        if (! $vaultKey && app()->isProduction()) {
+            // Rotating APP_KEY would silently invalidate all vault secrets.
+            logger()->warning('VAULT_KEY is not set; vault secrets encrypted with APP_KEY. Set VAULT_KEY in production.');
+        }
+
+        $key = (string) ($vaultKey ?: config('app.key'));
 
         if (str_starts_with($key, 'base64:')) {
             return base64_decode(substr($key, 7));
