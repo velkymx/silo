@@ -84,25 +84,40 @@ async function addGrant(): Promise<void> {
 
 async function removeGrant(id: number): Promise<void> {
     if (!props.item) return;
-    const data = await http.del<{ permissions: Grant[] }>(`/files/${props.item.id}/permissions/${id}`);
-    grants.value = data.permissions;
+    try {
+        const data = await http.del<{ permissions: Grant[] }>(`/files/${props.item.id}/permissions/${id}`);
+        grants.value = data.permissions;
+    } catch {
+        error.value = 'Could not remove access. Please try again.';
+    }
 }
 
 async function createLink(): Promise<void> {
     if (!props.item) return;
-    const data = await http.post<{ links: Link[] }>(`/files/${props.item.id}/links`, {
-        allow_download: linkForm.value.allow_download,
-        expires_in_days: linkForm.value.expires_in_days || null,
-        password: linkForm.value.password || null,
-    });
-    links.value = data.links;
-    linkForm.value = blankLink();
+    busy.value = true;
+    try {
+        const data = await http.post<{ links: Link[] }>(`/files/${props.item.id}/links`, {
+            allow_download: linkForm.value.allow_download,
+            expires_in_days: linkForm.value.expires_in_days || null,
+            password: linkForm.value.password || null,
+        });
+        links.value = data.links;
+        linkForm.value = blankLink();
+    } catch {
+        error.value = 'Could not create link. Please try again.';
+    } finally {
+        busy.value = false;
+    }
 }
 
 async function revokeLink(id: number): Promise<void> {
     if (!props.item) return;
-    const data = await http.del<{ links: Link[] }>(`/files/${props.item.id}/links/${id}`);
-    links.value = data.links;
+    try {
+        const data = await http.del<{ links: Link[] }>(`/files/${props.item.id}/links/${id}`);
+        links.value = data.links;
+    } catch {
+        error.value = 'Could not revoke link. Please try again.';
+    }
 }
 
 let copiedTimer: ReturnType<typeof setTimeout> | null = null;
@@ -201,7 +216,7 @@ onBeforeUnmount(() => {
                 <div class="col-auto"><VibeFormCheckbox v-model="linkForm.allow_download" label="Allow download" /></div>
                 <div class="col"><VibeFormInput v-model="linkForm.expires_in_days" type="number" placeholder="Expires in N days (optional)" /></div>
                 <div class="col"><VibeFormInput v-model="linkForm.password" type="password" placeholder="Password (optional)" /></div>
-                <div class="col-auto"><VibeButton variant="primary" @click="createLink">Create link</VibeButton></div>
+                <div class="col-auto"><VibeButton variant="primary" :disabled="busy" @click="createLink">Create link</VibeButton></div>
             </div>
         </template>
         <template #footer>

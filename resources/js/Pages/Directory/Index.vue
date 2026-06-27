@@ -39,6 +39,7 @@ const grouped = computed(() => {
 const showProfile = ref(false);
 const profile = ref(null);
 const profileLoading = ref(false);
+const profileError = ref('');
 const { loading } = usePageLoading();
 let requestedId = 0;
 
@@ -47,10 +48,13 @@ async function open(person) {
     requestedId = id;
     showProfile.value = true;
     profileLoading.value = true;
+    profileError.value = '';
     profile.value = null;
     try {
         const data = await http.get(`/directory/${id}`);
         if (requestedId === id) profile.value = data?.person ?? null;
+    } catch {
+        if (requestedId === id) profileError.value = 'Could not load profile. Please try again.';
     } finally {
         if (requestedId === id) profileLoading.value = false;
     }
@@ -97,6 +101,7 @@ async function open(person) {
 
         <VibeModal v-model="showProfile" :title="profile?.name || 'Profile'">
             <p v-if="profileLoading" class="text-muted mb-0">Loading…</p>
+            <VibeAlert v-else-if="profileError" variant="danger" class="mb-0">{{ profileError }}</VibeAlert>
             <div v-else-if="profile">
                 <div class="d-flex align-items-center gap-3 mb-3">
                     <UserAvatar :user="profile" :size="64" />
