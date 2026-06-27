@@ -341,14 +341,19 @@ class NoteController extends Controller
             return $root;
         }
 
-        // Walk ancestors; only accept folders that descend from the Notes root.
-        for ($node = $folder; $node; $node = $node->parent_id ? File::find($node->parent_id) : null) {
-            if ($node->id === $root->id) {
-                return $folder;
-            }
-        }
+        // Single recursive CTE: walk the ancestor chain from $id up to the root.
+        // Returns a row if $root->id appears in the path — no N+1 query loop.
+        $found = \Illuminate\Support\Facades\DB::selectOne('
+            WITH RECURSIVE anc(id, parent_id) AS (
+                SELECT id, parent_id FROM files WHERE id = :start
+                UNION ALL
+                SELECT f.id, f.parent_id FROM files f
+                    INNER JOIN anc ON f.id = anc.parent_id
+            )
+            SELECT 1 AS found FROM anc WHERE id = :root LIMIT 1
+        ', ['start' => $folder->id, 'root' => $root->id]);
 
-        return $root;
+        return $found ? $folder : $root;
     }
 
     // Lazily create (and return) the user's root Notes folder.
