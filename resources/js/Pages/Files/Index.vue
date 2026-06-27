@@ -418,17 +418,19 @@ function onKey(e) {
     }
 
     const tag = (e.target?.tagName || '').toLowerCase();
-    if (['input', 'textarea', 'select'].includes(tag) || e.target?.isContentEditable) return;
+    const inField = ['input', 'textarea', 'select'].includes(tag) || !!e.target?.isContentEditable;
 
     if (quickOpen.value) {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); quickStep(1); }
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); quickStep(-1); }
+        if (!inField) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); quickStep(1); }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); quickStep(-1); }
+            if (e.key === ' ') { e.preventDefault(); quickClose(); }
+        }
         if (e.key === 'Escape') quickClose();
-        if (e.key === ' ') { e.preventDefault(); quickClose(); }
         return;
     }
 
-    if (e.key === ' ' && props.files.length) {
+    if (!inField && e.key === ' ' && props.files.length) {
         e.preventDefault();
         quickOpenSelected();
     }
