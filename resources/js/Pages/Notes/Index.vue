@@ -13,6 +13,8 @@ import { extractHeadings } from '../../lib/markdownOutline';
 import { usePrompt, useConfirm } from '../../composables/useConfirm';
 import { useSelection } from '../../composables/useSelection';
 import { useToast } from '../../composables/useToast';
+import { usePageLoading } from '../../composables/usePageLoading';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 
 const { prompt } = usePrompt();
 const { confirm } = useConfirm();
@@ -40,6 +42,7 @@ let suppressTimer = null;
 let loadSeq = 0;
 let unmounted = false;
 
+const { loading } = usePageLoading();
 const notesRef = computed(() => props.notes);
 const { selectMode: noteSelectMode, selectedItems: selectedNotes, isSelected: noteIsSelected, toggleSel: noteToggle, clearSelection: noteClearSel } = useSelection(notesRef, (n) => selectNote(n.id));
 
@@ -186,7 +189,8 @@ onMounted(() => {
 
 <template>
     <AppLayout>
-        <ThreePane v-model:activePane="activePane">
+        <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
+        <ThreePane v-else v-model:activePane="activePane">
             <template #sidebar>
                 <NotesSidebar
                     :folders="folders"
