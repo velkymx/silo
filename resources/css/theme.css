@@ -130,6 +130,13 @@
     opacity: 1 !important;
 }
 
+/* WCAG 2.5.8: icon-only buttons (single <i class="bi"> child) get a 44×44px
+   minimum touch target so they meet mobile accessibility requirements. */
+.btn:has(> i.bi:only-child) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+}
+
 /* FE-P4-2/P4-8: subtle motion polish. Respects reduced-motion. */
 .modal.fade .modal-dialog {
     transform: scale(0.97) translateY(-6px);
