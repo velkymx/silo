@@ -26,9 +26,14 @@ createInertiaApp({
         return page.default;
     },
     setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
+        const app = createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(VibeUI)
-            .mount(el);
+            .use(VibeUI);
+
+        app.config.errorHandler = (err, _instance, info) => {
+            console.error('[Vue]', info, err);
+        };
+
+        app.mount(el);
     },
 });
