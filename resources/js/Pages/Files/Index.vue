@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import FileItem from '../../Components/FileItem.vue';
@@ -7,7 +7,7 @@ import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
 import UploadModal from '../../Components/UploadModal.vue';
 import ShareModal from '../../Components/ShareModal.vue';
-import EditorModal from '../../Components/EditorModal.vue';
+const EditorModal = defineAsyncComponent(() => import('../../Components/EditorModal.vue'));
 import RenameModal from '../../Components/RenameModal.vue';
 import QuickLookModal from '../../Components/QuickLookModal.vue';
 import ContextMenu from '../../Components/ContextMenu.vue';
