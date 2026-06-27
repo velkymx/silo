@@ -23,7 +23,7 @@ class ProfilePasswordConfirmTest extends TestCase
     {
         $user = $this->user();
 
-        $this->actingAs($user)->from('/profile')->post('/profile', [
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
             'name' => $user->name,
             'email' => $user->email,
             'password' => 'brand-new-pass',
@@ -37,7 +37,7 @@ class ProfilePasswordConfirmTest extends TestCase
     {
         $user = $this->user();
 
-        $this->actingAs($user)->from('/profile')->post('/profile', [
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
             'name' => $user->name,
             'email' => 'new@x.test',
         ])->assertSessionHasErrors('current_password');
@@ -49,7 +49,7 @@ class ProfilePasswordConfirmTest extends TestCase
     {
         $user = $this->user();
 
-        $this->actingAs($user)->from('/profile')->post('/profile', [
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
             'name' => $user->name,
             'email' => $user->email,
             'password' => 'brand-new-pass',
@@ -62,7 +62,7 @@ class ProfilePasswordConfirmTest extends TestCase
     {
         $user = $this->user();
 
-        $this->actingAs($user)->from('/profile')->post('/profile', [
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
             'name' => $user->name,
             'email' => 'new@x.test',
             'password' => 'brand-new-pass',
@@ -79,7 +79,7 @@ class ProfilePasswordConfirmTest extends TestCase
     {
         $user = $this->user();
 
-        $this->actingAs($user)->from('/profile')->post('/profile', [
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
             'name' => 'Renamed',
             'email' => $user->email,
         ])->assertRedirect();

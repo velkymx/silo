@@ -386,6 +386,7 @@ function saveEdit() {
                         <img
                             :src="p.thumb_url"
                             :alt="p.name"
+                            loading="lazy"
                             class="film-thumb"
                             :class="{ active: quickFile && p.id === quickFile.id }"
                             @click="quickIndex = photos.findIndex((x) => x.id === p.id)"

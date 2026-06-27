@@ -60,7 +60,7 @@ class DirectoryTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post(route('profile.update'), [
+        $this->actingAs($user)->patch(route('profile.update'), [
             'name' => $user->name, 'email' => $user->email,
             'title' => 'Designer', 'department' => 'Product', 'phone' => '555-0100',
             'location' => 'Remote', 'bio' => 'Hi', 'start_date' => '2025-01-15',

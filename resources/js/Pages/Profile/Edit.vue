@@ -30,7 +30,7 @@ const form = useForm({
 const needsCurrentPassword = computed(() => !!form.password || form.email !== props.user.email);
 
 function submit() {
-    form.post('/profile', { onFinish: () => form.reset('password', 'password_confirmation', 'current_password') });
+    form.patch('/profile', { onFinish: () => form.reset('password', 'password_confirmation', 'current_password') });
 }
 
 // ----- Avatar upload + crop -----

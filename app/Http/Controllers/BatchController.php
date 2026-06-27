@@ -74,9 +74,8 @@ class BatchController extends Controller
         $name = trim($data['name']);
 
         $folder = $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId, $data) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
-
             return DB::transaction(function () use ($name, $parent, $userId, $data) {
+                $this->assertNoCollision($parent?->id, $name, $userId);
                 $folder = File::create([
                     'name' => $name,
                     'path' => $name,

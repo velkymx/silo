@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { reactive } from 'vue';
 
-const { formPost, formReset, routerPost } = vi.hoisted(() => ({ formPost: vi.fn(), formReset: vi.fn(), routerPost: vi.fn() }));
+const { formPatch, formReset, routerPost } = vi.hoisted(() => ({ formPatch: vi.fn(), formReset: vi.fn(), routerPost: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
     router: { post: routerPost },
     // reactive() so the page's computed (needsCurrentPassword) tracks field edits.
-    useForm: (data: Record<string, unknown>) => reactive({ ...data, processing: false, errors: {}, post: formPost, reset: formReset }),
+    useForm: (data: Record<string, unknown>) => reactive({ ...data, processing: false, errors: {}, patch: formPatch, reset: formReset }),
 }));
 vi.mock('vue-advanced-cropper', () => ({ Cropper: { name: 'Cropper', template: '<div class="cropper-stub" />' } }));
 vi.mock('vue-advanced-cropper/dist/style.css', () => ({}));
@@ -16,7 +16,7 @@ import Profile from '@/Pages/Profile/Edit.vue';
 const user = { name: 'Ada Love', email: 'ada@x.test', avatar_url: null };
 
 describe('Profile/Edit page', () => {
-    beforeEach(() => { formPost.mockClear(); routerPost.mockClear(); });
+    beforeEach(() => { formPatch.mockClear(); routerPost.mockClear(); });
 
     it('renders a UserAvatar for the profile picture', () => {
         const wrapper = mount(Profile, { props: { user } });
@@ -26,7 +26,7 @@ describe('Profile/Edit page', () => {
     it('submits the profile form to /profile', async () => {
         const wrapper = mount(Profile, { props: { user } });
         await wrapper.find('form').trigger('submit');
-        expect(formPost).toHaveBeenCalledWith('/profile', expect.anything());
+        expect(formPatch).toHaveBeenCalledWith('/profile', expect.anything());
     });
 
     it('reveals the current-password field after changing email', async () => {

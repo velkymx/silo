@@ -53,7 +53,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('/profile', [UserController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile', [UserController::class, 'update'])->name('profile.update');
+    Route::patch('/profile', [UserController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [UserController::class, 'updateAvatar'])->name('profile.avatar');
     Route::get('/avatars/{user}', [UserController::class, 'avatar'])->name('users.avatar');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
@@ -85,9 +85,11 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
     Route::post('/upload', [FileController::class, 'upload'])
         ->middleware('throttle:60,1')->name('files.upload');
-    Route::post('/files/text', [FileController::class, 'createText'])->name('files.text');
+    Route::post('/files/text', [FileController::class, 'createText'])
+        ->middleware('throttle:30,1')->name('files.text');
     Route::get('/files/new/{type}', [FileController::class, 'newDocument'])->name('files.new');
-    Route::post('/files/document', [FileController::class, 'storeDocument'])->name('files.document');
+    Route::post('/files/document', [FileController::class, 'storeDocument'])
+        ->middleware('throttle:30,1')->name('files.document');
     Route::get('/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/raw/{file}', [FileController::class, 'raw'])->name('files.raw');
     Route::get('/thumbnail/{file}', [FileController::class, 'thumbnail'])->name('files.thumbnail');

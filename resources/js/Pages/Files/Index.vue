@@ -285,6 +285,16 @@ const gridShown = ref(gridPageSize);
 const gridItems = computed(() => items.value.slice(0, gridShown.value));
 watch(items, () => { gridShown.value = gridPageSize; });
 
+// List-view page: persist in URL so refresh returns to the same page.
+const listPage = ref(Number(new URLSearchParams(window.location.search).get('list_page') || '1'));
+watch([() => props.current, () => props.filters?.search], () => { listPage.value = 1; });
+watch(listPage, (p) => {
+    const url = new URL(window.location.href);
+    if (p > 1) url.searchParams.set('list_page', String(p));
+    else url.searchParams.delete('list_page');
+    window.history.replaceState({}, '', url.toString());
+});
+
 
 const fileActions = [
     { text: 'Download', action: 'download', icon: 'download' },
@@ -481,7 +491,7 @@ const destinationOptions = computed(() => {
 });
 
 function openTransfer(item, mode) {
-    transferItem.value = { ...item, is_dir: item.item_count !== undefined };
+    transferItem.value = { ...item };
     transferMode.value = mode;
     transferForm.clearErrors();
     transferForm.target_id = null;
@@ -722,6 +732,7 @@ onBeforeUnmount(() => {
             row-key="_key"
             hover
             :searchable="false"
+            v-model:current-page="listPage"
             :per-page="25"
             :per-page-options="[10, 25, 50, 100]"
             :responsive="true"
