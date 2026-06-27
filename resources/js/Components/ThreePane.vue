@@ -48,7 +48,7 @@ function goBack() {
 
 <style scoped>
 .three-pane {
-    height: calc(100vh - 140px);
+    height: calc(100dvh - 140px);
     min-height: 480px;
 }
 .tp-sidebar {

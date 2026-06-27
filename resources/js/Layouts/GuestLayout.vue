@@ -2,6 +2,7 @@
 defineProps({
     title: { type: String, default: '' },
 });
+const appName = import.meta.env.VITE_APP_NAME || 'Silo';
 </script>
 
 <template>
@@ -11,7 +12,7 @@ defineProps({
                 <VibeCol :md="6" :lg="5">
                     <div class="text-center mb-4">
                         <VibeIcon icon="rocket-takeoff-fill" class="fs-1 text-primary" />
-                        <h1 class="h4 mt-2 mb-0">Silo</h1>
+                        <h1 class="h4 mt-2 mb-0">{{ appName }}</h1>
                         <p class="text-muted small mb-0">Your Files Ready to Launch</p>
                     </div>
                     <VibeCard :header="title">

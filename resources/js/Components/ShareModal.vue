@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
                 <tbody>
                     <tr v-for="link in links" :key="link.id">
                         <td class="text-truncate" style="max-width: 220px">
-                            <a :href="link.url" target="_blank" class="small">{{ link.url }}</a>
+                            <a :href="link.url" target="_blank" rel="noopener noreferrer" class="small">{{ link.url }}</a>
                             <div class="small text-muted">
                                 <span v-if="link.protected"><VibeIcon icon="lock" /> password · </span>
                                 <span>{{ link.allow_download ? 'download' : 'view only' }}</span>
