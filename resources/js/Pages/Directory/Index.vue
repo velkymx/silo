@@ -7,6 +7,8 @@ import PageHeader from '../../Components/PageHeader.vue';
 import UserAvatar from '../../Components/UserAvatar.vue';
 import { http } from '../../lib/http';
 import EmptyState from '../../Components/EmptyState.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const props = defineProps({
     people: { type: Array, default: () => [] },
@@ -36,27 +38,29 @@ const grouped = computed(() => {
 
 const showProfile = ref(false);
 const profile = ref(null);
-const loading = ref(false);
+const profileLoading = ref(false);
+const { loading } = usePageLoading();
 let requestedId = 0;
 
 async function open(person) {
     const id = person.id;
     requestedId = id;
     showProfile.value = true;
-    loading.value = true;
+    profileLoading.value = true;
     profile.value = null;
     try {
         const data = await http.get(`/directory/${id}`);
         if (requestedId === id) profile.value = data?.person ?? null;
     } finally {
-        if (requestedId === id) loading.value = false;
+        if (requestedId === id) profileLoading.value = false;
     }
 }
 </script>
 
 <template>
     <AppLayout>
-        <div class="p-3 p-lg-4">
+        <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
+        <div v-else class="p-3 p-lg-4">
             <PageHeader title="Directory" icon="person-rolodex" />
 
             <div class="row g-2 mb-3">
@@ -92,7 +96,7 @@ async function open(person) {
         </div>
 
         <VibeModal v-model="showProfile" :title="profile?.name || 'Profile'">
-            <p v-if="loading" class="text-muted mb-0">Loading…</p>
+            <p v-if="profileLoading" class="text-muted mb-0">Loading…</p>
             <div v-else-if="profile">
                 <div class="d-flex align-items-center gap-3 mb-3">
                     <UserAvatar :user="profile" :size="64" />

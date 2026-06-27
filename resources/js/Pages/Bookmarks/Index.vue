@@ -11,6 +11,8 @@ import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
 import ResourceModal from '../../Components/ResourceModal.vue';
 import EmptyState from '../../Components/EmptyState.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const props = defineProps({
     bookmarks: { type: Array, default: () => [] },
@@ -21,6 +23,7 @@ const props = defineProps({
 const { confirm } = useConfirm();
 const toast = useToast();
 const { prompt } = usePrompt();
+const { loading } = usePageLoading();
 
 // ----- Server-side Scout search (debounced) -----
 const { filters: urlFilters, setFilter: setUrlFilter } = useUrlFilter({
@@ -169,7 +172,8 @@ async function runMaintenance(action) {
 
 <template>
     <AppLayout>
-        <ThreePane v-model:activePane="activePane">
+        <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
+        <ThreePane v-else v-model:activePane="activePane">
             <template #sidebar>
                 <div class="d-flex flex-column p-2">
                 <div class="d-flex align-items-center justify-content-between px-1 mb-1">

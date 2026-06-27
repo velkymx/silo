@@ -11,7 +11,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('@inertiajs/vue3', () => ({
-    router: { delete: h.del, post: h.post, get: h.get },
+    router: { delete: h.del, post: h.post, get: h.get, on: vi.fn(() => vi.fn()) },
     useForm: (init: Record<string, unknown>) => {
         h.form = { ...init, post: h.post, put: h.put, reset: vi.fn(), clearErrors: vi.fn(), processing: false, errors: {} };
         return h.form;

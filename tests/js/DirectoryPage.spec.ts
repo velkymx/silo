@@ -6,7 +6,7 @@ const h = vi.hoisted(() => ({
     routerGet: vi.fn(),
 }));
 vi.mock('@/lib/http', () => ({ http: { get: h.get }, getText: vi.fn() }));
-vi.mock('@inertiajs/vue3', () => ({ router: { get: h.routerGet } }));
+vi.mock('@inertiajs/vue3', () => ({ router: { get: h.routerGet, on: vi.fn(() => vi.fn()) } }));
 vi.useFakeTimers();
 
 import DirectoryIndex from '@/Pages/Directory/Index.vue';

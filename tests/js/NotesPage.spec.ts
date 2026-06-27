@@ -11,7 +11,7 @@ const h = vi.hoisted(() => ({
     confirm: vi.fn(() => Promise.resolve(true)),
 }));
 
-vi.mock('@inertiajs/vue3', () => ({ router: { post: h.post, visit: h.visit } }));
+vi.mock('@inertiajs/vue3', () => ({ router: { post: h.post, visit: h.visit, on: vi.fn(() => vi.fn()) } }));
 vi.mock('@/lib/http', () => ({ http: { get: h.get, put: h.put }, getText: h.getText }));
 vi.mock('@/composables/useConfirm', () => ({ usePrompt: () => ({ prompt: h.prompt }), useConfirm: () => ({ confirm: h.confirm }) }));
 

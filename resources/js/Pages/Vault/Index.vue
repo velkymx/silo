@@ -10,6 +10,8 @@ import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
 import ResourceModal from '../../Components/ResourceModal.vue';
 import EmptyState from '../../Components/EmptyState.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -19,6 +21,7 @@ const props = defineProps({
 const { confirm } = useConfirm();
 const toast = useToast();
 const { prompt } = usePrompt();
+const { loading } = usePageLoading();
 
 const revealError = ref('');
 
@@ -140,7 +143,8 @@ async function onImportFile(e) {
 
 <template>
     <AppLayout>
-        <div class="p-3 p-lg-4">
+        <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />
+        <div v-else class="p-3 p-lg-4">
             <PageHeader title="Vault" icon="lock-fill">
                 <template #actions>
                     <VibeButton
