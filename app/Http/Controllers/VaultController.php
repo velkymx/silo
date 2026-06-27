@@ -51,11 +51,14 @@ class VaultController extends Controller
         $this->authorize('update', $vaultItem);
         $data = $this->validateData($request, false);
 
-        // Only stamp a rotation when the secret actually changes.
+        // Blank secret/notes on edit = keep existing (never overwrite with empty).
         if (! empty($data['secret'])) {
             $data['last_rotated_at'] = now();
         } else {
             unset($data['secret']);
+        }
+        if (empty($data['notes'])) {
+            unset($data['notes']);
         }
 
         $vaultItem->update($data);

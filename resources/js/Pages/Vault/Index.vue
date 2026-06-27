@@ -255,6 +255,9 @@ async function onImportFile(e) {
                         <VibeButton variant="secondary" outline title="Generate" aria-label="Generate password" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
                     </div>
                 </VibeFormGroup>
+                <VibeFormGroup :label="editingId ? 'Notes (blank = keep current)' : 'Notes'" :error="form.errors.notes">
+                    <VibeFormInput v-model="form.notes" type="textarea" rows="3" placeholder="Optional notes…" />
+                </VibeFormGroup>
                 <VibeFormGroup label="Share with group" :error="form.errors.group_id">
                     <VibeFormSelect v-model="form.group_id">
                         <option value="">Private (only me)</option>

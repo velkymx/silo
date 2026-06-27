@@ -27,7 +27,7 @@ class MetadataExtractor
             str_starts_with($mime, 'image/') => $this->image($disk, $file->path),
             str_starts_with($mime, 'audio/'),
             str_starts_with($mime, 'video/') => $this->media($disk, $file->path),
-            str_starts_with($mime, 'text/') => $this->text($disk->get($file->path)),
+            str_starts_with($mime, 'text/') => $this->text($this->readHead($disk, $file->path, 500)),
             default => [],
         };
     }
@@ -114,6 +114,22 @@ class MetadataExtractor
         fclose($stream);
 
         return [$tmp, true];
+    }
+
+    /** Read at most $bytes bytes from a file without loading the entire file into memory. */
+    private function readHead($disk, string $rel, int $bytes): string
+    {
+        try {
+            $stream = $disk->readStream($rel);
+            if ($stream === null) {
+                return '';
+            }
+            $data = (string) fread($stream, $bytes);
+            fclose($stream);
+            return $data;
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /**

@@ -176,7 +176,7 @@ function patchCell(sheet, ref, val) {
         cell.f = val.slice(1);
         delete cell.v;
         if (cell.t !== 'n' && cell.t !== 's') cell.t = 'n';
-    } else if (typeof val === 'number' || (typeof val === 'string' && val.trim() !== '' && !isNaN(val))) {
+    } else if (typeof val === 'number' || (typeof val === 'string' && val.trim() !== '' && !Number.isNaN(Number(val)))) {
         cell.v = Number(val);
         delete cell.f;
         cell.t = 'n';
