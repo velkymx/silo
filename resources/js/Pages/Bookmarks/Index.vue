@@ -358,10 +358,7 @@ async function runMaintenance(action) {
             <div class="row">
                 <div class="col-6">
                     <VibeFormGroup label="Folder" :error="form.errors.category" help-text="Type a name to create a folder">
-                        <VibeFormInput v-model="form.category" placeholder="e.g. Tools" list="bm-folders" />
-                        <datalist id="bm-folders">
-                            <option v-for="f in folders" :key="f" :value="f" />
-                        </datalist>
+                        <VibeAutocomplete v-model="form.category" :source="folders" placeholder="e.g. Tools" />
                     </VibeFormGroup>
                 </div>
                 <div class="col-6">
