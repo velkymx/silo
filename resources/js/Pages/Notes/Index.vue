@@ -15,6 +15,7 @@ import { useSelection } from '../../composables/useSelection';
 import { useToast } from '../../composables/useToast';
 import { usePageLoading } from '../../composables/usePageLoading';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import SaveIndicator from '../../Components/SaveIndicator.vue';
 
 const { prompt } = usePrompt();
 const { confirm } = useConfirm();
@@ -237,11 +238,7 @@ onMounted(() => {
                             <VibeIcon icon="pencil" class="ms-1 small text-muted" />
                         </button>
                         <div class="d-flex align-items-center gap-2">
-                            <small class="text-muted">
-                                <span v-if="saveState === 'saving'">Saving…</span>
-                                <span v-else-if="saveState === 'saved'">Saved</span>
-                                <span v-else-if="saveState === 'error'" class="text-danger">Save failed — check connection</span>
-                            </small>
+                            <SaveIndicator :state="saveState" />
                             <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" :aria-label="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
                                 <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />
                             </VibeButton>
