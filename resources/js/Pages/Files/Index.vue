@@ -564,7 +564,7 @@ const advOpen = ref(false);
 
 async function destroy(item) {
     const msg = item.is_dir && item.item_count > 0
-        ? `Delete folder "${item.name}" and its ${item.item_count} item(s)? Everything inside moves to trash.`
+        ? `Delete folder "${item.name}" and its ${item.item_count} item${item.item_count === 1 ? '' : 's'}? Everything inside moves to trash.`
         : `Move "${item.name}" to trash?`;
     if (!await confirm({ title: 'Move to trash', message: msg, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.delete(`/delete/${item.id}`, {

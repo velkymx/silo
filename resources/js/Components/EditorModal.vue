@@ -17,12 +17,14 @@ const props = defineProps<{
 const content = ref('');
 const name = ref('');
 const loading = ref(false);
+const loadError = ref('');
 const saving = ref(false);
 let loadSeq = 0;
 
 watch(open, async (v) => {
     if (!v) return;
     content.value = '';
+    loadError.value = '';
     if (props.creating) {
         name.value = 'untitled.md';
         loading.value = false;
@@ -33,6 +35,8 @@ watch(open, async (v) => {
     try {
         const text = await getText(`/raw/${props.item!.id}`);
         if (seq === loadSeq) content.value = text;
+    } catch {
+        if (seq === loadSeq) loadError.value = 'Could not load file. Please close and try again.';
     } finally {
         if (seq === loadSeq) loading.value = false;
     }
@@ -62,6 +66,7 @@ function save(): void {
         <div v-if="loading" class="text-center py-5 text-muted">
             <VibeSpinner class="me-2" />Loading…
         </div>
+        <div v-else-if="loadError" class="alert alert-danger" role="alert">{{ loadError }}</div>
         <template v-else>
             <VibeFormGroup v-if="creating" label="File name" class="mb-3">
                 <VibeFormInput v-model="name" placeholder="untitled.md" />

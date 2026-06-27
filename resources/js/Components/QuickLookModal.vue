@@ -39,6 +39,16 @@ const previewMarkdownTypes = ['md', 'markdown'];
 function isImage(f: QuickFile | null): boolean {
     return isImageType(f?.type);
 }
+
+function safeUrl(url: string | undefined): string {
+    if (!url) return '';
+    try {
+        const u = new URL(url, window.location.origin);
+        return (u.protocol === 'https:' || u.protocol === 'http:' || u.protocol === 'blob:') ? url : '';
+    } catch {
+        return url.startsWith('/') ? url : '';
+    }
+}
 </script>
 
 <template>
@@ -56,7 +66,7 @@ function isImage(f: QuickFile | null): boolean {
                             <VibeIcon icon="chevron-left" />
                         </VibeButton>
                         <div v-if="hoverSide === 'prev' && prevFile" class="ql-peek">
-                            <img v-if="prevFile.thumb_url" :src="prevFile.thumb_url" :alt="prevFile.name">
+                            <img v-if="prevFile.thumb_url" :src="safeUrl(prevFile.thumb_url)" :alt="prevFile.name">
                             <VibeIcon v-else :icon="iconFor(prevFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ prevFile.name }}</div>
                         </div>
@@ -66,7 +76,7 @@ function isImage(f: QuickFile | null): boolean {
                             <VibeIcon icon="chevron-right" />
                         </VibeButton>
                         <div v-if="hoverSide === 'next' && nextFile" class="ql-peek">
-                            <img v-if="nextFile.thumb_url" :src="nextFile.thumb_url" :alt="nextFile.name">
+                            <img v-if="nextFile.thumb_url" :src="safeUrl(nextFile.thumb_url)" :alt="nextFile.name">
                             <VibeIcon v-else :icon="iconFor(nextFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
                         </div>
@@ -93,20 +103,20 @@ function isImage(f: QuickFile | null): boolean {
         <div v-if="file" class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center" style="height: calc(100vh - 130px)">
             <img
                 v-if="isImage(file)"
-                :src="file.url"
+                :src="safeUrl(file.url)"
                 :alt="file.name"
                 class="img-fluid rounded"
                 style="max-height: 100%; object-fit: contain"
             >
             <iframe
                 v-else-if="file.type === 'pdf'"
-                :src="file.url"
+                :src="safeUrl(file.url)"
                 class="w-100 h-100 border rounded"
             ></iframe>
-            <audio v-else-if="file.mime?.startsWith('audio/')" :src="file.url" controls class="w-100" />
+            <audio v-else-if="file.mime?.startsWith('audio/')" :src="safeUrl(file.url)" controls class="w-100" />
             <video
                 v-else-if="file.mime?.startsWith('video/')"
-                :src="file.url"
+                :src="safeUrl(file.url)"
                 controls
                 class="img-fluid rounded"
                 style="max-height: 100%"
@@ -120,7 +130,7 @@ function isImage(f: QuickFile | null): boolean {
             <DocViewer
                 v-else-if="officeTypes.includes(file.type ?? '')"
                 :key="file.id"
-                :url="file.url ?? ''"
+                :url="safeUrl(file.url)"
                 :type="file.type ?? ''"
                 class="w-100 h-100 overflow-auto text-start"
             />
