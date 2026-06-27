@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import FormErrorSummary from '../../../Components/FormErrorSummary.vue';
 
@@ -9,6 +9,8 @@ const props = defineProps({
     groups: { type: Array, default: () => [] },
 });
 
+const page = usePage();
+const isSelf = computed(() => page.props.auth?.user?.id === props.user.id);
 const groupOptions = computed(() => props.groups.map((g) => ({ value: g.id, text: g.name })));
 
 const form = useForm({
@@ -58,6 +60,9 @@ function submit() {
                         </VibeFormGroup>
 
                         <VibeFormSwitch v-model="form.is_admin" label="Administrator" class="mt-3" />
+                        <div v-if="isSelf && !form.is_admin" class="alert alert-warning mt-2 py-2 small" role="alert">
+                            Warning: removing your own admin access will lock you out of this area.
+                        </div>
 
                         <VibeFormGroup
                             label="New Password"

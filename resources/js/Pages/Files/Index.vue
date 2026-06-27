@@ -525,10 +525,12 @@ function openTags(item) {
     tagsOpen.value = true;
 }
 
+const MAX_TAGS = 50;
+const MAX_TAG_LEN = 40;
 const flashedTag = ref('');
 function addTag(name) {
-    const value = (name ?? tagInput.value).trim();
-    if (value && !tagList.value.includes(value)) {
+    const value = (name ?? tagInput.value).trim().slice(0, MAX_TAG_LEN);
+    if (value && !tagList.value.includes(value) && tagList.value.length < MAX_TAGS) {
         tagList.value.push(value);
         // Briefly flash the new badge so the add is visually confirmed.
         flashedTag.value = value;
