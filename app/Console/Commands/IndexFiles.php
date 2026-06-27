@@ -65,7 +65,7 @@ class IndexFiles extends Command
                     'is_dir' => false,
                     'mime' => $disk->mimeType($file) ?: null,
                     'size' => $disk->size($file),
-                    'hash' => hash('sha256', $disk->get($file)),
+                    'hash' => $this->hashFile($disk, $file),
                 ],
             );
 
@@ -73,5 +73,20 @@ class IndexFiles extends Command
         }
 
         return $count;
+    }
+
+    private function hashFile(Filesystem $disk, string $file): string
+    {
+        try {
+            // Local disks expose a real path — hash without reading into memory.
+            return hash_file('sha256', $disk->path($file));
+        } catch (\Throwable) {
+            // Remote disks (e.g. S3): stream-hash to avoid OOM on large files.
+            $stream = $disk->readStream($file);
+            $ctx = hash_init('sha256');
+            hash_update_stream($ctx, $stream);
+            fclose($stream);
+            return hash_final($ctx);
+        }
     }
 }
