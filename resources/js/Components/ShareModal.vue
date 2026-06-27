@@ -167,10 +167,10 @@ onBeforeUnmount(() => {
         <h6 class="text-muted">Grant access</h6>
         <VibeAlert v-if="error" variant="danger">{{ error }}</VibeAlert>
         <div class="row g-2">
-            <div class="col-5"><VibeFormSelect v-model="grant.subject_type" :options="subjectTypeOptions" /></div>
+            <div class="col-5"><VibeFormSelect v-model="grant.subject_type" :options="subjectTypeOptions" aria-label="Grant to" /></div>
             <div class="col-7">
-                <VibeFormInput v-if="grant.subject_type === 'user'" v-model="grant.email" type="email" placeholder="person@example.com" />
-                <VibeFormSelect v-else v-model="grant.group_id" :options="groups" placeholder="Choose a group…" />
+                <VibeFormInput v-if="grant.subject_type === 'user'" v-model="grant.email" type="email" placeholder="person@example.com" aria-label="User email" />
+                <VibeFormSelect v-else v-model="grant.group_id" :options="groups" placeholder="Choose a group…" aria-label="Group" />
             </div>
         </div>
         <div class="d-flex flex-wrap gap-3 mt-3">
@@ -214,8 +214,8 @@ onBeforeUnmount(() => {
 
             <div class="row g-2 align-items-center">
                 <div class="col-auto"><VibeFormCheckbox v-model="linkForm.allow_download" label="Allow download" /></div>
-                <div class="col"><VibeFormInput v-model="linkForm.expires_in_days" type="number" placeholder="Expires in N days (optional)" /></div>
-                <div class="col"><VibeFormInput v-model="linkForm.password" type="password" placeholder="Password (optional)" /></div>
+                <div class="col"><VibeFormInput v-model="linkForm.expires_in_days" type="number" placeholder="Expires in N days (optional)" aria-label="Link expiry in days" /></div>
+                <div class="col"><VibeFormInput v-model="linkForm.password" type="password" placeholder="Password (optional)" aria-label="Link password" /></div>
                 <div class="col-auto"><VibeButton variant="primary" :disabled="busy" @click="createLink">Create link</VibeButton></div>
             </div>
         </template>

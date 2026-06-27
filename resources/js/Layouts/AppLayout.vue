@@ -160,6 +160,7 @@ function onUserMenu({ item }) {
 
 <template>
     <div class="d-flex flex-column min-vh-100 bg-body-tertiary">
+        <a href="#main-content" class="visually-hidden-focusable position-absolute top-0 start-0 z-3 p-2 bg-primary text-white text-decoration-none rounded-bottom-end">Skip to main content</a>
         <!-- Full-width top bar -->
         <header class="d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2">
             <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" aria-label="Toggle sidebar" @click="toggleSidebar">
@@ -291,7 +292,7 @@ function onUserMenu({ item }) {
             </aside>
 
             <!-- Content -->
-            <main class="flex-grow-1 min-vw-0 bg-body d-flex flex-column" :class="isNotes ? 'p-0' : 'p-3 p-lg-4'">
+            <main id="main-content" class="flex-grow-1 min-vw-0 bg-body d-flex flex-column" :class="isNotes ? 'p-0' : 'p-3 p-lg-4'">
                 <VibeAlert v-if="flash.success" variant="success" dismissible>{{ flash.success }}</VibeAlert>
                 <!-- Single error surface (flash.error + validation errors) for every page. -->
                 <PageError />
