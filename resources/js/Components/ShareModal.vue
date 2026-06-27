@@ -17,6 +17,8 @@ const groups = ref<Option[]>([]);
 const links = ref<Link[]>([]);
 const error = ref('');
 const busy = ref(false);
+const removingGrantId = ref<number | null>(null);
+const revokingLinkId = ref<number | null>(null);
 const copied = ref<number | null>(null);
 let loadSeq = 0;
 
@@ -83,12 +85,15 @@ async function addGrant(): Promise<void> {
 }
 
 async function removeGrant(id: number): Promise<void> {
-    if (!props.item) return;
+    if (!props.item || removingGrantId.value !== null) return;
+    removingGrantId.value = id;
     try {
         const data = await http.del<{ permissions: Grant[] }>(`/files/${props.item.id}/permissions/${id}`);
         grants.value = data.permissions;
     } catch {
         error.value = 'Could not remove access. Please try again.';
+    } finally {
+        removingGrantId.value = null;
     }
 }
 
@@ -111,12 +116,15 @@ async function createLink(): Promise<void> {
 }
 
 async function revokeLink(id: number): Promise<void> {
-    if (!props.item) return;
+    if (!props.item || revokingLinkId.value !== null) return;
+    revokingLinkId.value = id;
     try {
         const data = await http.del<{ links: Link[] }>(`/files/${props.item.id}/links/${id}`);
         links.value = data.links;
     } catch {
         error.value = 'Could not revoke link. Please try again.';
+    } finally {
+        revokingLinkId.value = null;
     }
 }
 
@@ -143,7 +151,7 @@ onBeforeUnmount(() => {
                     <td><VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ g.subject_label }}</td>
                     <td><VibeBadge variant="secondary">{{ g.ability }}</VibeBadge></td>
                     <td class="text-end">
-                        <VibeButton variant="danger" size="sm" outline :aria-label="`Remove access for ${g.subject_label}`" @click="removeGrant(g.id)"><VibeIcon icon="x" /></VibeButton>
+                        <VibeButton variant="danger" size="sm" outline :disabled="removingGrantId !== null" :aria-label="`Remove access for ${g.subject_label}`" @click="removeGrant(g.id)"><VibeIcon icon="x" /></VibeButton>
                     </td>
                 </tr>
             </tbody>
@@ -205,7 +213,7 @@ onBeforeUnmount(() => {
                             <VibeButton variant="secondary" size="sm" outline aria-label="Copy link" @click="copyLink(link.url, link.id)">
                                 <VibeIcon :icon="copied === link.id ? 'check' : 'clipboard'" />
                             </VibeButton>
-                            <VibeButton variant="danger" size="sm" outline class="ms-1" aria-label="Revoke link" @click="revokeLink(link.id)"><VibeIcon icon="x" /></VibeButton>
+                            <VibeButton variant="danger" size="sm" outline class="ms-1" :disabled="revokingLinkId !== null" aria-label="Revoke link" @click="revokeLink(link.id)"><VibeIcon icon="x" /></VibeButton>
                         </td>
                     </tr>
                 </tbody>
