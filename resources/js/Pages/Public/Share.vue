@@ -33,7 +33,7 @@ function unlock() {
                     label="Password"
                     :error="form.errors.password"
                  required>
-                    <VibeFormInput v-model="form.password" type="password" required />
+                    <VibeFormInput v-model="form.password" type="password" required show-toggle />
                 </VibeFormGroup>
                 <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                     Unlock

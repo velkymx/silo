@@ -26,7 +26,7 @@ function submit() {
                 class="mt-3"
                 :error="form.errors.password"
              required>
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" />
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" show-toggle />
             </VibeFormGroup>
 
             <VibeFormCheckbox v-model="form.remember" label="Remember me" class="mt-3" />

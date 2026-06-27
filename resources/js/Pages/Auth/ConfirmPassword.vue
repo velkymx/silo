@@ -19,7 +19,7 @@ function submit() {
                 label="Password"
                 :error="form.errors.password"
              required>
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" />
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" show-toggle />
             </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">

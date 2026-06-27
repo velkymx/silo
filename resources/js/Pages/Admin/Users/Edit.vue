@@ -69,11 +69,12 @@ function submit() {
                                 type="password"
                                 autocomplete="new-password"
                                 help-text="Leave blank to keep the current password."
+                                show-toggle
                             />
                         </VibeFormGroup>
 
                         <VibeFormGroup label="Confirm Password" class="mt-3">
-                            <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
+                            <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" show-toggle />
                         </VibeFormGroup>
 
                         <div class="mt-4 d-flex gap-2">

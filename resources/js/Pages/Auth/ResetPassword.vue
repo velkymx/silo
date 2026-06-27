@@ -36,7 +36,7 @@ function submit() {
                 class="mt-3"
                 :error="form.errors.password"
              required>
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" show-toggle show-password-strength />
             </VibeFormGroup>
 
             <VibeFormGroup label="Confirm Password" class="mt-3" required>
@@ -45,6 +45,7 @@ function submit() {
                     type="password"
                     required
                     autocomplete="new-password"
+                    show-toggle
                 />
             </VibeFormGroup>
 

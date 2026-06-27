@@ -119,11 +119,13 @@ function applyCrop() {
                                 type="password"
                                 autocomplete="new-password"
                                 help-text="Leave blank to keep your current password."
+                                show-toggle
+                                show-password-strength
                             />
                         </VibeFormGroup>
 
                         <VibeFormGroup label="Confirm Password" class="mt-3">
-                            <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" />
+                            <VibeFormInput v-model="form.password_confirmation" type="password" autocomplete="new-password" show-toggle />
                         </VibeFormGroup>
 
                         <VibeFormGroup
@@ -137,6 +139,7 @@ function applyCrop() {
                                 type="password"
                                 autocomplete="current-password"
                                 help-text="Required to change your email or password."
+                                show-toggle
                             />
                         </VibeFormGroup>
 
