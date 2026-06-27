@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
@@ -55,6 +55,15 @@ function onFileChosen(e) {
     reader.readAsDataURL(file);
     e.target.value = '';
 }
+
+function onKeydown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !cropOpen.value && !form.processing) {
+        e.preventDefault();
+        submit();
+    }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 function applyCrop() {
     const canvas = cropper.value?.getResult?.()?.canvas;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import MarkdownEditor from './MarkdownEditor.vue';
 import { getText } from '../lib/http';
@@ -41,6 +41,15 @@ watch(open, async (v) => {
         if (seq === loadSeq) loading.value = false;
     }
 });
+
+function onKeydown(e: KeyboardEvent): void {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && open.value && !saving.value && !loading.value) {
+        e.preventDefault();
+        save();
+    }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 function save(): void {
     saving.value = true;
