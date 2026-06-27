@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 import { useConfirm, useDialogHost } from '../composables/useConfirm';
 import { initials } from '../lib/initials';
@@ -165,13 +165,13 @@ function onUserMenu({ item }) {
             <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
             </VibeButton>
-            <a class="d-flex align-items-center text-decoration-none flex-shrink-0" style="cursor: pointer; min-width: 218px" @click="router.visit('/')" :title="`${appName} — ${tagline}`">
+            <Link href="/" class="d-flex align-items-center text-decoration-none flex-shrink-0" style="min-width: 218px" :title="`${appName} — ${tagline}`">
                 <VibeIcon icon="rocket-takeoff-fill" class="text-primary fs-4 me-2" />
                 <span class="d-none d-md-flex flex-column lh-1">
                     <span class="fw-bold fs-5 text-body">{{ appName }}</span>
                     <span class="text-muted" style="font-size: 0.62rem; letter-spacing: 0.02em">{{ tagline }}</span>
                 </span>
-            </a>
+            </Link>
             <div class="flex-grow-1 min-vw-0">
                 <VibeInputGroup class="mx-auto" style="max-width: 620px">
                     <template #prepend>

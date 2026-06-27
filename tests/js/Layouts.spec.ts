@@ -7,6 +7,7 @@ const page = { url: '/', props: {} as Record<string, unknown> };
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: s.get, post: s.post, delete: s.del, visit: s.visit },
     usePage: () => page,
+    Link: { template: '<a><slot /></a>' },
 }));
 vi.mock('@velkymx/vibeui', () => ({
     useColorMode: () => ({ colorMode: ref('auto'), toggleColorMode: s.toggleColorMode }),
