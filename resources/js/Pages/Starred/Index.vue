@@ -3,7 +3,9 @@ import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { iconFor } from '../../lib/fileTypes';
+import { usePageLoading } from '../../composables/usePageLoading';
 
 const props = defineProps({
     notes: { type: Array, default: () => [] },
@@ -11,12 +13,20 @@ const props = defineProps({
     files: { type: Array, default: () => [] },
 });
 
+const { loading } = usePageLoading();
 const empty = computed(() => !props.notes.length && !props.bookmarks.length && !props.files.length);
+
+function fmtDate(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+    catch { return iso; }
+}
 </script>
 
 <template>
     <AppLayout>
-        <div class="p-3 p-lg-4">
+        <LoadingSkeleton v-if="loading" :rows="5" :cols="1" />
+        <div v-else class="p-3 p-lg-4">
             <PageHeader title="Starred" icon="star-fill" />
 
             <p v-if="empty" class="text-muted">Nothing starred yet. Star notes, bookmarks, or files to pin them here.</p>
@@ -33,7 +43,7 @@ const empty = computed(() => !props.notes.length && !props.bookmarks.length && !
                     >
                         <VibeIcon icon="journal-text" class="text-muted" />
                         <span class="flex-grow-1 text-truncate">{{ n.title }}</span>
-                        <span class="small text-muted">{{ n.updated_at }}</span>
+                        <span class="small text-muted">{{ fmtDate(n.updated_at) }}</span>
                     </button>
                 </div>
             </section>
