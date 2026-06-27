@@ -13,9 +13,7 @@ const emit = defineEmits(['ready', 'error']);
 
 const el = ref(null);
 let instance = null;
-let XLSX = null;
-// The workbook exactly as read, kept so save patches it in place (preserving
-// number formats, styles, merged cells, column widths) instead of rebuilding.
+let ExcelJS = null;
 let originalWb = null;
 
 // Formula bar state.
@@ -24,8 +22,6 @@ const cellValue = ref('');
 let activeWs = null;
 let activeX = null;
 let activeY = null;
-
-const bookType = { xlsx: 'xlsx', xls: 'xls', csv: 'csv', ods: 'ods' };
 
 function colName(x) {
     let s = '';
@@ -58,65 +54,119 @@ function commitCell() {
     activeWs.setValueFromCoords(activeX, activeY, cellValue.value, false);
 }
 
-// Build a formula-aware array-of-arrays from a SheetJS worksheet.
-// Formula cells become "=EXPR" strings so jspreadsheet's engine evaluates them.
+// Parse "A1" style cell reference → 0-indexed { r, c }.
+function parseCell(ref) {
+    const m = String(ref).match(/^([A-Z]+)(\d+)$/i);
+    if (!m) return { r: 0, c: 0 };
+    let col = 0;
+    for (const ch of m[1].toUpperCase()) col = col * 26 + ch.charCodeAt(0) - 64;
+    return { r: parseInt(m[2]) - 1, c: col - 1 };
+}
+
+// What a cell shows in the grid: its formula, else its formatted text, else its raw value.
+function cellDisplay(cell) {
+    if (!cell || cell.value === null || cell.value === undefined) return '';
+    const v = cell.value;
+    if (v && typeof v === 'object' && v.formula) return `=${v.formula}`;
+    if (v && typeof v === 'object' && v.sharedFormula) return `=${v.sharedFormula}`;
+    return cell.text ?? (v != null ? String(v) : '');
+}
+
+// Build a formula-aware array-of-arrays from an ExcelJS worksheet.
 function sheetToAoa(ws) {
-    if (!ws['!ref']) return [['']];
-    const range = XLSX.utils.decode_range(ws['!ref']);
+    let maxCol = 1;
+    ws.eachRow({ includeEmpty: true }, row => {
+        if (row.cellCount > maxCol) maxCol = row.cellCount;
+    });
     const aoa = [];
-    for (let r = range.s.r; r <= range.e.r; r++) {
-        const row = [];
-        for (let c = range.s.c; c <= range.e.c; c++) {
-            row.push(cellDisplay(ws[XLSX.utils.encode_cell({ r, c })]));
+    ws.eachRow({ includeEmpty: true }, row => {
+        const rowData = [];
+        for (let c = 1; c <= maxCol; c++) {
+            rowData.push(cellDisplay(row.getCell(c)));
         }
-        aoa.push(row);
-    }
+        aoa.push(rowData);
+    });
     return aoa.length ? aoa : [['']];
 }
 
-// What a cell shows in the grid: its formula, else its formatted text (so
-// dates/currency read naturally), else its raw value.
-function cellDisplay(cell) {
-    if (!cell) return '';
-    if (cell.f) return `=${cell.f}`;
-    if (cell.w != null) return cell.w;
-    return cell.v ?? '';
-}
-
-// Convert a sheet's "!merges" into jspreadsheet's mergeCells map so merged
-// regions render and round-trip.
+// Convert ExcelJS worksheet merges into jspreadsheet's mergeCells map.
 function mergeMap(ws) {
-    const merges = ws['!merges'];
+    const merges = ws.model?.merges;
     if (!merges?.length) return undefined;
     const map = {};
-    merges.forEach((m) => {
-        const ref = XLSX.utils.encode_cell({ r: m.s.r, c: m.s.c });
-        map[ref] = [m.e.c - m.s.c + 1, m.e.r - m.s.r + 1];
+    merges.forEach(range => {
+        const [startStr, endStr] = range.split(':');
+        if (!endStr) return;
+        const start = parseCell(startStr);
+        const end = parseCell(endStr);
+        map[startStr.toUpperCase()] = [end.c - start.c + 1, end.r - start.r + 1];
     });
     return map;
 }
 
+// Simple CSV parser for loading .csv files into an ExcelJS workbook.
+function csvToWorkbook(text) {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Sheet1');
+    let inQuote = false;
+    let field = '';
+    let row = [];
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuote) {
+            if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+            else if (ch === '"') { inQuote = false; }
+            else { field += ch; }
+        } else if (ch === '"') {
+            inQuote = true;
+        } else if (ch === ',') {
+            row.push(field); field = '';
+        } else if (ch === '\n') {
+            row.push(field); field = '';
+            ws.addRow(row); row = []; field = '';
+        } else if (ch !== '\r') {
+            field += ch;
+        }
+    }
+    if (field || row.length) { row.push(field); ws.addRow(row); }
+    return wb;
+}
+
 async function load() {
     try {
-        XLSX = await import('xlsx');
+        const mod = await import('exceljs');
+        ExcelJS = mod.default ?? mod;
+
         let wb;
         if (props.url) {
             const bytes = await getArrayBuffer(props.url);
-            wb = XLSX.read(bytes, { type: 'array', cellFormula: true, cellStyles: true });
+            if (props.type === 'csv') {
+                const text = new TextDecoder().decode(new Uint8Array(bytes));
+                wb = csvToWorkbook(text);
+            } else {
+                // xls and ods are not supported by exceljs — surface a clear error.
+                if (props.type === 'xls' || props.type === 'ods') {
+                    emit('error', `Editing .${props.type} files is not supported. Download the file, convert it to .xlsx, and re-upload.`);
+                    return;
+                }
+                wb = new ExcelJS.Workbook();
+                await wb.xlsx.load(bytes);
+            }
         } else {
             // New blank document.
-            wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['']]), 'Sheet1');
+            wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet('Sheet1');
+            ws.addRow(['']);
         }
         originalWb = wb;
 
-        const worksheets = wb.SheetNames.map((name) => {
-            const aoa = sheetToAoa(wb.Sheets[name]);
+        const worksheets = wb.worksheets.map(ws => {
+            const aoa = sheetToAoa(ws);
             return {
-                worksheetName: name,
+                worksheetName: ws.name,
                 data: aoa,
                 minDimensions: [Math.max(12, aoa[0]?.length || 0), Math.max(40, aoa.length)],
-                mergeCells: mergeMap(wb.Sheets[name]),
+                mergeCells: mergeMap(ws),
                 // Layout
                 tableOverflow: true,
                 tableHeight: 'calc(100vh - 260px)',
@@ -159,63 +209,49 @@ async function load() {
     }
 }
 
-// Apply one grid value onto a cell, preserving its number format (z) and style
-// (s). Untouched cells keep their original formula/value/format verbatim.
-function patchCell(sheet, ref, val) {
-    const orig = sheet[ref];
-    const unchanged = cellDisplay(orig) === (val == null ? '' : val);
-    if (unchanged) return;
-
-    if (val === '' || val === null || val === undefined) {
-        if (orig) { delete orig.v; delete orig.f; delete orig.w; orig.t = 'z'; }
-        return;
-    }
-    const cell = orig || (sheet[ref] = {});
-    delete cell.w; // stale formatted text
-    if (typeof val === 'string' && val.startsWith('=')) {
-        cell.f = val.slice(1);
-        delete cell.v;
-        if (cell.t !== 'n' && cell.t !== 's') cell.t = 'n';
-    } else if (typeof val === 'number' || (typeof val === 'string' && val.trim() !== '' && !Number.isNaN(Number(val)))) {
-        cell.v = Number(val);
-        delete cell.f;
-        cell.t = 'n';
-    } else {
-        cell.v = String(val);
-        delete cell.f;
-        cell.t = 's';
-    }
-}
-
-// Serialize back to a Blob by patching the ORIGINAL workbook in place, so
-// number formats, styles, merged cells and column widths survive the edit.
+// Serialize jspreadsheet edits back into the ExcelJS workbook and export as Blob.
 async function serialize() {
-    if (!originalWb) throw new Error('Workbook not loaded');
-    const sheets = instance?.worksheets ?? [instance];
-    sheets.forEach((ws, i) => {
-        const name = ws.options?.worksheetName || originalWb?.SheetNames?.[i];
-        const sheet = (name && originalWb?.Sheets?.[name]) || (originalWb.Sheets[originalWb.SheetNames[i]] = {});
-        const raw = ws.getData(false);
+    if (!originalWb || !instance) throw new Error('Workbook not loaded');
 
-        let maxR = 0;
-        let maxC = 0;
+    if (props.type === 'csv') {
+        // For CSV, build the output directly from jspreadsheet data.
+        const sheets = instance.worksheets ?? [instance];
+        const raw = sheets[0]?.getData(false) ?? [];
+        const lines = raw.map(row =>
+            row.map(v => {
+                const s = v == null ? '' : String(v);
+                return s.includes(',') || s.includes('"') || s.includes('\n')
+                    ? `"${s.replace(/"/g, '""')}"`
+                    : s;
+            }).join(',')
+        );
+        return new Blob([new TextEncoder().encode(lines.join('\n'))], { type: 'text/csv' });
+    }
+
+    // For xlsx: patch the ExcelJS workbook with edited cell values, then write.
+    const sheets = instance.worksheets ?? [instance];
+    sheets.forEach((jss, i) => {
+        const ws = originalWb.worksheets[i];
+        if (!ws) return;
+        const raw = jss.getData(false);
         raw.forEach((row, r) => {
             row.forEach((val, c) => {
-                patchCell(sheet, XLSX.utils.encode_cell({ r, c }), val);
-                if (sheet[XLSX.utils.encode_cell({ r, c })]) { maxR = Math.max(maxR, r); maxC = Math.max(maxC, c); }
+                const cell = ws.getCell(r + 1, c + 1);
+                if (val === '' || val === null || val === undefined) {
+                    cell.value = null;
+                } else if (typeof val === 'string' && val.startsWith('=')) {
+                    cell.value = { formula: val.slice(1) };
+                } else if (typeof val === 'string' && val.trim() !== '' && !Number.isNaN(Number(val))) {
+                    cell.value = Number(val);
+                } else {
+                    cell.value = String(val);
+                }
             });
-        });
-
-        // Grow the range if the grid extended beyond the original bounds.
-        const origRange = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
-        sheet['!ref'] = XLSX.utils.encode_range({
-            s: { r: 0, c: 0 },
-            e: { r: Math.max(origRange.e.r, maxR), c: Math.max(origRange.e.c, maxC) },
         });
     });
 
-    const type = bookType[props.type] || 'xlsx';
-    return new Blob([XLSX.write(originalWb, { bookType: type, type: 'array', cellStyles: true })]);
+    const buffer = await originalWb.xlsx.writeBuffer();
+    return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 defineExpose({ serialize });

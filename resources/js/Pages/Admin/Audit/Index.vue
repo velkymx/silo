@@ -52,7 +52,7 @@ const variant = (action) => {
     return 'secondary';
 };
 
-function safeMeta(meta: unknown, indent: number): string {
+function safeMeta(meta, indent) {
     try {
         return JSON.stringify(meta, null, indent);
     } catch {

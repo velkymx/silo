@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { getArrayBuffer } from '../lib/http';
-import { sanitizeHtml } from '../lib/sanitize';
 
 const props = defineProps({
     url: { type: String, required: true },
@@ -18,6 +17,45 @@ const sheetTypes = ['xlsx', 'xls', 'csv', 'ods'];
 // claims a sequence number; a stale render (older token) never paints.
 let renderSeq = 0;
 
+function parseCsv(text) {
+    const rows = [];
+    let inQuote = false;
+    let field = '';
+    let row = [];
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuote) {
+            if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+            else if (ch === '"') { inQuote = false; }
+            else { field += ch; }
+        } else if (ch === '"') {
+            inQuote = true;
+        } else if (ch === ',') {
+            row.push(field); field = '';
+        } else if (ch === '\n') {
+            row.push(field); field = '';
+            rows.push(row); row = [];
+        } else if (ch !== '\r') {
+            field += ch;
+        }
+    }
+    if (field || row.length) { row.push(field); rows.push(row); }
+    return rows;
+}
+
+function buildTable(rows) {
+    const table = document.createElement('table');
+    table.className = 'table table-sm table-bordered';
+    rows.forEach(cols => {
+        const tr = table.insertRow();
+        cols.forEach(val => {
+            const td = tr.insertCell();
+            td.textContent = val != null ? String(val) : '';
+        });
+    });
+    return table;
+}
+
 async function render() {
     if (!container.value) return;
     const token = ++renderSeq;
@@ -33,16 +71,36 @@ async function render() {
             const { renderAsync } = await import('docx-preview');
             if (token !== renderSeq || !container.value) return;
             await renderAsync(buffer, container.value, null, { inWrapper: true, className: 'docx' });
-        } else if (sheetTypes.includes(props.type)) {
-            const XLSX = await import('xlsx');
+        } else if (props.type === 'csv') {
             if (token !== renderSeq || !container.value) return;
-            const wb = XLSX.read(buffer, { type: 'array' });
+            const text = new TextDecoder().decode(new Uint8Array(buffer));
             const wrap = document.createElement('div');
             wrap.className = 'table-responsive';
-            // sheet_to_html embeds user-controlled cell content — sanitize before innerHTML.
-            wrap.innerHTML = sanitizeHtml(XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[0]]));
-            wrap.querySelector('table')?.classList.add('table', 'table-sm', 'table-bordered');
+            wrap.appendChild(buildTable(parseCsv(text)));
             container.value.appendChild(wrap);
+        } else if (props.type === 'xlsx') {
+            const mod = await import('exceljs');
+            const ExcelJS = mod.default ?? mod;
+            if (token !== renderSeq || !container.value) return;
+            const wb = new ExcelJS.Workbook();
+            await wb.xlsx.load(buffer);
+            const ws = wb.worksheets[0];
+            if (!ws) { error.value = 'Empty workbook.'; return; }
+            const rows = [];
+            ws.eachRow({ includeEmpty: false }, row => {
+                const cols = [];
+                for (let c = 1; c <= row.cellCount; c++) {
+                    const cell = row.getCell(c);
+                    cols.push(cell.text ?? (cell.value != null ? String(cell.value) : ''));
+                }
+                rows.push(cols);
+            });
+            const wrap = document.createElement('div');
+            wrap.className = 'table-responsive';
+            wrap.appendChild(buildTable(rows));
+            container.value.appendChild(wrap);
+        } else if (sheetTypes.includes(props.type)) {
+            error.value = `Inline preview is not available for .${props.type}. Download the file and open it locally.`;
         } else {
             error.value = 'No inline preview for this file type.';
         }

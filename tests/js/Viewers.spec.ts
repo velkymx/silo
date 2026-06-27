@@ -6,8 +6,7 @@ const h = vi.hoisted(() => ({
     editorCtor: vi.fn(),
     setMarkdown: vi.fn(),
     renderAsync: vi.fn(() => Promise.resolve()),
-    xlsxRead: vi.fn(() => ({ SheetNames: ['S1'], Sheets: { S1: {} } })),
-    sheetToHtml: vi.fn(() => '<table><tr><td>1</td></tr></table>'),
+    excelLoad: vi.fn(() => Promise.resolve()),
     superDocCtor: vi.fn(),
     getText: vi.fn(() => Promise.resolve('# Title')),
     getArrayBuffer: vi.fn(() => Promise.resolve(new ArrayBuffer(8))),
@@ -37,7 +36,18 @@ vi.mock('@toast-ui/editor/dist/toastui-editor-viewer.css', () => ({}));
 vi.mock('@toast-ui/editor/dist/theme/toastui-editor-dark.css', () => ({}));
 vi.mock('@toast-ui/editor/dist/toastui-editor.css', () => ({}));
 vi.mock('docx-preview', () => ({ renderAsync: h.renderAsync }));
-vi.mock('xlsx', () => ({ read: h.xlsxRead, utils: { sheet_to_html: h.sheetToHtml } }));
+vi.mock('exceljs', () => ({
+    default: {
+        Workbook: class {
+            worksheets = [{
+                eachRow: (_opts: unknown, cb: (row: { cellCount: number; getCell: (c: number) => { text: string } }, ri: number) => void) => {
+                    cb({ cellCount: 1, getCell: () => ({ text: '1' }) }, 1);
+                },
+            }];
+            xlsx = { load: h.excelLoad };
+        },
+    },
+}));
 vi.mock('@harbour-enterprises/superdoc', () => ({
     SuperDoc: class { constructor(c: { onReady?: () => void }) { h.superDocCtor(c); c.onReady?.(); } },
 }));
@@ -118,11 +128,10 @@ describe('DocViewer', () => {
         expect(h.renderAsync).toHaveBeenCalled();
     });
 
-    it('renders a spreadsheet via SheetJS', async () => {
+    it('renders a spreadsheet via ExcelJS', async () => {
         mount(DocViewer, { props: { url: '/raw/3', type: 'xlsx' } });
         await flushPromises();
-        expect(h.xlsxRead).toHaveBeenCalled();
-        expect(h.sheetToHtml).toHaveBeenCalled();
+        expect(h.excelLoad).toHaveBeenCalled();
     });
 
     it('shows an unsupported message for other types', async () => {
