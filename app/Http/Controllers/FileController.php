@@ -49,10 +49,13 @@ class FileController extends Controller
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
 
-        // One query for every folder the user owns: powers the tree, the move/copy
-        // picker, and search/tag location labels (no per-file parent walking).
+        // Flat list of the user's folders: powers the tree, move/copy picker,
+        // and search location labels. Capped to avoid massive payloads for
+        // accounts with very deep trees; the cap is surfaced as a flag.
         $allFolders = File::folders()->where('owner_id', $userId)
-            ->orderBy('name')->get(['id', 'name', 'parent_id']);
+            ->orderBy('name')->limit(2001)->get(['id', 'name', 'parent_id']);
+        $allFoldersCapped = $allFolders->count() > 2000;
+        if ($allFoldersCapped) $allFolders = $allFolders->take(2000);
         $folderById = $allFolders->keyBy('id');
 
         // The VibeUI DataTable paginates client-side; a safety cap keeps the
@@ -110,8 +113,8 @@ class FileController extends Controller
             'recentOnly' => $recentOnly,
             'flat' => $useSearch || (bool) $activeTag || $starredOnly || $recentOnly,
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
-            // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
+            'allFoldersCapped' => $allFoldersCapped,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
             // 'storage' is shared globally by HandleInertiaRequests — not duplicated here.
             'maxUploadKb' => Uploads::maxKb(),

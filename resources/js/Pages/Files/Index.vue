@@ -37,6 +37,7 @@ const props = defineProps({
     current: { type: Object, default: null },
     breadcrumbs: { type: Array, default: () => [] },
     allFolders: { type: Array, default: () => [] },
+    allFoldersCapped: { type: Boolean, default: false },
     allTags: { type: Array, default: () => [] },
     searching: { type: Boolean, default: false },
     advanced: { type: Boolean, default: false },
@@ -906,6 +907,7 @@ onBeforeUnmount(() => {
                     :error="transferForm.errors.target_id"
                 >
                     <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
+                    <small v-if="allFoldersCapped" class="text-muted d-block mt-1">Showing first 2,000 folders — use search to find others.</small>
                 </VibeFormGroup>
             </form>
             <template #footer>
