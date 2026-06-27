@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import FormErrorSummary from './FormErrorSummary.vue';
+import { useConfirm } from '../composables/useConfirm';
 
 const props = defineProps<{
     form: any;
@@ -18,6 +19,7 @@ const emit = defineEmits<{
     saved: [];
 }>();
 
+const { confirm } = useConfirm();
 const showModal = ref(false);
 const editingId = ref<number | null>(null);
 
@@ -36,7 +38,11 @@ function openEdit(item: { id: number } & Record<string, unknown>) {
     showModal.value = true;
 }
 
-function cancel() {
+async function cancel() {
+    if (props.form.isDirty) {
+        const ok = await confirm({ title: 'Discard changes?', message: 'You have unsaved changes. Discard them?', confirmLabel: 'Discard', variant: 'danger' });
+        if (!ok) return;
+    }
     showModal.value = false;
     props.form.reset();
     props.form.clearErrors();
