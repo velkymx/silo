@@ -43,7 +43,7 @@ class UserController extends Controller
         $disk = Storage::disk(ThumbnailGenerator::disk());
 
         // Normalize to a 256px square JPEG.
-        $image = (new ImageManager(Driver::class))->decodeBinary($request->file('avatar')->get());
+        $image = (new ImageManager(Driver::class))->decodePath($request->file('avatar')->getRealPath());
         $image->cover(256, 256);
         $path = 'avatars/'.$user->id.'/'.Str::random(24).'.jpg';
         $disk->put($path, (string) $image->encode(new JpegEncoder(quality: 85)));
