@@ -92,13 +92,8 @@ async function newFolder() {
 const selectedNote = computed(() => props.notes.find((n) => n.id === selectedId.value) || null);
 
 const editorRef = ref(null);
-// Heading outline of the open note, with each item indented by heading level.
-const outline = computed(() =>
-    extractHeadings(content.value).map((h) => ({
-        ...h,
-        text: ' '.repeat((h.level - 1) * 2) + h.text,
-    }))
-);
+// Heading outline of the open note, indented by heading level via CSS.
+const outline = computed(() => extractHeadings(content.value));
 function jumpToHeading(line) {
     editorRef.value?.jumpToLine(line);
 }
@@ -254,7 +249,7 @@ onMounted(() => {
                             >
                                 <template #button><VibeIcon icon="list-nested" class="me-1" />Outline</template>
                                 <template #item="{ item }">
-                                    <span class="font-monospace text-muted me-1" style="white-space: pre">{{ item.text }}</span>
+                                    <span :style="{ paddingLeft: `${(item.level - 1) * 1}rem` }">{{ item.text }}</span>
                                 </template>
                             </VibeDropdown>
                             <VibeButton size="sm" variant="secondary" outline title="Save a version" @click="saveVersion">
