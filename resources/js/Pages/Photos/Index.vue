@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
@@ -75,7 +75,7 @@ const nextPhoto = computed(() => props.photos[quickIndex.value + 1] ?? null);
 const lightboxMenu = computed(() => {
     if (!quickFile.value) return [];
     return [
-        { text: quickFile.value.starred ? 'Unstar' : 'Star', action: 'star', icon: quickFile.value.starred ? 'star-fill' : 'star' },
+        { text: isStarred(quickFile.value) ? 'Unstar' : 'Star', action: 'star', icon: isStarred(quickFile.value) ? 'star-fill' : 'star' },
         { text: 'Edit', action: 'edit', icon: 'pencil' },
         { text: 'Delete', action: 'delete', icon: 'trash' },
     ];
@@ -136,16 +136,26 @@ watch(quickIndex, async () => {
     strip?.children?.[quickIndex.value]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
 });
 
+const localStars = reactive({});
+function isStarred(p) { return p ? (localStars[p.id] ?? p.starred) : false; }
+
 function star(p) {
     if (!p) return;
-    router.post(`/files/${p.id}/star`, {}, { preserveScroll: true, preserveState: false });
+    const prev = isStarred(p);
+    localStars[p.id] = !prev;
+    router.post(`/files/${p.id}/star`, {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onError: () => { localStars[p.id] = prev; },
+        onSuccess: () => { delete localStars[p.id]; },
+    });
 }
 
 function photoMenu(p) {
     return [
         { text: 'Open', action: 'open', icon: 'arrows-fullscreen' },
         { text: 'Edit', action: 'edit', icon: 'pencil' },
-        { text: p.starred ? 'Unstar' : 'Star', action: 'star', icon: p.starred ? 'star-fill' : 'star' },
+        { text: isStarred(p) ? 'Unstar' : 'Star', action: 'star', icon: isStarred(p) ? 'star-fill' : 'star' },
         { text: 'Download', action: 'download', icon: 'download' },
         { text: 'Delete', action: 'delete', icon: 'trash' },
     ];
@@ -321,11 +331,11 @@ function saveEdit() {
                     <VibeButton
                         variant="link"
                         class="cell-star p-0"
-                        :title="p.starred ? 'Unstar' : 'Star'"
-                        :aria-label="(p.starred ? 'Unstar ' : 'Star ') + p.name"
+                        :title="isStarred(p) ? 'Unstar' : 'Star'"
+                        :aria-label="(isStarred(p) ? 'Unstar ' : 'Star ') + p.name"
                         @click.stop="star(p)"
                     >
-                        <VibeIcon :icon="p.starred ? 'star-fill' : 'star'" :class="p.starred ? 'text-warning' : 'text-white'" />
+                        <VibeIcon :icon="isStarred(p) ? 'star-fill' : 'star'" :class="isStarred(p) ? 'text-warning' : 'text-white'" />
                     </VibeButton>
 
                     <!-- Actions -->
