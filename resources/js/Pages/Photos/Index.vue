@@ -97,9 +97,15 @@ function openPhoto(p) {
 
 // Drag-to-reorder the filmstrip.
 const filmPhotos = ref([...props.photos]);
-watch(() => props.photos, (next) => { filmPhotos.value = [...next]; });
+const filmDirty = ref(false);
+watch(() => props.photos, (next) => {
+    // Ignore prop updates while a reorder save is in flight to avoid
+    // blowing away the user's drag order before the server confirms.
+    if (!filmDirty.value) filmPhotos.value = [...next];
+});
 
 function onFilmstripReorder() {
+    filmDirty.value = true;
     const currentId = quickFile.value?.id ?? null;
     const ids = filmPhotos.value.map((p) => p.id);
     router.post('/photos/reorder', { ids }, {
@@ -107,11 +113,13 @@ function onFilmstripReorder() {
         preserveState: true,
         only: ['photos'],
         onSuccess: () => {
+            filmDirty.value = false;
             if (currentId !== null) {
                 const idx = props.photos.findIndex((p) => p.id === currentId);
                 if (idx >= 0) quickIndex.value = idx;
             }
         },
+        onError: () => { filmDirty.value = false; },
     });
 }
 
