@@ -124,14 +124,18 @@ class MetadataExtractor
      */
     protected function media($disk, string $path): array
     {
-        // getID3 needs a real local path; stage remote/disk contents in a temp file.
-        $tmp = tempnam(sys_get_temp_dir(), 'meta');
-        file_put_contents($tmp, $disk->get($path));
+        // getID3 needs a real local path; use localPath() to avoid loading into memory.
+        [$local, $temp] = $this->localPath($disk, $path);
+        if ($local === null) {
+            return [];
+        }
 
         try {
-            $data = (new getID3)->analyze($tmp);
+            $data = (new getID3)->analyze($local);
         } finally {
-            @unlink($tmp);
+            if ($temp) {
+                @unlink($local);
+            }
         }
 
         $tags = $data['tags']['id3v2'] ?? $data['tags']['id3v1'] ?? $data['tags']['vorbiscomment'] ?? [];
