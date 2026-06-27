@@ -252,7 +252,7 @@ async function onImportFile(e) {
                 <VibeFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
                     <div class="d-flex gap-2">
                         <VibeFormInput v-model="form.secret" class="flex-grow-1" />
-                        <VibeButton variant="secondary" outline title="Generate" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
+                        <VibeButton variant="secondary" outline title="Generate" aria-label="Generate password" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
                     </div>
                 </VibeFormGroup>
                 <VibeFormGroup label="Share with group" :error="form.errors.group_id">

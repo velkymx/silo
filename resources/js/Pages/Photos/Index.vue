@@ -301,7 +301,7 @@ function saveEdit() {
                 <VibeIcon icon="arrow-left" class="me-1" />All photos
             </VibeButton>
             <span class="fw-semibold">{{ activeAlbum.name }}</span>
-            <VibeButton variant="danger" size="sm" outline class="ms-2" @click="deleteAlbum(activeAlbum)">
+            <VibeButton variant="danger" size="sm" outline class="ms-2" :aria-label="`Delete album ${activeAlbum.name}`" @click="deleteAlbum(activeAlbum)">
                 <VibeIcon icon="trash" />
             </VibeButton>
         </div>

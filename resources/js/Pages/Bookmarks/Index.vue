@@ -178,7 +178,7 @@ async function runMaintenance(action) {
                 <div class="d-flex flex-column p-2">
                 <div class="d-flex align-items-center justify-content-between px-1 mb-1">
                     <span class="fw-semibold small text-uppercase text-muted">Folders</span>
-                    <VibeButton size="sm" variant="light" title="New folder" @click="addFolder">
+                    <VibeButton size="sm" variant="light" title="New folder" aria-label="New folder" @click="addFolder">
                         <VibeIcon icon="folder-plus" />
                     </VibeButton>
                 </div>
@@ -229,7 +229,7 @@ async function runMaintenance(action) {
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>
                         <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                     </VibeDropdown>
-                    <VibeButton size="sm" variant="secondary" outline title="Import a Chrome/Firefox bookmarks HTML export" @click="importInput?.click()">
+                    <VibeButton size="sm" variant="secondary" outline title="Import a Chrome/Firefox bookmarks HTML export" aria-label="Import bookmarks" @click="importInput?.click()">
                         <VibeIcon icon="upload" />
                     </VibeButton>
                     <VibeButton
@@ -237,11 +237,12 @@ async function runMaintenance(action) {
                         :variant="bmSelectMode ? 'primary' : 'secondary'"
                         outline
                         title="Select bookmarks"
+                        aria-label="Select bookmarks"
                         @click="bmSelectMode = !bmSelectMode"
                     >
                         <VibeIcon icon="check2-square" />
                     </VibeButton>
-                    <VibeButton size="sm" variant="primary" title="New bookmark" @click="openAdd">
+                    <VibeButton size="sm" variant="primary" title="New bookmark" aria-label="New bookmark" @click="openAdd">
                         <VibeIcon icon="plus-lg" />
                     </VibeButton>
                     <input ref="importInput" type="file" accept=".html,.htm,text/html" class="d-none" @change="onImportFile">
@@ -321,7 +322,7 @@ async function runMaintenance(action) {
                                 <VibeIcon icon="box-arrow-up-right" class="me-1" />Open
                             </a>
                             <template v-if="selectedBookmark.can_edit">
-                                <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
+                                <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" :aria-label="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
                                     <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
                                 </VibeButton>
                                 <VibeButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</VibeButton>

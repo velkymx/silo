@@ -129,7 +129,7 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                             <div class="text-truncate small">{{ f.name }}</div>
                             <div class="text-muted" style="font-size: 0.72rem">{{ fmtBytes(f.size) }}</div>
                         </div>
-                        <VibeButton variant="link" size="sm" class="p-0 text-danger" @click="removeUploadFile(i)"><VibeIcon icon="x-lg" /></VibeButton>
+                        <VibeButton variant="link" size="sm" class="p-0 text-danger" :aria-label="`Remove ${f.name}`" @click="removeUploadFile(i)"><VibeIcon icon="x-lg" /></VibeButton>
                     </div>
                 </div>
             </div>

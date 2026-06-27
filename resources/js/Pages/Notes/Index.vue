@@ -242,7 +242,7 @@ onMounted(() => {
                                 <span v-else-if="saveState === 'saved'">Saved</span>
                                 <span v-else-if="saveState === 'error'" class="text-danger">Save failed — check connection</span>
                             </small>
-                            <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
+                            <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" :aria-label="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
                                 <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />
                             </VibeButton>
                             <VibeDropdown

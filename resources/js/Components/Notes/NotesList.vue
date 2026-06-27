@@ -26,6 +26,7 @@ const sortOptions = [
                     :variant="selectMode ? 'primary' : 'secondary'"
                     outline
                     title="Select notes"
+                    aria-label="Select notes"
                     @click="emit('update:select-mode', !selectMode)"
                 >
                     <VibeIcon icon="check2-square" />
@@ -41,7 +42,7 @@ const sortOptions = [
                     <template #button><VibeIcon icon="sort-down" /></template>
                     <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                 </VibeDropdown>
-                <VibeButton size="sm" variant="primary" title="New note" @click="emit('new')">
+                <VibeButton size="sm" variant="primary" title="New note" aria-label="New note" @click="emit('new')">
                     <VibeIcon icon="plus-lg" />
                 </VibeButton>
             </div>

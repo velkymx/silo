@@ -80,7 +80,7 @@ async function emptyTrash() {
                     <VibeButton variant="success" size="sm" outline @click="restore(item)">
                         <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
                     </VibeButton>
-                    <VibeButton variant="danger" size="sm" outline @click="purge(item)">
+                    <VibeButton variant="danger" size="sm" outline :aria-label="`Permanently delete ${item.name}`" @click="purge(item)">
                         <VibeIcon icon="trash" />
                     </VibeButton>
                 </div>

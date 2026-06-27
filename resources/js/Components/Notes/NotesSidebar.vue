@@ -95,7 +95,7 @@ function toggleTag(path) {
     <div class="notes-sidebar d-flex flex-column h-100 border-end bg-body-tertiary p-2">
         <div class="d-flex align-items-center justify-content-between px-1 mb-1">
             <span class="fw-semibold small text-uppercase text-muted">Folders</span>
-            <VibeButton size="sm" variant="light" title="New folder" @click="emit('new-folder')">
+            <VibeButton size="sm" variant="light" title="New folder" aria-label="New folder" @click="emit('new-folder')">
                 <VibeIcon icon="folder-plus" />
             </VibeButton>
         </div>

@@ -648,6 +648,7 @@ onBeforeUnmount(() => {
                         :variant="viewMode === 'list' ? 'primary' : 'secondary'"
                         :outline="viewMode !== 'list'"
                         title="List view"
+                        aria-label="List view"
                         @click="viewMode = 'list'"
                     >
                         <VibeIcon icon="list-ul" />
@@ -656,6 +657,7 @@ onBeforeUnmount(() => {
                         :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
                         :outline="viewMode !== 'grid'"
                         title="Thumbnail view"
+                        aria-label="Thumbnail view"
                         @click="viewMode = 'grid'"
                     >
                         <VibeIcon icon="grid-3x3-gap-fill" />

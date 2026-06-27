@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
                     <td><VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ g.subject_label }}</td>
                     <td><VibeBadge variant="secondary">{{ g.ability }}</VibeBadge></td>
                     <td class="text-end">
-                        <VibeButton variant="danger" size="sm" outline @click="removeGrant(g.id)"><VibeIcon icon="x" /></VibeButton>
+                        <VibeButton variant="danger" size="sm" outline :aria-label="`Remove access for ${g.subject_label}`" @click="removeGrant(g.id)"><VibeIcon icon="x" /></VibeButton>
                     </td>
                 </tr>
             </tbody>
@@ -202,10 +202,10 @@ onBeforeUnmount(() => {
                             </div>
                         </td>
                         <td class="text-end text-nowrap">
-                            <VibeButton variant="secondary" size="sm" outline @click="copyLink(link.url, link.id)">
+                            <VibeButton variant="secondary" size="sm" outline aria-label="Copy link" @click="copyLink(link.url, link.id)">
                                 <VibeIcon :icon="copied === link.id ? 'check' : 'clipboard'" />
                             </VibeButton>
-                            <VibeButton variant="danger" size="sm" outline class="ms-1" @click="revokeLink(link.id)"><VibeIcon icon="x" /></VibeButton>
+                            <VibeButton variant="danger" size="sm" outline class="ms-1" aria-label="Revoke link" @click="revokeLink(link.id)"><VibeIcon icon="x" /></VibeButton>
                         </td>
                     </tr>
                 </tbody>

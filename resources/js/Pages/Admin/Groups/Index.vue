@@ -96,10 +96,10 @@ async function destroy(group) {
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
-                    <VibeButton variant="primary" size="sm" outline @click="startEdit(item)">
+                    <VibeButton variant="primary" size="sm" outline :aria-label="`Edit ${item.name}`" @click="startEdit(item)">
                         <VibeIcon icon="pencil" />
                     </VibeButton>
-                    <VibeButton variant="danger" size="sm" outline :disabled="deletingId === item.id" @click="destroy(item)">
+                    <VibeButton variant="danger" size="sm" outline :disabled="deletingId === item.id" :aria-label="`Delete ${item.name}`" @click="destroy(item)">
                         <VibeIcon icon="trash" />
                     </VibeButton>
                 </div>

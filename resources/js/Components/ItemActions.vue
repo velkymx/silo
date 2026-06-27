@@ -10,6 +10,7 @@ const emit = defineEmits<{ star: [FileLike]; action: [unknown] }>();
     <div class="d-flex align-items-center gap-1" @click.stop>
         <VibeButton
             v-vibe-tooltip="item.starred ? 'Unstar' : 'Star'"
+            :aria-label="item.starred ? 'Unstar' : 'Star'"
             variant="link"
             class="p-0"
             @click="emit('star', item)"

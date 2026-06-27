@@ -162,7 +162,7 @@ function onUserMenu({ item }) {
     <div class="d-flex flex-column min-vh-100 bg-body-tertiary">
         <!-- Full-width top bar -->
         <header class="d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2">
-            <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" @click="toggleSidebar">
+            <VibeButton variant="secondary" size="sm" outline title="Toggle sidebar" aria-label="Toggle sidebar" @click="toggleSidebar">
                 <VibeIcon icon="list" />
             </VibeButton>
             <Link href="/" class="d-flex align-items-center text-decoration-none flex-shrink-0" style="min-width: 218px" :title="`${appName} — ${tagline}`">
@@ -201,7 +201,7 @@ function onUserMenu({ item }) {
                             </template>
                             <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                         </VibeDropdown>
-                        <VibeButton v-if="isSearching" variant="secondary" outline @click="clearGlobalSearch">
+                        <VibeButton v-if="isSearching" variant="secondary" outline aria-label="Clear search" @click="clearGlobalSearch">
                             <VibeIcon icon="x-lg" />
                         </VibeButton>
                         <span v-else class="input-group-text bg-body text-muted">
