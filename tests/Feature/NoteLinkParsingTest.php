@@ -35,7 +35,7 @@ class NoteLinkParsingTest extends TestCase
 
         $link = NoteLink::where('source_file_id', $source->id)->firstOrFail();
         $this->assertSame($target->id, $link->target_file_id);
-        $this->assertSame('Roadmap', $link->target_title);
+        $this->assertSame('roadmap', $link->target_title);
     }
 
     public function test_unresolved_wikilink_is_stored_with_null_target(): void
@@ -48,7 +48,7 @@ class NoteLinkParsingTest extends TestCase
 
         $link = NoteLink::where('source_file_id', $source->id)->firstOrFail();
         $this->assertNull($link->target_file_id);
-        $this->assertSame('Nonexistent', $link->target_title);
+        $this->assertSame('nonexistent', $link->target_title);
     }
 
     public function test_unresolved_link_lights_up_when_target_created_later(): void

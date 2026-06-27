@@ -52,7 +52,7 @@ class NoteLinker
             NoteLink::create([
                 'source_file_id' => $note->id,
                 'target_file_id' => $target?->id,
-                'target_title' => $link['title'],
+                'target_title' => mb_strtolower($link['title']),
                 'link_text' => $link['alias'] ?? $link['title'],
                 'owner_id' => $note->owner_id,
             ]);
@@ -99,7 +99,7 @@ class NoteLinker
             ->whereNull('target_file_id')
             ->where('owner_id', $note->owner_id)
             ->where('source_file_id', '!=', $note->id)
-            ->whereRaw('LOWER(target_title) = ?', [mb_strtolower($this->noteTitle($note))])
+            ->where('target_title', mb_strtolower($this->noteTitle($note)))
             ->update(['target_file_id' => $note->id]);
     }
 

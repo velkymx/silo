@@ -83,12 +83,25 @@ class BookmarkController extends Controller
         $request->validate(['file' => 'required|file|mimes:html,htm|max:10240']);
 
         $userId = auth()->id();
-        $existing = Bookmark::where('owner_id', $userId)->pluck('url')->flip();
         $count = 0;
 
-        foreach ($importer->parse($request->file('file')->get()) as $link) {
-            if ($existing->has($link['url'])) {
-                continue; // dedup against what the user already has
+        // Parse the full file into memory (bounded by 10 MB upload limit), then
+        // check which URLs already exist in chunks rather than loading the user's
+        // entire bookmark set into PHP memory.
+        $links = $importer->parse($request->file('file')->get());
+        $importUrls = array_column($links, 'url');
+
+        $existingSet = collect();
+        foreach (array_chunk($importUrls, 500) as $chunk) {
+            $existingSet = $existingSet->concat(
+                Bookmark::where('owner_id', $userId)->whereIn('url', $chunk)->pluck('url')
+            );
+        }
+        $existingSet = $existingSet->flip();
+
+        foreach ($links as $link) {
+            if ($existingSet->has($link['url'])) {
+                continue;
             }
             $bookmark = Bookmark::create([
                 'owner_id' => $userId,
@@ -97,7 +110,7 @@ class BookmarkController extends Controller
                 'category' => $link['category'] ? Str::limit($link['category'], 60, '') : null,
             ]);
             ProcessBookmark::dispatch($bookmark->id);
-            $existing->put($link['url'], true);
+            $existingSet->put($link['url'], true);
             $count++;
         }
 
