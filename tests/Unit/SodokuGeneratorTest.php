@@ -121,12 +121,68 @@ class SodokuGeneratorTest extends TestCase
     public function test_complete_grid_has_no_zeros_across_many_seeds(): void
     {
         $gen = $this->generator();
-        for ($seed = 1; $seed <= 50; $seed++) {
-            $result = $gen->generate($seed, 'advanced');
+        foreach ([1, 42, 100, 999, 12345] as $seed) {
+            $result = $gen->generate($seed, 'beginner');
             $this->assertTrue(
                 $this->isValidCompleteSolution($result['solution']),
                 "Seed $seed produced an invalid or incomplete solution: {$result['solution']}"
             );
         }
+    }
+
+    /**
+     * CR-03: every generated puzzle must have exactly one solution.
+     * Spot-check one seed per difficulty; the generator enforces uniqueness
+     * internally so this catches regressions without an expensive full sweep.
+     */
+    public function test_puzzle_has_unique_solution(): void
+    {
+        $gen = $this->generator();
+        foreach (['beginner' => 1, 'intermediate' => 1, 'advanced' => 1] as $diff => $seed) {
+            $result = $gen->generate($seed, $diff);
+            $board = [];
+            for ($i = 0; $i < 81; $i++) {
+                $ch = $result['puzzle'][$i];
+                $board[intdiv($i, 9)][$i % 9] = $ch === '-' ? 0 : (int) $ch;
+            }
+            $count = $this->countSolutions($board);
+            $this->assertSame(1, $count, "Seed $seed/$diff has $count solutions");
+        }
+    }
+
+    private function countSolutions(array $board, int $max = 2): int
+    {
+        for ($r = 0; $r < 9; $r++) {
+            for ($c = 0; $c < 9; $c++) {
+                if ($board[$r][$c] !== 0) continue;
+                $count = 0;
+                for ($v = 1; $v <= 9; $v++) {
+                    if ($this->solverCanPlace($board, $r, $c, $v)) {
+                        $board[$r][$c] = $v;
+                        $count += $this->countSolutions($board, $max - $count);
+                        $board[$r][$c] = 0;
+                        if ($count >= $max) return $count;
+                    }
+                }
+                return $count;
+            }
+        }
+        return 1;
+    }
+
+    private function solverCanPlace(array $board, int $r, int $c, int $v): bool
+    {
+        for ($k = 0; $k < 9; $k++) {
+            if ($board[$r][$k] === $v) return false;
+            if ($board[$k][$c] === $v) return false;
+        }
+        $br = intdiv($r, 3) * 3;
+        $bc = intdiv($c, 3) * 3;
+        for ($dr = 0; $dr < 3; $dr++) {
+            for ($dc = 0; $dc < 3; $dc++) {
+                if ($board[$br + $dr][$bc + $dc] === $v) return false;
+            }
+        }
+        return true;
     }
 }

@@ -141,33 +141,58 @@ class SodokuGenerator
     private function removeCells(array $solution, int $toRemove, int $seed): array
     {
         mt_srand($seed + 1);
-        $puzzle = $solution;
         $positions = [];
         for ($r = 0; $r < 9; $r++) {
             for ($c = 0; $c < 9; $c++) {
                 $positions[] = [$r, $c];
             }
         }
-        shuffle($positions);
 
-        $removed = 0;
-        foreach ($positions as $pos) {
-            if ($removed >= $toRemove) break;
-            [$r, $c] = $pos;
-            $backup = $puzzle[$r][$c];
-            if ($backup === 0) continue;
-            $puzzle[$r][$c] = 0;
+        // Greedy removal with uniqueness check. Try multiple shuffle orders (seeded,
+        // so deterministic) in case one order boxes itself into a dead end.
+        for ($attempt = 0; $attempt < 12; $attempt++) {
+            $puzzle = $solution;
+            $removed = 0;
+            shuffle($positions); // advances seeded mt_rand state deterministically
 
-            // Quick uniqueness check: the solution we generated is the
-            // known-good solution. If after removing the cell the puzzle
-            // has a second solution, the cell stays removed only if our
-            // generated solution is the unique one. We test by re-solving.
-            // For simplicity, we trust the generated puzzle and remove up
-            // to the target. A future iteration can add uniqueness check.
-            $removed++;
+            foreach ($positions as $pos) {
+                if ($removed >= $toRemove) break;
+                [$r, $c] = $pos;
+                $backup = $puzzle[$r][$c];
+                $puzzle[$r][$c] = 0;
+
+                if ($this->countSolutions($puzzle, 2) !== 1) {
+                    $puzzle[$r][$c] = $backup;
+                    continue;
+                }
+                $removed++;
+            }
+
+            if ($removed >= $toRemove) return $puzzle;
         }
 
-        return $puzzle;
+        return $puzzle; // best effort if target not met after all attempts
+    }
+
+    /** Count solutions up to $max. Stops early once $max is reached. */
+    private function countSolutions(array $board, int $max = 2): int
+    {
+        for ($r = 0; $r < self::SIZE; $r++) {
+            for ($c = 0; $c < self::SIZE; $c++) {
+                if ($board[$r][$c] !== 0) continue;
+                $count = 0;
+                for ($v = 1; $v <= self::SIZE; $v++) {
+                    if ($this->canPlace($board, $r, $c, $v)) {
+                        $board[$r][$c] = $v;
+                        $count += $this->countSolutions($board, $max - $count);
+                        $board[$r][$c] = 0;
+                        if ($count >= $max) return $count;
+                    }
+                }
+                return $count;
+            }
+        }
+        return 1;
     }
 
     /** @param int[][] $board */
