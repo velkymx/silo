@@ -104,7 +104,7 @@ function onIconError(id) {
 
 // ----- Add / edit -----
 const bmModal = ref(null);
-const form = useForm({ title: '', url: '', description: '', icon: '', color: '', category: '', shared: false });
+const form = useForm({ title: '', url: '', description: '', icon: '', category: '', shared: false });
 
 function openAdd() {
     const prefill = selectedFolder.value && selectedFolder.value !== 'General' ? { category: selectedFolder.value } : {};
@@ -114,7 +114,7 @@ function openAdd() {
 function openEdit(b) {
     Object.assign(form, {
         title: b.title, url: b.url, description: b.description || '',
-        icon: b.icon_name || '', color: b.color || '', category: b.category || '', shared: b.shared,
+        icon: b.icon_name || '', category: b.category || '', shared: b.shared,
     });
     bmModal.value?.openEdit(b);
 }

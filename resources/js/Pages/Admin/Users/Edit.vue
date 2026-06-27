@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import FormErrorSummary from '../../../Components/FormErrorSummary.vue';
 
@@ -78,7 +78,7 @@ function submit() {
 
                         <div class="mt-4 d-flex gap-2">
                             <VibeButton type="submit" variant="primary" :disabled="form.processing"><VibeSpinner v-if="form.processing" size="sm" class="me-1" />{{ form.processing ? 'Saving…' : 'Save' }}</VibeButton>
-                            <VibeButton variant="secondary" outline href="/users">Cancel</VibeButton>
+                            <VibeButton variant="secondary" outline @click="router.visit('/users')">Cancel</VibeButton>
                         </div>
                     </form>
                 </VibeCard>
