@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
@@ -10,6 +11,7 @@ import { usePageLoading } from '../../composables/usePageLoading';
 const { confirm } = useConfirm();
 const toast = useToast();
 const { loading } = usePageLoading();
+const processingId = ref(null);
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -29,14 +31,22 @@ function iconFor(item) {
 }
 
 function restore(item) {
-    router.post(`/trash/${item.id}/restore`, {}, { preserveScroll: true });
+    if (processingId.value !== null) return;
+    processingId.value = item.id;
+    router.post(`/trash/${item.id}/restore`, {}, {
+        preserveScroll: true,
+        onFinish: () => { processingId.value = null; },
+    });
 }
 
 async function purge(item) {
+    if (processingId.value !== null) return;
     if (!await confirm({ title: 'Permanently delete', message: `Permanently delete "${item.name}"? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
+    processingId.value = item.id;
     router.delete(`/trash/${item.id}`, {
         preserveScroll: true,
         onSuccess: () => toast.push(`"${item.name}" permanently deleted`, { variant: 'danger' }),
+        onFinish: () => { processingId.value = null; },
     });
 }
 
@@ -77,10 +87,11 @@ async function emptyTrash() {
             </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
-                    <VibeButton variant="success" size="sm" outline @click="restore(item)">
-                        <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
+                    <VibeButton variant="success" size="sm" outline :disabled="processingId === item.id" @click="restore(item)">
+                        <VibeSpinner v-if="processingId === item.id" size="sm" class="me-1" />
+                        <VibeIcon v-else icon="arrow-counterclockwise" class="me-1" />Restore
                     </VibeButton>
-                    <VibeButton variant="danger" size="sm" outline :aria-label="`Permanently delete ${item.name}`" @click="purge(item)">
+                    <VibeButton variant="danger" size="sm" outline :disabled="processingId === item.id" :aria-label="`Permanently delete ${item.name}`" @click="purge(item)">
                         <VibeIcon icon="trash" />
                     </VibeButton>
                 </div>
