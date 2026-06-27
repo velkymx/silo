@@ -37,7 +37,7 @@ export function useSelection<T extends SelectableItem>(items: Ref<T[]>, onOpen: 
     function onItemClick(item: T, event?: MouseEvent): void {
         const idx = items.value.findIndex((i) => i.id === item.id);
 
-        if (event?.shiftKey && lastClickedIndex >= 0) {
+        if (event?.shiftKey && lastClickedIndex >= 0 && idx >= 0) {
             const [a, b] = [lastClickedIndex, idx].sort((x, y) => x - y);
             const next = new Set(selectedIds.value);
             for (let i = a; i <= b; i++) next.add(items.value[i].id);
