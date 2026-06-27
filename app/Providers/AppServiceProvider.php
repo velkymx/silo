@@ -2,17 +2,15 @@
 
 namespace App\Providers;
 
+use App\Services\VaultCrypto;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->singleton(VaultCrypto::class);
     }
 
     /**
