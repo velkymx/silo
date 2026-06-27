@@ -499,6 +499,8 @@ class FileController extends Controller
                 Audit::log('file.upload', $file, ['size' => $file->size]);
             }
 
+            app(QuotaService::class)->invalidate($userId);
+
             return redirect()->route('files.index', ['folder' => $parent?->id])
                 ->with('success', 'Files uploaded successfully!');
         });
@@ -566,6 +568,7 @@ class FileController extends Controller
         });
 
         Audit::log('file.trash', $file);
+        app(QuotaService::class)->invalidate(auth()->id());
 
         return redirect()->route('files.index', ['folder' => $file->parent_id])
             ->with('success', 'Moved to trash.');

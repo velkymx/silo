@@ -12,20 +12,26 @@ class QuotaService
     // Single query via UNION ALL avoids the race window of the old 3-query approach.
     public function usedBytes(int $userId): int
     {
-        $row = DB::selectOne('
-            SELECT COALESCE(SUM(s), 0) AS total FROM (
-                SELECT size AS s
-                    FROM files
-                    WHERE owner_id = :uid1 AND is_dir = 0
-                UNION ALL
-                SELECT fv.size AS s
-                    FROM file_versions fv
-                    JOIN files f ON fv.file_id = f.id
-                    WHERE f.owner_id = :uid2
-            ) AS combined
-        ', ['uid1' => $userId, 'uid2' => $userId]);
+        return (int) cache()->remember("quota.used.{$userId}", 15, function () use ($userId) {
+            $row = DB::selectOne('
+                SELECT COALESCE(SUM(s), 0) AS total FROM (
+                    SELECT size AS s
+                        FROM files
+                        WHERE owner_id = :uid1 AND is_dir = 0
+                    UNION ALL
+                    SELECT fv.size AS s
+                        FROM file_versions fv
+                        JOIN files f ON fv.file_id = f.id
+                        WHERE f.owner_id = :uid2
+                ) AS combined
+            ', ['uid1' => $userId, 'uid2' => $userId]);
+            return (int) ($row->total ?? 0);
+        });
+    }
 
-        return (int) ($row->total ?? 0);
+    public function invalidate(int $userId): void
+    {
+        cache()->forget("quota.used.{$userId}");
     }
 
     // Quota in bytes (0 = unlimited).
