@@ -49,7 +49,7 @@ describe('Vault/Index', () => {
 
     it('reveals a secret after a password prompt', async () => {
         const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
-        await wrapper.get('[title="Reveal"]').trigger('click');
+        await wrapper.get('[aria-label="Reveal secret"]').trigger('click');
         await flushPromises();
         expect(h.prompt).toHaveBeenCalled();
         expect(h.post).toHaveBeenCalledWith('/vault/1/reveal', { password: 'my-password' });
@@ -80,7 +80,7 @@ describe('Vault/Index', () => {
         h.post.mockResolvedValueOnce({ secret: 'S3CR3T' });
         h.prompt.mockResolvedValueOnce('pw');
         const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
-        await wrapper.get('[title="Reveal"]').trigger('click');
+        await wrapper.get('[aria-label="Reveal secret"]').trigger('click');
         await flushPromises();
         // Secret revealed — 20s auto-hide timer is running.
         wrapper.unmount();
@@ -94,9 +94,9 @@ describe('Vault/Index', () => {
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, writable: true, configurable: true });
 
         const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
-        await wrapper.get('[title="Reveal"]').trigger('click');
+        await wrapper.get('[aria-label="Reveal secret"]').trigger('click');
         await flushPromises();
-        await wrapper.get('[title="Copy"]').trigger('click');
+        await wrapper.get('[aria-label="Copy secret to clipboard"]').trigger('click');
         await flushPromises();
 
         expect(writeText).toHaveBeenCalledWith('PLAINTEXT-SECRET');
@@ -111,9 +111,9 @@ describe('Vault/Index', () => {
         });
 
         const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
-        await wrapper.get('[title="Reveal"]').trigger('click');
+        await wrapper.get('[aria-label="Reveal secret"]').trigger('click');
         await flushPromises();
-        await wrapper.get('[title="Copy"]').trigger('click');
+        await wrapper.get('[aria-label="Copy secret to clipboard"]').trigger('click');
         await flushPromises();
 
         const { state } = useToast();
@@ -122,7 +122,7 @@ describe('Vault/Index', () => {
 
     it('revealed secret is not inside a text-truncate container', async () => {
         const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
-        await wrapper.get('[title="Reveal"]').trigger('click');
+        await wrapper.get('[aria-label="Reveal secret"]').trigger('click');
         await flushPromises();
         // The element containing the revealed secret must NOT have text-truncate.
         const secretEl = wrapper.find('code.vault-secret, pre.vault-secret');

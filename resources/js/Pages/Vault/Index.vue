@@ -211,18 +211,24 @@ async function onImportFile(e) {
                             </div>
                             <pre v-if="revealed[item.id]" class="vault-secret mb-0 small">{{ revealed[item.id] }}</pre>
                         </div>
-                        <VibeButton size="sm" variant="secondary" outline :title="revealed[item.id] ? 'Hide' : 'Reveal'" @click="reveal(item)">
-                            <VibeIcon :icon="revealed[item.id] ? 'eye-slash' : 'eye'" />
+                        <VibeButton size="sm" variant="secondary" outline :aria-label="revealed[item.id] ? 'Hide secret' : 'Reveal secret'" @click="reveal(item)">
+                            <VibeIcon :icon="revealed[item.id] ? 'eye-slash' : 'eye'" class="me-1" />{{ revealed[item.id] ? 'Hide' : 'Reveal' }}
                         </VibeButton>
-                        <VibeButton v-if="revealed[item.id]" size="sm" variant="secondary" outline title="Copy" @click="copy(item.id)">
-                            <VibeIcon icon="clipboard" />
+                        <VibeButton v-if="revealed[item.id]" size="sm" variant="secondary" outline aria-label="Copy secret to clipboard" @click="copy(item.id)">
+                            <VibeIcon icon="clipboard" class="me-1" />Copy
                         </VibeButton>
-                        <VibeButton v-if="item.can_edit" size="sm" variant="light" title="Edit" @click="openEdit(item)">
-                            <VibeIcon icon="pencil" />
-                        </VibeButton>
-                        <VibeButton v-if="item.can_edit" size="sm" variant="light" title="Remove" @click="remove(item)">
-                            <VibeIcon icon="trash" />
-                        </VibeButton>
+                        <VibeDropdown
+                            v-if="item.can_edit"
+                            size="sm"
+                            variant="light"
+                            menu-end
+                            aria-label="Secret actions"
+                            :items="[{ text: 'Edit', action: 'edit', icon: 'pencil' }, { text: 'Remove', action: 'remove', icon: 'trash', class: 'text-danger' }]"
+                            @item-click="$event.item.action === 'edit' ? openEdit(item) : remove(item)"
+                        >
+                            <template #button><VibeIcon icon="three-dots-vertical" /><span class="visually-hidden">Secret actions</span></template>
+                            <template #item="{ item: a }"><VibeIcon :icon="a.icon" :class="['me-2', a.class || '']" />{{ a.text }}</template>
+                        </VibeDropdown>
                     </div>
                 </div>
             </div>
