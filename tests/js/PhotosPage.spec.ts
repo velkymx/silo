@@ -52,9 +52,9 @@ describe('Photos/Index page', () => {
 
     it('creating an album posts to /photos/albums', async () => {
         const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
-        // The album-name field is the only text input; filling it enables Create.
+        // The album-name field is the only text input; filling it enables Add.
         await wrapper.find('input[data-stub="VibeFormInput"]').setValue('Summer 2026');
-        const create = wrapper.findAll('button').find((b) => b.text().trim() === 'Create');
+        const create = wrapper.findAll('button').find((b) => b.text().trim() === 'Add');
         await create!.trigger('click');
         expect(s.formPost).toHaveBeenCalledWith('/photos/albums', expect.anything());
     });

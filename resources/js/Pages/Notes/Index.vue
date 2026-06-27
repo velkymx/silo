@@ -31,7 +31,7 @@ const props = defineProps({
 
 const selectedId = ref(props.open || null);
 const content = ref('');
-const saveState = ref('idle'); // 'idle' | 'saving' | 'saved'
+const saveState = ref('idle'); // 'idle' | 'saving' | 'saved' | 'error'
 const activeTag = ref(null);
 const selectedFolder = ref(null);
 const sortOrder = ref('name-asc');
@@ -141,7 +141,7 @@ function newNote() {
 
 watch(content, () => {
     if (suppressSave || !selectedId.value) return;
-    saveState.value = 'saving';
+    saveState.value = 'saving'; // clears 'error' on next keystroke
     clearTimeout(saveTimer);
     saveTimer = setTimeout(autosave, 800);
 });
@@ -153,7 +153,7 @@ async function autosave(extra = {}) {
         await http.put(`/notes/${selectedId.value}/autosave`, { content: content.value, ...extra });
         if (!unmounted) saveState.value = 'saved';
     } catch {
-        if (!unmounted) saveState.value = 'idle';
+        if (!unmounted) saveState.value = 'error';
     }
 }
 
@@ -240,6 +240,7 @@ onMounted(() => {
                             <small class="text-muted">
                                 <span v-if="saveState === 'saving'">Saving…</span>
                                 <span v-else-if="saveState === 'saved'">Saved</span>
+                                <span v-else-if="saveState === 'error'" class="text-danger">Save failed — check connection</span>
                             </small>
                             <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
                                 <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />

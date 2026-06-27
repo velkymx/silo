@@ -413,7 +413,6 @@ function saveEdit() {
             :update-url="(id) => `/photos/albums/${id}`"
             add-title="New Album"
             edit-title="Edit Album"
-            add-label="Create"
         >
             <VibeFormGroup label="Album name">
                 <VibeFormInput v-model="albumForm.name" placeholder="Summer 2026" />

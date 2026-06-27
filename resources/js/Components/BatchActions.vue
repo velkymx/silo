@@ -76,13 +76,13 @@ function submitRename(): void {
         <strong>{{ count }} selected</strong>
         <div class="ms-auto d-flex flex-wrap gap-2">
             <!-- Move is the most common bulk action → the single primary. -->
-            <VibeButton variant="primary" size="sm" @click="moveTarget = null; moveOpen = true">
+            <VibeButton variant="primary" size="sm" :disabled="batchBusy" @click="moveTarget = null; moveOpen = true">
                 <VibeIcon icon="folder-symlink" class="me-1" />Move…
             </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="folderName = 'New Folder'; folderOpen = true">
+            <VibeButton variant="secondary" size="sm" outline :disabled="batchBusy" @click="folderName = 'New Folder'; folderOpen = true">
                 <VibeIcon icon="folder-plus" class="me-1" />New Folder
             </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="renameOpen = true">
+            <VibeButton variant="secondary" size="sm" outline :disabled="batchBusy" @click="renameOpen = true">
                 <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
             </VibeButton>
             <VibeButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
