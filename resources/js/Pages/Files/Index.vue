@@ -18,6 +18,9 @@ import { useQuickLook } from '../../composables/useQuickLook';
 import { descendantIds } from '../../lib/folderTree';
 import { useStorageMeter } from '../../composables/useStorageMeter';
 import EmptyState from '../../Components/EmptyState.vue';
+import FilterChips from '../../Components/FilterChips.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import { usePageLoading } from '../../composables/usePageLoading';
 import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { typeLabel } from '../../lib/fileTypes';
@@ -271,6 +274,8 @@ function safeLocalStorage(key, fallback = '') {
 }
 const viewMode = ref(safeLocalStorage('fm-view') === 'grid' ? 'grid' : 'list');
 watch(viewMode, (v) => { try { localStorage.setItem('fm-view', v); } catch { /* blocked */ } });
+
+const { loading } = usePageLoading();
 
 // Grid windowing: render a bounded slice so a 1000-item folder doesn't mount
 // 1000 cards at once. "Show more" reveals the next page; reset when items change.
@@ -666,22 +671,12 @@ onBeforeUnmount(() => {
         />
 
         <!-- Single compact chip bar for all active view filters. -->
-        <VibeAlert v-if="activeFilters.length" variant="light" class="border d-flex flex-wrap align-items-center gap-2 py-2">
-            <VibeIcon icon="funnel-fill" class="text-muted" />
-            <VibeBadge
-                v-for="f in activeFilters"
-                :key="f.key"
-                variant="secondary"
-                class="d-flex align-items-center gap-1"
-            >
-                <VibeIcon :icon="f.icon" />{{ f.label }}
-                <VibeIcon icon="x" style="cursor: pointer" :aria-label="`Clear ${f.label}`" @click="f.clear()" />
-            </VibeBadge>
-            <VibeButton variant="link" size="sm" class="ms-auto p-0 text-decoration-none" @click="clearAllFilters">Clear all</VibeButton>
-        </VibeAlert>
+        <FilterChips :chips="activeFilters" @clear-all="clearAllFilters" />
+
+        <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
         <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
-        <template v-if="viewMode === 'grid'">
+        <template v-if="!loading && viewMode === 'grid'">
             <VibeRow class="g-3">
                 <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
                     <FileItem
@@ -714,7 +709,7 @@ onBeforeUnmount(() => {
         </template>
 
         <VibeDataTable
-            v-else
+            v-else-if="!loading"
             :items="items"
             :columns="columns"
             row-key="_key"
