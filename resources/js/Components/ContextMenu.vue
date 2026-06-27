@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
                 :style="{ left: pos.left + 'px', top: pos.top + 'px' }"
                 role="menu"
             >
-                <li v-for="(item, i) in items" :key="i">
+                <li v-for="(item, i) in items" :key="item.action ?? item.text ?? i">
                     <hr v-if="item.divider" class="dropdown-divider">
                     <button v-else type="button" role="menuitem" class="dropdown-item d-flex align-items-center" @click="onSelect(item)">
                         <VibeIcon v-if="item.icon" :icon="item.icon" class="me-2" />{{ item.text }}

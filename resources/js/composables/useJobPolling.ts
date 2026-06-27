@@ -23,6 +23,7 @@ export function useJobPolling(items: Ref<Processable[]>, onTick: () => void, int
 
     function start(): void {
         if (timer || !hasPending.value) return;
+        onTick();
         timer = setInterval(() => {
             if (!hasPending.value) {
                 stop();

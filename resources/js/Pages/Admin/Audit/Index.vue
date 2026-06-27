@@ -51,6 +51,14 @@ const variant = (action) => {
     if (action.includes('download')) return 'info';
     return 'secondary';
 };
+
+function safeMeta(meta: unknown, indent: number): string {
+    try {
+        return JSON.stringify(meta, null, indent);
+    } catch {
+        return '[unserializable]';
+    }
+}
 </script>
 
 <template>
@@ -103,7 +111,7 @@ const variant = (action) => {
                         class="small d-inline-block align-top"
                         :class="expanded.has(item.id) ? 'text-break' : 'text-truncate'"
                         :style="expanded.has(item.id) ? 'white-space: pre-wrap; max-width: 360px' : 'max-width: 220px'"
-                    >{{ JSON.stringify(item.meta, null, expanded.has(item.id) ? 2 : 0) }}</code>
+                    >{{ safeMeta(item.meta, expanded.has(item.id) ? 2 : 0) }}</code>
                     <VibeButton
                         variant="link"
                         size="sm"

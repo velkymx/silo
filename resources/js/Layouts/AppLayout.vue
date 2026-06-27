@@ -64,6 +64,8 @@ const isSearching = computed(() => searchValue.value.length > 0);
 // Cmd/Ctrl-K focuses the global search from any page.
 function onKeydown(e) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        const t = e.target;
+        if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
         e.preventDefault();
         document.getElementById('global-search')?.focus();
     }

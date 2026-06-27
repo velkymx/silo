@@ -15,6 +15,13 @@ const props = withDefaults(
 // of mutating the native File with a `__url` property.
 const blobUrls = new Map<File, string>();
 
+let uploadSeq = 0;
+const fileIds = new WeakMap<File, number>();
+function getFileId(f: File): number {
+    if (!fileIds.has(f)) fileIds.set(f, ++uploadSeq);
+    return fileIds.get(f)!;
+}
+
 const uploadFiles = ref<File[]>([]);
 const uploadForm = useForm<{ files: File[]; parent_id: number | null }>({ files: [], parent_id: props.parentId });
 const uploadInput = ref<HTMLInputElement | null>(null);
@@ -122,14 +129,14 @@ onBeforeUnmount(() => uploadFiles.value.forEach(revokeBlobUrl));
                     <VibeButton variant="link" size="sm" class="p-0 text-decoration-none" @click="clearAllUploads">Clear all</VibeButton>
                 </div>
                 <div class="border rounded" style="max-height: 40vh; overflow: auto">
-                    <div v-for="(f, i) in uploadFiles" :key="`${f.name}-${f.size}-${f.lastModified}`" class="d-flex align-items-center gap-2 p-2 border-bottom">
+                    <div v-for="f in uploadFiles" :key="getFileId(f)" class="d-flex align-items-center gap-2 p-2 border-bottom">
                         <img v-if="blobUrlFor(f)" :src="blobUrlFor(f)!" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
                         <VibeIcon v-else icon="file-earmark" class="fs-4 text-secondary flex-shrink-0" />
                         <div class="flex-grow-1 min-w-0">
                             <div class="text-truncate small">{{ f.name }}</div>
                             <div class="text-muted" style="font-size: 0.72rem">{{ fmtBytes(f.size) }}</div>
                         </div>
-                        <VibeButton variant="link" size="sm" class="p-0 text-danger" :aria-label="`Remove ${f.name}`" @click="removeUploadFile(i)"><VibeIcon icon="x-lg" /></VibeButton>
+                        <VibeButton variant="link" size="sm" class="p-0 text-danger" :aria-label="`Remove ${f.name}`" @click="removeUploadFile(uploadFiles.indexOf(f))"><VibeIcon icon="x-lg" /></VibeButton>
                     </div>
                 </div>
             </div>

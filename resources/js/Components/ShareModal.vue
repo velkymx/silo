@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
             <h6 class="text-muted">Inherited from parent folders</h6>
             <table class="table table-sm align-middle">
                 <tbody>
-                    <tr v-for="(g, i) in inherited" :key="i" class="text-muted">
+                    <tr v-for="g in inherited" :key="`${g.subject_type}-${g.subject_label}-${g.ability}`" class="text-muted">
                         <td><VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ g.subject_label }}</td>
                         <td><VibeBadge variant="light" class="text-dark border">{{ g.ability }}</VibeBadge></td>
                         <td class="small"><VibeIcon icon="folder" class="me-1" />{{ g.source }}</td>
