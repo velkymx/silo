@@ -45,7 +45,7 @@ onBeforeUnmount(() => {
 });
 
 async function reveal(item) {
-    if (revealed[item.id]) return hide(item.id);
+    if (item.id in revealed) return hide(item.id);
     const password = await prompt({
         title: 'Confirm your password',
         message: `Re-enter your password to reveal “${item.name}”.`,
@@ -71,7 +71,7 @@ function hide(id) {
 }
 
 async function copy(id) {
-    if (!revealed[id]) return;
+    if (!(id in revealed)) return;
     try {
         await navigator.clipboard.writeText(revealed[id]);
         toast.push('Copied to clipboard', { variant: 'success' });
@@ -205,16 +205,16 @@ async function onImportFile(e) {
                             </div>
                             <div class="small text-muted text-truncate">
                                 <span v-if="item.username">{{ item.username }}</span>
-                                <span v-if="!revealed[item.id]">
+                                <span v-if="!(item.id in revealed)">
                                     <span v-if="item.username"> · </span>••••••••••
                                 </span>
                             </div>
-                            <pre v-if="revealed[item.id]" class="vault-secret mb-0 small">{{ revealed[item.id] }}</pre>
+                            <pre v-if="item.id in revealed" class="vault-secret mb-0 small">{{ revealed[item.id] }}</pre>
                         </div>
-                        <VibeButton size="sm" variant="secondary" outline :aria-label="revealed[item.id] ? 'Hide secret' : 'Reveal secret'" @click="reveal(item)">
-                            <VibeIcon :icon="revealed[item.id] ? 'eye-slash' : 'eye'" class="me-1" />{{ revealed[item.id] ? 'Hide' : 'Reveal' }}
+                        <VibeButton size="sm" variant="secondary" outline :aria-label="(item.id in revealed) ? 'Hide secret' : 'Reveal secret'" @click="reveal(item)">
+                            <VibeIcon :icon="(item.id in revealed) ? 'eye-slash' : 'eye'" class="me-1" />{{ (item.id in revealed) ? 'Hide' : 'Reveal' }}
                         </VibeButton>
-                        <VibeButton v-if="revealed[item.id]" size="sm" variant="secondary" outline aria-label="Copy secret to clipboard" @click="copy(item.id)">
+                        <VibeButton v-if="item.id in revealed" size="sm" variant="secondary" outline aria-label="Copy secret to clipboard" @click="copy(item.id)">
                             <VibeIcon icon="clipboard" class="me-1" />Copy
                         </VibeButton>
                         <VibeDropdown

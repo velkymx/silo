@@ -594,11 +594,16 @@ const { start: startPolling } = useJobPolling(filesRef, () =>
 );
 
 onMounted(() => {
-    // Open a file directly when navigated from the sidebar tree (?open=id).
+    // Open a file/folder directly when navigated from the sidebar tree (?open=id).
     const openId = new URLSearchParams(window.location.search).get('open');
     if (openId) {
         const f = props.files.find((x) => String(x.id) === openId);
-        if (f) quickLook(f);
+        if (f) {
+            quickLook(f);
+        } else {
+            const dir = props.folders.find((x) => String(x.id) === openId);
+            if (dir) visitFolder(dir.id);
+        }
     }
     startPolling();
     window.addEventListener('keydown', onKey);
