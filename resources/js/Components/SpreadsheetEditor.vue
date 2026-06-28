@@ -4,6 +4,7 @@ import jspreadsheet from 'jspreadsheet-ce';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';
 import 'jsuites/dist/jsuites.css';
 import { getArrayBuffer } from '../lib/http';
+import { sanitizeFormula } from '../lib/sanitizeFormula';
 
 const props = defineProps({
     url: { type: String, required: true },
@@ -51,7 +52,7 @@ function onSelection(worksheet, x1, y1) {
 // Commit the formula bar back into the active cell (triggers recalculation).
 function commitCell() {
     if (!activeWs || activeX == null) return;
-    activeWs.setValueFromCoords(activeX, activeY, cellValue.value, false);
+    activeWs.setValueFromCoords(activeX, activeY, sanitizeFormula(cellValue.value), false);
 }
 
 // Parse "A1" style cell reference → 0-indexed { r, c }.
@@ -237,14 +238,15 @@ async function serialize() {
         raw.forEach((row, r) => {
             row.forEach((val, c) => {
                 const cell = ws.getCell(r + 1, c + 1);
-                if (val === '' || val === null || val === undefined) {
+                const clean = sanitizeFormula(val);
+                if (clean === '' || clean === null || clean === undefined) {
                     cell.value = null;
-                } else if (typeof val === 'string' && val.startsWith('=')) {
-                    cell.value = { formula: val.slice(1) };
-                } else if (typeof val === 'string' && val.trim() !== '' && !Number.isNaN(Number(val))) {
-                    cell.value = Number(val);
+                } else if (typeof clean === 'string' && clean.startsWith('=')) {
+                    cell.value = { formula: clean.slice(1) };
+                } else if (typeof clean === 'string' && clean.trim() !== '' && !Number.isNaN(Number(clean))) {
+                    cell.value = Number(clean);
                 } else {
-                    cell.value = String(val);
+                    cell.value = String(clean);
                 }
             });
         });

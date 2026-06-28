@@ -38,7 +38,7 @@
         "docx-preview": "^0.3.7",
         "dompurify": "^3.4.11",
         "exceljs": "^4.4.0",
-        "jspreadsheet-ce": "^5.0.4",
+        "jspreadsheet-ce": "5.0.4",
         "jsuites": "^6.4.0",
         "material-icons": "^1.13.14",
         "quill": "2.0.2",

