@@ -42,7 +42,9 @@ class UserController extends Controller
         $user = Auth::user();
         $disk = Storage::disk(ThumbnailGenerator::disk());
 
-        // Normalize to a 256px square JPEG.
+        // Normalize to a 256px square JPEG. GD holds the decoded image in
+        // memory; capped at 5 MB by the request validation above so peak
+        // memory is bounded (~10 MB transient: decode + cover + encode).
         $image = (new ImageManager(Driver::class))->decodePath($request->file('avatar')->getRealPath());
         $image->cover(256, 256);
         $path = 'avatars/'.$user->id.'/'.Str::random(24).'.jpg';
