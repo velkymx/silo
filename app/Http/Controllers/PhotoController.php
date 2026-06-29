@@ -82,6 +82,9 @@ class PhotoController extends Controller
 
         foreach ($request->file('files', []) as $upload) {
             $path = $upload->store("uploads/{$userId}", $disk);
+            if ($path === false) {
+                throw ValidationException::withMessages(['files' => 'One or more photos could not be saved. Please try again.']);
+            }
             $file = File::create([
                 'name' => $this->sanitizeFilename($upload->getClientOriginalName()),
                 'path' => $path,
