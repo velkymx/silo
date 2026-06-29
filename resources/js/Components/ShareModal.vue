@@ -11,6 +11,23 @@ interface Option { value: number | string; text: string }
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ item: FileLike | null }>();
 
+// VibeDataTable column definitions — declared inside <script setup> so the
+// `:items` array types line up with each column's `key`.
+const grantColumns = [
+    { key: 'subject' as const, label: '', sortable: false, searchable: false, class: 'text-nowrap' },
+    { key: 'ability' as const, label: 'Access', sortable: false, searchable: false },
+    { key: 'actions' as const, label: '', sortable: false, searchable: false, class: 'text-end' },
+];
+const inheritedColumns = [
+    { key: 'subject' as const, label: '', sortable: false, searchable: false, class: 'text-nowrap' },
+    { key: 'ability' as const, label: 'Access', sortable: false, searchable: false },
+    { key: 'source' as const, label: 'Inherited from', sortable: false, searchable: false },
+];
+const linkColumns = [
+    { key: 'url' as const, label: 'Public link', sortable: false, searchable: false },
+    { key: 'actions' as const, label: '', sortable: false, searchable: false, class: 'text-end text-nowrap' },
+];
+
 const grants = ref<Grant[]>([]);
 const inherited = ref<Inherited[]>([]);
 const groups = ref<Option[]>([]);
@@ -156,30 +173,46 @@ onBeforeUnmount(() => {
 <template>
     <VibeModal v-model="open" :title="`Share — ${item?.name || ''}`" fullscreen>
         <h6 class="text-muted">People &amp; groups with access</h6>
-        <table v-if="grants.length" class="table table-sm align-middle">
-            <tbody>
-                <tr v-for="g in grants" :key="g.id">
-                    <td><VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ g.subject_label }}</td>
-                    <td><VibeBadge variant="secondary">{{ g.ability }}</VibeBadge></td>
-                    <td class="text-end">
-                        <VibeButton variant="danger" size="sm" outline :disabled="removingGrantId !== null" :aria-label="`Remove access for ${g.subject_label}`" @click="removeGrant(g.id)"><VibeIcon icon="x" /></VibeButton>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <VibeDataTable
+            v-if="grants.length"
+            :items="grants"
+            :columns="grantColumns"
+            row-key="id"
+            small
+            :searchable="false"
+            :empty-text="'No direct grants on this item.'"
+        >
+            <template #cell(subject)="{ item }">
+                <VibeIcon :icon="item.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ item.subject_label }}
+            </template>
+            <template #cell(ability)="{ item }">
+                <VibeBadge variant="secondary">{{ item.ability }}</VibeBadge>
+            </template>
+            <template #cell(actions)="{ item }">
+                <VibeButton variant="danger" size="sm" outline :disabled="removingGrantId !== null" :aria-label="`Remove access for ${item.subject_label}`" @click="removeGrant(item.id)"><VibeIcon icon="x" /></VibeButton>
+            </template>
+        </VibeDataTable>
         <p v-else class="text-muted small">No direct grants on this item.</p>
 
         <template v-if="inherited.length">
             <h6 class="text-muted">Inherited from parent folders</h6>
-            <table class="table table-sm align-middle">
-                <tbody>
-                    <tr v-for="g in inherited" :key="`${g.subject_type}-${g.subject_label}-${g.ability}`" class="text-muted">
-                        <td><VibeIcon :icon="g.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ g.subject_label }}</td>
-                        <td><VibeBadge variant="light" class="text-dark border">{{ g.ability }}</VibeBadge></td>
-                        <td class="small"><VibeIcon icon="folder" class="me-1" />{{ g.source }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <VibeDataTable
+                :items="inherited"
+                :columns="inheritedColumns"
+                :row-key="(g: Inherited) => `${g.subject_type}-${g.subject_label}-${g.ability}`"
+                small
+                :searchable="false"
+            >
+                <template #cell(subject)="{ item }">
+                    <VibeIcon :icon="item.subject_type === 'group' ? 'people' : 'person'" class="me-1" />{{ item.subject_label }}
+                </template>
+                <template #cell(ability)="{ item }">
+                    <VibeBadge variant="light" class="text-dark border">{{ item.ability }}</VibeBadge>
+                </template>
+                <template #cell(source)="{ item }">
+                    <VibeIcon icon="folder" class="me-1" />{{ item.source }}
+                </template>
+            </VibeDataTable>
         </template>
 
         <hr>
@@ -208,27 +241,31 @@ onBeforeUnmount(() => {
         <template v-if="!item?.is_dir">
             <hr>
             <h6 class="text-muted">Public links</h6>
-            <table v-if="links.length" class="table table-sm align-middle">
-                <tbody>
-                    <tr v-for="link in links" :key="link.id">
-                        <td class="text-truncate" style="max-width: 220px">
-                            <a :href="link.url" target="_blank" rel="noopener noreferrer" class="small">{{ link.url }}</a>
-                            <div class="small text-muted">
-                                <span v-if="link.protected"><VibeIcon icon="lock" /> password · </span>
-                                <span>{{ link.allow_download ? 'download' : 'view only' }}</span>
-                                <span v-if="link.expires_at"> · expires {{ link.expires_at }}</span>
-                                <span v-if="link.expired" class="text-danger"> · expired</span>
-                            </div>
-                        </td>
-                        <td class="text-end text-nowrap">
-                            <VibeButton variant="secondary" size="sm" outline aria-label="Copy link" @click="copyLink(link.url, link.id)">
-                                <VibeIcon :icon="copied === link.id ? 'check' : 'clipboard'" />
-                            </VibeButton>
-                            <VibeButton variant="danger" size="sm" outline class="ms-1" :disabled="revokingLinkId !== null" aria-label="Revoke link" @click="revokeLink(link.id)"><VibeIcon icon="x" /></VibeButton>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <VibeDataTable
+                v-if="links.length"
+                :items="links"
+                :columns="linkColumns"
+                row-key="id"
+                small
+                :searchable="false"
+                :empty-text="'No public links.'"
+            >
+                <template #cell(url)="{ item }">
+                    <a :href="item.url" target="_blank" rel="noopener noreferrer" class="small text-truncate d-block" style="max-width: 220px">{{ item.url }}</a>
+                    <div class="small text-muted">
+                        <span v-if="item.protected"><VibeIcon icon="lock" /> password · </span>
+                        <span>{{ item.allow_download ? 'download' : 'view only' }}</span>
+                        <span v-if="item.expires_at"> · expires {{ item.expires_at }}</span>
+                        <span v-if="item.expired" class="text-danger"> · expired</span>
+                    </div>
+                </template>
+                <template #cell(actions)="{ item }">
+                    <VibeButton variant="secondary" size="sm" outline aria-label="Copy link" @click="copyLink(item.url, item.id)">
+                        <VibeIcon :icon="copied === item.id ? 'check' : 'clipboard'" />
+                    </VibeButton>
+                    <VibeButton variant="danger" size="sm" outline class="ms-1" :disabled="revokingLinkId !== null" aria-label="Revoke link" @click="revokeLink(item.id)"><VibeIcon icon="x" /></VibeButton>
+                </template>
+            </VibeDataTable>
             <p v-else class="text-muted small">No public links.</p>
 
             <div class="row g-2 align-items-center">

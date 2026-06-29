@@ -803,14 +803,12 @@ onBeforeUnmount(() => {
 
         <!-- Details modal -->
         <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
-            <table class="table table-sm mb-0">
-                <tbody>
-                    <tr v-for="row in detailsRows" :key="row.label">
-                        <th class="text-nowrap pe-3 text-muted" style="width: 40%">{{ row.label }}</th>
-                        <td class="text-break font-monospace small">{{ row.value }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <dl class="row mb-0">
+                <template v-for="row in detailsRows" :key="row.label">
+                    <dt class="col-4 text-nowrap text-muted small">{{ row.label }}</dt>
+                    <dd class="col-8 text-break font-monospace small mb-2">{{ row.value }}</dd>
+                </template>
+            </dl>
         </VibeModal>
 
         <!-- Share modal -->

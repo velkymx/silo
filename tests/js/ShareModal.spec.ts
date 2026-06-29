@@ -62,8 +62,9 @@ describe('ShareModal', () => {
         const wrapper = mount(ShareModal, { props: { modelValue: false, item: file } });
         await wrapper.setProps({ modelValue: true });
         await flushPromises();
-        // The grants table is the first one; its row has a single remove button.
-        await wrapper.find('table tbody tr button').trigger('click');
+        // The grants table is the first VibeDataTable; the per-row Remove button
+        // carries an aria-label built from the row's subject_label.
+        await wrapper.find('button[aria-label="Remove access for a@b.c"]').trigger('click');
         expect(httpDel).toHaveBeenCalledWith('/files/5/permissions/1');
     });
 
@@ -82,9 +83,9 @@ describe('ShareModal', () => {
         await wrapper.setProps({ modelValue: true });
         await flushPromises();
         vi.useFakeTimers();
-        // Links table is the last table; its first row button is "copy".
-        const tables = wrapper.findAll('table');
-        const copy = tables[tables.length - 1].findAll('button')[0];
+        // VibeDataTable renders the link rows; the copy button has
+        // aria-label="Copy link" so we can target it directly.
+        const copy = wrapper.find('button[aria-label="Copy link"]');
         await copy.trigger('click');
         wrapper.unmount();
         // Flushing the pending 1.5s timeout after unmount must not throw / update state.

@@ -147,16 +147,19 @@ function submitRename(): void {
             </div>
 
             <h6 class="mt-3 text-muted">Preview</h6>
-            <div class="border rounded" style="max-height: 50vh; overflow: auto">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr v-for="r in renamePreview" :key="r.id">
-                            <td class="text-muted text-truncate" style="max-width: 280px">{{ r.from }}</td>
-                            <td class="text-center text-muted"><VibeIcon icon="arrow-right" /></td>
-                            <td class="fw-medium text-truncate" :class="{ 'text-danger': r.to !== r.from && renamePreview.filter(x => x.to === r.to).length > 1 }">{{ r.to }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="border rounded p-2" style="max-height: 50vh; overflow: auto">
+                <div
+                    v-for="r in renamePreview"
+                    :key="r.id"
+                    class="d-flex align-items-center gap-2 py-1"
+                >
+                    <span class="text-muted text-truncate" style="max-width: 280px">{{ r.from }}</span>
+                    <VibeIcon icon="arrow-right" class="text-muted flex-shrink-0" />
+                    <span
+                        class="fw-medium text-truncate"
+                        :class="{ 'text-danger': r.to !== r.from && renamePreview.filter(x => x.to === r.to).length > 1 }"
+                    >{{ r.to }}</span>
+                </div>
             </div>
         </div>
         <template #footer>
