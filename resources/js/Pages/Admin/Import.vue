@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 
 const props = defineProps({
     root: { type: String, default: '' },
@@ -31,7 +32,7 @@ function rescan() {
 
 <template>
     <AppLayout>
-        <h4 class="mb-3"><VibeIcon icon="folder-symlink" class="me-2" />Import Folder</h4>
+        <PageHeader title="Import Folder" icon="folder-symlink" />
 
         <VibeRow class="justify-content-center">
             <VibeCol :lg="8">

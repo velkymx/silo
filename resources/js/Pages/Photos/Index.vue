@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
@@ -255,7 +256,7 @@ function saveEdit() {
     <AppLayout>
         <!-- Toolbar -->
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <h4 class="mb-0 me-2"><VibeIcon icon="images" class="me-2" />Photos</h4>
+            <PageHeader title="Photos" icon="images" class="mb-0" />
 
             <VibeFormSelect
                 :model-value="filters.album || ''"

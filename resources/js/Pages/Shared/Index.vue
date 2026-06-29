@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import SharedListing from '../../Components/SharedListing.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import EmptyState from '../../Components/EmptyState.vue';
@@ -15,7 +16,7 @@ const { loading } = usePageLoading();
 
 <template>
     <AppLayout>
-        <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Shared with me</h4>
+        <PageHeader title="Shared with me" icon="people" />
         <LoadingSkeleton v-if="loading" :rows="6" :cols="3" />
         <template v-else>
             <EmptyState

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { readableTextColor } from '../../lib/contrast';
 import { fmtBytes } from '../../lib/format';
@@ -139,7 +140,7 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
 <template>
     <AppLayout>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <h4 class="mb-0"><VibeIcon icon="hdd-fill" class="me-2" />Storage</h4>
+            <PageHeader title="Storage" icon="hdd-fill" />
             <span class="text-muted">
                 {{ fmtBytes(summary.used) }}<template v-if="summary.quota > 0"> of {{ fmtBytes(summary.quota) }} ({{ pct }}%)</template> used
             </span>

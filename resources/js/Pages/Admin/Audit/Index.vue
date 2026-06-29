@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from '../../../Layouts/AppLayout.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
@@ -63,7 +64,7 @@ function safeMeta(meta, indent) {
 
 <template>
     <AppLayout>
-        <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
+        <PageHeader title="Audit Log" icon="clipboard-check" />
 
         <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
             <div class="col-sm-4">

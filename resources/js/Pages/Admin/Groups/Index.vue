@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../../composables/useConfirm';
 import { useToast } from '../../../composables/useToast';
@@ -57,7 +58,7 @@ async function destroy(group) {
 
 <template>
     <AppLayout>
-        <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Groups</h4>
+        <PageHeader title="Groups" icon="people" />
 
         <VibeRow class="g-2 align-items-end mb-4">
             <VibeCol :md="6">
