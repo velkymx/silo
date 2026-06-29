@@ -120,6 +120,9 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/saved-searches/{savedSearch}', [\App\Http\Controllers\SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
 
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.create');
+    // ME-03: lazy folder lookup for the move/copy picker. Returns matching
+    // folders owned by the current user; supports parent + search filters.
+    Route::get('/folders', [FolderController::class, 'index'])->name('folders.index');
     Route::get('/folders/{folder}', [FolderController::class, 'show'])->name('folders.view');
 
     // Secrets vault. Reveal/generate are rate-limited; reveal also re-checks the

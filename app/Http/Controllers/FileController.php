@@ -49,13 +49,13 @@ class FileController extends Controller
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
 
-        // Flat list of the user's folders: powers the tree, move/copy picker,
-        // and search location labels. Capped to avoid massive payloads for
-        // accounts with very deep trees; the cap is surfaced as a flag.
+        // ME-03: keep the immediate page load small. We send at most 200
+        // folders; the move/copy picker and tree-lazy-load fetch more via
+        // GET /folders (parent + q filters, 200 cap per call).
         $allFolders = File::folders()->where('owner_id', $userId)
-            ->orderBy('name')->limit(2001)->get(['id', 'name', 'parent_id']);
-        $allFoldersCapped = $allFolders->count() > 2000;
-        if ($allFoldersCapped) $allFolders = $allFolders->take(2000);
+            ->orderBy('name')->limit(201)->get(['id', 'name', 'parent_id']);
+        $allFoldersCapped = $allFolders->count() > 200;
+        if ($allFoldersCapped) $allFolders = $allFolders->take(200);
         $folderById = $allFolders->keyBy('id');
 
         // The VibeUI DataTable paginates client-side; a safety cap keeps the
