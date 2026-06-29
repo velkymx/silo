@@ -1,4 +1,7 @@
 <script setup>
+// FE-P1-39: No chrome. Slots into pattern B (full-page route) at
+// `Pages/Files/Editor.vue`. The parent provides the top bar, save flow, and
+// the error/load states.
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import jspreadsheet from 'jspreadsheet-ce';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';

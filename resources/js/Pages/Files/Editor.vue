@@ -1,4 +1,9 @@
 <script setup>
+// FE-P1-39: Chrome pattern B — full-page route at /files/{id}/edit for binary
+// office files (xlsx/docx). Mounts `SpreadsheetEditor` or `DocxEditor`, both of
+// which have no chrome of their own and rely on this page's top bar + surface.
+// Pattern A (inline VibeModal for text/photos) lives in `EditorModal.vue` and
+// the Photos cropper in `Photos/Index.vue`.
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import SpreadsheetEditor from '../../Components/SpreadsheetEditor.vue';

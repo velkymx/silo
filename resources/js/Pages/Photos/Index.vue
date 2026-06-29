@@ -420,7 +420,9 @@ function saveEdit() {
             </VibeFormGroup>
         </ResourceModal>
 
-        <!-- Photo editor -->
+        <!-- Photo editor (FE-P1-39: chrome pattern A — inline VibeModal,
+             same shape as EditorModal but fullscreen with hide-footer for the
+             image cropper's own toolbar) -->
         <VibeModal v-model="editorOpen" :title="`Edit — ${editorPhoto?.name || ''}`" fullscreen hide-footer>
             <div class="d-flex gap-2 mb-2 flex-wrap">
                 <VibeButton variant="secondary" outline size="sm" @click="rotate(-90)"><VibeIcon icon="arrow-counterclockwise" /> Left</VibeButton>

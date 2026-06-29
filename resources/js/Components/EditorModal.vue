@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+// FE-P1-39: Chrome pattern A — inline VibeModal for text editors (markdown/html).
+// Pattern B (full-page route for binary office files) lives in `Pages/Files/Editor.vue`
+// and embeds `SpreadsheetEditor`/`DocxEditor`, which have no chrome of their own.
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import MarkdownEditor from './MarkdownEditor.vue';
 import { getText } from '../lib/http';
+import { useDirtyGuard } from '../composables/useDirtyGuard';
 
 interface FileLike { id: number; name: string }
 
@@ -21,9 +25,14 @@ const loadError = ref('');
 const saving = ref(false);
 let loadSeq = 0;
 
+const originalContent = ref('');
+const isDirty = computed(() => !loading.value && content.value !== originalContent.value);
+const { guardedClose } = useDirtyGuard(() => isDirty.value);
+
 watch(open, async (v) => {
     if (!v) return;
     content.value = '';
+    originalContent.value = '';
     loadError.value = '';
     if (props.creating) {
         name.value = 'untitled.md';
@@ -34,7 +43,7 @@ watch(open, async (v) => {
     loading.value = true;
     try {
         const text = await getText(`/raw/${props.item!.id}`);
-        if (seq === loadSeq) content.value = text;
+        if (seq === loadSeq) { content.value = text; originalContent.value = text; }
     } catch {
         if (seq === loadSeq) loadError.value = 'Could not load file. Please close and try again.';
     } finally {
