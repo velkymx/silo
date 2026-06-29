@@ -119,12 +119,16 @@ function toggleTag(path) {
             :style="{ paddingLeft: 0.5 + row.depth * 0.85 + 'rem' }"
             @click="emit('select-folder', row.id)"
         >
-            <VibeIcon
+            <button
                 v-if="row.hasChildren"
-                :icon="expanded.has(row.id) ? 'chevron-down' : 'chevron-right'"
-                class="chevron text-muted"
+                type="button"
+                class="chevron text-muted btn btn-link p-0 border-0"
+                :aria-label="expanded.has(row.id) ? 'Collapse' : 'Expand'"
+                :aria-expanded="expanded.has(row.id)"
                 @click.stop="toggle(row.id)"
-            />
+            >
+                <VibeIcon :icon="expanded.has(row.id) ? 'chevron-down' : 'chevron-right'" />
+            </button>
             <span v-else class="chevron-spacer"></span>
             <VibeIcon :icon="expanded.has(row.id) && row.hasChildren ? 'folder2-open' : 'folder2'" class="text-warning" />
             <span class="text-truncate">{{ row.name }}</span>
