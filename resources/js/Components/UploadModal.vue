@@ -26,7 +26,7 @@ const {
     remove,
     clear,
     blobUrlFor,
-} = useFileUpload({ url: '/upload', parentId: props.parentId, maxRetries: 2, autoStart: true });
+} = useFileUpload({ url: '/upload', parentId: props.parentId, maxRetries: 2, autoStart: true, maxSizeKb: props.maxUploadKb });
 
 const maxUploadLabel = computed(() =>
     props.maxUploadKb >= 1024 ? `${(props.maxUploadKb / 1024).toFixed(0)} MB` : `${props.maxUploadKb} KB`,

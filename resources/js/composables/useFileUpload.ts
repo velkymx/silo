@@ -23,6 +23,8 @@ export interface UploadOptions {
     parentId: number | null;
     maxRetries?: number;
     autoStart?: boolean;
+    /** Per-file cap in KB. Files larger than this are marked 'error' on enqueue. */
+    maxSizeKb?: number;
 }
 
 export function useFileUpload(opts: UploadOptions) {
@@ -97,17 +99,18 @@ export function useFileUpload(opts: UploadOptions) {
         const incoming = Array.from(list);
         for (const file of incoming) blobUrlFor(file);
         for (const file of incoming) {
+            const tooBig = opts.maxSizeKb && file.size > opts.maxSizeKb * 1024;
             const item: UploadItem = reactive({
                 id: nextId(file),
                 file,
-                state: 'pending',
+                state: tooBig ? 'error' : 'pending',
                 progress: 0,
-                error: '',
+                error: tooBig ? `Exceeds ${opts.maxSizeKb} KB per-file limit` : '',
                 controller: null,
                 retries: 0,
             });
             items.push(item);
-            if (autoStart) startUpload(item);
+            if (autoStart && !tooBig) startUpload(item);
         }
     }
 
