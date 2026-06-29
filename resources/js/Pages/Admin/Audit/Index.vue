@@ -109,8 +109,7 @@ function safeMeta(meta, indent) {
                 <template v-if="item.meta">
                     <code
                         class="small d-inline-block align-top"
-                        :class="expanded.has(item.id) ? 'text-break' : 'text-truncate'"
-                        :style="expanded.has(item.id) ? 'white-space: pre-wrap; max-width: 360px' : 'max-width: 220px'"
+                        :class="expanded.has(item.id) ? 'audit-meta audit-meta--expanded' : 'audit-meta text-truncate'"
                     >{{ safeMeta(item.meta, expanded.has(item.id) ? 2 : 0) }}</code>
                     <VibeButton
                         variant="link"
@@ -124,3 +123,8 @@ function safeMeta(meta, indent) {
         </VibeDataTable>
     </AppLayout>
 </template>
+
+<style scoped>
+.audit-meta { max-width: 220px; }
+.audit-meta--expanded { white-space: pre-wrap; max-width: 360px; }
+</style>
