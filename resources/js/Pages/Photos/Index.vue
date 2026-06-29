@@ -130,6 +130,7 @@ function onLightboxKey(e) {
     if (['input', 'textarea', 'select'].includes(tag) || e.target?.isContentEditable) return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); step(1); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+    else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); qlClose(); }
     else if (e.key === 'Escape') qlClose();
 }
 onMounted(() => window.addEventListener('keydown', onLightboxKey));
