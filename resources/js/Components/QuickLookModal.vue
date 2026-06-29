@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import MarkdownViewer from './MarkdownViewer.vue';
 import DocViewer from './DocViewer.vue';
 import { iconFor, isImageType } from '../lib/fileTypes';
@@ -17,7 +17,7 @@ interface QuickFile {
 interface ActionItem { text: string; icon: string; action: string }
 
 const open = defineModel<boolean>({ required: true });
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
     file: QuickFile | null;
     index: number;
     total: number;
@@ -27,6 +27,8 @@ withDefaults(defineProps<{
 }>(), { prevFile: null, nextFile: null });
 
 const hoverSide = ref<'prev' | 'next' | null>(null);
+const loading = ref(true);
+const loadError = ref('');
 
 const emit = defineEmits<{
     step: [number];
@@ -35,6 +37,10 @@ const emit = defineEmits<{
 
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 const previewMarkdownTypes = ['md', 'markdown'];
+
+// Reset the per-file load state when the parent navigates to a different
+// file (via step emit) so the spinner + error come back for each load.
+watch(() => props.file?.id, () => { loading.value = true; loadError.value = ''; });
 
 function isImage(f: QuickFile | null): boolean {
     return isImageType(f?.type);
@@ -101,17 +107,23 @@ function safeUrl(url: string | undefined): string {
         </template>
 
         <div v-if="file" class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center" style="height: calc(100vh - 130px)">
+            <VibeSpinner v-if="loading" class="mb-2" />
+            <div v-if="loadError" class="alert alert-danger">{{ loadError }}</div>
             <img
                 v-if="isImage(file)"
                 :src="safeUrl(file.url)"
                 :alt="file.name"
                 class="img-fluid rounded"
                 style="max-height: 100%; object-fit: contain"
+                @load="loading = false"
+                @error="loadError = 'Could not load image.'"
             >
             <iframe
                 v-else-if="file.type === 'pdf'"
                 :src="safeUrl(file.url)"
                 class="w-100 h-100 border rounded"
+                @load="loading = false"
+                @error="loadError = 'Could not load preview.'"
             ></iframe>
             <audio v-else-if="file.mime?.startsWith('audio/')" :src="safeUrl(file.url)" controls class="w-100" />
             <video
