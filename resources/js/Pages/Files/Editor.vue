@@ -45,7 +45,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
 
 const saveOpen = ref(false);
 const note = ref('');
-const newName = ref(props.create?.name || '');
+const newName = ref(props.create?.name || props.file?.name || '');
 const saving = ref(false);
 
 function back() {
