@@ -86,7 +86,7 @@ const bookmarksRef = computed(() => props.bookmarks);
 const { selectMode: bmSelectMode, selectedItems: selectedBms, isSelected: bmIsSelected, toggleSel: bmToggle, clearSelection: bmClearSel } = useSelection(bookmarksRef, (b) => selectBookmark(b.id));
 
 async function bulkDeleteBms() {
-    if (!await confirm({ title: `Remove ${selectedBms.value.length} bookmarks`, message: 'Remove the selected bookmarks?', confirmLabel: 'Remove', variant: 'danger' })) return;
+    if (!await confirm({ title: `Delete ${selectedBms.value.length} bookmarks`, message: 'Delete the selected bookmarks? This cannot be undone.', confirmLabel: 'Delete', variant: 'danger' })) return;
     for (const b of selectedBms.value) {
         router.delete(`/bookmarks/${b.id}`, { preserveScroll: true });
     }
@@ -120,7 +120,7 @@ function openEdit(b) {
 }
 
 async function remove(b) {
-    if (!await confirm({ title: 'Remove bookmark', message: `Remove “${b.title}”?`, confirmLabel: 'Remove', variant: 'danger' })) return;
+    if (!await confirm({ title: 'Delete bookmark', message: `Delete “${b.title}”? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
     router.delete(`/bookmarks/${b.id}`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -163,7 +163,7 @@ const maintenanceConfirms = {
 };
 async function runMaintenance(action) {
     if (maintenanceConfirms[action]
-        && !await confirm({ title: 'Confirm', message: maintenanceConfirms[action], confirmLabel: 'Remove', variant: 'danger' })) {
+        && !await confirm({ title: 'Confirm', message: maintenanceConfirms[action], confirmLabel: 'Delete', variant: 'danger' })) {
         return;
     }
     router.post(`/bookmarks/${action}`, {}, { preserveScroll: true, preserveState: true });
@@ -250,7 +250,7 @@ async function runMaintenance(action) {
 
                 <SelectBar :count="selectedBms.length" class="mx-3 mt-2" @clear="bmClearSel">
                     <VibeButton variant="danger" size="sm" outline @click="bulkDeleteBms">
-                        <VibeIcon icon="trash" class="me-1" />Remove
+                        <VibeIcon icon="trash" class="me-1" />Delete
                     </VibeButton>
                 </SelectBar>
 
@@ -326,7 +326,7 @@ async function runMaintenance(action) {
                                     <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
                                 </VibeButton>
                                 <VibeButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</VibeButton>
-                                <VibeButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Remove</VibeButton>
+                                <VibeButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Delete</VibeButton>
                             </template>
                         </div>
                     </div>

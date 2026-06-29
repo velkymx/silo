@@ -107,7 +107,7 @@ async function generate() {
 }
 
 async function remove(item) {
-    if (!await confirm({ title: 'Remove secret', message: `Remove “${item.name}”?`, confirmLabel: 'Remove', variant: 'danger' })) return;
+    if (!await confirm({ title: 'Delete secret', message: `Delete “${item.name}”? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
     router.delete(`/vault/${item.id}`, {
         preserveScroll: true,
         onSuccess: () => toast.push(`”${item.name}” removed`, { variant: 'danger' }),
@@ -119,7 +119,7 @@ const vaultItemsRef = computed(() => props.items);
 const { selectMode: vaultSelectMode, selectedItems: selectedVaultItems, isSelected: vaultIsSelected, toggleSel: vaultToggle, clearSelection: vaultClearSel } = useSelection(vaultItemsRef, openEdit);
 
 async function bulkDeleteVault() {
-    if (!await confirm({ title: `Remove ${selectedVaultItems.value.length} secrets`, message: 'Permanently remove the selected secrets?', confirmLabel: 'Remove', variant: 'danger' })) return;
+    if (!await confirm({ title: `Delete ${selectedVaultItems.value.length} secrets`, message: 'Delete the selected secrets? This cannot be undone.', confirmLabel: 'Delete', variant: 'danger' })) return;
     for (const item of selectedVaultItems.value) {
         router.delete(`/vault/${item.id}`, { preserveScroll: true });
     }
@@ -169,7 +169,7 @@ async function onImportFile(e) {
 
             <SelectBar :count="selectedVaultItems.length" class="mb-3" @clear="vaultClearSel">
                 <VibeButton variant="danger" size="sm" outline @click="bulkDeleteVault">
-                    <VibeIcon icon="trash" class="me-1" />Remove
+                    <VibeIcon icon="trash" class="me-1" />Delete
                 </VibeButton>
             </SelectBar>
 

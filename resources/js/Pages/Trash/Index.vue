@@ -41,7 +41,7 @@ function restore(item) {
 
 async function purge(item) {
     if (processingId.value !== null) return;
-    if (!await confirm({ title: 'Permanently delete', message: `Permanently delete "${item.name}"? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
+    if (!await confirm({ title: 'Delete from trash', message: `Delete "${item.name}"? This cannot be undone.`, confirmLabel: 'Delete', variant: 'danger' })) return;
     processingId.value = item.id;
     router.delete(`/trash/${item.id}`, {
         preserveScroll: true,

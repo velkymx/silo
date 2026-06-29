@@ -67,11 +67,11 @@ describe('Bookmarks/Index (3-pane)', () => {
 
     it('deletes the selected bookmark after confirmation', async () => {
         const wrapper = mount(BookmarksIndex, { props: { bookmarks, filters: {} } });
-        // Payroll is the editable bookmark (can_edit) → its detail shows Remove.
+        // Payroll is the editable bookmark (can_edit) → its detail shows Delete.
         const row = wrapper.findAll('.bm-row').find((r) => r.text().includes('Payroll'));
         await row!.trigger('click');
-        // Detail-pane "Remove" (exact) — not the "Remove duplicates" maintenance item.
-        await wrapper.findAll('button').find((b) => b.text().trim() === 'Remove')!.trigger('click');
+        // Detail-pane "Delete" (exact) — not the "Delete duplicates" maintenance item.
+        await wrapper.findAll('button').find((b) => b.text().trim() === 'Delete')!.trigger('click');
         await flushPromises();
         expect(h.confirm).toHaveBeenCalled();
         await flushPromises();

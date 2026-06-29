@@ -48,7 +48,7 @@ const notesRef = computed(() => props.notes);
 const { selectMode: noteSelectMode, selectedItems: selectedNotes, isSelected: noteIsSelected, toggleSel: noteToggle, clearSelection: noteClearSel } = useSelection(notesRef, (n) => selectNote(n.id));
 
 async function bulkDeleteNotes() {
-    if (!await confirm({ title: `Delete ${selectedNotes.value.length} note(s)`, message: 'Move selected notes to trash?', confirmLabel: 'Delete', variant: 'danger' })) return;
+    if (!await confirm({ title: `Move ${selectedNotes.value.length} note(s) to trash`, message: 'Move selected notes to trash?', confirmLabel: 'Move to trash', variant: 'danger' })) return;
     for (const n of selectedNotes.value) {
         router.delete(`/notes/${n.id}`, { preserveScroll: true });
     }
