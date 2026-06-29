@@ -148,6 +148,7 @@
     transform: none;
 }
 .app-sidebar .side-row,
+.side-row,
 .list-row,
 .photo-cell {
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
@@ -155,6 +156,7 @@
 @media (prefers-reduced-motion: reduce) {
     .modal.fade .modal-dialog,
     .app-sidebar .side-row,
+    .side-row,
     .list-row,
     .photo-cell {
         transition: none;

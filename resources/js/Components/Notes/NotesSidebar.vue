@@ -165,17 +165,6 @@ function toggleTag(path) {
     flex-shrink: 0;
     overflow-y: auto;
 }
-.side-row {
-    cursor: pointer;
-    color: var(--bs-body-color);
-}
-.side-row:hover {
-    background: rgba(99, 102, 241, 0.07);
-}
-.side-row.active {
-    background: rgba(99, 102, 241, 0.12);
-    font-weight: 600;
-}
 .chevron,
 .chevron-spacer {
     width: 1rem;

@@ -373,16 +373,13 @@ async function runMaintenance(action) {
 </template>
 
 <style scoped>
-.side-row,
 .bm-row {
     cursor: pointer;
     color: var(--bs-body-color);
 }
-.side-row:hover,
 .bm-row:hover {
     background: rgba(99, 102, 241, 0.07) !important;
 }
-.side-row.active,
 .bm-row.active {
     background: rgba(99, 102, 241, 0.12) !important;
     font-weight: 600;
