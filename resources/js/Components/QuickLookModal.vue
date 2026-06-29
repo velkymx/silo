@@ -72,7 +72,7 @@ function safeUrl(url: string | undefined): string {
                             <VibeIcon icon="chevron-left" />
                         </VibeButton>
                         <div v-if="hoverSide === 'prev' && prevFile" class="ql-peek">
-                            <img v-if="prevFile.thumb_url" :src="safeUrl(prevFile.thumb_url)" :alt="prevFile.name">
+                            <img v-if="prevFile.thumb_url" :src="safeUrl(prevFile.thumb_url)" :alt="prevFile.name" loading="lazy">
                             <VibeIcon v-else :icon="iconFor(prevFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ prevFile.name }}</div>
                         </div>
@@ -82,7 +82,7 @@ function safeUrl(url: string | undefined): string {
                             <VibeIcon icon="chevron-right" />
                         </VibeButton>
                         <div v-if="hoverSide === 'next' && nextFile" class="ql-peek">
-                            <img v-if="nextFile.thumb_url" :src="safeUrl(nextFile.thumb_url)" :alt="nextFile.name">
+                            <img v-if="nextFile.thumb_url" :src="safeUrl(nextFile.thumb_url)" :alt="nextFile.name" loading="lazy">
                             <VibeIcon v-else :icon="iconFor(nextFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
                         </div>
@@ -114,7 +114,8 @@ function safeUrl(url: string | undefined): string {
                 :src="safeUrl(file.url)"
                 :alt="file.name"
                 class="img-fluid rounded"
-                style="max-height: 100%; object-fit: contain"
+                loading="lazy"
+                style="max-height: 100%; object-fit: contain; aspect-ratio: 1"
                 @load="loading = false"
                 @error="loadError = 'Could not load image.'"
             >
