@@ -71,10 +71,21 @@ function toggleAbility(ability: string): void {
 async function addGrant(): Promise<void> {
     if (!props.item) return;
     error.value = '';
+    // Accept comma- or whitespace-separated emails so the user can paste a
+    // distribution list instead of inviting one at a time.
+    const emails = (grant.value.subject_type === 'user' ? grant.value.email : '')
+        .split(/[\s,]+/).map((e) => e.trim()).filter(Boolean);
+    if (grant.value.subject_type === 'user' && !emails.length) {
+        error.value = 'Enter at least one email address.';
+        return;
+    }
     busy.value = true;
     try {
-        const data = await http.post<{ permissions: Grant[] }>(`/files/${props.item.id}/permissions`, grant.value);
-        grants.value = data.permissions;
+        for (const email of emails) {
+            const payload = { ...grant.value, email };
+            const data = await http.post<{ permissions: Grant[] }>(`/files/${props.item.id}/permissions`, payload);
+            grants.value = data.permissions;
+        }
         grant.value = blankGrant();
     } catch (e) {
         const errs = e instanceof HttpError ? (e.data as { errors?: Record<string, string[]> })?.errors : null;
@@ -177,7 +188,7 @@ onBeforeUnmount(() => {
         <div class="row g-2">
             <div class="col-5"><VibeFormSelect v-model="grant.subject_type" :options="subjectTypeOptions" aria-label="Grant to" /></div>
             <div class="col-7">
-                <VibeFormInput v-if="grant.subject_type === 'user'" v-model="grant.email" type="email" placeholder="person@example.com" aria-label="User email" />
+                <VibeFormInput v-if="grant.subject_type === 'user'" v-model="grant.email" type="email" placeholder="one@example.com, two@example.com" aria-label="User email" />
                 <VibeFormSelect v-else v-model="grant.group_id" :options="groups" placeholder="Choose a group…" aria-label="Group" />
             </div>
         </div>

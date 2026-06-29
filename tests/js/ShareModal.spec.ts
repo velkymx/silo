@@ -36,9 +36,25 @@ describe('ShareModal', () => {
         httpPost.mockResolvedValue({ permissions: [] });
         const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });
         await flushPromises();
+        const emailInput = wrapper.find('input[type="email"]');
+        await emailInput.setValue('a@b.c');
         const btn = wrapper.findAll('button').find((b) => b.text() === 'Grant');
         await btn!.trigger('click');
-        expect(httpPost).toHaveBeenCalledWith('/files/5/permissions', expect.objectContaining({ subject_type: 'user' }));
+        expect(httpPost).toHaveBeenCalledWith('/files/5/permissions', expect.objectContaining({ subject_type: 'user', email: 'a@b.c' }));
+    });
+
+    it('Grant splits comma-separated emails into multiple posts', async () => {
+        httpPost.mockResolvedValue({ permissions: [] });
+        const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });
+        await flushPromises();
+        const emailInput = wrapper.find('input[type="email"]');
+        await emailInput.setValue('a@b.c, d@e.f');
+        const btn = wrapper.findAll('button').find((b) => b.text() === 'Grant');
+        await btn!.trigger('click');
+        await flushPromises();
+        expect(httpPost).toHaveBeenCalledTimes(2);
+        expect(httpPost).toHaveBeenNthCalledWith(1, '/files/5/permissions', expect.objectContaining({ email: 'a@b.c' }));
+        expect(httpPost).toHaveBeenNthCalledWith(2, '/files/5/permissions', expect.objectContaining({ email: 'd@e.f' }));
     });
 
     it('removing a grant deletes it', async () => {
