@@ -187,8 +187,16 @@ function isEditable(item) {
 }
 
 // File menu with Edit hidden for files that can't be edited as text.
+// Memoised per item: called multiple times in the row template; rebuilding
+// the filtered array on every render is wasted work for large folders.
+const _menuCache = new WeakMap();
 function fileMenu(item) {
-    return fileActions.filter((a) => a.action !== 'edit' || isEditable(item));
+    let m = _menuCache.get(item);
+    if (!m) {
+        m = fileActions.filter((a) => a.action !== 'edit' || isEditable(item));
+        _menuCache.set(item, m);
+    }
+    return m;
 }
 
 async function openEditor(item) {
