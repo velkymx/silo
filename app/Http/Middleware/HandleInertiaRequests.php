@@ -35,7 +35,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
+        $base = [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user()
@@ -49,21 +49,43 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            // Always available so the sidebar storage meter is consistent on every page.
-            'storage' => fn () => $request->user()
-                ? app(\App\Services\QuotaService::class)->summary($request->user()->id)
-                : null,
             'currentFolder' => fn () => $request->integer('folder') ?: null,
-            // Saved searches (smart folders) for the sidebar.
-            'savedSearches' => fn () => $request->user()
-                ? \App\Models\SavedSearch::where('owner_id', $request->user()->id)
-                    ->orderBy('name')->get(['id', 'name', 'params'])
-                : [],
             // File-type category keys + labels, mirroring JS FILE_CATEGORIES.
             'fileCategories' => array_map(
                 fn ($cat) => $cat['label'],
                 config('file_categories', []),
             ),
         ];
+
+        // ME-02: the sidebar (storage meter + smart folders) only renders on
+        // Inertia pages. Skip the DB queries for streaming, downloads, and
+        // other endpoints that don't use AppLayout.
+        if ($this->rendersSidebar($request)) {
+            $base['storage'] = fn () => $request->user()
+                ? app(\App\Services\QuotaService::class)->summary($request->user()->id)
+                : null;
+            $base['savedSearches'] = fn () => $request->user()
+                ? \App\Models\SavedSearch::where('owner_id', $request->user()->id)
+                    ->orderBy('name')->get(['id', 'name', 'params'])
+                : [];
+        }
+
+        return $base;
+    }
+
+    /**
+     * Sidebar (storage + saved searches) is only relevant on authenticated
+     * Inertia pages. API endpoints, file streaming, downloads, and public
+     * share views don't need it — gating prevents needless DB hits.
+     */
+    private function rendersSidebar(Request $request): bool
+    {
+        if (! $request->user()) {
+            return false;
+        }
+        $sidebar = 'files.* photos.* bookmarks.* notes.* vault.* directory.* trash.* '
+            . 'shared.* admin.* profile.* storage.* break.*';
+        return $request->routeIs(...array_map('trim', explode(' ', $sidebar)));
     }
 }
+
