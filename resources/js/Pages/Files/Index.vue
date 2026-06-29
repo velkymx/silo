@@ -25,7 +25,7 @@ import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
-import { fmtBytes } from '../../lib/format';
+import { fmtBytes, pluralize } from '../../lib/format';
 import { TYPE_OPTIONS } from '../../composables/useAdvancedSearch';
 
 // Office formats edited on the full-screen editor page (binary, versioned).
@@ -584,7 +584,7 @@ const advOpen = ref(false);
 
 async function destroy(item) {
     const msg = item.is_dir && item.item_count > 0
-        ? `Delete folder "${item.name}" and its ${item.item_count} item${item.item_count === 1 ? '' : 's'}? Everything inside moves to trash.`
+        ? `Delete folder "${item.name}" and its ${pluralize(item.item_count, 'item')}? Everything inside moves to trash.`
         : `Move "${item.name}" to trash?`;
     if (!await confirm({ title: 'Move to trash', message: msg, confirmLabel: 'Move to trash', variant: 'danger' })) return;
     router.delete(`/delete/${item.id}`, {
@@ -778,7 +778,7 @@ onBeforeUnmount(() => {
 
             <template #cell(size)="{ item }">
                 <span class="text-muted small">
-                    {{ item.is_dir ? `${item.item_count} item${item.item_count === 1 ? '' : 's'}` : fmtBytes(item.size) }}
+                    {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
                 </span>
             </template>
 
