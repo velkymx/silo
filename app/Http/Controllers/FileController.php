@@ -704,6 +704,12 @@ class FileController extends Controller
         return $copy;
     }
 
+    /**
+     * Generate a non-colliding name for a copy of `$name` in `$parentId`. TOCTOU
+     * is prevented by requiring the caller to hold `withFolderLock($ownerId,
+     * $parentId)` — two concurrent copies serialize on the lock so the second
+     * sees the first's row before computing its suffix.
+     */
     protected function uniqueName(?int $parentId, string $name, int $ownerId): string
     {
         $base = $name;
