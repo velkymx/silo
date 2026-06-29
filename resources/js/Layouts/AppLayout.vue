@@ -239,7 +239,7 @@ function onUserMenu({ item }) {
                 </VibeNav>
 
                 <template v-if="adminNav.length">
-                    <div class="side-heading"><VibeIcon icon="shield-lock-fill" />Admin</div>
+                    <h2 class="side-heading"><VibeIcon icon="shield-lock-fill" />Admin</h2>
                     <VibeNav pills vertical :items="adminNav" @item-click="onNav">
                         <template #item="{ item }">
                             <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
@@ -249,7 +249,7 @@ function onUserMenu({ item }) {
 
                 <div class="flex-grow-1 overflow-auto">
                     <template v-if="savedSearches.length">
-                        <div class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</div>
+                        <h2 class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</h2>
                         <div v-for="s in savedSearches" :key="s.id" class="side-row d-flex align-items-center saved-search" role="button" @click="runSavedSearch(s)">
                             <VibeIcon icon="bookmark-star-fill" class="nav-ico text-primary" />
                             <span class="text-truncate flex-grow-1">{{ s.name }}</span>
@@ -257,7 +257,7 @@ function onUserMenu({ item }) {
                         </div>
                     </template>
 
-                    <div class="side-heading"><VibeIcon icon="controller" />Break Room</div>
+                    <h2 class="side-heading"><VibeIcon icon="controller" />Break Room</h2>
                     <VibeNav pills vertical :items="breakNav" @item-click="onNav">
                         <template #item="{ item }">
                             <VibeIcon :icon="item.icon" class="nav-ico" />{{ item.text }}
@@ -276,7 +276,7 @@ function onUserMenu({ item }) {
 
                 <!-- Storage meter, pinned to the bottom and consistent across pages. -->
                 <div v-if="storage" class="pt-2 mt-2 border-top">
-                    <div class="side-heading"><VibeIcon icon="hdd-fill" />Storage</div>
+                    <h2 class="side-heading"><VibeIcon icon="hdd-fill" />Storage</h2>
                     <div class="px-2">
                         <template v-if="storage.quota > 0">
                             <VibeProgress :bars="storageBars" class="mb-1" />
