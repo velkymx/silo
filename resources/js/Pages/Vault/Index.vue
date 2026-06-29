@@ -92,7 +92,7 @@ function openEdit(item) {
     // The secret is never sent to the client; leave it blank (blank = keep existing).
     Object.assign(form, {
         name: item.name, username: item.username || '', url: item.url || '',
-        category: item.category || '', secret: '', notes: '', group_id: item.group_id || '',
+        category: item.category || '', secret: '', notes: item.notes || '', group_id: item.group_id || '',
     });
     vaultModal.value?.openEdit(item);
 }
