@@ -318,9 +318,9 @@ async function runMaintenance(action) {
                         </a>
 
                         <div class="d-flex gap-2 mt-2">
-                            <a :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="btn btn-primary">
+                            <VibeButton :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" variant="primary">
                                 <VibeIcon icon="box-arrow-up-right" class="me-1" />Open
-                            </a>
+                            </VibeButton>
                             <template v-if="selectedBookmark.can_edit">
                                 <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" :aria-label="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
                                     <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
