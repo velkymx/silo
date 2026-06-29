@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import FormErrorSummary from './FormErrorSummary.vue';
 import { useDirtyGuard } from '../composables/useDirtyGuard';
 
 const props = defineProps<{
@@ -67,7 +66,6 @@ defineExpose({ openAdd, openEdit });
 
 <template>
     <VibeModal v-model="showModal" :title="editingId ? editTitle : addTitle" :size="size">
-        <FormErrorSummary :errors="form.errors" />
         <slot :form="form" :editing-id="editingId" />
         <template #footer>
             <VibeButton variant="secondary" outline @click="cancel">Cancel</VibeButton>

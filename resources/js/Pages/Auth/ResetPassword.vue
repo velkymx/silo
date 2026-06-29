@@ -1,7 +1,6 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
-import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     token: { type: String, required: true },
@@ -23,7 +22,6 @@ function submit() {
 <template>
     <GuestLayout title="Set new password">
         <form @submit.prevent="submit">
-<FormErrorSummary :errors="form.errors" />
 <VibeFormGroup
                 label="Email"
                 :error="form.errors.email"

@@ -29,21 +29,6 @@
     --bs-btn-active-border-color: #6366f1;
 }
 
-/* Make "light" buttons follow the color mode (Bootstrap's btn-light is a fixed
-   color and stays white in dark mode). Used for the theme pill, user menu,
-   and row kebabs. */
-.btn-light {
-    --bs-btn-color: var(--bs-body-color);
-    --bs-btn-bg: var(--bs-tertiary-bg);
-    --bs-btn-border-color: var(--bs-border-color);
-    --bs-btn-hover-color: var(--bs-body-color);
-    --bs-btn-hover-bg: var(--bs-secondary-bg);
-    --bs-btn-hover-border-color: var(--bs-border-color);
-    --bs-btn-active-color: var(--bs-body-color);
-    --bs-btn-active-bg: var(--bs-secondary-bg);
-    --bs-btn-active-border-color: var(--bs-border-color);
-}
-
 /* Soft, app-like active nav (tinted instead of solid fill) */
 .nav-pills .nav-link {
     color: var(--bs-body-color);
@@ -113,40 +98,12 @@
     font-size: 0.85rem;
 }
 
-/* FE-P0-33: Disabled buttons must pass WCAG 1.4.3 (4.5:1) — override Bootstrap's
-   0.65-alpha which pushes contrast to ~2.8:1. */
-.btn:disabled,
-.btn.disabled {
-    color: var(--bs-secondary-color) !important;
-    background-color: var(--bs-tertiary-bg) !important;
-    border-color: var(--bs-border-color) !important;
-    opacity: 1 !important;
-}
+/* Library handles disabled-button contrast, placeholder contrast,
+   icon-only 44×44 touch targets, modal motion polish, prefers-reduced-motion.
+   No shim overrides here. */
 
-/* FE-P0-34: Placeholder contrast — browser default is ~2.6:1.
-   Target: ≥ 4.5:1 against both light and dark input backgrounds. */
-::placeholder {
-    color: var(--bs-secondary-color) !important;
-    opacity: 1 !important;
-}
-
-/* WCAG 2.5.8: icon-only buttons (single <i class="bi"> child) get a 44×44px
-   minimum touch target so they meet mobile accessibility requirements. */
-.btn:has(> i.bi:only-child) {
-    min-height: 2.75rem;
-    min-width: 2.75rem;
-}
-
-/* FE-P4-2/P4-8: subtle motion polish. Respects reduced-motion. */
-.modal.fade .modal-dialog {
-    transform: scale(0.97) translateY(-6px);
-    transition: transform 0.18s ease-out;
-}
-.modal.show .modal-dialog {
-    /* `none` (not scale(1)) so no stacking context lingers to interfere with
-       absolutely-positioned descendants like the lightbox carousel slides. */
-    transform: none;
-}
+/* Per-component transition for sidebar/list rows. The library does not
+   provide this. Local app-level design token. */
 .app-sidebar .side-row,
 .side-row,
 .list-row,
@@ -154,7 +111,6 @@
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-    .modal.fade .modal-dialog,
     .app-sidebar .side-row,
     .side-row,
     .list-row,

@@ -5,7 +5,6 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import UserAvatar from '../../Components/UserAvatar.vue';
-import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -102,7 +101,6 @@ function applyCrop() {
                     </div>
 
                     <form @submit.prevent="submit">
-                        <FormErrorSummary :errors="form.errors" />
                         <VibeFormGroup
                             label="Name"
                             :error="form.errors.name"

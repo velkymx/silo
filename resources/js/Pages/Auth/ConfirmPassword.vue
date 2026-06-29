@@ -1,7 +1,6 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
-import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const form = useForm({ password: '' });
 
@@ -14,7 +13,6 @@ function submit() {
     <GuestLayout title="Confirm password">
         <p class="text-muted small">Please confirm your password before continuing.</p>
         <form @submit.prevent="submit">
-<FormErrorSummary :errors="form.errors" />
 <VibeFormGroup
                 label="Password"
                 :error="form.errors.password"

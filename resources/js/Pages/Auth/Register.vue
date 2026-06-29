@@ -1,7 +1,6 @@
 <script setup>
 import { useForm, Link } from '@inertiajs/vue3';
 import GuestLayout from '../../Layouts/GuestLayout.vue';
-import FormErrorSummary from '../../Components/FormErrorSummary.vue';
 
 const form = useForm({ name: '', email: '', password: '', password_confirmation: '' });
 
@@ -13,7 +12,6 @@ function submit() {
 <template>
     <GuestLayout title="Create account">
         <form @submit.prevent="submit">
-<FormErrorSummary :errors="form.errors" />
 <VibeFormGroup
                 label="Name"
                 :error="form.errors.name"

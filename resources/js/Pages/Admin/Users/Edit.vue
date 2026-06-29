@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
-import FormErrorSummary from '../../../Components/FormErrorSummary.vue';
 import { useConfirm } from '../../../composables/useConfirm';
 
 const props = defineProps({
@@ -46,7 +45,6 @@ async function submit() {
             <VibeCol :md="8" :lg="6">
                 <VibeCard :header="`Edit User: ${user.name}`">
                     <form @submit.prevent="submit">
-                        <FormErrorSummary :errors="form.errors" />
                         <VibeFormGroup
                             label="Name"
                             :error="form.errors.name"
