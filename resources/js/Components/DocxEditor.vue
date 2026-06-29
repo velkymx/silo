@@ -1,20 +1,23 @@
-<script setup>
+<script setup lang="ts">
 // FE-P1-39: No chrome. Slots into pattern B (full-page route) at
 // `Pages/Files/Editor.vue`. The parent provides the top bar, save flow, and
 // the error/load states.
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { getArrayBuffer } from '../lib/http';
 
-const props = defineProps({
-    url: { type: String, default: null },
-    name: { type: String, default: 'document.docx' },
-});
-const emit = defineEmits(['ready', 'error']);
+const props = defineProps<{
+    url?: string | null;
+    name?: string;
+}>();
+const emit = defineEmits<{
+    (e: 'ready'): void;
+    (e: 'error', message: string): void;
+}>();
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const toolbarId = `sd-toolbar-${Math.random().toString(36).slice(2)}`;
-const editorEl = ref(null);
-let superdoc = null;
+const editorEl = ref<HTMLElement | null>(null);
+let superdoc: any = null;
 
 async function load() {
     try {
@@ -35,10 +38,10 @@ async function load() {
         // Load existing bytes, or start a blank document when creating.
         if (props.url) {
             const bytes = await getArrayBuffer(props.url);
-            config.document = new File([bytes], props.name, { type: DOCX_MIME });
+            (config as any).document = new File([bytes], props.name || 'document.docx', { type: DOCX_MIME });
         }
 
-        superdoc = new SuperDoc(config);
+        superdoc = new SuperDoc(config as any);
     } catch (e) {
         emit('error', 'Could not open this document.');
     }

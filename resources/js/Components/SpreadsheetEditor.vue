@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 // FE-P1-39: No chrome. Slots into pattern B (full-page route) at
 // `Pages/Files/Editor.vue`. The parent provides the top bar, save flow, and
 // the error/load states.
@@ -9,25 +9,28 @@ import 'jsuites/dist/jsuites.css';
 import { getArrayBuffer } from '../lib/http';
 import { sanitizeFormula } from '../lib/sanitizeFormula';
 
-const props = defineProps({
-    url: { type: String, required: true },
-    type: { type: String, default: 'xlsx' },
-});
-const emit = defineEmits(['ready', 'error']);
+const props = defineProps<{
+    url: string;
+    type?: string;
+}>();
+const emit = defineEmits<{
+    (e: 'ready'): void;
+    (e: 'error', message: string): void;
+}>();
 
-const el = ref(null);
-let instance = null;
-let ExcelJS = null;
-let originalWb = null;
+const el = ref<HTMLElement | null>(null);
+let instance: any = null;
+let ExcelJS: any = null;
+let originalWb: any = null;
 
 // Formula bar state.
 const cellRef = ref('');
 const cellValue = ref('');
-let activeWs = null;
-let activeX = null;
-let activeY = null;
+let activeWs: any = null;
+let activeX: number | null = null;
+let activeY: number | null = null;
 
-function colName(x) {
+function colName(x: number) {
     let s = '';
     x += 1;
     while (x > 0) {
@@ -39,7 +42,7 @@ function colName(x) {
 }
 
 // jspreadsheet selection event → sync the formula bar to the active cell.
-function onSelection(worksheet, x1, y1) {
+function onSelection(worksheet: any, x1: number, y1: number) {
     activeWs = worksheet;
     activeX = x1;
     activeY = y1;
@@ -59,7 +62,7 @@ function commitCell() {
 }
 
 // Parse "A1" style cell reference → 0-indexed { r, c }.
-function parseCell(ref) {
+function parseCell(ref: string) {
     const m = String(ref).match(/^([A-Z]+)(\d+)$/i);
     if (!m) return { r: 0, c: 0 };
     let col = 0;
@@ -68,7 +71,7 @@ function parseCell(ref) {
 }
 
 // What a cell shows in the grid: its formula, else its formatted text, else its raw value.
-function cellDisplay(cell) {
+function cellDisplay(cell: any) {
     if (!cell || cell.value === null || cell.value === undefined) return '';
     const v = cell.value;
     if (v && typeof v === 'object' && v.formula) return `=${v.formula}`;
@@ -77,14 +80,14 @@ function cellDisplay(cell) {
 }
 
 // Build a formula-aware array-of-arrays from an ExcelJS worksheet.
-function sheetToAoa(ws) {
+function sheetToAoa(ws: any) {
     let maxCol = 1;
-    ws.eachRow({ includeEmpty: true }, row => {
+    ws.eachRow({ includeEmpty: true }, (row: any) => {
         if (row.cellCount > maxCol) maxCol = row.cellCount;
     });
-    const aoa = [];
-    ws.eachRow({ includeEmpty: true }, row => {
-        const rowData = [];
+    const aoa: any[][] = [];
+    ws.eachRow({ includeEmpty: true }, (row: any) => {
+        const rowData: any[] = [];
         for (let c = 1; c <= maxCol; c++) {
             rowData.push(cellDisplay(row.getCell(c)));
         }
@@ -94,11 +97,11 @@ function sheetToAoa(ws) {
 }
 
 // Convert ExcelJS worksheet merges into jspreadsheet's mergeCells map.
-function mergeMap(ws) {
+function mergeMap(ws: any) {
     const merges = ws.model?.merges;
     if (!merges?.length) return undefined;
-    const map = {};
-    merges.forEach(range => {
+    const map: Record<string, [number, number]> = {};
+    merges.forEach((range: string) => {
         const [startStr, endStr] = range.split(':');
         if (!endStr) return;
         const start = parseCell(startStr);
@@ -109,7 +112,7 @@ function mergeMap(ws) {
 }
 
 // Simple CSV parser for loading .csv files into an ExcelJS workbook.
-function csvToWorkbook(text) {
+function csvToWorkbook(text: string) {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Sheet1');
     let inQuote = false;
@@ -164,7 +167,7 @@ async function load() {
         }
         originalWb = wb;
 
-        const worksheets = wb.worksheets.map(ws => {
+        const worksheets = wb.worksheets.map((ws: any) => {
             const aoa = sheetToAoa(ws);
             return {
                 worksheetName: ws.name,
@@ -201,14 +204,14 @@ async function load() {
             };
         });
 
-        instance = jspreadsheet(el.value, {
+        instance = (jspreadsheet as any)(el.value, {
             worksheets,
             tabs: true,
             toolbar: true,
             onselection: onSelection,
         });
         emit('ready');
-    } catch (e) {
+    } catch (e: any) {
         emit('error', 'Could not open this spreadsheet.');
     }
 }
@@ -221,8 +224,8 @@ async function serialize() {
         // For CSV, build the output directly from jspreadsheet data.
         const sheets = instance.worksheets ?? [instance];
         const raw = sheets[0]?.getData(false) ?? [];
-        const lines = raw.map(row =>
-            row.map(v => {
+        const lines = raw.map((row: any[]) =>
+            row.map((v: any) => {
                 const s = v == null ? '' : String(v);
                 return s.includes(',') || s.includes('"') || s.includes('\n')
                     ? `"${s.replace(/"/g, '""')}"`
@@ -234,12 +237,12 @@ async function serialize() {
 
     // For xlsx: patch the ExcelJS workbook with edited cell values, then write.
     const sheets = instance.worksheets ?? [instance];
-    sheets.forEach((jss, i) => {
+    sheets.forEach((jss: any, i: number) => {
         const ws = originalWb.worksheets[i];
         if (!ws) return;
         const raw = jss.getData(false);
-        raw.forEach((row, r) => {
-            row.forEach((val, c) => {
+        raw.forEach((row: any[], r: number) => {
+            row.forEach((val: any, c: number) => {
                 const cell = ws.getCell(r + 1, c + 1);
                 const clean = sanitizeFormula(val);
                 if (clean === '' || clean === null || clean === undefined) {
