@@ -57,6 +57,15 @@ function openSave() {
     saveOpen.value = true;
 }
 
+function onKeydown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready.value && !saving.value && !saveOpen.value) {
+        e.preventDefault();
+        openSave();
+    }
+}
+onMounted(() => document.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
+
 async function commitSave() {
     // Never serialize an editor that hasn't signalled ready or has errored.
     if (!ready.value || loadError.value || typeof editorRef.value?.serialize !== 'function') return;
