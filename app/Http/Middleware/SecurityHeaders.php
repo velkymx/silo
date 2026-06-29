@@ -4,12 +4,21 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // ME-10: per-request nonce so Vite-generated <script>/<style> tags can
+        // satisfy the CSP without 'unsafe-inline'. Bootstrap's distributed
+        // stylesheets don't carry the nonce, so style-src keeps 'unsafe-inline'
+        // (Bootstrap 5 ships some inline styles for progress bars / spinners).
+        $nonce = base64_encode(random_bytes(16));
+        $request->attributes->set('csp_nonce', $nonce);
+        Vite::useCspNonce($nonce);
+
         $response = $next($request);
 
         // Don't clobber the locked-down CSP that FileResponse sets on streamed
@@ -18,7 +27,7 @@ class SecurityHeaders
             return $response;
         }
 
-        foreach ($this->headers($request) as $name => $value) {
+        foreach ($this->headers($request, $nonce) as $name => $value) {
             $response->headers->set($name, $value);
         }
 
@@ -28,10 +37,10 @@ class SecurityHeaders
     /**
      * @return array<string, string>
      */
-    private function headers(Request $request): array
+    private function headers(Request $request, string $nonce): array
     {
         return [
-            'Content-Security-Policy' => $this->csp($request),
+            'Content-Security-Policy' => $this->csp($request, $nonce),
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',
             'Referrer-Policy' => 'same-origin',
@@ -39,17 +48,19 @@ class SecurityHeaders
         ];
     }
 
-    private function csp(Request $request): string
+    private function csp(Request $request, string $nonce): string
     {
+        $nonceAttr = "'nonce-{$nonce}'";
         // 'unsafe-eval' is required ONLY by jspreadsheet-ce's formula engine on
         // the document editor page — every other route gets a stricter policy.
-        // 'unsafe-inline' (style) covers Bootstrap/Vue injected styles.
-        // All fonts/icons are bundled locally — no external origins (air-gap safe).
-        $script = ["'self'"];
+        // 'unsafe-inline' (style) is still required for Bootstrap's runtime
+        // inline styles (progress widths, spinner colors). The nonce is added
+        // for Vite-injected scripts/styles.
+        $script = ["'self'", $nonceAttr];
         if ($request->routeIs('files.edit')) {
             $script[] = "'unsafe-eval'";
         }
-        $style = ["'self'", "'unsafe-inline'"];
+        $style = ["'self'", $nonceAttr, "'unsafe-inline'"];
         $font = ["'self'", 'data:'];
         $connect = ["'self'"];
 
