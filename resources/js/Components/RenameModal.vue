@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { useDirtyGuard } from '../composables/useDirtyGuard';
 
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ item: { id: number; name: string } | null }>();
 
 const form = useForm({ name: '' });
+const { guardedClose } = useDirtyGuard(() => form.isDirty);
 
 watch(open, (v) => {
     if (v && props.item) {
@@ -13,6 +15,10 @@ watch(open, (v) => {
         form.name = props.item.name;
     }
 });
+
+function tryClose() {
+    guardedClose(() => { open.value = false; });
+}
 
 function submit(): void {
     if (!props.item) return;
@@ -34,7 +40,7 @@ function submit(): void {
             </VibeFormGroup>
         </form>
         <template #footer>
-            <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
+            <VibeButton variant="secondary" outline @click="tryClose">Cancel</VibeButton>
             <VibeButton variant="primary" :disabled="form.processing" @click="submit">Rename</VibeButton>
         </template>
     </VibeModal>

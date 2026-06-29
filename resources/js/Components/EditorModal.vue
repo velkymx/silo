@@ -29,6 +29,10 @@ const originalContent = ref('');
 const isDirty = computed(() => !loading.value && content.value !== originalContent.value);
 const { guardedClose } = useDirtyGuard(() => isDirty.value);
 
+function tryClose() {
+    guardedClose(() => { open.value = false; });
+}
+
 watch(open, async (v) => {
     if (!v) return;
     content.value = '';
@@ -93,7 +97,7 @@ function save(): void {
             <VibeFormWysiwyg v-else v-model="content" height="60vh" />
         </template>
         <template #footer>
-            <VibeButton variant="secondary" outline @click="open = false">Cancel</VibeButton>
+            <VibeButton variant="secondary" outline @click="tryClose">Cancel</VibeButton>
             <VibeButton variant="primary" :disabled="saving || loading" @click="save">
                 <VibeIcon icon="save" class="me-1" />{{ creating ? 'Create' : 'Save' }}
             </VibeButton>
