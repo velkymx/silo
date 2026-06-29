@@ -3,16 +3,19 @@ import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
 import { useConfirm, useDialogHost } from '../composables/useConfirm';
+import { useCommandPalette } from '../composables/useCommandPalette';
 import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
 import { useStorageMeter } from '../composables/useStorageMeter';
 import PageError from '../Components/PageError.vue';
 import ToastHost from '../Components/ToastHost.vue';
 import UserAvatar from '../Components/UserAvatar.vue';
+import CommandPalette from '../Components/CommandPalette.vue';
 import { useToast } from '../composables/useToast';
 
 const { confirm } = useConfirm();
 const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
+const { toggle: togglePalette } = useCommandPalette();
 const toast = useToast();
 
 const { isMobile } = useBreakpoints();
@@ -61,13 +64,15 @@ function clearGlobalSearch() {
 }
 const isSearching = computed(() => searchValue.value.length > 0);
 
-// Cmd/Ctrl-K focuses the global search from any page.
+// Cmd/Ctrl-K toggles the command palette from any page.
 function onKeydown(e) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         const t = e.target;
+        // Don't hijack the shortcut when the user is mid-type in a field — the
+        // palette's own input is contentEditable-safe by design.
         if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
         e.preventDefault();
-        document.getElementById('global-search')?.focus();
+        togglePalette();
     }
 }
 onMounted(() => document.addEventListener('keydown', onKeydown));
@@ -356,6 +361,8 @@ function onUserMenu({ item }) {
             @dismiss="toast.dismiss($event)"
             @undo="(t) => { t.undo?.(); toast.dismiss(t.id); }"
         />
+
+        <CommandPalette />
     </div>
 </template>
 
