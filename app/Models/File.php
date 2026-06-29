@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Arr;
+use Laravel\Scout\Attributes\SearchUsingFullText;
 use Laravel\Scout\Searchable;
 
 class File extends Model
@@ -70,8 +72,14 @@ class File extends Model
     /**
      * The columns Scout (database driver) matches a query against.
      *
+     * `name` is flagged as a full-text column so the database driver emits
+     * MATCH AGAINST on MySQL (uses files_name_fulltext_idx) or to_tsvector on
+     * PostgreSQL. `mime` and `metadata` keep the LIKE fallback — low
+     * cardinality, FTS not worth the cost.
+     *
      * @return array<string, mixed>
      */
+    #[SearchUsingFullText(['name'])]
     public function toSearchableArray(): array
     {
         return [
