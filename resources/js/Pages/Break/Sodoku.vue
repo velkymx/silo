@@ -470,7 +470,7 @@ async function shareResult(): Promise<void> {
 
 const DAILY_URL = computed(() => {
     if (typeof window === 'undefined') return '';
-    const url = new URL(window.location.origin + '/break/soduku');
+    const url = new URL(window.location.origin + '/break/sodoku');
     url.searchParams.set('difficulty', state.difficulty);
     return url.toString();
 });
