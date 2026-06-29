@@ -33,8 +33,11 @@ class FileVersioning
     /** When the most recent version was archived, or null if there are none. */
     public function lastSnapshotAt(File $file): ?Carbon
     {
-        $at = FileVersion::where('file_id', $file->id)->max('created_at');
+        // ME-05: avoid the driver-dependent type of `max('created_at')` (SQLite
+        // returns a string, MySQL/Postgres return DateTime). Let Eloquent's
+        // $casts produce a Carbon instance from the model's created_at.
+        $version = FileVersion::where('file_id', $file->id)->latest('created_at')->first();
 
-        return $at ? Carbon::parse($at) : null;
+        return $version?->created_at;
     }
 }
