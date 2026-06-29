@@ -57,4 +57,13 @@ describe('FileItem', () => {
         const wrapper = mount(FileItem, { props: { item: f, view: 'grid', selected: false, menu } });
         expect(wrapper.text()).toContain('1.0 MB');
     });
+
+    it('tag badge picks accessible foreground for the background', () => {
+        const dark = { ...file, tags: [{ id: 1, name: 'urgent', color: '#1a1a1a' }] };
+        const light = { ...file, tags: [{ id: 1, name: 'draft', color: '#ffff00' }] };
+        const w1 = mount(FileItem, { props: { item: dark, view: 'list', selected: false, menu } });
+        const w2 = mount(FileItem, { props: { item: light, view: 'list', selected: false, menu } });
+        expect(w1.find('.badge').attributes('style')).toMatch(/color:\s*(?:#fff|rgb\(255,\s*255,\s*255\))/);
+        expect(w2.find('.badge').attributes('style')).toMatch(/color:\s*(?:#000|rgb\(0,\s*0,\s*0\))/);
+    });
 });

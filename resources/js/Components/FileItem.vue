@@ -1,8 +1,22 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { iconFor, colorFor } from '../lib/fileTypes';
 import { fmtBytes } from '../lib/format';
 import { FileStatus } from '../lib/constants';
 import ItemActions from './ItemActions.vue';
+
+// Pick black or white foreground based on the background luminance so
+// the tag badge always has readable contrast (WCAG 2.1 SC 1.4.11).
+function readableFg(hex?: string): string {
+    if (!hex) return '#fff';
+    const m = hex.replace('#', '');
+    const r = parseInt(m.slice(0, 2), 16);
+    const g = parseInt(m.slice(2, 4), 16);
+    const b = parseInt(m.slice(4, 6), 16);
+    // Relative luminance per WCAG.
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum > 0.55 ? '#000' : '#fff';
+}
 
 interface Tag { id: number; name: string; color?: string }
 interface FileItemData {
@@ -121,7 +135,7 @@ const emit = defineEmits<{
                                 v-for="t in item.tags"
                                 :key="t.id"
                                 class="badge rounded-pill"
-                                :style="{ backgroundColor: t.color || '#6c757d', cursor: 'pointer' }"
+                                :style="{ backgroundColor: t.color || '#6c757d', color: readableFg(t.color || '#6c757d'), cursor: 'pointer' }"
                                 @click.stop="emit('tag', t.id)"
                             >{{ t.name }}</span>
                         </div>
