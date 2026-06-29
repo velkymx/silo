@@ -15,13 +15,21 @@ use Illuminate\Database\Eloquent\Model;
  */
 class VaultEncrypted implements CastsAttributes
 {
+    /** Lazy so we don't pull VaultCrypto during config-cache / route-discovery. */
+    private ?VaultCrypto $crypto = null;
+
+    private function crypto(): VaultCrypto
+    {
+        return $this->crypto ??= app(VaultCrypto::class);
+    }
+
     public function get(Model $model, string $key, mixed $value, array $attributes): ?string
     {
-        return $value === null ? null : app(VaultCrypto::class)->decrypt($value);
+        return $value === null ? null : $this->crypto()->decrypt($value);
     }
 
     public function set(Model $model, string $key, mixed $value, array $attributes): ?string
     {
-        return $value === null ? null : app(VaultCrypto::class)->encrypt((string) $value);
+        return $value === null ? null : $this->crypto()->encrypt((string) $value);
     }
 }
