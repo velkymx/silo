@@ -111,17 +111,22 @@ class NoteLinker
             ->where('is_dir', false)
             ->where('id', '!=', $excludeId);
 
-        return (clone $base)->whereRaw('LOWER(name) = ?', [mb_strtolower($title.'.md')])->first()
-            ?? (clone $base)->whereRaw('LOWER(name) = ?', [mb_strtolower($title)])->first();
+        // ME-08: rely on the column's case-insensitive collation (utf8mb4_unicode_ci
+        // on MySQL/MariaDB) instead of LOWER() — LOWER() would force a full scan
+        // because it disables index usage on the name column.
+        return (clone $base)->where('name', $title.'.md')->first()
+            ?? (clone $base)->where('name', $title)->first();
     }
 
     /** Resolve an @handle to a user by name (spaces ignored), case-insensitively. */
     private function resolveUser(string $handle): ?User
     {
+        // ME-08: same as findNoteByTitle — drop LOWER() so the query uses the
+        // case-insensitive collation on the users.name column.
         return User::query()
             ->where(fn ($q) => $q
-                ->whereRaw('LOWER(name) = ?', [$handle])
-                ->orWhereRaw("LOWER(REPLACE(name, ' ', '')) = ?", [$handle]))
+                ->where('name', $handle)
+                ->orWhereRaw("REPLACE(name, ' ', '') = ?", [$handle]))
             ->first();
     }
 

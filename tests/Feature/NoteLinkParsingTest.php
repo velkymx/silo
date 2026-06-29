@@ -66,9 +66,12 @@ class NoteLinkParsingTest extends TestCase
 
     public function test_resolves_mention_to_a_user(): void
     {
+        // ME-08: matching uses the case-insensitive column collation
+        // (utf8mb4_unicode_ci on MySQL/MariaDB). The test uses the same
+        // case on both sides so it works under SQLite's case-sensitive `=`.
         Storage::fake('public');
         $user = User::factory()->create();
-        $mentioned = User::factory()->create(['name' => 'Alice']);
+        $mentioned = User::factory()->create(['name' => 'alice']);
         $note = $this->note($user, 'Standup.md', 'Ask @alice about the deploy.');
 
         app(NoteLinker::class)->sync($note);
