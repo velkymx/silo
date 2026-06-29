@@ -122,6 +122,7 @@ function safeUrl(url: string | undefined): string {
             <iframe
                 v-else-if="file.type === 'pdf'"
                 :src="safeUrl(file.url)"
+                :title="`PDF preview of ${file.name}`"
                 class="w-100 h-100 border rounded"
                 @load="loading = false"
                 @error="loadError = 'Could not load preview.'"
