@@ -353,7 +353,7 @@ async function runMaintenance(action) {
                 <VibeFormInput v-model="form.url" placeholder="https://…" />
             </VibeFormGroup>
             <VibeFormGroup label="Description" :error="form.errors.description">
-                <VibeFormInput v-model="form.description" placeholder="Optional" />
+                <VibeFormInput v-model="form.description" placeholder="Optional" maxlength="500" />
             </VibeFormGroup>
             <div class="row">
                 <div class="col-6">
