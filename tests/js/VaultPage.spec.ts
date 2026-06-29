@@ -53,7 +53,9 @@ describe('Vault/Index', () => {
         await flushPromises();
         expect(h.prompt).toHaveBeenCalled();
         expect(h.post).toHaveBeenCalledWith('/vault/1/reveal', { password: 'my-password' });
-        expect(wrapper.text()).toContain('PLAINTEXT-SECRET');
+        const secretInput = wrapper.find('input.vault-secret');
+        expect(secretInput.exists()).toBe(true);
+        expect(secretInput.element.value).toBe('PLAINTEXT-SECRET');
     });
 
     it('fills the secret field from the generator', async () => {
@@ -125,7 +127,7 @@ describe('Vault/Index', () => {
         await wrapper.get('[aria-label="Reveal secret"]').trigger('click');
         await flushPromises();
         // The element containing the revealed secret must NOT have text-truncate.
-        const secretEl = wrapper.find('code.vault-secret, pre.vault-secret');
+        const secretEl = wrapper.find('input.vault-secret, code.vault-secret, pre.vault-secret');
         expect(secretEl.exists()).toBe(true);
         // Its closest ancestor with text-truncate class must not exist.
         expect(secretEl.element.closest('.text-truncate')).toBeNull();
