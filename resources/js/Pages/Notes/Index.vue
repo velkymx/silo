@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
 import NotesList from '../../Components/Notes/NotesList.vue';
@@ -185,6 +186,7 @@ onMounted(() => {
 
 <template>
     <AppLayout>
+        <PageHeader title="Notes" icon="journal-text" />
         <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
         <ThreePane v-else v-model:activePane="activePane">
             <template #sidebar>

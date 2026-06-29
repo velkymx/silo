@@ -3,6 +3,7 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import { fmtBytes } from '../../lib/format';
 import { BackupStatus } from '../../lib/constants';
 import { useConfirm } from '../../composables/useConfirm';
@@ -73,12 +74,13 @@ onBeforeUnmount(() => clearInterval(poll));
 
 <template>
     <AppLayout>
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <h4 class="mb-0"><VibeIcon icon="archive" class="me-2" />Backups</h4>
-            <VibeButton variant="primary" @click="runNow">
-                <VibeIcon icon="play-fill" class="me-1" />Back up now
-            </VibeButton>
-        </div>
+        <PageHeader title="Backups" icon="archive">
+            <template #actions>
+                <VibeButton variant="primary" @click="runNow">
+                    <VibeIcon icon="play-fill" class="me-1" />Back up now
+                </VibeButton>
+            </template>
+        </PageHeader>
 
         <VibeRow class="g-3">
             <VibeCol :lg="4">

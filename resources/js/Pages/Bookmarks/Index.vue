@@ -4,6 +4,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import { useUrlFilter } from '../../composables/useUrlFilter';
 import { BookmarkStatus } from '../../lib/constants';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import SelectBar from '../../Components/SelectBar.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
@@ -172,6 +173,7 @@ async function runMaintenance(action) {
 
 <template>
     <AppLayout>
+        <PageHeader title="Bookmarks" icon="bookmark-star" />
         <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
         <ThreePane v-else v-model:activePane="activePane">
             <template #sidebar>
