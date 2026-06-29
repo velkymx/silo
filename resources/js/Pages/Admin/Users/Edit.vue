@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 import FormErrorSummary from '../../../Components/FormErrorSummary.vue';
+import { useConfirm } from '../../../composables/useConfirm';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -12,6 +13,7 @@ const props = defineProps({
 const page = usePage();
 const isSelf = computed(() => page.props.auth?.user?.id === props.user.id);
 const groupOptions = computed(() => props.groups.map((g) => ({ value: g.id, text: g.name })));
+const { confirm } = useConfirm();
 
 const form = useForm({
     name: props.user.name,
@@ -22,7 +24,16 @@ const form = useForm({
     password_confirmation: '',
 });
 
-function submit() {
+async function submit() {
+    if (isSelf.value && !form.is_admin) {
+        const ok = await confirm({
+            title: 'Remove your own admin access?',
+            message: 'You will be locked out of the admin area on save. Continue?',
+            confirmLabel: 'Demote myself',
+            variant: 'danger',
+        });
+        if (!ok) return;
+    }
     form.patch(`/admin/users/${props.user.id}`, {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
