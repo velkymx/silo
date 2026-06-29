@@ -209,7 +209,8 @@ async function onImportFile(e) {
                                     <span v-if="item.username"> · </span>••••••••••
                                 </span>
                             </div>
-                            <pre v-if="item.id in revealed" class="vault-secret mb-0 small">{{ revealed[item.id] }}</pre>
+                            <pre v-if="item.id in revealed && revealed[item.id]" class="vault-secret mb-0 small">{{ revealed[item.id] }}</pre>
+                            <span v-else-if="item.id in revealed" class="small text-muted">(empty secret)</span>
                         </div>
                         <VibeButton size="sm" variant="secondary" outline :aria-label="(item.id in revealed) ? 'Hide secret' : 'Reveal secret'" @click="reveal(item)">
                             <VibeIcon :icon="(item.id in revealed) ? 'eye-slash' : 'eye'" class="me-1" />{{ (item.id in revealed) ? 'Hide' : 'Reveal' }}
