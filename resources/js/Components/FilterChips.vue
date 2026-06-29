@@ -1,12 +1,16 @@
-<script setup>
-defineProps({
-    chips: { type: Array, default: () => [] },
-});
-const emit = defineEmits(['clear-all']);
+<script setup lang="ts">
+export interface FilterChip {
+    key: string;
+    label: string;
+    icon: string;
+    clear: () => void;
+}
+defineProps<{ chips?: FilterChip[] }>();
+const emit = defineEmits<{ (e: 'clear-all'): void }>();
 </script>
 
 <template>
-    <VibeAlert v-if="chips.length" variant="light" class="border d-flex flex-wrap align-items-center gap-2 py-2">
+    <VibeAlert v-if="chips && chips.length" variant="light" class="border d-flex flex-wrap align-items-center gap-2 py-2">
         <VibeIcon icon="funnel-fill" class="text-muted" />
         <VibeBadge
             v-for="chip in chips"
