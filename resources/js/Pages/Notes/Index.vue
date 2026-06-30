@@ -9,6 +9,7 @@ import NotesList from '../../Components/Notes/NotesList.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import SelectBar from '../../Components/SelectBar.vue';
+import EmptyState from '../../Components/EmptyState.vue';
 import { getText, http } from '../../lib/http';
 import { extractHeadings } from '../../lib/markdownOutline';
 import { usePrompt, useConfirm } from '../../composables/useConfirm';
@@ -252,7 +253,7 @@ onMounted(() => {
                             >
                                 <template #button><VibeIcon icon="list-nested" class="me-1" />Outline</template>
                                 <template #item="{ item }">
-                                    <span :style="{ paddingLeft: `${(item.level - 1) * 1}rem` }">{{ item.text }}</span>
+                                    <span :class="`outline-h-${item.level}`">{{ item.text }}</span>
                                 </template>
                             </VibeDropdown>
                             <VibeButton size="sm" variant="secondary" outline title="Save a version" @click="saveVersion">
@@ -267,8 +268,7 @@ onMounted(() => {
                 </template>
 
                 <div v-else class="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
-                    <VibeIcon icon="journal-text" class="fs-1 mb-2" />
-                    <p class="mb-0">Select a note, or create a new one.</p>
+                    <EmptyState icon="journal-text" title="Select a note, or create a new one." />
                 </div>
             </template>
         </ThreePane>
@@ -279,6 +279,14 @@ onMounted(() => {
 .notes-editor-body {
     flex: 1 1 auto;
     min-height: 0;
+    min-width: 0;
     overflow: hidden;
 }
+/* Outline item indentation by heading level (1-6). */
+.outline-h-1 { padding-left: 0; }
+.outline-h-2 { padding-left: 0.85rem; }
+.outline-h-3 { padding-left: 1.7rem; }
+.outline-h-4 { padding-left: 2.55rem; }
+.outline-h-5 { padding-left: 3.4rem; }
+.outline-h-6 { padding-left: 4.25rem; }
 </style>
