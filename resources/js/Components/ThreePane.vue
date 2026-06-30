@@ -58,12 +58,17 @@ function goBack() {
 .tp-list {
     flex-shrink: 0;
 }
+/* Active pane is hidden at all breakpoints; the mobile media query below
+   overrides the sizing for the visible pane. */
+.tp-pane--hidden {
+    display: none !important;
+}
 
 /* Mobile: show one pane at a time. */
 @media (max-width: 767.98px) {
     .three-pane {
         flex-direction: column;
-        height: calc(100vh - 100px);
+        height: calc(100dvh - 100px);
     }
     .tp-sidebar,
     .tp-list,
@@ -71,9 +76,6 @@ function goBack() {
         width: 100% !important;
         height: 100%;
         flex-shrink: 0;
-    }
-    .tp-pane--hidden {
-        display: none !important;
     }
     .tp-mobile-nav {
         width: 100%;
