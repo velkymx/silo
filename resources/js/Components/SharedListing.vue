@@ -78,17 +78,24 @@ function quickLook(file) {
         empty-text="No shared files."
     >
         <template #cell(name)="{ item }">
-            <img
+            <button
                 v-if="item.thumb_url"
-                :src="item.thumb_url"
-                :alt="item.name"
-                loading="lazy"
-                width="32"
-                height="32"
-                class="rounded border me-2"
-                style="width: 32px; height: 32px; object-fit: cover; cursor: pointer"
+                type="button"
+                class="rounded border me-2 p-0 bg-transparent"
+                style="width: 32px; height: 32px; cursor: pointer"
+                :aria-label="`Quick Look ${item.name}`"
                 @click="quickLook(item)"
             >
+                <img
+                    :src="item.thumb_url"
+                    :alt="item.name"
+                    loading="lazy"
+                    width="32"
+                    height="32"
+                    class="rounded d-block"
+                    style="width: 32px; height: 32px; object-fit: cover"
+                >
+            </button>
             <VibeIcon v-else :icon="iconFor(item.type)" class="me-1 text-secondary" />{{ item.name }}
         </template>
         <template #cell(abilities)="{ item }">
