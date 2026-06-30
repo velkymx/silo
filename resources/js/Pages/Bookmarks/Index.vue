@@ -6,6 +6,7 @@ import { BookmarkStatus } from '../../lib/constants';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import ThreePane from '../../Components/ThreePane.vue';
+import BookmarksFolders from '../../Components/BookmarksFolders.vue';
 import SelectBar from '../../Components/SelectBar.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
@@ -177,47 +178,38 @@ async function runMaintenance(action) {
         <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
         <ThreePane v-else v-model:activePane="activePane">
             <template #sidebar>
-                <div class="d-flex flex-column p-2">
-                <div class="d-flex align-items-center justify-content-between px-1 mb-1">
-                    <span class="fw-semibold small text-uppercase text-muted">Folders</span>
-                    <VibeButton size="sm" variant="light" title="New folder" aria-label="New folder" @click="addFolder">
-                        <VibeIcon icon="folder-plus" />
-                    </VibeButton>
+                <div class="d-flex flex-column p-2 h-100">
+                    <div v-if="feedCount" class="d-flex align-items-center justify-content-between px-1 mb-1">
+                        <span class="fw-semibold small text-uppercase text-muted">Feeds</span>
+                    </div>
+                    <button
+                        v-if="feedCount"
+                        type="button"
+                        class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                        :class="{ active: selectedFolder === '__feeds__' }"
+                        @click="selectedFolder = '__feeds__'"
+                    >
+                        <VibeIcon icon="rss-fill" class="text-warning" />
+                        <span class="flex-grow-1">Feeds</span>
+                        <span class="badge text-bg-light">{{ feedCount }}</span>
+                    </button>
+                    <div v-if="bookmarks.length" class="d-flex align-items-center justify-content-between px-1 mb-1 mt-2">
+                        <span class="fw-semibold small text-uppercase text-muted">Total</span>
+                    </div>
+                    <div v-if="bookmarks.length" class="px-1 text-muted small">
+                        {{ bookmarks.length }} bookmark{{ bookmarks.length === 1 ? '' : 's' }}
+                    </div>
                 </div>
-                <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === null }"
-                    @click="selectedFolder = null"
-                >
-                    <VibeIcon icon="bookmark-fill" />
-                    <span class="flex-grow-1">All Bookmarks</span>
-                    <span class="badge text-bg-light">{{ bookmarks.length }}</span>
-                </button>
-                <button
-                    v-if="feedCount"
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === '__feeds__' }"
-                    @click="selectedFolder = '__feeds__'"
-                >
-                    <VibeIcon icon="rss-fill" class="text-warning" />
-                    <span class="flex-grow-1">Feeds</span>
-                    <span class="badge text-bg-light">{{ feedCount }}</span>
-                </button>
-                <button
-                    v-for="folder in [...folders, ...(counts['General'] ? ['General'] : [])]"
-                    :key="folder"
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === folder }"
-                    @click="selectedFolder = folder"
-                >
-                    <VibeIcon :icon="folder === 'General' ? 'folder' : 'folder-fill'" class="text-warning" />
-                    <span class="flex-grow-1 text-truncate">{{ folder }}</span>
-                    <span class="badge text-bg-light">{{ counts[folder] }}</span>
-                </button>
-                </div>
+            </template>
+
+            <template #folders>
+                <BookmarksFolders
+                    :folders="[...folders, ...(counts['General'] ? ['General'] : [])]"
+                    :counts="counts"
+                    :selected-folder="selectedFolder"
+                    @select-folder="(f) => selectedFolder = f"
+                    @new-folder="addFolder"
+                />
             </template>
 
             <template #list>
