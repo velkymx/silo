@@ -72,9 +72,19 @@ function hide(id) {
 
 async function copy(id) {
     if (!(id in revealed)) return;
+    const secret = revealed[id];
     try {
-        await navigator.clipboard.writeText(revealed[id]);
+        await navigator.clipboard.writeText(secret);
+        // Hide the secret from the DOM immediately so it doesn't linger on
+        // screen while the user moves to another task.
+        hide(id);
         toast.push('Copied to clipboard', { variant: 'success' });
+        // Auto-clear the clipboard 30s later so a walk-away leaves nothing
+        // in the OS clipboard. The writeText is the same shape, so it just
+        // replaces the contents with an empty string.
+        setTimeout(() => {
+            navigator.clipboard?.writeText('').catch(() => { /* ignore */ });
+        }, 30_000);
     } catch {
         toast.push('Could not copy — clipboard access denied', { variant: 'danger' });
     }
