@@ -6,6 +6,7 @@ import PageHeader from '../../Components/PageHeader.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { iconFor } from '../../lib/fileTypes';
 import { usePageLoading } from '../../composables/usePageLoading';
+import EmptyState from '../../Components/EmptyState.vue';
 
 const props = defineProps({
     notes: { type: Array, default: () => [] },
@@ -29,7 +30,7 @@ function fmtDate(iso) {
         <div v-else class="p-3 p-lg-4">
             <PageHeader title="Starred" icon="star-fill" />
 
-            <p v-if="empty" class="text-muted">Nothing starred yet. Star notes, bookmarks, or files to pin them here.</p>
+            <EmptyState v-if="empty" icon="star-fill" title="Nothing starred yet" hint="Star notes, bookmarks, or files to pin them here." />
 
             <section v-if="notes.length" class="mb-4">
                 <div class="text-uppercase small text-muted fw-semibold mb-2"><VibeIcon icon="journal-text" class="me-1" />Notes</div>
