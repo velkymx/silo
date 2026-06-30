@@ -7,6 +7,16 @@
     --bs-link-color: #6366f1;
     --bs-link-color-rgb: 99, 102, 241;
     --bs-link-hover-color: #4f46e5;
+    /* Spacing scale (1 unit = 0.25rem ≈ 4px). Components reach for these
+       instead of hard-coded `mb-N`/`mt-N` to keep the design coherent. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    /* Border-radius scale. */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
 }
 
 .btn-primary {
