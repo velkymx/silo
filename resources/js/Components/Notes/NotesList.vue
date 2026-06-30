@@ -1,23 +1,40 @@
-<script setup>
+<script setup lang="ts">
 import EmptyState from '../EmptyState.vue';
-defineProps({
-    notes: { type: Array, default: () => [] },
-    selectedId: { type: Number, default: null },
-    sort: { type: String, default: 'name-asc' },
-    selectMode: { type: Boolean, default: false },
-    isSelected: { type: Function, default: () => false },
-});
-const emit = defineEmits(['select', 'new', 'update:sort', 'toggle-select', 'update:select-mode']);
+
+defineProps<{
+    notes: { id: number; title: string; updated_at: string; starred?: boolean; tags?: { id: number; name: string }[] }[];
+    selectedId: number | null;
+    sort: string;
+    selectMode: boolean;
+    isSelected: (id: number) => boolean;
+}>();
+
+const emit = defineEmits<{
+    (e: 'select', id: number): void;
+    (e: 'new'): void;
+    (e: 'update:sort', value: string): void;
+    (e: 'toggle-select', id: number): void;
+    (e: 'update:select-mode', value: boolean): void;
+}>();
 
 const sortOptions = [
     { value: 'name-asc', text: 'Name A–Z', icon: 'sort-alpha-down' },
     { value: 'name-desc', text: 'Name Z–A', icon: 'sort-alpha-up' },
     { value: 'date', text: 'Last edited', icon: 'clock-history' },
 ];
+
+function fmtDate(iso: string): string {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+        return iso;
+    }
+}
 </script>
 
 <template>
-    <div class="notes-list d-flex flex-column h-100 border-end bg-body">
+    <div class="notes-list d-flex flex-column h-100">
         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom gap-2">
             <span class="fw-semibold">Notes</span>
             <div class="d-flex align-items-center gap-1">
@@ -50,11 +67,11 @@ const sortOptions = [
 
         <div class="flex-grow-1 overflow-auto">
             <EmptyState v-if="!notes.length" icon="journal-text" title="No notes yet" hint="Create your first note to get started." />
-            <button
+            <VibeButton
                 v-for="note in notes"
                 :key="note.id"
-                type="button"
-                class="note-row w-100 text-start border-0 border-bottom px-3 py-2 bg-transparent d-flex align-items-start gap-2"
+                variant="link"
+                class="note-row w-100 text-start border-0 border-bottom px-3 py-2 bg-transparent d-flex align-items-start gap-2 text-body"
                 :class="{ active: note.id === selectedId, 'bg-primary-subtle': isSelected(note.id) }"
                 @click="selectMode ? emit('toggle-select', note.id) : emit('select', note.id)"
             >
@@ -64,28 +81,25 @@ const sortOptions = [
                     class="mt-1 flex-shrink-0"
                     :class="isSelected(note.id) ? 'text-primary' : 'text-muted'"
                 />
-                <div class="min-w-0 flex-grow-1">
+                <div class="min-w-0 flex-grow-1 text-start">
                     <div class="fw-medium text-truncate d-flex align-items-center gap-1">
                         <VibeIcon v-if="note.starred" icon="star-fill" class="text-warning small" title="Starred" />
                         <span class="text-truncate">{{ note.title }}</span>
                     </div>
                     <div class="small text-muted d-flex align-items-center gap-2">
-                        <span>{{ note.updated_at }}</span>
+                        <span>{{ fmtDate(note.updated_at) }}</span>
                         <span v-for="tag in note.tags" :key="tag.id" class="badge text-bg-light">#{{ tag.name }}</span>
                     </div>
                 </div>
-            </button>
+            </VibeButton>
         </div>
     </div>
 </template>
 
 <style scoped>
-.notes-list {
-    width: 280px;
-    flex-shrink: 0;
-}
 .note-row {
     cursor: pointer;
+    text-decoration: none;
 }
 .note-row:hover {
     background: rgba(99, 102, 241, 0.06) !important;
