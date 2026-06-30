@@ -70,10 +70,11 @@ const emit = defineEmits<{
                         :class="{ 'opacity-50': isDragging, 'border-primary border-2 shadow': drop && drop.isOver, 'border-primary border-2': selected }"
                         @contextmenu.prevent="emit('context', { item, event: $event })"
                     >
-                        <button
+                        <VibeButton
                             v-if="selectMode || selected"
-                            type="button"
-                            class="grid-select position-absolute top-0 start-0 m-1 btn btn-sm p-0 lh-1 bg-body rounded-circle"
+                            variant="light"
+                            size="sm"
+                            class="grid-select position-absolute top-0 start-0 m-1 p-0 lh-1 bg-body rounded-circle"
                             :class="selected ? 'text-primary' : 'text-muted'"
                             :aria-pressed="selected"
                             :aria-label="selected ? `Deselect ${item.name}` : `Select ${item.name}`"
@@ -81,7 +82,7 @@ const emit = defineEmits<{
                             @click.stop="emit('toggle-select', item.id)"
                         >
                             <VibeIcon :icon="selected ? 'check-circle-fill' : 'circle'" />
-                        </button>
+                        </VibeButton>
                         <div class="position-absolute top-0 end-0 m-1" style="z-index: 2">
                             <ItemActions :item="item" :menu="menu" @star="emit('star', item)" @action="emit('action', $event)" />
                         </div>

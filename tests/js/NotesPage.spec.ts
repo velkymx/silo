@@ -191,7 +191,7 @@ describe('BacklinksPanel', () => {
         expect(h.get).toHaveBeenCalledWith('/notes/3/backlinks');
         expect(wrapper.text()).toContain('Source');
 
-        await wrapper.get('button.btn-link').trigger('click');
+        await wrapper.get('button.vibe-btn').trigger('click');
         expect(wrapper.emitted('open')?.[0]).toEqual([7]);
     });
 });

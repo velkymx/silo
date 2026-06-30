@@ -87,9 +87,9 @@ function safeUrl(url: string | undefined): string {
                             <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
                         </div>
                     </div>
-                    <a v-if="file?.id" :href="`/download/${file.id}`" class="btn btn-success btn-sm">
+                    <VibeButton v-if="file?.id" variant="success" size="sm" :href="`/download/${file.id}`">
                         <VibeIcon icon="download" class="me-1" />Download
-                    </a>
+                    </VibeButton>
                     <VibeDropdown
                         v-if="file"
                         variant="primary"

@@ -40,13 +40,14 @@ watch(
         <p v-else-if="!backlinks.length" class="small text-muted mb-0">No backlinks yet.</p>
         <ul v-else class="list-unstyled mb-0">
             <li v-for="link in backlinks" :key="link.id">
-                <button
-                    type="button"
-                    class="btn btn-link btn-sm p-0 text-decoration-none"
+                <VibeButton
+                    variant="link"
+                    size="sm"
+                    class="p-0 text-decoration-none"
                     @click="emit('open', link.id)"
                 >
                     <VibeIcon icon="journal-text" class="me-1" />{{ link.title }}
-                </button>
+                </VibeButton>
             </li>
         </ul>
     </div>

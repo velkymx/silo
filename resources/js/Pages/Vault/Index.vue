@@ -184,10 +184,11 @@ async function onImportFile(e) {
                         class="list-group-item d-flex align-items-center gap-3"
                         :class="{ 'bg-primary-subtle': vaultIsSelected(item.id) }"
                     >
-                        <button
+                        <VibeButton
                             v-if="vaultSelectMode"
-                            type="button"
-                            class="btn btn-sm p-0 lh-1 bg-transparent border-0"
+                            variant="light"
+                            size="sm"
+                            class="p-0 lh-1 bg-transparent border-0"
                             :aria-pressed="vaultIsSelected(item.id)"
                             :aria-label="vaultIsSelected(item.id) ? `Deselect ${item.name}` : `Select ${item.name}`"
                             @click="vaultToggle(item.id)"
@@ -196,7 +197,7 @@ async function onImportFile(e) {
                                 :icon="vaultIsSelected(item.id) ? 'check-circle-fill' : 'circle'"
                                 :class="vaultIsSelected(item.id) ? 'text-primary' : 'text-muted'"
                             />
-                        </button>
+                        </VibeButton>
                         <VibeIcon v-else icon="shield-lock" class="text-muted fs-5" />
                         <div class="flex-grow-1 min-vw-0">
                             <div class="fw-semibold text-truncate">

@@ -18,12 +18,13 @@ const emit = defineEmits<{
             role="status"
         >
             <span class="flex-grow-1 small">{{ t.text }}</span>
-            <button
+            <VibeButton
                 v-if="t.undo"
-                type="button"
-                class="btn btn-sm btn-outline-secondary py-0"
+                variant="secondary"
+                size="sm"
+                outline
                 @click="emit('undo', t)"
-            >Undo</button>
+            >Undo</VibeButton>
             <button
                 type="button"
                 class="btn-close btn-close-sm"

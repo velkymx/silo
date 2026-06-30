@@ -225,15 +225,16 @@ onMounted(() => {
             <template #detail>
                 <template v-if="selectedNote">
                     <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom flex-shrink-0">
-                        <button
-                            type="button"
-                            class="btn btn-link p-0 fw-semibold text-truncate text-decoration-none text-body note-title"
+                        <VibeButton
+                            variant="link"
+                            size="sm"
+                            class="p-0 fw-semibold text-truncate text-decoration-none text-body note-title"
                             title="Rename note"
                             @click="renameNote"
                         >
                             {{ selectedNote.title }}
                             <VibeIcon icon="pencil" class="ms-1 small text-muted" />
-                        </button>
+                        </VibeButton>
                         <div class="d-flex align-items-center gap-2">
                             <SaveIndicator :state="saveState" />
                             <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" :aria-label="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">

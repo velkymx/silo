@@ -16,10 +16,10 @@ function goBack() {
     <div class="three-pane d-flex border rounded overflow-hidden bg-body">
         <!-- Mobile nav bar: back chevron, shown only when not in sidebar -->
         <div v-if="activePane !== 'sidebar'" class="tp-mobile-nav d-flex d-md-none align-items-center px-2 py-1 border-bottom bg-body-tertiary flex-shrink-0">
-            <button type="button" class="btn btn-sm btn-link p-0 text-body text-decoration-none" @click="goBack">
+            <VibeButton variant="link" size="sm" class="p-0 text-body text-decoration-none" @click="goBack">
                 <VibeIcon icon="chevron-left" />
                 <span class="ms-1">Back</span>
-            </button>
+            </VibeButton>
         </div>
 
         <div
