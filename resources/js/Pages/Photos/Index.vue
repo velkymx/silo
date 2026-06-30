@@ -349,7 +349,7 @@ function saveEdit() {
                         :aria-label="(isStarred(p) ? 'Unstar ' : 'Star ') + p.name"
                         @click.stop="star(p)"
                     >
-                        <VibeIcon :icon="isStarred(p) ? 'star-fill' : 'star'" :class="isStarred(p) ? 'text-warning' : 'text-white'" />
+                        <VibeIcon :icon="isStarred(p) ? 'star-fill' : 'star'" :class="isStarred(p) ? 'text-warning' : 'text-body'" />
                     </VibeButton>
 
                     <!-- Actions -->
