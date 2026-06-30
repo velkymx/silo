@@ -30,14 +30,22 @@ const childrenByParent = computed(() => {
 // children — so the template can render indentation and a chevron.
 const visibleRows = computed(() => {
     const rows = [];
+    // Walk from BOTH the root folder and any top-level (parent_id === null)
+    // folders. Folders the user created via "New folder" without selecting a
+    // parent land at the top level; the older code only walked from
+    // props.rootId and they were lost.
+    const seen = new Set();
     const walk = (parentId, depth) => {
         for (const folder of childrenByParent.value.get(parentId) ?? []) {
+            if (seen.has(folder.id)) continue;
+            seen.add(folder.id);
             const hasChildren = childrenByParent.value.has(folder.id);
             rows.push({ id: folder.id, name: folder.name, depth, hasChildren });
             if (hasChildren && expanded.value.has(folder.id)) walk(folder.id, depth + 1);
         }
     };
-    walk(props.rootId, 0);
+    walk(null, 0);
+    if (props.rootId !== null) walk(props.rootId, 0);
     return rows;
 });
 
