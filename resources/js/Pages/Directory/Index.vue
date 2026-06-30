@@ -83,8 +83,8 @@ async function open(person) {
 
             <div v-for="[dept, items] in grouped" :key="dept" class="mb-4">
                 <div class="text-uppercase small text-muted fw-semibold mb-2">{{ dept }}</div>
-                <div class="row g-3">
-                    <div v-for="p in items" :key="p.id" class="col-12 col-sm-6 col-lg-4 col-xxl-3">
+                <VibeRow class="g-3">
+                    <VibeCol v-for="p in items" :key="p.id" :xs="12" :sm="6" :lg="4" :xxl="3">
                         <button type="button" class="card h-100 w-100 text-start border-0 shadow-sm person-card" @click="open(p)">
                             <div class="card-body d-flex align-items-center gap-3">
                                 <UserAvatar :user="p" :size="44" />
@@ -94,8 +94,8 @@ async function open(person) {
                                 </div>
                             </div>
                         </button>
-                    </div>
-                </div>
+                    </VibeCol>
+                </VibeRow>
             </div>
         </div>
 
