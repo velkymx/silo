@@ -220,6 +220,7 @@ const editorOpen = ref(false);
 const editorPhoto = ref(null);
 const cropper = ref(null);
 const editorSaving = ref(false);
+let saveSeq = 0;
 function openEditor(p) {
     if (!p) return;
     editorPhoto.value = p;
@@ -232,18 +233,21 @@ function saveEdit() {
     const canvas = cropper.value.getResult()?.canvas;
     if (!canvas) return;
     editorSaving.value = true;
+    // Capture the photo this save is for; if the user opens a different
+    // photo before this toBlob callback fires, we drop the late result
+    // instead of overwriting the new editor's pending save with stale pixels.
+    const seq = ++saveSeq;
+    const photo = editorPhoto.value;
     canvas.toBlob((blob) => {
-        // Guard the async callback: a null blob or a closed editor must reset the
-        // saving flag, otherwise the Save button stays disabled forever.
-        if (!blob || !editorPhoto.value) {
+        if (!blob || seq !== saveSeq) {
             editorSaving.value = false;
             return;
         }
         const form = new FormData();
-        form.append('file', new File([blob], editorPhoto.value.name));
+        form.append('file', new File([blob], photo.name));
         form.append('note', 'Photo edit');
         form.append('_method', 'put');
-        router.post(`/files/${editorPhoto.value.id}/content`, form, {
+        router.post(`/files/${photo.id}/content`, form, {
             forceFormData: true,
             onSuccess: () => { editorOpen.value = false; qlClose(); },
             onFinish: () => { editorSaving.value = false; },
