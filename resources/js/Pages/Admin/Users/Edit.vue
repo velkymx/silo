@@ -48,7 +48,8 @@ async function submit() {
                         <VibeFormGroup
                             label="Name"
                             :error="form.errors.name"
-                         required>
+                            required
+                        >
                             <VibeFormInput v-model="form.name" required />
                         </VibeFormGroup>
 
@@ -56,7 +57,8 @@ async function submit() {
                             label="Email"
                             class="mt-3"
                             :error="form.errors.email"
-                         required>
+                            required
+                        >
                             <VibeFormInput v-model="form.email" type="email" required />
                         </VibeFormGroup>
 

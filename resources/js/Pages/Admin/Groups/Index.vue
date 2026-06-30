@@ -62,7 +62,7 @@ async function destroy(group) {
 
         <VibeRow class="g-2 align-items-end mb-4">
             <VibeCol :md="6">
-<VibeFormGroup
+                <VibeFormGroup
                     label="New group name"
                     :error="createForm.errors.name"
                 >

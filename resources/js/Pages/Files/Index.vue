@@ -912,7 +912,8 @@ onBeforeUnmount(() => {
 <VibeFormGroup
                     label="Folder Name"
                     :error="folderForm.errors.folder_name"
-                 required>
+                    required
+                >
                     <VibeFormInput v-model="folderForm.folder_name" required />
                 </VibeFormGroup>
             </form>
@@ -928,7 +929,7 @@ onBeforeUnmount(() => {
         <!-- Move / Copy modal -->
         <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
             <form @submit.prevent="submitTransfer">
-<VibeFormGroup
+                <VibeFormGroup
                     label="Destination Folder"
                     :error="transferForm.errors.target_id"
                 >
