@@ -18,6 +18,7 @@ vi.mock('@/composables/useConfirm', () => ({ usePrompt: () => ({ prompt: h.promp
 import NotesIndex from '@/Pages/Notes/Index.vue';
 import NotesList from '@/Components/Notes/NotesList.vue';
 import NotesSidebar from '@/Components/Notes/NotesSidebar.vue';
+import NotesFolders from '@/Components/Notes/NotesFolders.vue';
 import BacklinksPanel from '@/Components/Notes/BacklinksPanel.vue';
 
 const notes = [
@@ -63,7 +64,7 @@ describe('Notes/Index', () => {
 
     it('creates a note in the current folder via the New button', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesSidebar).vm.$emit('select-folder', 12);
+        await wrapper.findComponent(NotesFolders).vm.$emit("select-folder", 12);
         await wrapper.findComponent(NotesList).vm.$emit('new');
         expect(h.post).toHaveBeenCalledWith('/notes', { name: 'Untitled', parent_id: 12 }, expect.any(Object));
     });
@@ -99,7 +100,7 @@ describe('Notes/Index', () => {
 
     it('filters the list by folder', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesSidebar).vm.$emit('select-folder', 12);
+        await wrapper.findComponent(NotesFolders).vm.$emit("select-folder", 12);
         await flushPromises();
         expect(wrapper.text()).toContain('Second');
         expect(wrapper.text()).not.toContain('First');
@@ -139,23 +140,23 @@ describe('Notes/Index', () => {
 
     it('creates a folder via the New Folder button', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesSidebar).vm.$emit('new-folder');
+        await wrapper.findComponent(NotesFolders).vm.$emit('new-folder');
         await flushPromises();
         expect(h.prompt).toHaveBeenCalled();
         expect(h.post).toHaveBeenCalledWith('/notes/folders', { name: 'Projects', parent_id: null }, expect.any(Object));
     });
 });
 
-describe('NotesSidebar tree', () => {
+describe('NotesFolders tree', () => {
     it('expands and collapses folders', async () => {
-        const wrapper = mount(NotesSidebar, {
+        const wrapper = mount(NotesFolders, {
             props: {
                 rootId: 5,
                 folders: [
                     { id: 12, name: 'Parent', parent_id: 5 },
                     { id: 13, name: 'Child', parent_id: 12 },
                 ],
-                tags: [],
+                selectedFolder: null,
             },
         });
         // Child hidden until Parent is expanded.

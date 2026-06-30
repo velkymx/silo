@@ -1,14 +1,20 @@
-<script setup>
-defineProps({
-    sidebarWidth: { type: String, default: '230px' },
-    listWidth: { type: String, default: '340px' },
-});
+<script setup lang="ts">
+const props = defineProps<{
+    sidebarWidth?: string;
+    foldersWidth?: string;
+    listWidth?: string;
+}>();
 
-const activePane = defineModel('activePane', { default: 'list' });
+const sidebarWidth = props.sidebarWidth ?? '230px';
+const foldersWidth = props.foldersWidth ?? '230px';
+const listWidth = props.listWidth ?? '340px';
 
-function goBack() {
+const activePane = defineModel<string>('activePane', { default: 'list' });
+
+function goBack(): void {
     if (activePane.value === 'detail') activePane.value = 'list';
-    else if (activePane.value === 'list') activePane.value = 'sidebar';
+    else if (activePane.value === 'list') activePane.value = 'folders';
+    else if (activePane.value === 'folders') activePane.value = 'sidebar';
 }
 </script>
 
@@ -28,6 +34,14 @@ function goBack() {
             :style="{ width: sidebarWidth }"
         >
             <slot name="sidebar" />
+        </div>
+        <div
+            v-if="$slots.folders"
+            class="tp-folders h-100 border-end bg-body-tertiary"
+            :class="{ 'tp-pane--hidden': activePane !== 'folders' }"
+            :style="{ width: foldersWidth }"
+        >
+            <slot name="folders" />
         </div>
         <div
             class="tp-list h-100 border-end bg-body d-flex flex-column"
@@ -51,15 +65,14 @@ function goBack() {
     height: calc(100dvh - 140px);
     min-height: 480px;
 }
-.tp-sidebar {
+.tp-sidebar,
+.tp-folders {
     flex-shrink: 0;
     overflow-y: auto;
 }
 .tp-list {
     flex-shrink: 0;
 }
-/* Active pane is hidden at all breakpoints; the mobile media query below
-   overrides the sizing for the visible pane. */
 .tp-pane--hidden {
     display: none !important;
 }
@@ -71,6 +84,7 @@ function goBack() {
         height: calc(100dvh - 100px);
     }
     .tp-sidebar,
+    .tp-folders,
     .tp-list,
     .tp-detail {
         width: 100% !important;

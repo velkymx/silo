@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 import PageHeader from '../../Components/PageHeader.vue';
 import ThreePane from '../../Components/ThreePane.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
+import NotesFolders from '../../Components/Notes/NotesFolders.vue';
 import NotesList from '../../Components/Notes/NotesList.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
@@ -38,7 +39,7 @@ const saveState = ref('idle'); // 'idle' | 'saving' | 'saved' | 'error'
 const activeTag = ref(null);
 const selectedFolder = ref(null);
 const sortOrder = ref('name-asc');
-const activePane = ref(props.open ? 'detail' : 'list');
+const activePane = ref(props.open ? 'detail' : 'folders');
 let suppressSave = false;
 let saveTimer = null;
 let suppressTimer = null;
@@ -192,13 +193,18 @@ onMounted(() => {
         <ThreePane v-else v-model:activePane="activePane">
             <template #sidebar>
                 <NotesSidebar
-                    :folders="folders"
-                    :root-id="rootId"
                     :tags="tags"
                     :active-tag="activeTag"
+                    @select-tag="selectTag"
+                />
+            </template>
+
+            <template #folders>
+                <NotesFolders
+                    :folders="folders"
+                    :root-id="rootId"
                     :selected-folder="selectedFolder"
                     @select-folder="selectFolder"
-                    @select-tag="selectTag"
                     @new-folder="newFolder"
                 />
             </template>
