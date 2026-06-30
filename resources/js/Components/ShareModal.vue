@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue';
 import { http, HttpError } from '../lib/http';
+import { useToast } from '../composables/useToast';
 
 interface FileLike { id: number; name: string; is_dir?: boolean }
 interface Grant { id: number; subject_type: string; subject_label: string; ability: string }
@@ -10,6 +11,7 @@ interface Option { value: number | string; text: string }
 
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ item: FileLike | null }>();
+const { toast } = useToast();
 
 // VibeDataTable column definitions — declared inside <script setup> so the
 // `:items` array types line up with each column's `key`.
@@ -158,11 +160,15 @@ async function revokeLink(id: number): Promise<void> {
 
 let copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
-function copyLink(url: string, id: number): void {
-    navigator.clipboard?.writeText(url);
-    copied.value = id;
-    if (copiedTimer) clearTimeout(copiedTimer);
-    copiedTimer = setTimeout(() => { copied.value = null; copiedTimer = null; }, 1500);
+async function copyLink(url: string, id: number): Promise<void> {
+    try {
+        await navigator.clipboard.writeText(url);
+        copied.value = id;
+        if (copiedTimer) clearTimeout(copiedTimer);
+        copiedTimer = setTimeout(() => { copied.value = null; copiedTimer = null; }, 1500);
+    } catch {
+        toast.push('Could not copy to clipboard', { variant: 'danger' });
+    }
 }
 
 onBeforeUnmount(() => {
