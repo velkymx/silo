@@ -5,27 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\File;
 use App\Services\Audit;
 use App\Services\TrashService;
-use Inertia\Inertia;
 
 class TrashController extends Controller
 {
     public function __construct(private TrashService $trash)
     {
-    }
-
-    // List the user's trashed items (deletion roots only).
-    public function index()
-    {
-        $items = $this->trash->roots(auth()->id())->map(fn (File $f) => [
-            'id' => $f->id,
-            'name' => $f->name,
-            'is_dir' => $f->is_dir,
-            'size' => $f->size,
-            'type' => strtolower(pathinfo($f->name, PATHINFO_EXTENSION)),
-            'deleted_at' => $f->deleted_at?->format('Y-m-d H:i'),
-        ]);
-
-        return Inertia::render('Trash/Index', ['items' => $items]);
     }
 
     // Restore a trashed item (and its subtree).

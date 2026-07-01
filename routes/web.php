@@ -75,10 +75,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/break/dwg/guess', [\App\Http\Controllers\DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
     Route::get('/break/sodoku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.sodoku');
 
-        Route::get('/shared', [SharedController::class, 'index'])->name('shared.index');
+    Route::get('/shared', [FileController::class, 'index'])->defaults('section', 'shared')->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 
-    Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
+    Route::get('/trash', [FileController::class, 'index'])->defaults('section', 'trash')->name('trash.index');
     Route::delete('/trash/empty', [TrashController::class, 'empty'])->name('trash.empty');
     Route::post('/trash/batch/restore', [TrashController::class, 'batchRestore'])->name('trash.batch.restore');
     Route::post('/trash/{file}/restore', [TrashController::class, 'restore'])->withTrashed()->name('trash.restore');

@@ -8,17 +8,6 @@ use Inertia\Inertia;
 
 class SharedController extends Controller
 {
-    // List items explicitly shared with the current user (directly or via group).
-    public function index(SectionListing $listing)
-    {
-        $items = $listing->shared(auth()->user());
-
-        return Inertia::render('Shared/Index', [
-            'folders' => $items->where('is_dir', true)->values(),
-            'files' => $items->where('is_dir', false)->values(),
-        ]);
-    }
-
     // Browse inside a shared folder (any owner) — gated by the inheriting policy.
     public function show(File $folder, SectionListing $listing)
     {

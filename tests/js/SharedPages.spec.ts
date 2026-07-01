@@ -7,23 +7,12 @@ vi.mock('@inertiajs/vue3', () => ({
     usePage: () => ({ props: { flash: {}, errors: {} } }),
 }));
 
-import SharedIndex from '@/Pages/Shared/Index.vue';
 import SharedFolder from '@/Pages/Shared/Folder.vue';
 
 const files = [{ id: 21, name: 'photo.png', owner: 'Alice', size: 2048, type: 'png', abilities: ['view'], url: '/raw/21' }];
 
 describe('Shared pages', () => {
     beforeEach(() => routerGet.mockClear());
-
-    it('Index shows an empty state when nothing is shared', () => {
-        const wrapper = mount(SharedIndex, { props: { folders: [], files: [] } });
-        expect(wrapper.text()).toContain('Nothing shared with you yet');
-    });
-
-    it('Index renders the listing when items exist', () => {
-        const wrapper = mount(SharedIndex, { props: { folders: [], files } });
-        expect(wrapper.text()).toContain('photo.png');
-    });
 
     it('Folder breadcrumb navigates to an ancestor', async () => {
         const wrapper = mount(SharedFolder, {

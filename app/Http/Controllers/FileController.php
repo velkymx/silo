@@ -29,9 +29,10 @@ class FileController extends Controller
         $userId = auth()->id();
 
         // Unified shell section rail: all | recent | starred | shared | trash.
-        $section = in_array($request->get('section'), ['all', 'recent', 'starred', 'shared', 'trash'], true)
-            ? $request->get('section')
-            : 'all';
+        // The section can arrive either as a query param or as a route default
+        // (e.g. /shared, /trash retain their own URLs but render this shell).
+        $raw = $request->get('section', $request->route('section'));
+        $section = in_array($raw, ['all', 'recent', 'starred', 'shared', 'trash'], true) ? $raw : 'all';
 
         $current = null;
         if ($request->filled('folder')) {
