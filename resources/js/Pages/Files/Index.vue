@@ -2,6 +2,9 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import FourPane from '../../Components/FourPane.vue';
+import SectionRail from '../../Components/SectionRail.vue';
+import FolderAccordion from '../../Components/FolderAccordion.vue';
 import FileItem from '../../Components/FileItem.vue';
 import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
@@ -48,6 +51,7 @@ const props = defineProps({
     storage: { type: Object, default: () => ({ used: 0, quota: 0 }) },
     maxUploadKb: { type: Number, default: 0 },
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
+    section: { type: String, default: 'all' },
 });
 
 
@@ -80,6 +84,23 @@ const breadcrumbItems = computed(() => [
 function visitFolder(id) {
     router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
 }
+
+// ----- FourPane shell: icon rail | folder tree | contents | detail -----
+const SECTIONS = [
+    { key: 'all', icon: 'folder-fill', label: 'All' },
+    { key: 'recent', icon: 'clock-history', label: 'Recent' },
+    { key: 'starred', icon: 'star-fill', label: 'Starred' },
+    { key: 'shared', icon: 'people-fill', label: 'Shared' },
+    { key: 'trash', icon: 'trash', label: 'Trash' },
+];
+const activeSection = ref(props.section);
+const activePane = ref('contents');
+function selectSection(key) {
+    activeSection.value = key;
+    router.get('/', key === 'all' ? {} : { section: key }, { preserveScroll: true, preserveState: false });
+}
+const openIds = computed(() => new Set([...ancestorIds.value]));
+function selectAccordionFolder(id) { visitFolder(id); activePane.value = 'contents'; }
 
 function onBreadcrumb({ item }) {
     if (!item.active) visitFolder(item.folder);
@@ -642,161 +663,183 @@ onBeforeUnmount(() => {
             </template>
         </template>
 
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-            <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
-                <template #item="{ item, index }">
-                    <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
-                </template>
-            </VibeBreadcrumb>
-            <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
-                <VibeButton variant="primary" @click="uploadOpen = true">
-                    <VibeIcon icon="upload" class="me-1" />Upload
-                </VibeButton>
-                <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
-                    <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
-                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                </VibeDropdown>
-                <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
-                    <VibeIcon icon="funnel" class="me-1" />Filters
-                </VibeButton>
-                <VibeButton
-                    :variant="selectMode ? 'primary' : 'secondary'"
-                    :outline="!selectMode"
-                    title="Select multiple"
-                    @click="selectMode ? clearSelection() : (selectMode = true)"
-                >
-                    <VibeIcon icon="check2-square" class="me-1" />Select
-                </VibeButton>
-                <div class="vr mx-1 d-none d-sm-block"></div>
-                <VibeButtonGroup>
-                    <VibeButton
-                        :variant="viewMode === 'list' ? 'primary' : 'secondary'"
-                        :outline="viewMode !== 'list'"
-                        title="List view"
-                        aria-label="List view"
-                        @click="viewMode = 'list'"
-                    >
-                        <VibeIcon icon="list-ul" />
-                    </VibeButton>
-                    <VibeButton
-                        :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
-                        :outline="viewMode !== 'grid'"
-                        title="Thumbnail view"
-                        aria-label="Thumbnail view"
-                        @click="viewMode = 'grid'"
-                    >
-                        <VibeIcon icon="grid-3x3-gap-fill" />
-                    </VibeButton>
-                </VibeButtonGroup>
-            </div>
-        </div>
-
-        <!-- Batch action bar + modals -->
-        <BatchActions
-            :selected-items="selectedItems"
-            :current-id="currentId"
-            :destination-options="destinationOptions"
-            @done="clearSelection"
-            @cleared="clearSelection"
-        />
-
-        <!-- Single compact chip bar for all active view filters. -->
-        <FilterChips :chips="activeFilters" @clear-all="clearAllFilters" />
-
-        <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
-
-        <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
-        <template v-if="!loading && viewMode === 'grid'">
-            <VibeRow class="g-3">
-                <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
-                    <FileItem
-                        :item="item"
-                        view="grid"
-                        :select-mode="selectMode"
-                        :selected="isSelected(item.id)"
-                        :menu="item.is_dir ? folderActions : fileMenu(item)"
-                        @open="onItemClick"
-                        @toggle-select="toggleSel"
-                        @star="toggleStar"
-                        @action="onAction(item, $event)"
-                        @drop="onDropToFolder"
-                        @context="openContext"
-                    />
-                </VibeCol>
-                <VibeCol v-if="!items.length" :cols="12">
-                    <EmptyState
-                        :icon="flat ? 'search' : 'folder2-open'"
-                        :title="flat ? 'No matching files' : 'This folder is empty'"
-                        :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
-                    />
-                </VibeCol>
-            </VibeRow>
-            <div v-if="gridShown < items.length" class="text-center my-3">
-                <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
-                    Show more ({{ items.length - gridShown }} more)
-                </VibeButton>
-            </div>
-        </template>
-
-        <VibeDataTable
-            v-else-if="!loading"
-            :items="items"
-            :columns="columns"
-            row-key="_key"
-            hover
-            :searchable="false"
-            v-model:current-page="listPage"
-            :per-page="25"
-            :per-page-options="[10, 25, 50, 100]"
-            :responsive="true"
-            :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
-            @row-clicked="selectFile"
-        >
-            <template v-if="flat" #cell(location)="{ item }">
-                <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
-                    {{ item.location?.path }}
-                </VibeButton>
+        <FourPane v-model:active-pane="activePane">
+            <template #rail>
+                <SectionRail :sections="SECTIONS" :active="activeSection" @select-section="selectSection" />
             </template>
 
-            <template #cell(name)="{ item }">
-                <FileItem
-                    :item="item"
-                    view="list"
-                    :select-mode="selectMode"
-                    :selected="isSelected(item.id)"
-                    @open="onItemClick"
-                    @toggle-select="toggleSel"
-                    @drop="onDropToFolder"
-                    @tag="filterByTag"
-                    @context="openContext"
+            <template #folders>
+                <FolderAccordion
+                    :folders="allFolders"
+                    :selected-id="currentId"
+                    :open-ids="openIds"
+                    @select-folder="selectAccordionFolder"
+                    @new-folder="() => folderOpen = true"
                 />
             </template>
 
-            <template #cell(modified)="{ item }">
-                <span class="text-muted small">{{ item.modified }}</span>
-            </template>
-
-            <template #cell(size)="{ item }">
-                <span class="text-muted small">
-                    {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
-                </span>
-            </template>
-
-            <template #cell(type)="{ item }">
-                <span class="text-muted small">{{ typeLabel(item) }}</span>
-            </template>
-
-            <template #cell(actions)="{ item }">
-                <div class="d-flex justify-content-end" @click.stop>
-                    <ItemActions
-                        :item="item"
-                        :menu="item.is_dir ? folderActions : fileMenu(item)"
-                        @star="toggleStar"
-                        @action="onAction(item, $event)"
-                    />
+            <template #contents>
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 p-2">
+                    <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
+                        <template #item="{ item, index }">
+                            <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                        </template>
+                    </VibeBreadcrumb>
+                    <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
+                        <VibeButton variant="primary" @click="uploadOpen = true">
+                            <VibeIcon icon="upload" class="me-1" />Upload
+                        </VibeButton>
+                        <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
+                            <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
+                            <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                        </VibeDropdown>
+                        <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
+                            <VibeIcon icon="funnel" class="me-1" />Filters
+                        </VibeButton>
+                        <VibeButton
+                            :variant="selectMode ? 'primary' : 'secondary'"
+                            :outline="!selectMode"
+                            title="Select multiple"
+                            @click="selectMode ? clearSelection() : (selectMode = true)"
+                        >
+                            <VibeIcon icon="check2-square" class="me-1" />Select
+                        </VibeButton>
+                        <div class="vr mx-1 d-none d-sm-block"></div>
+                        <VibeButtonGroup>
+                            <VibeButton
+                                :variant="viewMode === 'list' ? 'primary' : 'secondary'"
+                                :outline="viewMode !== 'list'"
+                                title="List view"
+                                aria-label="List view"
+                                @click="viewMode = 'list'"
+                            >
+                                <VibeIcon icon="list-ul" />
+                            </VibeButton>
+                            <VibeButton
+                                :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
+                                :outline="viewMode !== 'grid'"
+                                title="Thumbnail view"
+                                aria-label="Thumbnail view"
+                                @click="viewMode = 'grid'"
+                            >
+                                <VibeIcon icon="grid-3x3-gap-fill" />
+                            </VibeButton>
+                        </VibeButtonGroup>
+                    </div>
                 </div>
+
+                <!-- Batch action bar + modals -->
+                <BatchActions
+                    :selected-items="selectedItems"
+                    :current-id="currentId"
+                    :destination-options="destinationOptions"
+                    @done="clearSelection"
+                    @cleared="clearSelection"
+                />
+
+                <!-- Single compact chip bar for all active view filters. -->
+                <FilterChips :chips="activeFilters" @clear-all="clearAllFilters" />
+
+                <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
+
+                <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
+                <template v-if="!loading && viewMode === 'grid'">
+                    <VibeRow class="g-3">
+                        <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
+                            <FileItem
+                                :item="item"
+                                view="grid"
+                                :select-mode="selectMode"
+                                :selected="isSelected(item.id)"
+                                :menu="item.is_dir ? folderActions : fileMenu(item)"
+                                @open="onItemClick"
+                                @toggle-select="toggleSel"
+                                @star="toggleStar"
+                                @action="onAction(item, $event)"
+                                @drop="onDropToFolder"
+                                @context="openContext"
+                            />
+                        </VibeCol>
+                        <VibeCol v-if="!items.length" :cols="12">
+                            <EmptyState
+                                :icon="flat ? 'search' : 'folder2-open'"
+                                :title="flat ? 'No matching files' : 'This folder is empty'"
+                                :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                            />
+                        </VibeCol>
+                    </VibeRow>
+                    <div v-if="gridShown < items.length" class="text-center my-3">
+                        <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
+                            Show more ({{ items.length - gridShown }} more)
+                        </VibeButton>
+                    </div>
+                </template>
+
+                <VibeDataTable
+                    v-else-if="!loading"
+                    :items="items"
+                    :columns="columns"
+                    row-key="_key"
+                    hover
+                    :searchable="false"
+                    v-model:current-page="listPage"
+                    :per-page="25"
+                    :per-page-options="[10, 25, 50, 100]"
+                    :responsive="true"
+                    :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
+                    @row-clicked="selectFile"
+                >
+                    <template v-if="flat" #cell(location)="{ item }">
+                        <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
+                            {{ item.location?.path }}
+                        </VibeButton>
+                    </template>
+
+                    <template #cell(name)="{ item }">
+                        <FileItem
+                            :item="item"
+                            view="list"
+                            :select-mode="selectMode"
+                            :selected="isSelected(item.id)"
+                            @open="onItemClick"
+                            @toggle-select="toggleSel"
+                            @drop="onDropToFolder"
+                            @tag="filterByTag"
+                            @context="openContext"
+                        />
+                    </template>
+
+                    <template #cell(modified)="{ item }">
+                        <span class="text-muted small">{{ item.modified }}</span>
+                    </template>
+
+                    <template #cell(size)="{ item }">
+                        <span class="text-muted small">
+                            {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
+                        </span>
+                    </template>
+
+                    <template #cell(type)="{ item }">
+                        <span class="text-muted small">{{ typeLabel(item) }}</span>
+                    </template>
+
+                    <template #cell(actions)="{ item }">
+                        <div class="d-flex justify-content-end" @click.stop>
+                            <ItemActions
+                                :item="item"
+                                :menu="item.is_dir ? folderActions : fileMenu(item)"
+                                @star="toggleStar"
+                                @action="onAction(item, $event)"
+                            />
+                        </div>
+                    </template>
+                </VibeDataTable>
             </template>
-        </VibeDataTable>
+
+            <template #detail>
+                <EmptyState icon="folder2-open" title="Select a file" />
+            </template>
+        </FourPane>
 
         <!-- Editor modal -->
         <EditorModal v-model="editOpen" :item="editItem" :creating="editCreating" :kind="editKind" :parent-id="currentId" />
