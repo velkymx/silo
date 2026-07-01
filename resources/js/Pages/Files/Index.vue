@@ -292,10 +292,26 @@ function onContextSelect(action) {
     if (ctxItem.value) onAction(ctxItem.value, { item: action });
 }
 
-function selectFile(item) {
-    if (item.is_dir) return;
-    quickSetActive(item);
+// ----- Detail pane (Task 4): editor/preview + trash + shared-aware actions -----
+const selectedDetail = ref(null);
+function selectContentItem(item) {
+    if (item.is_dir) {
+        visitFolder(item.id);
+        return;
+    }
+    selectedDetail.value = item;
+    activePane.value = 'detail';
 }
+function restoreFromTrash(item) {
+    router.post(`/trash/${item.id}/restore`, {}, { preserveScroll: true });
+}
+function purgeFromTrash(item) {
+    router.delete(`/trash/${item.id}`, { preserveScroll: true });
+}
+const detailReadOnly = computed(() => activeSection.value === 'shared'
+    && !(selectedDetail.value?.abilities || []).includes('write'));
+
+defineExpose({ selectContentItem });
 
 // List vs thumbnail grid view, remembered across visits. Guarded against
 // SecurityError thrown by blocked localStorage (e.g. strict privacy mode).
@@ -789,7 +805,7 @@ onBeforeUnmount(() => {
                     :per-page-options="[10, 25, 50, 100]"
                     :responsive="true"
                     :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
-                    @row-clicked="selectFile"
+                    @row-clicked="selectContentItem"
                 >
                     <template v-if="flat" #cell(location)="{ item }">
                         <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
@@ -839,7 +855,33 @@ onBeforeUnmount(() => {
             </template>
 
             <template #detail>
-                <EmptyState icon="folder2-open" title="Select a file" />
+                <div v-if="activeSection === 'trash' && selectedDetail" class="p-3">
+                    <h6 class="text-truncate mb-3">{{ selectedDetail.name }}</h6>
+                    <div class="d-flex gap-2">
+                        <VibeButton variant="primary" @click="restoreFromTrash(selectedDetail)">
+                            <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
+                        </VibeButton>
+                        <VibeButton variant="danger" outline @click="purgeFromTrash(selectedDetail)">
+                            <VibeIcon icon="trash3" class="me-1" />Delete forever
+                        </VibeButton>
+                    </div>
+                </div>
+                <div v-else-if="selectedDetail" class="p-3">
+                    <h6 class="text-truncate mb-2">{{ selectedDetail.name }}</h6>
+                    <p class="text-muted small mb-3">{{ typeLabel(selectedDetail) }} · {{ fmtBytes(selectedDetail.size) }}</p>
+                    <p v-if="detailReadOnly" class="text-muted small">
+                        <VibeIcon icon="lock-fill" class="me-1" />Read-only
+                    </p>
+                    <div class="d-flex gap-2">
+                        <VibeButton v-if="isEditable(selectedDetail) && !detailReadOnly" variant="primary" @click="openEditor(selectedDetail)">
+                            <VibeIcon icon="pencil-square" class="me-1" />Edit
+                        </VibeButton>
+                        <VibeButton variant="secondary" outline @click="quickLook(selectedDetail)">
+                            <VibeIcon icon="eye" class="me-1" />{{ isEditable(selectedDetail) ? 'Preview' : 'Open' }}
+                        </VibeButton>
+                    </div>
+                </div>
+                <EmptyState v-else icon="folder2-open" title="Select a file" />
             </template>
         </FourPane>
 

@@ -33,4 +33,26 @@ describe('Files shell', () => {
         expect(dt.exists()).toBe(true);
         expect(dt.props('searchable')).toBe(true);
     });
+
+    it('shows Restore/Delete forever in the detail pane for trash section', async () => {
+        const wrapper = mount(FilesIndex, {
+            props: { ...base, section: 'trash', files: [{ id: 3, name: 'x.md', type: 'md', size: 10, created_at: '2026-01-01', deleted_at: '2026-01-01' }] },
+        });
+        wrapper.vm.selectContentItem({ id: 3, name: 'x.md', type: 'md', is_dir: false });
+        await wrapper.vm.$nextTick();
+        const detailPane = wrapper.get('[data-pane="detail"]');
+        expect(detailPane.text()).toContain('Restore');
+        expect(detailPane.text()).toContain('Delete forever');
+    });
+
+    it('marks the detail pane read-only for a shared item without write ability', async () => {
+        const wrapper = mount(FilesIndex, {
+            props: { ...base, section: 'shared', files: [{ id: 4, name: 'y.md', type: 'md', size: 10, created_at: '2026-01-01', abilities: ['read'] }] },
+        });
+        wrapper.vm.selectContentItem({ id: 4, name: 'y.md', type: 'md', is_dir: false, abilities: ['read'] });
+        await wrapper.vm.$nextTick();
+        const detailPane = wrapper.get('[data-pane="detail"]');
+        expect(detailPane.text()).not.toContain('Edit');
+        expect(detailPane.text()).toContain('Read-only');
+    });
 });
