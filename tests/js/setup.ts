@@ -135,6 +135,23 @@ const components: Record<string, any> = {
             );
         },
     },
+
+    // Accordion: render #title + #content slots for every item (the stub never
+    // collapses — expand/collapse is Bootstrap's job and not unit-tested).
+    VibeAccordion: {
+        name: 'VibeAccordion',
+        props: ['items', 'alwaysOpen', 'flush'],
+        setup(props: { items?: { id: string }[] }, { slots }: { slots: Slots }) {
+            return () => h('div', { 'data-stub': 'VibeAccordion' },
+                (props.items ?? []).map((item, index) =>
+                    h('div', { 'data-acc-item': item.id }, [
+                        slots.title ? slots.title({ item, index }) : null,
+                        slots.content ? slots.content({ item, index }) : null,
+                    ]),
+                ),
+            );
+        },
+    },
 };
 
 config.global.components = components;
