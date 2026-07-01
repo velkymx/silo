@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { router } from '@inertiajs/vue3';
+import { vi } from 'vitest';
 import FilesIndex from '@/Pages/Files/Index.vue';
 
 const base = {
@@ -15,5 +17,13 @@ describe('Files shell', () => {
         expect(wrapper.findComponent({ name: 'SectionRail' }).exists()).toBe(true);
         expect(wrapper.find('[data-section="all"]').exists()).toBe(true);
         expect(wrapper.find('[data-section="trash"]').exists()).toBe(true);
+    });
+
+    it('navigates to a folder from the accordion', async () => {
+        const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
+        const wrapper = mount(FilesIndex, { props: { ...base, allFolders: [{ id: 5, name: 'Docs', parent_id: null }] } });
+        await wrapper.get('[data-folder="5"]').trigger('click');
+        expect(spy).toHaveBeenCalledWith('/', { folder: 5 }, { preserveScroll: true });
+        spy.mockRestore();
     });
 });
