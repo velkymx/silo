@@ -24,9 +24,14 @@ class FileController extends Controller
 {
     use ManagesFilesystem, SanitizesFilename;
     // Display files and folders for the current (DB-backed) folder.
-    public function index(Request $request, \App\Services\FileSearch $search)
+    public function index(Request $request, \App\Services\FileSearch $search, \App\Services\SectionListing $sectionListing)
     {
         $userId = auth()->id();
+
+        // Unified shell section rail: all | recent | starred | shared | trash.
+        $section = in_array($request->get('section'), ['all', 'recent', 'starred', 'shared', 'trash'], true)
+            ? $request->get('section')
+            : 'all';
 
         $current = null;
         if ($request->filled('folder')) {
@@ -43,8 +48,8 @@ class FileController extends Controller
         $advanced = $search->isAdvanced($request);
         $useSearch = $request->filled('search') || $advanced;
         $scopeFolderId = $search->scopeFolderId($request);
-        $starredOnly = $request->boolean('starred');
-        $recentOnly = $request->boolean('recent');
+        $starredOnly = $request->boolean('starred') || $section === 'starred';
+        $recentOnly = $request->boolean('recent') || $section === 'recent';
         $activeTag = $request->filled('tag')
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
@@ -62,7 +67,17 @@ class FileController extends Controller
         // payload bounded on very large result sets.
         $cap = 1000;
 
-        if ($useSearch) {
+        if ($section === 'shared') {
+            // Items shared with me (any owner) — permission-gated by the service.
+            $shared = $sectionListing->shared(auth()->user());
+            $folders = $shared->where('is_dir', true)->values();
+            $files = $shared->where('is_dir', false)->values();
+        } elseif ($section === 'trash') {
+            // My trashed deletion-roots; restore/purge go through the trash routes.
+            $trashed = $sectionListing->trashed($userId);
+            $folders = $trashed->where('is_dir', true)->values();
+            $files = $trashed->where('is_dir', false)->values();
+        } elseif ($useSearch) {
             // Unified search: free text + date/size/type/tag/scope in one query.
             $folders = collect();
             $files = $search->build($request, $userId, $allFolders)
@@ -109,9 +124,11 @@ class FileController extends Controller
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $useSearch,
             'advanced' => $advanced,
+            'section' => $section,
             'starredOnly' => $starredOnly,
             'recentOnly' => $recentOnly,
-            'flat' => $useSearch || (bool) $activeTag || $starredOnly || $recentOnly,
+            'flat' => $useSearch || (bool) $activeTag || $starredOnly || $recentOnly
+                || $section === 'shared' || $section === 'trash',
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
             'allFolders' => $allFolders,
             'allFoldersCapped' => $allFoldersCapped,
