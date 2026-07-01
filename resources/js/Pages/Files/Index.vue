@@ -451,7 +451,7 @@ function openDetails(item) {
 const quickFiles = computed(() => props.files);
 const {
     quickOpen, quickIndex, quickFile, selectedIndex,
-    setActive: quickSetActive, open: quickLook, openAtSelected: quickOpenSelected,
+    open: quickLook, openAtSelected: quickOpenSelected,
     step: quickStep, close: quickClose,
 } = useQuickLook(quickFiles);
 
@@ -686,12 +686,16 @@ onBeforeUnmount(() => {
 
             <template #folders>
                 <FolderAccordion
+                    v-if="activeSection === 'all'"
                     :folders="allFolders"
                     :selected-id="currentId"
                     :open-ids="openIds"
                     @select-folder="selectAccordionFolder"
                     @new-folder="() => folderOpen = true"
                 />
+                <div v-else class="p-3 text-muted small text-uppercase fw-semibold">
+                    {{ SECTIONS.find((s) => s.key === activeSection)?.label }}
+                </div>
             </template>
 
             <template #contents>

@@ -55,4 +55,31 @@ describe('Files shell', () => {
         expect(detailPane.text()).not.toContain('Edit');
         expect(detailPane.text()).toContain('Read-only');
     });
+
+    it('navigates via router.get when a rail section is clicked', async () => {
+        const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
+        const wrapper = mount(FilesIndex, { props: base });
+
+        await wrapper.get('[data-section="starred"]').trigger('click');
+        expect(spy).toHaveBeenCalledWith('/', { section: 'starred' }, { preserveScroll: true, preserveState: false });
+
+        await wrapper.get('[data-section="all"]').trigger('click');
+        expect(spy).toHaveBeenCalledWith('/', {}, { preserveScroll: true, preserveState: false });
+
+        spy.mockRestore();
+    });
+
+    it('shows the folder accordion only for the "all" section', () => {
+        const wrapper = mount(FilesIndex, {
+            props: { ...base, section: 'all', allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
+        });
+        expect(wrapper.get('[data-pane="folders"]').find('[data-folder]').exists()).toBe(true);
+    });
+
+    it('hides the folder accordion for flat sections like trash', () => {
+        const wrapper = mount(FilesIndex, {
+            props: { ...base, section: 'trash', allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
+        });
+        expect(wrapper.get('[data-pane="folders"]').find('[data-folder]').exists()).toBe(false);
+    });
 });
