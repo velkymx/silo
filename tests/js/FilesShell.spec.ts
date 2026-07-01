@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { router } from '@inertiajs/vue3';
 import { vi } from 'vitest';
 import FilesIndex from '@/Pages/Files/Index.vue';
+import { useDialogHost } from '@/composables/useConfirm';
 
 const base = {
     folders: [], files: [], current: null, breadcrumbs: [], allFolders: [],
@@ -90,5 +91,141 @@ describe('Files shell', () => {
         const contentsPane = wrapper.get('[data-pane="contents"]');
         expect(contentsPane.findComponent({ name: 'EmptyState' }).exists()).toBe(true);
         expect(contentsPane.text()).toContain('This folder is empty');
+    });
+
+    // C1: selectContentItem must be section-aware — folder rows in shared/trash
+    // don't live under the owner's `/` tree, so visitFolder(id) 404s for them.
+    describe('selectContentItem is section-aware', () => {
+        it('trash: always opens the detail pane, even for a folder (no navigation)', async () => {
+            const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
+            const wrapper = mount(FilesIndex, {
+                props: { ...base, section: 'trash', folders: [{ id: 7, name: 'Old Docs', is_dir: true, deleted_at: '2026-01-01' }] },
+            });
+            wrapper.vm.selectContentItem({ id: 7, name: 'Old Docs', is_dir: true });
+            await wrapper.vm.$nextTick();
+            const detailPane = wrapper.get('[data-pane="detail"]');
+            expect(detailPane.text()).toContain('Restore');
+            expect(spy).not.toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('shared: a folder navigates to the shared-folder browse route', () => {
+            const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
+            const wrapper = mount(FilesIndex, { props: { ...base, section: 'shared' } });
+            wrapper.vm.selectContentItem({ id: 7, is_dir: true });
+            expect(spy).toHaveBeenCalledWith('/shared/7', {}, { preserveScroll: true });
+            spy.mockRestore();
+        });
+
+        it('shared: a file still opens the detail pane', async () => {
+            const wrapper = mount(FilesIndex, {
+                props: { ...base, section: 'shared', files: [{ id: 4, name: 'y.md', type: 'md', size: 10, created_at: '2026-01-01', abilities: ['read'] }] },
+            });
+            wrapper.vm.selectContentItem({ id: 4, name: 'y.md', type: 'md', is_dir: false, abilities: ['read'] });
+            await wrapper.vm.$nextTick();
+            expect(wrapper.get('[data-pane="detail"]').text()).toContain('y.md');
+        });
+
+        it('all: a folder still navigates via router.get to "/"', () => {
+            const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
+            const wrapper = mount(FilesIndex, { props: { ...base, section: 'all' } });
+            wrapper.vm.selectContentItem({ id: 7, is_dir: true });
+            expect(spy).toHaveBeenCalledWith('/', { folder: 7 }, { preserveScroll: true });
+            spy.mockRestore();
+        });
+    });
+
+    // I1: purge must confirm before permanently deleting; both purge and
+    // restore should give feedback and clear a stale selected-detail ghost.
+    describe('trash restore/purge feedback', () => {
+        function trashItem() {
+            return { id: 3, name: 'x.md', type: 'md', size: 10, created_at: '2026-01-01' };
+        }
+
+        it('Delete forever asks for confirmation before calling router.delete', async () => {
+            const delSpy = vi.spyOn(router, 'delete').mockImplementation(() => {});
+            const wrapper = mount(FilesIndex, {
+                props: { ...base, section: 'trash', files: [trashItem()] },
+            });
+            wrapper.vm.selectContentItem(trashItem());
+            await wrapper.vm.$nextTick();
+
+            const purgeBtn = wrapper.get('[data-pane="detail"]').findAll('button')
+                .find((b) => b.text().includes('Delete forever'));
+            await purgeBtn!.trigger('click');
+            await flushPromises();
+
+            const host = useDialogHost();
+            expect(host.state.open).toBe(true);
+            expect(delSpy).not.toHaveBeenCalled();
+
+            host.accept();
+            await flushPromises();
+
+            expect(delSpy).toHaveBeenCalledWith('/trash/3', expect.anything());
+            delSpy.mockRestore();
+        });
+
+        it('cancelling the confirmation does not delete', async () => {
+            const delSpy = vi.spyOn(router, 'delete').mockImplementation(() => {});
+            const wrapper = mount(FilesIndex, {
+                props: { ...base, section: 'trash', files: [trashItem()] },
+            });
+            wrapper.vm.selectContentItem(trashItem());
+            await wrapper.vm.$nextTick();
+
+            const purgeBtn = wrapper.get('[data-pane="detail"]').findAll('button')
+                .find((b) => b.text().includes('Delete forever'));
+            await purgeBtn!.trigger('click');
+            await flushPromises();
+
+            const host = useDialogHost();
+            host.cancel();
+            await flushPromises();
+
+            expect(delSpy).not.toHaveBeenCalled();
+            delSpy.mockRestore();
+        });
+
+        it('Restore clears a stale selected-detail ghost on success', async () => {
+            const postSpy = vi.spyOn(router, 'post').mockImplementation((_url, _data, opts) => {
+                opts?.onSuccess?.();
+            });
+            const wrapper = mount(FilesIndex, {
+                props: { ...base, section: 'trash', files: [trashItem()] },
+            });
+            wrapper.vm.selectContentItem(trashItem());
+            await wrapper.vm.$nextTick();
+
+            const restoreBtn = wrapper.get('[data-pane="detail"]').findAll('button')
+                .find((b) => b.text().includes('Restore'));
+            await restoreBtn!.trigger('click');
+            await wrapper.vm.$nextTick();
+
+            expect(postSpy).toHaveBeenCalledWith('/trash/3/restore', {}, expect.anything());
+            expect(wrapper.get('[data-pane="detail"]').text()).not.toContain('x.md');
+            postSpy.mockRestore();
+        });
+    });
+
+    // I2: owner-only row actions (star + menu) must not render for sections the
+    // viewer doesn't own; owned sections keep full functionality.
+    describe('row actions are gated by section', () => {
+        const file = { id: 3, name: 'x.md', type: 'md', size: 10, created_at: '2026-01-01' };
+
+        it('hides the row action menu for trash rows', () => {
+            const wrapper = mount(FilesIndex, { props: { ...base, section: 'trash', files: [file] } });
+            expect(wrapper.findComponent({ name: 'ItemActions' }).exists()).toBe(false);
+        });
+
+        it('hides the row action menu for shared rows', () => {
+            const wrapper = mount(FilesIndex, { props: { ...base, section: 'shared', files: [file] } });
+            expect(wrapper.findComponent({ name: 'ItemActions' }).exists()).toBe(false);
+        });
+
+        it('shows the row action menu for the "all" section', () => {
+            const wrapper = mount(FilesIndex, { props: { ...base, section: 'all', files: [file] } });
+            expect(wrapper.findComponent({ name: 'ItemActions' }).exists()).toBe(true);
+        });
     });
 });

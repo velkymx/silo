@@ -48,4 +48,26 @@ describe('FolderAccordion', () => {
         await wrapper.get('[data-testid="fa-new"]').trigger('click');
         expect(wrapper.emitted('new-folder')).toHaveLength(1);
     });
+
+    // M4: folder rows must be operable from the keyboard, not just the mouse.
+    it('is keyboard-accessible: Enter on a folder row emits select-folder', async () => {
+        const wrapper = mountTree();
+        await wrapper.get('[data-folder="1"]').trigger('keydown.enter');
+        const events = wrapper.emitted('select-folder');
+        expect(events).toBeTruthy();
+        expect(events!.at(-1)).toEqual([1]);
+    });
+
+    it('is keyboard-accessible: Space on a folder row emits select-folder', async () => {
+        const wrapper = mountTree();
+        await wrapper.get('[data-folder="3"]').trigger('keydown.space');
+        const events = wrapper.emitted('select-folder');
+        expect(events).toBeTruthy();
+        expect(events!.at(-1)).toEqual([3]);
+    });
+
+    it('folder rows are focusable (tabindex 0)', () => {
+        const wrapper = mountTree();
+        expect(wrapper.get('[data-folder="1"]').attributes('tabindex')).toBe('0');
+    });
 });

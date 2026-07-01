@@ -66,7 +66,10 @@ function folderId(itemId: string): number {
                     :class="{ active: selectedId === folderId(item.id) }"
                     :data-folder="item.id"
                     role="button"
+                    tabindex="0"
                     @click.stop="emit('select-folder', folderId(item.id))"
+                    @keydown.enter.prevent="emit('select-folder', folderId(item.id))"
+                    @keydown.space.prevent="emit('select-folder', folderId(item.id))"
                 >
                     <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="text-warning" />
                     <span class="text-truncate">{{ item.title }}</span>

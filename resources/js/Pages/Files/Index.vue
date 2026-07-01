@@ -166,7 +166,7 @@ const items = computed(() => [
 
 const columns = computed(() => [
     { key: 'name', label: 'Name' },
-    ...(props.flat ? [{ key: 'location', label: 'Location', sortable: false }] : []),
+    ...(props.flat && activeSection.value !== 'shared' && activeSection.value !== 'trash' ? [{ key: 'location', label: 'Location', sortable: false }] : []),
     { key: 'modified', label: 'Modified' },
     { key: 'size', label: 'Size' },
     { key: 'type', label: 'Type', sortable: false },
@@ -295,6 +295,19 @@ function onContextSelect(action) {
 // ----- Detail pane (Task 4): editor/preview + trash + shared-aware actions -----
 const selectedDetail = ref(null);
 function selectContentItem(item) {
+    // Trash rows always open the detail pane — even folders can't be browsed
+    // into (they're soft-deleted), only restored or purged.
+    if (activeSection.value === 'trash') {
+        selectedDetail.value = item;
+        activePane.value = 'detail';
+        return;
+    }
+    // Shared folders don't belong to the current user's tree; browse them via
+    // the dedicated shared-folder route instead of the owner's `/` listing.
+    if (activeSection.value === 'shared' && item.is_dir) {
+        router.get(`/shared/${item.id}`, {}, { preserveScroll: true });
+        return;
+    }
     if (item.is_dir) {
         visitFolder(item.id);
         return;
@@ -303,10 +316,28 @@ function selectContentItem(item) {
     activePane.value = 'detail';
 }
 function restoreFromTrash(item) {
-    router.post(`/trash/${item.id}/restore`, {}, { preserveScroll: true });
+    router.post(`/trash/${item.id}/restore`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (selectedDetail.value?.id === item.id) selectedDetail.value = null;
+            toast.push('Restored');
+        },
+    });
 }
-function purgeFromTrash(item) {
-    router.delete(`/trash/${item.id}`, { preserveScroll: true });
+async function purgeFromTrash(item) {
+    if (!await confirm({
+        title: 'Delete forever',
+        message: `Permanently delete "${item.name}"? This cannot be undone.`,
+        confirmLabel: 'Delete forever',
+        variant: 'danger',
+    })) return;
+    router.delete(`/trash/${item.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (selectedDetail.value?.id === item.id) selectedDetail.value = null;
+            toast.push('Permanently deleted', { variant: 'danger' });
+        },
+    });
 }
 const detailReadOnly = computed(() => activeSection.value === 'shared'
     && !(selectedDetail.value?.abilities || []).includes('write'));
@@ -846,7 +877,11 @@ onBeforeUnmount(() => {
                     </template>
 
                     <template #cell(actions)="{ item }">
-                        <div class="d-flex justify-content-end" @click.stop>
+                        <div
+                            v-if="activeSection === 'all' || activeSection === 'recent' || activeSection === 'starred'"
+                            class="d-flex justify-content-end"
+                            @click.stop
+                        >
                             <ItemActions
                                 :item="item"
                                 :menu="item.is_dir ? folderActions : fileMenu(item)"
