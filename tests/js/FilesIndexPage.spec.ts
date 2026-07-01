@@ -37,10 +37,11 @@ const allTags = [{ id: 3, name: 'work', color: '#abc' }];
 function mountIndex(extra = {}) {
     return mount(FilesIndex, {
         props: {
-            folders, files, allFolders: folders, allTags,
+            folders, files, current: null, allFolders: folders, allTags,
             breadcrumbs: [],
             filters: { search: '', sort: 'name', direction: 'asc' },
             storage: { used: 0, quota: 0 }, maxUploadKb: 1024,
+            section: 'all',
             ...extra,
         },
     });
@@ -49,15 +50,16 @@ function mountIndex(extra = {}) {
 beforeEach(() => { Object.values(s).forEach((f) => f.mockClear()); localStorage.clear(); });
 
 describe('Files/Index page', () => {
-    it('renders folder and file names', () => {
+    it('renders folder and file names in the contents pane', () => {
         const wrapper = mountIndex();
-        expect(wrapper.text()).toContain('Reports');
-        expect(wrapper.text()).toContain('memo.txt');
+        const contentsPane = wrapper.get('[data-pane="contents"]');
+        expect(contentsPane.text()).toContain('Reports');
+        expect(contentsPane.text()).toContain('memo.txt');
     });
 
     it('breadcrumb click navigates to a folder', async () => {
         const wrapper = mountIndex();
-        wrapper.findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 10, active: false } });
+        wrapper.get('[data-pane="contents"]').findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 10, active: false } });
         expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
     });
 
@@ -89,6 +91,16 @@ describe('Files/Index page', () => {
             filters: { search: '', sort: 'name', direction: 'asc', ftype: 'image', size_min: 1048576 },
         });
         expect(wrapper.text()).toContain('Images');
+    });
+
+    it('selecting an editable file in the default section shows Edit/Preview in the detail pane', async () => {
+        const wrapper = mountIndex();
+        wrapper.vm.selectContentItem({ ...files[0], is_dir: false });
+        await wrapper.vm.$nextTick();
+        const detailPane = wrapper.get('[data-pane="detail"]');
+        expect(detailPane.text()).toContain(files[0].name);
+        expect(detailPane.text()).toContain('Edit');
+        expect(detailPane.text()).toContain('Preview');
     });
 
     it('HI-17: mounts without throwing when localStorage.getItem throws SecurityError', () => {

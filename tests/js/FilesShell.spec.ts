@@ -82,4 +82,13 @@ describe('Files shell', () => {
         });
         expect(wrapper.get('[data-pane="folders"]').find('[data-folder]').exists()).toBe(false);
     });
+
+    it('shows an empty state in the contents pane when a section has no items', () => {
+        localStorage.setItem('fm-view', 'grid');
+        const wrapper = mount(FilesIndex, { props: { ...base, section: 'trash', files: [], folders: [] } });
+        localStorage.removeItem('fm-view');
+        const contentsPane = wrapper.get('[data-pane="contents"]');
+        expect(contentsPane.findComponent({ name: 'EmptyState' }).exists()).toBe(true);
+        expect(contentsPane.text()).toContain('This folder is empty');
+    });
 });
