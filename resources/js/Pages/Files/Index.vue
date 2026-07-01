@@ -781,7 +781,9 @@ onBeforeUnmount(() => {
                     :columns="columns"
                     row-key="_key"
                     hover
-                    :searchable="false"
+                    :searchable="true"
+                    :sortable="true"
+                    search-placeholder="Search this folder…"
                     v-model:current-page="listPage"
                     :per-page="25"
                     :per-page-options="[10, 25, 50, 100]"

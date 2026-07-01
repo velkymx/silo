@@ -80,7 +80,7 @@ const components: Record<string, any> = {
     // item so cell templates (and their handlers) execute.
     VibeDataTable: {
         name: 'VibeDataTable',
-        props: ['items', 'columns'],
+        props: ['items', 'columns', 'searchable'],
         setup(props: { items?: unknown[]; columns?: { key: string }[] }, { slots }: { slots: Slots }) {
             return () => h('div', { 'data-stub': 'VibeDataTable' },
                 (props.items ?? []).map((item) =>

@@ -26,4 +26,11 @@ describe('Files shell', () => {
         expect(spy).toHaveBeenCalledWith('/', { folder: 5 }, { preserveScroll: true });
         spy.mockRestore();
     });
+
+    it('lists folder contents in a searchable DataTable', () => {
+        const wrapper = mount(FilesIndex, { props: { ...base, files: [{ id: 9, name: 'a.md', type: 'md', size: 10, created_at: '2026-01-01' }] } });
+        const dt = wrapper.findComponent({ name: 'VibeDataTable' });
+        expect(dt.exists()).toBe(true);
+        expect(dt.props('searchable')).toBe(true);
+    });
 });
