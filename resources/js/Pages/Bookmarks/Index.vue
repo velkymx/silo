@@ -83,6 +83,11 @@ function selectBookmark(id) {
     activePane.value = 'detail';
 }
 
+function pickFolder(f) {
+    selectedFolder.value = f;
+    activePane.value = 'list'; // mobile: reveal the list after picking a folder/feed
+}
+
 // ----- Multi-select -----
 const bookmarksRef = computed(() => props.bookmarks);
 const { selectMode: bmSelectMode, selectedItems: selectedBms, isSelected: bmIsSelected, toggleSel: bmToggle, clearSelection: bmClearSel } = useSelection(bookmarksRef, (b) => selectBookmark(b.id));
@@ -187,7 +192,7 @@ async function runMaintenance(action) {
                         type="button"
                         class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                         :class="{ active: selectedFolder === '__feeds__' }"
-                        @click="selectedFolder = '__feeds__'"
+                        @click="pickFolder('__feeds__')"
                     >
                         <VibeIcon icon="rss-fill" class="text-warning" />
                         <span class="flex-grow-1">Feeds</span>
@@ -207,7 +212,7 @@ async function runMaintenance(action) {
                     :folders="[...folders, ...(counts['General'] ? ['General'] : [])]"
                     :counts="counts"
                     :selected-folder="selectedFolder"
-                    @select-folder="(f) => selectedFolder = f"
+                    @select-folder="pickFolder"
                     @new-folder="addFolder"
                 />
             </template>

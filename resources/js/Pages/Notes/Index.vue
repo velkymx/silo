@@ -80,10 +80,12 @@ const filteredNotes = computed(() => {
 function selectFolder(id) {
     selectedFolder.value = id;
     activeTag.value = null;
+    activePane.value = 'list'; // mobile: reveal the list after picking a folder
 }
 function selectTag(id) {
     activeTag.value = id;
     selectedFolder.value = null;
+    activePane.value = 'list'; // mobile: reveal the list after picking a tag
 }
 
 async function newFolder() {
