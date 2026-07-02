@@ -834,22 +834,22 @@ onBeforeUnmount(() => {
                     :class="{ active: !item.is_dir && selectedDetail && selectedDetail.id === item.id }"
                     @contextmenu.prevent="openContext({ item, event: $event })"
                 >
-                    <FileItem
-                        :item="item"
-                        view="list"
-                        :select-mode="selectMode"
-                        :selected="isSelected(item.id)"
-                        class="flex-grow-1 min-w-0"
-                        @open="() => selectContentItem(item)"
-                        @toggle-select="toggleSel"
-                        @drop="onDropToFolder"
-                        @tag="filterByTag"
-                        @context="openContext"
-                    />
-                    <span class="text-muted small text-nowrap flex-shrink-0 d-none d-xl-inline">{{ item.modified }}</span>
-                    <span class="text-muted small text-nowrap flex-shrink-0 fm-size">
-                        {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
-                    </span>
+                    <div class="flex-grow-1 min-w-0">
+                        <FileItem
+                            :item="item"
+                            view="list"
+                            :select-mode="selectMode"
+                            :selected="isSelected(item.id)"
+                            @open="() => selectContentItem(item)"
+                            @toggle-select="toggleSel"
+                            @drop="onDropToFolder"
+                            @tag="filterByTag"
+                            @context="openContext"
+                        />
+                        <div class="fm-meta small text-muted text-truncate">
+                            {{ item.modified }} · {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
+                        </div>
+                    </div>
                     <ItemActions
                         v-if="ownedSection"
                         :item="item"
@@ -1082,9 +1082,9 @@ onBeforeUnmount(() => {
 .fm-row.active {
     background: rgba(99, 102, 241, 0.12);
 }
-.fm-size {
-    width: 5.5rem;
-    text-align: right;
+.fm-meta {
+    padding-left: 2.9rem;
+    margin-top: -0.2rem;
 }
 /* Brief confirmation pulse when a tag is added. */
 .tag-flash {

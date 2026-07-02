@@ -74,7 +74,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
         </nav>
 
         <!-- FourPane fills the rest below the navbar. -->
-        <div class="flex-grow-1 min-h-0 p-2">
+        <div class="flex-grow-1 min-h-0 p-0">
             <FourPane v-model:activePane="activePane">
                 <template #rail>
                     <GlobalRail />
