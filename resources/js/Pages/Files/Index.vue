@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
         </template>
 
         <template #topBar>
-            <div class="d-flex align-items-center px-3 py-2">
+            <div class="d-flex align-items-center p-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
@@ -1077,6 +1077,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+ol.breadcrumb {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
 .select-check {
     cursor: pointer;
 }
@@ -1094,6 +1099,12 @@ onBeforeUnmount(() => {
 .fm-meta {
     padding-left: 2.9rem;
     margin-top: -0.2rem;
+}
+/* VibeBreadcrumb renders an inner <ol class="breadcrumb"> with a default
+   bottom margin; flatten it since it sits in the topBar. */
+:deep(.breadcrumb) {
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 /* Brief confirmation pulse when a tag is added. */
 .tag-flash {
