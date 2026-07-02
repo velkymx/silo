@@ -803,7 +803,7 @@ onBeforeUnmount(() => {
             <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
             <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
-            <template v-if="!loading && viewMode === 'grid'">
+            <div v-if="!loading && viewMode === 'grid'" class="overflow-auto flex-grow-1">
                 <VibeRow class="g-1 px-1">
                     <VibeCol v-for="item in gridItems" :key="item._key" :cols="6">
                         <FileItem
@@ -833,7 +833,7 @@ onBeforeUnmount(() => {
                         Show more ({{ items.length - gridShown }} more)
                     </VibeButton>
                 </div>
-            </template>
+            </div>
 
             <!-- Blueprint list view: flush list-group of folders + files. -->
             <ul v-else-if="!loading" class="list-group list-group-flush overflow-auto flex-grow-1 mb-0">
