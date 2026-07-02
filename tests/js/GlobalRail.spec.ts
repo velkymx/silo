@@ -18,7 +18,7 @@ function mountRail(opts: { url?: string; isAdmin?: boolean } = {}) {
 describe('GlobalRail', () => {
     it('renders one entry per destination', () => {
         const wrapper = mountRail();
-        ['home', 'notes', 'bookmarks', 'photos', 'trash', 'profile'].forEach((key) => {
+        ['home', 'notes', 'bookmarks', 'photos', 'trash'].forEach((key) => {
             expect(wrapper.find(`[data-nav="${key}"]`).exists()).toBe(true);
         });
     });

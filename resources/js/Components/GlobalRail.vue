@@ -46,9 +46,6 @@ const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
     { key: 'backups', text: 'Backups', href: '/backups', icon: 'archive', active: active((p) => p.startsWith('/backups')) },
 ] : []));
 
-const profileNav = computed<NavItem[]>(() => [
-    { key: 'profile', text: 'Profile', href: '/profile', icon: 'person', active: active((p) => p.startsWith('/profile')) },
-]);
 </script>
 
 <template>
@@ -84,21 +81,6 @@ const profileNav = computed<NavItem[]>(() => [
             </Link>
         </template>
 
-        <div class="flex-grow-1"></div>
-
-        <Link
-            v-for="item in profileNav"
-            :key="item.key"
-            :href="item.href"
-            class="rail-link d-flex flex-column align-items-center justify-content-center rounded w-100 text-decoration-none"
-            :class="{ active: item.active }"
-            :data-nav="item.key"
-            :aria-current="item.active ? 'page' : undefined"
-            :title="item.text"
-        >
-            <VibeIcon :icon="item.icon" class="fs-5" />
-            <span class="visually-hidden">{{ item.text }}</span>
-        </Link>
     </nav>
 </template>
 

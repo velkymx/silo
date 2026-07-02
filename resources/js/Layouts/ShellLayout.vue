@@ -25,6 +25,8 @@ const user = computed(() => (page.props.auth as { user?: { name: string; avatar_
 // Brand + global file search (mirrors the AppLayout top bar).
 const appName = import.meta.env.VITE_APP_NAME || 'Silo';
 const tagline = 'Your Files Ready to Launch';
+const year = new Date().getFullYear();
+const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 const searchValue = ref('');
 function syncSearchFromUrl(): void {
     const q = new URLSearchParams(page.url.split('?')[1] || '');
@@ -90,8 +92,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
     <div class="shell-layout d-flex flex-column vh-100">
         <a href="#main-content" class="visually-hidden-focusable position-absolute top-0 start-0 z-3 p-2 bg-primary text-white text-decoration-none rounded-bottom-end">Skip to main content</a>
 
-        <!-- Full-width top bar: brand, centered global search, theme + user. -->
-        <header class="shell-navbar d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2 flex-shrink-0">
+        <!-- Full-width sticky top bar: brand, centered global search, theme + user. -->
+        <header class="shell-navbar sticky-top d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2 flex-shrink-0">
             <Link href="/" class="d-flex align-items-center text-decoration-none flex-shrink-0" :title="`${appName} — ${tagline}`">
                 <VibeIcon icon="rocket-takeoff-fill" class="text-primary fs-4 me-2" />
                 <span class="d-none d-md-flex flex-column lh-1">
@@ -170,6 +172,18 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                 </template>
             </FourPane>
         </div>
+
+        <footer class="shell-footer border-top bg-body px-3 py-2 text-muted small d-flex flex-wrap align-items-center gap-1 flex-shrink-0">
+            <span>&copy; {{ year }} {{ appName }}</span>
+            <span>Released under the
+                <a :href="`${repoUrl}/blob/main/LICENSE`" target="_blank" rel="noopener" class="text-decoration-none">MIT License</a>.
+            </span>
+            <span class="ms-auto d-inline-flex align-items-center gap-2">
+                <a :href="repoUrl" target="_blank" rel="noopener" class="text-decoration-none">
+                    <VibeIcon icon="github" class="me-1" />Source on GitHub
+                </a>
+            </span>
+        </footer>
 
         <ToastHost
             :items="toast.state.items"
