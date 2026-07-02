@@ -47,11 +47,13 @@ describe('Files shell', () => {
         spy.mockRestore();
     });
 
-    it('lists folder contents in a searchable DataTable', () => {
+    it('lists folder contents in a flush list-group with a search box', () => {
         const wrapper = mount(FilesIndex, { props: { ...base, files: [{ id: 9, name: 'a.md', type: 'md', size: 10, created_at: '2026-01-01' }] } });
-        const dt = wrapper.findComponent({ name: 'VibeDataTable' });
-        expect(dt.exists()).toBe(true);
-        expect(dt.props('searchable')).toBe(true);
+        const contents = wrapper.get('[data-pane="contents"]');
+        // Blueprint list: a flush list-group, not a DataTable.
+        expect(contents.find('ul.list-group-flush').exists()).toBe(true);
+        expect(contents.find('input[type="search"]').exists()).toBe(true);
+        expect(contents.text()).toContain('a.md');
     });
 
     it('shows Restore/Delete forever in the detail pane for trash section', async () => {

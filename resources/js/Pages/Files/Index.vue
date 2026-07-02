@@ -160,14 +160,27 @@ const items = computed(() => [
     ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1, _key: `file-${f.id}` })),
 ]);
 
-const columns = computed(() => [
-    { key: 'name', label: 'Name' },
-    ...(props.flat && activeSection.value !== 'shared' && activeSection.value !== 'trash' ? [{ key: 'location', label: 'Location', sortable: false }] : []),
-    { key: 'modified', label: 'Modified' },
-    { key: 'size', label: 'Size' },
-    { key: 'type', label: 'Type', sortable: false },
-    { key: 'actions', label: '', sortable: false, searchable: false },
-]);
+// Blueprint list column: a compact search box + sort select over a flush
+// list-group. Client-side over the loaded folder (folders sort ahead of files).
+const contentSearch = ref('');
+const contentSort = ref('name');
+const contentSortOptions = [
+    { value: 'name', text: 'Name' },
+    { value: 'modified', text: 'Last modified' },
+    { value: 'size', text: 'Size' },
+];
+const visibleItems = computed(() => {
+    const q = contentSearch.value.trim().toLowerCase();
+    const list = q ? items.value.filter((i) => i.name?.toLowerCase().includes(q)) : items.value;
+    const key = contentSort.value;
+    return [...list].sort((a, b) =>
+        (a._sort - b._sort)
+        || (key === 'size' ? (a.size || 0) - (b.size || 0)
+            : key === 'modified' ? String(b.modified ?? '').localeCompare(String(a.modified ?? ''))
+                : String(a.name ?? '').localeCompare(String(b.name ?? ''))),
+    );
+});
+const ownedSection = computed(() => ['all', 'recent', 'starred'].includes(activeSection.value));
 
 const versionColumns = [
     { key: 'version', label: 'Version' },
@@ -720,53 +733,49 @@ onBeforeUnmount(() => {
         </template>
 
         <template #contents>
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 p-2">
-                <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
+            <!-- Breadcrumb + compact per-view actions -->
+            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-shrink-0">
+                <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate flex-grow-1" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
                 </VibeBreadcrumb>
-                <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
-                    <VibeButton variant="primary" @click="uploadOpen = true">
-                        <VibeIcon icon="upload" class="me-1" />Upload
-                    </VibeButton>
-                    <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
-                        <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
-                        <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                    </VibeDropdown>
-                    <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
-                        <VibeIcon icon="funnel" class="me-1" />Filters
-                    </VibeButton>
-                    <VibeButton
-                        :variant="selectMode ? 'primary' : 'secondary'"
-                        :outline="!selectMode"
-                        title="Select multiple"
-                        @click="selectMode ? clearSelection() : (selectMode = true)"
-                    >
-                        <VibeIcon icon="check2-square" class="me-1" />Select
-                    </VibeButton>
-                    <div class="vr mx-1 d-none d-sm-block"></div>
-                    <VibeButtonGroup>
-                        <VibeButton
-                            :variant="viewMode === 'list' ? 'primary' : 'secondary'"
-                            :outline="viewMode !== 'list'"
-                            title="List view"
-                            aria-label="List view"
-                            @click="viewMode = 'list'"
-                        >
-                            <VibeIcon icon="list-ul" />
-                        </VibeButton>
-                        <VibeButton
-                            :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
-                            :outline="viewMode !== 'grid'"
-                            title="Thumbnail view"
-                            aria-label="Thumbnail view"
-                            @click="viewMode = 'grid'"
-                        >
-                            <VibeIcon icon="grid-3x3-gap-fill" />
-                        </VibeButton>
-                    </VibeButtonGroup>
-                </div>
+                <VibeButton size="sm" variant="primary" title="Upload files" aria-label="Upload" @click="uploadOpen = true">
+                    <VibeIcon icon="upload" />
+                </VibeButton>
+                <VibeDropdown size="sm" variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
+                    <template #button><VibeIcon icon="plus-lg" /></template>
+                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                </VibeDropdown>
+                <VibeButton size="sm" variant="secondary" outline title="Advanced search" aria-label="Advanced search" @click="advOpen = true">
+                    <VibeIcon icon="funnel" />
+                </VibeButton>
+                <VibeButton
+                    size="sm"
+                    :variant="selectMode ? 'primary' : 'secondary'"
+                    :outline="!selectMode"
+                    title="Select multiple"
+                    aria-label="Select multiple"
+                    @click="selectMode ? clearSelection() : (selectMode = true)"
+                >
+                    <VibeIcon icon="check2-square" />
+                </VibeButton>
+                <VibeButton
+                    size="sm"
+                    :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
+                    outline
+                    :title="viewMode === 'grid' ? 'List view' : 'Thumbnail view'"
+                    aria-label="Toggle view"
+                    @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
+                >
+                    <VibeIcon :icon="viewMode === 'grid' ? 'list-ul' : 'grid-3x3-gap-fill'" />
+                </VibeButton>
+            </div>
+
+            <!-- Blueprint header: search this column + sort -->
+            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-shrink-0">
+                <VibeFormInput v-model="contentSearch" type="search" placeholder="Search this folder…" no-wrapper size="sm" class="flex-grow-1" />
+                <VibeFormSelect v-model="contentSort" :options="contentSortOptions" no-wrapper size="sm" style="width: auto" aria-label="Sort by" />
             </div>
 
             <!-- Batch action bar + modals -->
@@ -816,71 +825,49 @@ onBeforeUnmount(() => {
                 </div>
             </template>
 
-            <VibeDataTable
-                v-else-if="!loading"
-                :items="items"
-                :columns="columns"
-                row-key="_key"
-                hover
-                :searchable="true"
-                :sortable="true"
-                search-placeholder="Search this folder…"
-                v-model:current-page="listPage"
-                :per-page="25"
-                :per-page-options="[10, 25, 50, 100]"
-                :responsive="true"
-                :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
-                @row-clicked="selectContentItem"
-            >
-                <template v-if="flat" #cell(location)="{ item }">
-                    <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
-                        {{ item.location?.path }}
-                    </VibeButton>
-                </template>
-
-                <template #cell(name)="{ item }">
+            <!-- Blueprint list view: flush list-group of folders + files. -->
+            <ul v-else-if="!loading" class="list-group list-group-flush overflow-auto flex-grow-1 mb-0">
+                <li
+                    v-for="item in visibleItems"
+                    :key="item._key"
+                    class="fm-row list-group-item list-group-item-action d-flex align-items-center gap-2 px-3 py-2"
+                    :class="{ active: !item.is_dir && selectedDetail && selectedDetail.id === item.id }"
+                    @contextmenu.prevent="openContext({ item, event: $event })"
+                >
                     <FileItem
                         :item="item"
                         view="list"
                         :select-mode="selectMode"
                         :selected="isSelected(item.id)"
-                        @open="onItemClick"
+                        class="flex-grow-1 min-w-0"
+                        @open="() => selectContentItem(item)"
                         @toggle-select="toggleSel"
                         @drop="onDropToFolder"
                         @tag="filterByTag"
                         @context="openContext"
                     />
-                </template>
-
-                <template #cell(modified)="{ item }">
-                    <span class="text-muted small">{{ item.modified }}</span>
-                </template>
-
-                <template #cell(size)="{ item }">
-                    <span class="text-muted small">
+                    <span class="text-muted small text-nowrap flex-shrink-0 d-none d-xl-inline">{{ item.modified }}</span>
+                    <span class="text-muted small text-nowrap flex-shrink-0 fm-size">
                         {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
                     </span>
-                </template>
-
-                <template #cell(type)="{ item }">
-                    <span class="text-muted small">{{ typeLabel(item) }}</span>
-                </template>
-
-                <template #cell(actions)="{ item }">
-                    <div
-                        v-if="activeSection === 'all' || activeSection === 'recent' || activeSection === 'starred'"
-                        class="d-flex justify-content-end"
+                    <ItemActions
+                        v-if="ownedSection"
+                        :item="item"
+                        :menu="item.is_dir ? folderActions : fileMenu(item)"
+                        class="flex-shrink-0"
                         @click.stop
-                    >
-                        <ItemActions
-                            :item="item"
-                            :menu="item.is_dir ? folderActions : fileMenu(item)"
-                            @star="toggleStar"
-                            @action="onAction(item, $event)"
-                        />
-                    </div>
-                </template>
-            </VibeDataTable>
+                        @star="toggleStar"
+                        @action="onAction(item, $event)"
+                    />
+                </li>
+                <li v-if="!visibleItems.length" class="list-group-item border-0 py-5">
+                    <EmptyState
+                        :icon="flat ? 'search' : 'folder2-open'"
+                        :title="flat ? 'No matching files' : 'This folder is empty'"
+                        :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                    />
+                </li>
+            </ul>
         </template>
 
         <template #detail>
@@ -1083,6 +1070,21 @@ onBeforeUnmount(() => {
 <style scoped>
 .select-check {
     cursor: pointer;
+}
+.min-w-0 {
+    min-width: 0;
+}
+.fm-row {
+    cursor: pointer;
+    border-left: 0;
+    border-right: 0;
+}
+.fm-row.active {
+    background: rgba(99, 102, 241, 0.12);
+}
+.fm-size {
+    width: 5.5rem;
+    text-align: right;
 }
 /* Brief confirmation pulse when a tag is added. */
 .tag-flash {
