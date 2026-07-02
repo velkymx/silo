@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 
 interface Folder {
     id: number;
@@ -13,9 +13,11 @@ const props = withDefaults(defineProps<{
     openIds: Set<number>;
     parentId?: number | null;
     showHeader?: boolean;
+    depth?: number;
 }>(), {
     parentId: null,
     showHeader: true,
+    depth: 0,
 });
 
 const emit = defineEmits<{
@@ -23,7 +25,12 @@ const emit = defineEmits<{
     (e: 'new-folder'): void;
 }>();
 
-// Direct children of this level, alphabetised.
+// Locally-toggled branches. A branch is open if the user expanded it OR it is
+// an ancestor of the current folder (openIds) and hasn't been collapsed.
+const expanded = ref(new Set<number>());
+const collapsed = ref(new Set<number>());
+
+// Direct children of this level, folders sorted alphabetically.
 const children = computed(() =>
     props.folders
         .filter((f) => f.parent_id === props.parentId)
@@ -34,19 +41,19 @@ function hasChildren(id: number): boolean {
     return props.folders.some((f) => f.parent_id === id);
 }
 
-// VibeAccordion is data-driven: one item per child folder. `show` auto-opens
-// ancestors of the current folder. `title`/`content` are rendered via slots.
-const items = computed(() =>
-    children.value.map((f) => ({
-        id: String(f.id),
-        title: f.name,
-        content: '',
-        show: props.openIds.has(f.id),
-    })),
-);
+function isOpen(id: number): boolean {
+    if (collapsed.value.has(id)) return false;
+    return expanded.value.has(id) || props.openIds.has(id);
+}
 
-function folderId(itemId: string): number {
-    return Number(itemId);
+function toggle(id: number): void {
+    if (isOpen(id)) {
+        collapsed.value = new Set(collapsed.value).add(id);
+        const e = new Set(expanded.value); e.delete(id); expanded.value = e;
+    } else {
+        expanded.value = new Set(expanded.value).add(id);
+        const c = new Set(collapsed.value); c.delete(id); collapsed.value = c;
+    }
 }
 </script>
 
@@ -59,35 +66,45 @@ function folderId(itemId: string): number {
             </VibeButton>
         </div>
 
-        <VibeAccordion v-if="items.length" flush always-open :items="items">
-            <template #title="{ item }">
-                <span
-                    class="fa-row d-flex align-items-center gap-2 flex-grow-1"
-                    :class="{ active: selectedId === folderId(item.id) }"
-                    :data-folder="item.id"
-                    role="button"
-                    tabindex="0"
-                    @click.stop="emit('select-folder', folderId(item.id))"
-                    @keydown.enter.prevent="emit('select-folder', folderId(item.id))"
-                    @keydown.space.prevent="emit('select-folder', folderId(item.id))"
+        <template v-for="folder in children" :key="folder.id">
+            <div
+                class="fa-row d-flex align-items-center gap-1"
+                :class="{ active: selectedId === folder.id }"
+                :style="{ paddingLeft: 0.25 + depth * 0.85 + 'rem' }"
+                :data-folder="folder.id"
+                role="button"
+                tabindex="0"
+                @click="emit('select-folder', folder.id)"
+                @keydown.enter.prevent="emit('select-folder', folder.id)"
+                @keydown.space.prevent="emit('select-folder', folder.id)"
+            >
+                <button
+                    v-if="hasChildren(folder.id)"
+                    type="button"
+                    class="fa-chevron border-0 bg-transparent p-0 text-muted flex-shrink-0"
+                    :aria-label="isOpen(folder.id) ? 'Collapse' : 'Expand'"
+                    :aria-expanded="isOpen(folder.id)"
+                    @click.stop="toggle(folder.id)"
                 >
-                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="text-warning" />
-                    <span class="text-truncate">{{ item.title }}</span>
-                </span>
-            </template>
-            <template #content="{ item }">
-                <FolderAccordion
-                    v-if="hasChildren(folderId(item.id))"
-                    :folders="folders"
-                    :selected-id="selectedId"
-                    :open-ids="openIds"
-                    :parent-id="folderId(item.id)"
-                    :show-header="false"
-                    @select-folder="emit('select-folder', $event)"
-                    @new-folder="emit('new-folder')"
-                />
-            </template>
-        </VibeAccordion>
+                    <VibeIcon :icon="isOpen(folder.id) ? 'chevron-down' : 'chevron-right'" />
+                </button>
+                <span v-else class="fa-chevron-spacer flex-shrink-0" />
+                <VibeIcon :icon="isOpen(folder.id) ? 'folder2-open' : 'folder2'" class="text-warning flex-shrink-0" />
+                <span class="text-truncate">{{ folder.name }}</span>
+            </div>
+
+            <FolderAccordion
+                v-if="hasChildren(folder.id) && isOpen(folder.id)"
+                :folders="folders"
+                :selected-id="selectedId"
+                :open-ids="openIds"
+                :parent-id="folder.id"
+                :show-header="false"
+                :depth="depth + 1"
+                @select-folder="emit('select-folder', $event)"
+                @new-folder="emit('new-folder')"
+            />
+        </template>
     </div>
 </template>
 
@@ -96,7 +113,9 @@ function folderId(itemId: string): number {
     cursor: pointer;
     min-width: 0;
     border-radius: 0.25rem;
-    padding: 0.15rem 0.35rem;
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+    padding-right: 0.35rem;
     color: var(--bs-body-color);
 }
 .fa-row:hover {
@@ -106,34 +125,12 @@ function folderId(itemId: string): number {
     background: rgba(99, 102, 241, 0.14);
     font-weight: 600;
 }
-
-/* Flatten Bootstrap's accordion chrome into a light folder tree — no cards,
-   no heavy button background, minimal padding. */
-:deep(.accordion-item) {
-    background: transparent;
-    border: 0;
+.fa-chevron {
+    width: 1rem;
+    line-height: 1;
+    cursor: pointer;
 }
-:deep(.accordion-button) {
-    padding: 0.15rem 0.4rem;
-    background: transparent;
-    box-shadow: none;
-    font-size: 0.9rem;
-    color: inherit;
-}
-:deep(.accordion-button:not(.collapsed)) {
-    background: transparent;
-    color: inherit;
-    box-shadow: none;
-}
-:deep(.accordion-button:focus) {
-    box-shadow: none;
-}
-:deep(.accordion-button::after) {
-    width: 0.85rem;
-    height: 0.85rem;
-    background-size: 0.85rem;
-}
-:deep(.accordion-body) {
-    padding: 0 0 0 0.85rem;
+.fa-chevron-spacer {
+    width: 1rem;
 }
 </style>

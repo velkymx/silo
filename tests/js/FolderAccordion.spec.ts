@@ -21,17 +21,28 @@ describe('FolderAccordion', () => {
         expect(wrapper.get('[data-folder="3"]').text()).toContain('Archive');
     });
 
-    it('renders nested child folders (recursion)', () => {
-        const wrapper = mountTree();
-        // Projects (parent_id 1) is only reachable by recursing into Work.
+    it('renders nested child folders when the parent is expanded (recursion)', () => {
+        // Work (id 1) is an ancestor via openIds, so its subtree is expanded.
+        const wrapper = mountTree({ openIds: new Set<number>([1]) });
         expect(wrapper.find('[data-folder="2"]').exists()).toBe(true);
         expect(wrapper.get('[data-folder="2"]').text()).toContain('Projects');
     });
 
-    it('emits select-folder with the id when a folder row is clicked', async () => {
+    it('collapses child folders until the parent is expanded', () => {
         const wrapper = mountTree();
+        // Nothing expanded → Projects (child of Work) is not rendered.
+        expect(wrapper.find('[data-folder="2"]').exists()).toBe(false);
+    });
+
+    it('expands a branch when its chevron is clicked', async () => {
+        const wrapper = mountTree();
+        await wrapper.get('[data-folder="1"] .fa-chevron').trigger('click');
+        expect(wrapper.find('[data-folder="2"]').exists()).toBe(true);
+    });
+
+    it('emits select-folder with the id when a nested folder row is clicked', async () => {
+        const wrapper = mountTree({ openIds: new Set<number>([1]) });
         await wrapper.get('[data-folder="2"]').trigger('click');
-        // Deepest emit wins; the top-level accordion re-emits the child id.
         const events = wrapper.emitted('select-folder');
         expect(events).toBeTruthy();
         expect(events!.at(-1)).toEqual([2]);
