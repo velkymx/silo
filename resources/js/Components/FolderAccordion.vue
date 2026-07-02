@@ -51,7 +51,7 @@ function folderId(itemId: string): number {
 </script>
 
 <template>
-    <div class="folder-accordion w-100" :class="{ 'd-flex flex-column h-100 p-2': showHeader }">
+    <div class="folder-accordion w-100" :class="{ 'd-flex flex-column h-100 p-1': showHeader }">
         <div v-if="showHeader" class="d-flex align-items-center justify-content-between px-1 mb-1">
             <span class="fw-semibold small text-uppercase text-muted">Folders</span>
             <VibeButton size="sm" variant="secondary" outline title="New folder" aria-label="New folder" data-testid="fa-new" @click="emit('new-folder')">

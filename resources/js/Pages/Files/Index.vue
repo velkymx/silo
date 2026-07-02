@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
 
             <template v-if="allTags.length">
                 <div class="side-heading"><VibeIcon icon="tags-fill" />Tags</div>
-                <div class="d-flex flex-wrap gap-1 px-2">
+                <div class="d-flex flex-wrap gap-1 px-1">
                     <span
                         v-for="tag in allTags"
                         :key="tag.id"
@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
         </template>
 
         <template #topBar>
-            <div class="d-flex align-items-center p-2">
+            <div class="d-flex align-items-center p-1">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 
         <template #contents>
             <!-- Compact per-view actions -->
-            <div class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom flex-shrink-0">
+            <div class="d-flex align-items-center justify-content-end gap-2 px-2 py-1 border-bottom flex-shrink-0">
                 <VibeButton size="sm" variant="primary" title="Upload files" aria-label="Upload" @click="uploadOpen = true">
                     <VibeIcon icon="upload" />
                 </VibeButton>
@@ -782,7 +782,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Blueprint header: search this column + sort -->
-            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-shrink-0">
+            <div class="d-flex align-items-center gap-2 px-2 py-1 border-bottom flex-shrink-0">
                 <VibeFormInput v-model="contentSearch" type="search" placeholder="Search this folder…" no-wrapper size="sm" class="flex-grow-1" />
                 <VibeFormSelect v-model="contentSort" :options="contentSortOptions" no-wrapper size="sm" style="width: auto" aria-label="Sort by" />
             </div>
@@ -803,7 +803,7 @@ onBeforeUnmount(() => {
 
             <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
             <template v-if="!loading && viewMode === 'grid'">
-                <VibeRow class="g-2 px-2">
+                <VibeRow class="g-1 px-1">
                     <VibeCol v-for="item in gridItems" :key="item._key" :cols="6">
                         <FileItem
                             :item="item"
@@ -839,7 +839,7 @@ onBeforeUnmount(() => {
                 <li
                     v-for="item in visibleItems"
                     :key="item._key"
-                    class="fm-row list-group-item list-group-item-action d-flex align-items-center gap-2 px-3 py-2"
+                    class="fm-row list-group-item list-group-item-action d-flex align-items-center gap-2 px-2 py-1"
                     :class="{ active: !item.is_dir && selectedDetail && selectedDetail.id === item.id }"
                     @contextmenu.prevent="openContext({ item, event: $event })"
                 >
@@ -880,7 +880,7 @@ onBeforeUnmount(() => {
         </template>
 
         <template #detail>
-            <div v-if="activeSection === 'trash' && selectedDetail" class="p-3">
+            <div v-if="activeSection === 'trash' && selectedDetail" class="p-2">
                 <h6 class="text-truncate mb-3">{{ selectedDetail.name }}</h6>
                 <div class="d-flex gap-2">
                     <VibeButton variant="primary" @click="restoreFromTrash(selectedDetail)">
@@ -891,7 +891,7 @@ onBeforeUnmount(() => {
                     </VibeButton>
                 </div>
             </div>
-            <div v-else-if="selectedDetail" class="p-3 overflow-auto">
+            <div v-else-if="selectedDetail" class="p-2 overflow-auto">
                 <!-- Preview -->
                 <button
                     type="button"
