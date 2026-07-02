@@ -4,6 +4,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import FileItem from '../../Components/FileItem.vue';
+import FilePreview from '../../Components/FilePreview.vue';
 import ItemActions from '../../Components/ItemActions.vue';
 import AdvancedSearchModal from '../../Components/AdvancedSearchModal.vue';
 import UploadModal from '../../Components/UploadModal.vue';
@@ -892,24 +893,8 @@ onBeforeUnmount(() => {
                 </div>
             </div>
             <div v-else-if="selectedDetail" class="p-2 overflow-auto">
-                <!-- Preview -->
-                <button
-                    type="button"
-                    class="d-block w-100 border-0 bg-transparent p-0 mb-3"
-                    title="Open preview"
-                    @click="quickLook(selectedDetail)"
-                >
-                    <img
-                        v-if="selectedDetail.thumb_url"
-                        :src="selectedDetail.thumb_url"
-                        :alt="selectedDetail.name"
-                        class="img-fluid rounded border w-100"
-                        style="max-height: 260px; object-fit: contain; background: var(--bs-tertiary-bg)"
-                    >
-                    <div v-else class="d-flex align-items-center justify-content-center rounded border py-5" style="background: var(--bs-tertiary-bg)">
-                        <VibeIcon icon="file-earmark" class="display-1 text-muted" />
-                    </div>
-                </button>
+                <!-- Type-aware preview (image / pdf / markdown / office / …) -->
+                <FilePreview :file="selectedDetail" class="mb-3" />
 
                 <h6 class="text-break mb-2">{{ selectedDetail.name }}</h6>
 
