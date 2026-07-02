@@ -59,7 +59,7 @@ describe('Files/Index page', () => {
 
     it('breadcrumb click navigates to a folder', async () => {
         const wrapper = mountIndex();
-        wrapper.get('[data-pane="contents"]').findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 10, active: false } });
+        wrapper.findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 10, active: false } });
         expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
     });
 
