@@ -803,8 +803,8 @@ onBeforeUnmount(() => {
 
             <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
             <template v-if="!loading && viewMode === 'grid'">
-                <VibeRow class="g-3">
-                    <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
+                <VibeRow class="g-2 px-2">
+                    <VibeCol v-for="item in gridItems" :key="item._key" :cols="6">
                         <FileItem
                             :item="item"
                             view="grid"
