@@ -4,6 +4,8 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@velkymx/vibeui';
 import { useCommandPalette } from '../composables/useCommandPalette';
 import { useToast } from '../composables/useToast';
+import { useStorageMeter } from '../composables/useStorageMeter';
+import { fmtBytes } from '../lib/format';
 import ToastHost from '../Components/ToastHost.vue';
 import CommandPalette from '../Components/CommandPalette.vue';
 import UserAvatar from '../Components/UserAvatar.vue';
@@ -24,13 +26,31 @@ const user = computed(() => (page.props.auth as { user?: { name: string; avatar_
 // `contents` -> `detail` on row select) bind their own `activePane` ref.
 const activePane = defineModel<string>('activePane', { default: 'contents' });
 
+// Shared storage meter, shown in the user menu (was the old sidebar footer).
+const storage = computed(() => (page.props.storage as { used: number; quota: number } | null) ?? null);
+const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => storage.value ?? { used: 0, quota: 0 }));
+
 const userMenu = [
+    { heading: 'Break Room' },
+    { text: 'Crush', action: 'crush', icon: 'joystick' },
+    { text: 'Word', action: 'word', icon: 'type' },
+    { text: 'Sodoku', action: 'sodoku', icon: 'grid-3x3' },
+    { divider: true },
+    { text: 'Trash', action: 'trash', icon: 'trash' },
+    { type: 'storage' },
+    { text: 'Manage storage', action: 'storage', icon: 'hdd-stack' },
+    { divider: true },
     { text: 'Profile', action: 'profile', icon: 'person' },
     { text: 'Logout', action: 'logout', icon: 'box-arrow-right' },
 ];
-function onUserMenu({ item }: { item: { action: string } }): void {
-    if (item.action === 'profile') router.visit('/profile');
-    if (item.action === 'logout') router.post('/logout');
+const routeFor: Record<string, string> = {
+    crush: '/break/crush', word: '/break/dwg', sodoku: '/break/sodoku',
+    trash: '/trash', storage: '/usage', profile: '/profile',
+};
+function onUserMenu({ item }: { item: { action?: string } }): void {
+    if (!item.action) return;
+    if (item.action === 'logout') { router.post('/logout'); return; }
+    if (routeFor[item.action]) router.visit(routeFor[item.action]);
 }
 
 // Cmd/Ctrl-K toggles the command palette from any page.
@@ -76,7 +96,16 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                     <UserAvatar :user="user" :size="22" class="me-2" />
                     <span class="d-none d-sm-inline">{{ user.name }}</span>
                 </template>
-                <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                <template #item="{ item }">
+                    <span v-if="item.heading" class="dropdown-header text-uppercase small fw-semibold">{{ item.heading }}</span>
+                    <div v-else-if="item.type === 'storage'" class="px-3 py-2" style="min-width: 220px" @click.stop>
+                        <VibeProgress v-if="storage && storage.quota > 0" :bars="storageBars" class="mb-1" style="height: 6px" />
+                        <div class="small text-muted">
+                            {{ fmtBytes(storage?.used || 0) }}<template v-if="storage && storage.quota > 0"> of {{ fmtBytes(storage.quota) }} ({{ storagePct }}%)</template><template v-else> used · unlimited</template>
+                        </div>
+                    </div>
+                    <span v-else><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</span>
+                </template>
             </VibeDropdown>
         </nav>
 
