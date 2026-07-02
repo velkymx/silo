@@ -49,21 +49,33 @@ function goBack(): void {
         >
             <slot name="folders" />
         </div>
+        <!-- Right region: an optional top bar spanning contents + detail. -->
         <div
-            class="fp-contents h-100 border-end bg-body d-flex flex-column"
-            data-pane="contents"
-            :class="{ 'fp-pane--hidden': activePane !== 'contents' }"
-            :style="{ width: contentsWidth }"
-        >
-            <slot name="contents" />
-        </div>
-        <div
-            class="fp-detail flex-grow-1 d-flex flex-column"
-            data-pane="detail"
-            :class="{ 'fp-pane--hidden': activePane !== 'detail' }"
+            class="fp-right flex-grow-1 d-flex flex-column"
+            :class="{ 'fp-pane--hidden': activePane === 'rail' || activePane === 'folders' }"
             style="min-width: 0; min-height: 0"
         >
-            <slot name="detail" />
+            <div v-if="$slots.topBar" class="fp-topbar flex-shrink-0 border-bottom bg-body">
+                <slot name="topBar" />
+            </div>
+            <div class="d-flex flex-grow-1" style="min-height: 0">
+                <div
+                    class="fp-contents h-100 border-end bg-body d-flex flex-column"
+                    data-pane="contents"
+                    :class="{ 'fp-pane--hidden': activePane !== 'contents' }"
+                    :style="{ width: contentsWidth }"
+                >
+                    <slot name="contents" />
+                </div>
+                <div
+                    class="fp-detail flex-grow-1 d-flex flex-column"
+                    data-pane="detail"
+                    :class="{ 'fp-pane--hidden': activePane !== 'detail' }"
+                    style="min-width: 0; min-height: 0"
+                >
+                    <slot name="detail" />
+                </div>
+            </div>
         </div>
     </div>
 </template>

@@ -53,13 +53,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
         <!-- Top navbar: brand, global command search, user menu. Same on every route. -->
         <nav class="shell-navbar d-flex align-items-center gap-2 px-3 flex-shrink-0 border-bottom bg-body">
             <Link href="/" class="navbar-brand d-flex align-items-center gap-2 fw-semibold text-body text-decoration-none mb-0">
-                <VibeIcon icon="folder-fill" class="text-primary" />
-                <span class="d-none d-sm-inline">File Manager</span>
+                <VibeIcon icon="box-seam-fill" class="text-primary" />
+                <span class="d-none d-sm-inline">Silo</span>
             </Link>
 
             <button
                 type="button"
-                class="shell-search btn btn-sm text-start text-muted d-flex align-items-center gap-2 flex-grow-1 mx-2"
+                class="shell-search btn btn-sm text-start text-muted d-flex align-items-center gap-2 me-auto ms-2"
                 @click="togglePalette"
             >
                 <VibeIcon icon="search" />
@@ -88,6 +88,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                 </template>
                 <template #folders>
                     <slot name="viewNav" />
+                </template>
+                <template v-if="$slots.topBar" #topBar>
+                    <slot name="topBar" />
                 </template>
                 <template #contents>
                     <div id="main-content" class="flex-grow-1 d-flex flex-column min-h-0">
@@ -118,7 +121,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
     background: var(--bs-tertiary-bg);
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
-    max-width: 520px;
+    width: min(360px, 40vw);
 }
 .shell-search:hover {
     background: var(--bs-secondary-bg);

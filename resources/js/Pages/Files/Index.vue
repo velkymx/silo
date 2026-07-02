@@ -70,11 +70,14 @@ const ancestorIds = computed(() => {
 });
 
 // ----- Breadcrumb -----
+// `href` makes each crumb a real link (VibeBreadcrumb only wires clicks on
+// items with an href); we intercept the click for Inertia navigation.
 const breadcrumbItems = computed(() => [
-    { text: 'Home', folder: null, active: !props.current },
+    { text: 'Home', folder: null, href: '/', active: !props.current },
     ...props.breadcrumbs.map((b, i) => ({
         text: b.name,
         folder: b.id,
+        href: `/?folder=${b.id}`,
         active: i === props.breadcrumbs.length - 1,
     })),
 ]);
@@ -98,7 +101,8 @@ const activePane = ref('contents');
 const openIds = computed(() => ancestorIds.value);
 function selectAccordionFolder(id) { visitFolder(id); activePane.value = 'contents'; }
 
-function onBreadcrumb({ item }) {
+function onBreadcrumb({ item, event }) {
+    event?.preventDefault?.();
     if (!item.active) visitFolder(item.folder);
 }
 
@@ -732,14 +736,19 @@ onBeforeUnmount(() => {
             </template>
         </template>
 
-        <template #contents>
-            <!-- Breadcrumb + compact per-view actions -->
-            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-shrink-0">
-                <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate flex-grow-1" @item-click="onBreadcrumb">
+        <template #topBar>
+            <div class="d-flex align-items-center px-3 py-2">
+                <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
                 </VibeBreadcrumb>
+            </div>
+        </template>
+
+        <template #contents>
+            <!-- Compact per-view actions -->
+            <div class="d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-bottom flex-shrink-0">
                 <VibeButton size="sm" variant="primary" title="Upload files" aria-label="Upload" @click="uploadOpen = true">
                     <VibeIcon icon="upload" />
                 </VibeButton>
