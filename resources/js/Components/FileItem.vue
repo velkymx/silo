@@ -120,7 +120,7 @@ const emit = defineEmits<{
                             <VibeIcon
                                 :icon="selected ? 'check-square-fill' : 'square'"
                                 class="me-2 flex-shrink-0 select-check"
-                                :class="[selected ? 'text-primary' : 'text-muted', { 'check-idle': !selectMode && !selected }]"
+                                :class="selected ? 'text-primary' : 'text-muted'"
                                 @click.stop="emit('toggle-select', item.id)"
                             />
                             <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
