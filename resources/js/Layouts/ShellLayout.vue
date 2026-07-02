@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@velkymx/vibeui';
 import { useCommandPalette } from '../composables/useCommandPalette';
@@ -21,6 +21,26 @@ const { colorMode, toggleColorMode } = useColorMode();
 const themeIcon = computed(() => ({ light: 'sun-fill', dark: 'moon-stars-fill' }[colorMode.value] ?? 'circle-half'));
 const page = usePage();
 const user = computed(() => (page.props.auth as { user?: { name: string; avatar_url?: string | null } } | undefined)?.user);
+
+// Brand + global file search (mirrors the AppLayout top bar).
+const appName = import.meta.env.VITE_APP_NAME || 'Silo';
+const tagline = 'Your Files Ready to Launch';
+const searchValue = ref('');
+function syncSearchFromUrl(): void {
+    const q = new URLSearchParams(page.url.split('?')[1] || '');
+    searchValue.value = q.get('search') || '';
+}
+syncSearchFromUrl();
+watch(() => page.url, syncSearchFromUrl);
+function runGlobalSearch(): void {
+    const v = searchValue.value.trim();
+    router.get('/', v ? { search: v } : {});
+}
+function clearGlobalSearch(): void {
+    searchValue.value = '';
+    router.get('/', {});
+}
+const isSearching = computed(() => searchValue.value.length > 0);
 
 // Passthrough model: pages that drive mobile pane-advance (e.g. Files moving
 // `contents` -> `detail` on row select) bind their own `activePane` ref.
@@ -70,28 +90,47 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
     <div class="shell-layout d-flex flex-column vh-100">
         <a href="#main-content" class="visually-hidden-focusable position-absolute top-0 start-0 z-3 p-2 bg-primary text-white text-decoration-none rounded-bottom-end">Skip to main content</a>
 
-        <!-- Top navbar: brand, global command search, user menu. Same on every route. -->
-        <nav class="shell-navbar d-flex align-items-center gap-2 px-3 flex-shrink-0 border-bottom bg-body">
-            <Link href="/" class="navbar-brand d-flex align-items-center gap-2 fw-semibold text-body text-decoration-none mb-0">
-                <VibeIcon icon="box-seam-fill" class="text-primary" />
-                <span class="d-none d-sm-inline">Silo</span>
+        <!-- Full-width top bar: brand, centered global search, theme + user. -->
+        <header class="shell-navbar d-flex flex-wrap align-items-center gap-3 border-bottom bg-body px-3 py-2 flex-shrink-0">
+            <Link href="/" class="d-flex align-items-center text-decoration-none flex-shrink-0" :title="`${appName} — ${tagline}`">
+                <VibeIcon icon="rocket-takeoff-fill" class="text-primary fs-4 me-2" />
+                <span class="d-none d-md-flex flex-column lh-1">
+                    <span class="fw-bold fs-5 text-body">{{ appName }}</span>
+                    <span class="text-muted" style="font-size: 0.62rem; letter-spacing: 0.02em">{{ tagline }}</span>
+                </span>
             </Link>
 
-            <button
-                type="button"
-                class="shell-search btn btn-sm text-start text-muted d-flex align-items-center gap-2 me-auto ms-2"
-                @click="togglePalette"
-            >
-                <VibeIcon icon="search" />
-                <span class="d-none d-md-inline">Search everything…</span>
-                <kbd class="ms-auto d-none d-lg-inline">⌘K</kbd>
-            </button>
+            <div class="flex-grow-1 min-w-0">
+                <VibeInputGroup class="mx-auto" style="max-width: 620px">
+                    <template #prepend>
+                        <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
+                    </template>
+                    <VibeFormInput
+                        id="global-search"
+                        v-model="searchValue"
+                        type="search"
+                        class="border-start-0"
+                        placeholder="Search files, folders, tags…"
+                        aria-label="Search files, folders, and tags"
+                        no-wrapper
+                        @keyup.enter="runGlobalSearch"
+                    />
+                    <template #append>
+                        <VibeButton v-if="isSearching" variant="secondary" outline aria-label="Clear search" @click="clearGlobalSearch">
+                            <VibeIcon icon="x-lg" />
+                        </VibeButton>
+                        <button v-else type="button" class="input-group-text bg-body text-muted border-0" title="Command palette" @click="togglePalette">
+                            <kbd class="bg-body-secondary text-body-secondary border" style="font-size: 0.7rem">⌘K</kbd>
+                        </button>
+                    </template>
+                </VibeInputGroup>
+            </div>
 
-            <VibeButton size="sm" variant="secondary" outline class="rounded-pill" :title="`Theme: ${colorMode}`" aria-label="Toggle theme" @click="toggleColorMode">
-                <VibeIcon :icon="themeIcon" />
+            <VibeButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
+                <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
             </VibeButton>
 
-            <VibeDropdown v-if="user" size="sm" variant="secondary" outline class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
+            <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
                     <UserAvatar :user="user" :size="22" class="me-2" />
                     <span class="d-none d-sm-inline">{{ user.name }}</span>
@@ -107,7 +146,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                     <span v-else><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</span>
                 </template>
             </VibeDropdown>
-        </nav>
+        </header>
 
         <!-- FourPane fills the rest below the navbar. -->
         <div class="flex-grow-1 min-h-0 p-0">
@@ -143,18 +182,6 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 </template>
 
 <style scoped>
-.shell-navbar {
-    height: 52px;
-}
-.shell-search {
-    background: var(--bs-tertiary-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.5rem;
-    width: min(360px, 40vw);
-}
-.shell-search:hover {
-    background: var(--bs-secondary-bg);
-}
 .min-h-0 {
     min-height: 0;
 }
