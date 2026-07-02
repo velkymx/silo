@@ -26,21 +26,17 @@ const base = {
 };
 
 describe('Files shell', () => {
-    it('renders the four-pane shell with GlobalRail in column 1 and the section rail in column 2', () => {
+    it('renders the four-pane shell with GlobalRail as the only left nav', () => {
         const wrapper = mount(FilesIndex, { props: base });
         expect(wrapper.findComponent({ name: 'FourPane' }).exists()).toBe(true);
 
-        // Column 1 (rail pane) is the universal GlobalRail app-nav now —
-        // the section rail no longer lives there.
+        // Column 1 is the universal GlobalRail app-nav. Sections (recent/
+        // starred/shared/trash) are reached from it — there is no redundant
+        // in-page section rail anywhere.
         const railPane = wrapper.get('[data-pane="rail"]');
         expect(railPane.find('[data-nav]').exists()).toBe(true);
-        expect(railPane.find('[data-section]').exists()).toBe(false);
-
-        // Column 2 (folders/viewNav pane) hosts the section rail instead.
-        expect(wrapper.findComponent({ name: 'SectionRail' }).exists()).toBe(true);
-        const foldersPane = wrapper.get('[data-pane="folders"]');
-        expect(foldersPane.find('[data-section="all"]').exists()).toBe(true);
-        expect(foldersPane.find('[data-section="trash"]').exists()).toBe(true);
+        expect(wrapper.find('[data-section]').exists()).toBe(false);
+        expect(wrapper.findComponent({ name: 'SectionRail' }).exists()).toBe(false);
     });
 
     it('navigates to a folder from the accordion', async () => {
@@ -78,19 +74,6 @@ describe('Files shell', () => {
         const detailPane = wrapper.get('[data-pane="detail"]');
         expect(detailPane.text()).not.toContain('Edit');
         expect(detailPane.text()).toContain('Read-only');
-    });
-
-    it('navigates via router.get when a rail section is clicked', async () => {
-        const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
-        const wrapper = mount(FilesIndex, { props: base });
-
-        await wrapper.get('[data-section="starred"]').trigger('click');
-        expect(spy).toHaveBeenCalledWith('/', { section: 'starred' }, { preserveScroll: true, preserveState: false });
-
-        await wrapper.get('[data-section="all"]').trigger('click');
-        expect(spy).toHaveBeenCalledWith('/', {}, { preserveScroll: true, preserveState: false });
-
-        spy.mockRestore();
     });
 
     it('shows the folder accordion only for the "all" section', () => {

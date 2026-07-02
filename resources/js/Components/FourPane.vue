@@ -70,8 +70,8 @@ function goBack(): void {
 
 <style scoped>
 .four-pane {
-    height: calc(100dvh - 140px);
-    min-height: 480px;
+    height: 100%;
+    min-height: 0;
 }
 .fp-rail,
 .fp-folders {

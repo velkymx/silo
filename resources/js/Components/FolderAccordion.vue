@@ -106,4 +106,34 @@ function folderId(itemId: string): number {
     background: rgba(99, 102, 241, 0.14);
     font-weight: 600;
 }
+
+/* Flatten Bootstrap's accordion chrome into a light folder tree — no cards,
+   no heavy button background, minimal padding. */
+:deep(.accordion-item) {
+    background: transparent;
+    border: 0;
+}
+:deep(.accordion-button) {
+    padding: 0.15rem 0.4rem;
+    background: transparent;
+    box-shadow: none;
+    font-size: 0.9rem;
+    color: inherit;
+}
+:deep(.accordion-button:not(.collapsed)) {
+    background: transparent;
+    color: inherit;
+    box-shadow: none;
+}
+:deep(.accordion-button:focus) {
+    box-shadow: none;
+}
+:deep(.accordion-button::after) {
+    width: 0.85rem;
+    height: 0.85rem;
+    background-size: 0.85rem;
+}
+:deep(.accordion-body) {
+    padding: 0 0 0 0.85rem;
+}
 </style>

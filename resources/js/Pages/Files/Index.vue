@@ -2,7 +2,6 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
-import SectionRail from '../../Components/SectionRail.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import FileItem from '../../Components/FileItem.vue';
 import ItemActions from '../../Components/ItemActions.vue';
@@ -92,13 +91,11 @@ const SECTIONS = [
     { key: 'shared', icon: 'people-fill', label: 'Shared' },
     { key: 'trash', icon: 'trash', label: 'Trash' },
 ];
+// Section is driven by the GlobalRail (Home/Recent/Starred/Shared/Trash);
+// the page just reflects the server-sent `section` for per-section rendering.
 const activeSection = ref(props.section);
 const activePane = ref('contents');
-function selectSection(key) {
-    activeSection.value = key;
-    router.get('/', key === 'all' ? {} : { section: key }, { preserveScroll: true, preserveState: false });
-}
-const openIds = computed(() => new Set([...ancestorIds.value]));
+const openIds = computed(() => ancestorIds.value);
 function selectAccordionFolder(id) { visitFolder(id); activePane.value = 'contents'; }
 
 function onBreadcrumb({ item }) {
@@ -691,8 +688,6 @@ onBeforeUnmount(() => {
 <template>
     <ShellLayout v-model:active-pane="activePane">
         <template #viewNav>
-            <SectionRail :sections="SECTIONS" :active="activeSection" @select-section="selectSection" />
-
             <FolderAccordion
                 v-if="activeSection === 'all'"
                 :folders="allFolders"
@@ -701,7 +696,8 @@ onBeforeUnmount(() => {
                 @select-folder="selectAccordionFolder"
                 @new-folder="() => folderOpen = true"
             />
-            <div v-else class="p-3 text-muted small text-uppercase fw-semibold">
+            <div v-else class="side-heading">
+                <VibeIcon :icon="SECTIONS.find((s) => s.key === activeSection)?.icon || 'folder'" />
                 {{ SECTIONS.find((s) => s.key === activeSection)?.label }}
             </div>
 
