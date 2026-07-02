@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { onMounted, onBeforeUnmount } from 'vue';
 import { useCommandPalette } from '../composables/useCommandPalette';
 import { useToast } from '../composables/useToast';
 import ToastHost from '../Components/ToastHost.vue';
@@ -15,7 +15,11 @@ import GlobalRail from '../Components/GlobalRail.vue';
 const { toggle: togglePalette } = useCommandPalette();
 const toast = useToast();
 
-const activePane = ref('contents');
+// Passthrough model: pages that need to control mobile pane-advance (e.g.
+// Files driving `contents` -> `detail` on row select) bind their own
+// `activePane` ref via `v-model:active-pane`; pages that don't care get the
+// same 'contents' default FourPane always had.
+const activePane = defineModel<string>('activePane', { default: 'contents' });
 
 // Cmd/Ctrl-K toggles the command palette from any page (mirrors AppLayout).
 function onKeydown(e: KeyboardEvent): void {

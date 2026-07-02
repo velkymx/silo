@@ -1,8 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
-import FourPane from '../../Components/FourPane.vue';
+import ShellLayout from '../../Layouts/ShellLayout.vue';
 import SectionRail from '../../Components/SectionRail.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import FileItem from '../../Components/FileItem.vue';
@@ -690,8 +689,22 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <AppLayout>
-        <template #sidebar>
+    <ShellLayout v-model:active-pane="activePane">
+        <template #viewNav>
+            <SectionRail :sections="SECTIONS" :active="activeSection" @select-section="selectSection" />
+
+            <FolderAccordion
+                v-if="activeSection === 'all'"
+                :folders="allFolders"
+                :selected-id="currentId"
+                :open-ids="openIds"
+                @select-folder="selectAccordionFolder"
+                @new-folder="() => folderOpen = true"
+            />
+            <div v-else class="p-3 text-muted small text-uppercase fw-semibold">
+                {{ SECTIONS.find((s) => s.key === activeSection)?.label }}
+            </div>
+
             <template v-if="allTags.length">
                 <div class="side-heading"><VibeIcon icon="tags-fill" />Tags</div>
                 <div class="d-flex flex-wrap gap-1 px-2">
@@ -710,385 +723,365 @@ onBeforeUnmount(() => {
             </template>
         </template>
 
-        <FourPane v-model:active-pane="activePane">
-            <template #rail>
-                <SectionRail :sections="SECTIONS" :active="activeSection" @select-section="selectSection" />
-            </template>
-
-            <template #folders>
-                <FolderAccordion
-                    v-if="activeSection === 'all'"
-                    :folders="allFolders"
-                    :selected-id="currentId"
-                    :open-ids="openIds"
-                    @select-folder="selectAccordionFolder"
-                    @new-folder="() => folderOpen = true"
-                />
-                <div v-else class="p-3 text-muted small text-uppercase fw-semibold">
-                    {{ SECTIONS.find((s) => s.key === activeSection)?.label }}
-                </div>
-            </template>
-
-            <template #contents>
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 p-2">
-                    <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
-                        <template #item="{ item, index }">
-                            <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
-                        </template>
-                    </VibeBreadcrumb>
-                    <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
-                        <VibeButton variant="primary" @click="uploadOpen = true">
-                            <VibeIcon icon="upload" class="me-1" />Upload
-                        </VibeButton>
-                        <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
-                            <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
-                            <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                        </VibeDropdown>
-                        <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
-                            <VibeIcon icon="funnel" class="me-1" />Filters
+        <template #contents>
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 p-2">
+                <VibeBreadcrumb :items="breadcrumbItems" class="mb-0 text-truncate" @item-click="onBreadcrumb">
+                    <template #item="{ item, index }">
+                        <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                    </template>
+                </VibeBreadcrumb>
+                <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
+                    <VibeButton variant="primary" @click="uploadOpen = true">
+                        <VibeIcon icon="upload" class="me-1" />Upload
+                    </VibeButton>
+                    <VibeDropdown variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
+                        <template #button><VibeIcon icon="plus-lg" class="me-1" />New</template>
+                        <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                    </VibeDropdown>
+                    <VibeButton variant="secondary" outline title="Advanced search" @click="advOpen = true">
+                        <VibeIcon icon="funnel" class="me-1" />Filters
+                    </VibeButton>
+                    <VibeButton
+                        :variant="selectMode ? 'primary' : 'secondary'"
+                        :outline="!selectMode"
+                        title="Select multiple"
+                        @click="selectMode ? clearSelection() : (selectMode = true)"
+                    >
+                        <VibeIcon icon="check2-square" class="me-1" />Select
+                    </VibeButton>
+                    <div class="vr mx-1 d-none d-sm-block"></div>
+                    <VibeButtonGroup>
+                        <VibeButton
+                            :variant="viewMode === 'list' ? 'primary' : 'secondary'"
+                            :outline="viewMode !== 'list'"
+                            title="List view"
+                            aria-label="List view"
+                            @click="viewMode = 'list'"
+                        >
+                            <VibeIcon icon="list-ul" />
                         </VibeButton>
                         <VibeButton
-                            :variant="selectMode ? 'primary' : 'secondary'"
-                            :outline="!selectMode"
-                            title="Select multiple"
-                            @click="selectMode ? clearSelection() : (selectMode = true)"
+                            :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
+                            :outline="viewMode !== 'grid'"
+                            title="Thumbnail view"
+                            aria-label="Thumbnail view"
+                            @click="viewMode = 'grid'"
                         >
-                            <VibeIcon icon="check2-square" class="me-1" />Select
+                            <VibeIcon icon="grid-3x3-gap-fill" />
                         </VibeButton>
-                        <div class="vr mx-1 d-none d-sm-block"></div>
-                        <VibeButtonGroup>
-                            <VibeButton
-                                :variant="viewMode === 'list' ? 'primary' : 'secondary'"
-                                :outline="viewMode !== 'list'"
-                                title="List view"
-                                aria-label="List view"
-                                @click="viewMode = 'list'"
-                            >
-                                <VibeIcon icon="list-ul" />
-                            </VibeButton>
-                            <VibeButton
-                                :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
-                                :outline="viewMode !== 'grid'"
-                                title="Thumbnail view"
-                                aria-label="Thumbnail view"
-                                @click="viewMode = 'grid'"
-                            >
-                                <VibeIcon icon="grid-3x3-gap-fill" />
-                            </VibeButton>
-                        </VibeButtonGroup>
-                    </div>
+                    </VibeButtonGroup>
                 </div>
+            </div>
 
-                <!-- Batch action bar + modals -->
-                <BatchActions
-                    :selected-items="selectedItems"
-                    :current-id="currentId"
-                    :destination-options="destinationOptions"
-                    @done="clearSelection"
-                    @cleared="clearSelection"
-                />
+            <!-- Batch action bar + modals -->
+            <BatchActions
+                :selected-items="selectedItems"
+                :current-id="currentId"
+                :destination-options="destinationOptions"
+                @done="clearSelection"
+                @cleared="clearSelection"
+            />
 
-                <!-- Single compact chip bar for all active view filters. -->
-                <FilterChips :chips="activeFilters" @clear-all="clearAllFilters" />
+            <!-- Single compact chip bar for all active view filters. -->
+            <FilterChips :chips="activeFilters" @clear-all="clearAllFilters" />
 
-                <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
+            <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
-                <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
-                <template v-if="!loading && viewMode === 'grid'">
-                    <VibeRow class="g-3">
-                        <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
-                            <FileItem
-                                :item="item"
-                                view="grid"
-                                :select-mode="selectMode"
-                                :selected="isSelected(item.id)"
-                                :menu="item.is_dir ? folderActions : fileMenu(item)"
-                                @open="onItemClick"
-                                @toggle-select="toggleSel"
-                                @star="toggleStar"
-                                @action="onAction(item, $event)"
-                                @drop="onDropToFolder"
-                                @context="openContext"
-                            />
-                        </VibeCol>
-                        <VibeCol v-if="!items.length" :cols="12">
-                            <EmptyState
-                                :icon="flat ? 'search' : 'folder2-open'"
-                                :title="flat ? 'No matching files' : 'This folder is empty'"
-                                :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
-                            />
-                        </VibeCol>
-                    </VibeRow>
-                    <div v-if="gridShown < items.length" class="text-center my-3">
-                        <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
-                            Show more ({{ items.length - gridShown }} more)
-                        </VibeButton>
-                    </div>
-                </template>
-
-                <VibeDataTable
-                    v-else-if="!loading"
-                    :items="items"
-                    :columns="columns"
-                    row-key="_key"
-                    hover
-                    :searchable="true"
-                    :sortable="true"
-                    search-placeholder="Search this folder…"
-                    v-model:current-page="listPage"
-                    :per-page="25"
-                    :per-page-options="[10, 25, 50, 100]"
-                    :responsive="true"
-                    :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
-                    @row-clicked="selectContentItem"
-                >
-                    <template v-if="flat" #cell(location)="{ item }">
-                        <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
-                            {{ item.location?.path }}
-                        </VibeButton>
-                    </template>
-
-                    <template #cell(name)="{ item }">
+            <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
+            <template v-if="!loading && viewMode === 'grid'">
+                <VibeRow class="g-3">
+                    <VibeCol v-for="item in gridItems" :key="item._key" :xs="6" :sm="4" :md="3" :xl="2">
                         <FileItem
                             :item="item"
-                            view="list"
+                            view="grid"
                             :select-mode="selectMode"
                             :selected="isSelected(item.id)"
+                            :menu="item.is_dir ? folderActions : fileMenu(item)"
                             @open="onItemClick"
                             @toggle-select="toggleSel"
+                            @star="toggleStar"
+                            @action="onAction(item, $event)"
                             @drop="onDropToFolder"
-                            @tag="filterByTag"
                             @context="openContext"
                         />
-                    </template>
-
-                    <template #cell(modified)="{ item }">
-                        <span class="text-muted small">{{ item.modified }}</span>
-                    </template>
-
-                    <template #cell(size)="{ item }">
-                        <span class="text-muted small">
-                            {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
-                        </span>
-                    </template>
-
-                    <template #cell(type)="{ item }">
-                        <span class="text-muted small">{{ typeLabel(item) }}</span>
-                    </template>
-
-                    <template #cell(actions)="{ item }">
-                        <div
-                            v-if="activeSection === 'all' || activeSection === 'recent' || activeSection === 'starred'"
-                            class="d-flex justify-content-end"
-                            @click.stop
-                        >
-                            <ItemActions
-                                :item="item"
-                                :menu="item.is_dir ? folderActions : fileMenu(item)"
-                                @star="toggleStar"
-                                @action="onAction(item, $event)"
-                            />
-                        </div>
-                    </template>
-                </VibeDataTable>
+                    </VibeCol>
+                    <VibeCol v-if="!items.length" :cols="12">
+                        <EmptyState
+                            :icon="flat ? 'search' : 'folder2-open'"
+                            :title="flat ? 'No matching files' : 'This folder is empty'"
+                            :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                        />
+                    </VibeCol>
+                </VibeRow>
+                <div v-if="gridShown < items.length" class="text-center my-3">
+                    <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
+                        Show more ({{ items.length - gridShown }} more)
+                    </VibeButton>
+                </div>
             </template>
 
-            <template #detail>
-                <div v-if="activeSection === 'trash' && selectedDetail" class="p-3">
-                    <h6 class="text-truncate mb-3">{{ selectedDetail.name }}</h6>
-                    <div class="d-flex gap-2">
-                        <VibeButton variant="primary" @click="restoreFromTrash(selectedDetail)">
-                            <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
-                        </VibeButton>
-                        <VibeButton variant="danger" outline @click="purgeFromTrash(selectedDetail)">
-                            <VibeIcon icon="trash3" class="me-1" />Delete forever
-                        </VibeButton>
-                    </div>
-                </div>
-                <div v-else-if="selectedDetail" class="p-3">
-                    <h6 class="text-truncate mb-2">{{ selectedDetail.name }}</h6>
-                    <p class="text-muted small mb-3">{{ typeLabel(selectedDetail) }} · {{ fmtBytes(selectedDetail.size) }}</p>
-                    <p v-if="detailReadOnly" class="text-muted small">
-                        <VibeIcon icon="lock-fill" class="me-1" />Read-only
-                    </p>
-                    <div class="d-flex gap-2">
-                        <VibeButton v-if="isEditable(selectedDetail) && !detailReadOnly" variant="primary" @click="openEditor(selectedDetail)">
-                            <VibeIcon icon="pencil-square" class="me-1" />Edit
-                        </VibeButton>
-                        <VibeButton variant="secondary" outline @click="quickLook(selectedDetail)">
-                            <VibeIcon icon="eye" class="me-1" />{{ isEditable(selectedDetail) ? 'Preview' : 'Open' }}
-                        </VibeButton>
-                    </div>
-                </div>
-                <EmptyState v-else icon="folder2-open" title="Select a file" />
-            </template>
-        </FourPane>
-
-        <!-- Editor modal -->
-        <EditorModal v-model="editOpen" :item="editItem" :creating="editCreating" :kind="editKind" :parent-id="currentId" />
-
-        <!-- Details modal -->
-        <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
-            <dl class="row mb-0">
-                <template v-for="row in detailsRows" :key="row.label">
-                    <dt class="col-4 text-nowrap text-muted small">{{ row.label }}</dt>
-                    <dd class="col-8 text-break font-monospace small mb-2">{{ row.value }}</dd>
-                </template>
-            </dl>
-        </VibeModal>
-
-        <!-- Share modal -->
-        <ShareModal v-model="shareOpen" :item="shareTarget" />
-
-        <!-- Tags modal -->
-        <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <VibeBadge
-                    v-for="name in tagList"
-                    :key="name"
-                    variant="primary"
-                    class="d-flex align-items-center"
-                    :class="{ 'tag-flash': name === flashedTag }"
-                >
-                    {{ name }}
-                    <VibeIcon icon="x" class="ms-1" style="cursor: pointer" @click="removeTag(name)" />
-                </VibeBadge>
-                <span v-if="!tagList.length" class="text-muted small">No tags yet.</span>
-            </div>
-            <div class="d-flex gap-2 align-items-end">
-                <div class="flex-grow-1">
-                    <VibeAutocomplete
-                        v-model="tagInput"
-                        :source="tagSuggestions"
-                        label="Add a tag"
-                        placeholder="Type a tag and press Add"
-                        @select="addTag"
-                        @keyup.enter="addTag()"
-                    />
-                </div>
-                <VibeButton variant="secondary" @click="addTag()">Add</VibeButton>
-            </div>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</VibeButton>
-            </template>
-        </VibeModal>
-
-        <!-- Versions modal -->
-        <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
-            <p class="text-muted small">
-                Current: version {{ versionsItem?.version }}.
-                <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
-            </p>
             <VibeDataTable
-                v-if="versionsItem?.versions?.length"
-                :items="versionsItem.versions"
-                :columns="versionColumns"
+                v-else-if="!loading"
+                :items="items"
+                :columns="columns"
                 row-key="_key"
                 hover
-                :searchable="false"
-                :show-per-page="false"
-                :per-page="100"
+                :searchable="true"
+                :sortable="true"
+                search-placeholder="Search this folder…"
+                v-model:current-page="listPage"
+                :per-page="25"
+                :per-page-options="[10, 25, 50, 100]"
                 :responsive="true"
+                :empty-text="flat ? 'No matching files.' : 'This folder is empty.'"
+                @row-clicked="selectContentItem"
             >
-                <template #cell(version)="{ item }">v{{ item.version }}</template>
-                <template #cell(note)="{ item }">
-                    <span v-if="item.note" class="small">{{ item.note }}</span>
-                    <span v-else class="text-muted fst-italic small">—</span>
+                <template v-if="flat" #cell(location)="{ item }">
+                    <VibeButton variant="link" class="p-0 text-decoration-none small" @click="visitFolder(item.location?.folder_id)">
+                        {{ item.location?.path }}
+                    </VibeButton>
                 </template>
-                <template #cell(size)="{ item }">{{ fmtBytes(item.size) }}</template>
-                <template #cell(created_at)="{ item }"><span class="small">{{ item.created_at }}</span></template>
+
+                <template #cell(name)="{ item }">
+                    <FileItem
+                        :item="item"
+                        view="list"
+                        :select-mode="selectMode"
+                        :selected="isSelected(item.id)"
+                        @open="onItemClick"
+                        @toggle-select="toggleSel"
+                        @drop="onDropToFolder"
+                        @tag="filterByTag"
+                        @context="openContext"
+                    />
+                </template>
+
+                <template #cell(modified)="{ item }">
+                    <span class="text-muted small">{{ item.modified }}</span>
+                </template>
+
+                <template #cell(size)="{ item }">
+                    <span class="text-muted small">
+                        {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
+                    </span>
+                </template>
+
+                <template #cell(type)="{ item }">
+                    <span class="text-muted small">{{ typeLabel(item) }}</span>
+                </template>
+
                 <template #cell(actions)="{ item }">
-                    <div class="d-flex justify-content-end gap-1">
-                        <VibeButton
-                            variant="success"
-                            size="sm"
-                            :href="`/files/${versionsItem.id}/versions/${item.id}/download`"
-                            :aria-label="`Download version ${item.version}`"
-                        >
-                            <VibeIcon icon="download" />
-                        </VibeButton>
-                        <VibeButton variant="primary" size="sm" outline @click="restoreVersion(item)">
-                            <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
-                        </VibeButton>
+                    <div
+                        v-if="activeSection === 'all' || activeSection === 'recent' || activeSection === 'starred'"
+                        class="d-flex justify-content-end"
+                        @click.stop
+                    >
+                        <ItemActions
+                            :item="item"
+                            :menu="item.is_dir ? folderActions : fileMenu(item)"
+                            @star="toggleStar"
+                            @action="onAction(item, $event)"
+                        />
                     </div>
                 </template>
             </VibeDataTable>
-        </VibeModal>
+        </template>
 
-        <!-- Quick Look modal -->
-        <QuickLookModal
-            v-model="quickOpen"
-            :file="quickFile"
-            :index="quickIndex"
-            :total="files.length"
-            :menu="quickFile ? fileMenu(quickFile) : []"
-            :prev-file="quickPrev"
-            :next-file="quickNext"
-            @step="quickStep"
-            @action="onQuickAction"
-        />
+        <template #detail>
+            <div v-if="activeSection === 'trash' && selectedDetail" class="p-3">
+                <h6 class="text-truncate mb-3">{{ selectedDetail.name }}</h6>
+                <div class="d-flex gap-2">
+                    <VibeButton variant="primary" @click="restoreFromTrash(selectedDetail)">
+                        <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
+                    </VibeButton>
+                    <VibeButton variant="danger" outline @click="purgeFromTrash(selectedDetail)">
+                        <VibeIcon icon="trash3" class="me-1" />Delete forever
+                    </VibeButton>
+                </div>
+            </div>
+            <div v-else-if="selectedDetail" class="p-3">
+                <h6 class="text-truncate mb-2">{{ selectedDetail.name }}</h6>
+                <p class="text-muted small mb-3">{{ typeLabel(selectedDetail) }} · {{ fmtBytes(selectedDetail.size) }}</p>
+                <p v-if="detailReadOnly" class="text-muted small">
+                    <VibeIcon icon="lock-fill" class="me-1" />Read-only
+                </p>
+                <div class="d-flex gap-2">
+                    <VibeButton v-if="isEditable(selectedDetail) && !detailReadOnly" variant="primary" @click="openEditor(selectedDetail)">
+                        <VibeIcon icon="pencil-square" class="me-1" />Edit
+                    </VibeButton>
+                    <VibeButton variant="secondary" outline @click="quickLook(selectedDetail)">
+                        <VibeIcon icon="eye" class="me-1" />{{ isEditable(selectedDetail) ? 'Preview' : 'Open' }}
+                    </VibeButton>
+                </div>
+            </div>
+            <EmptyState v-else icon="folder2-open" title="Select a file" />
+        </template>
+    </ShellLayout>
 
-        <!-- Upload modal -->
-        <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" :storage="storage" />
+    <!-- Editor modal -->
+    <EditorModal v-model="editOpen" :item="editItem" :creating="editCreating" :kind="editKind" :parent-id="currentId" />
 
-        <!-- Create folder modal -->
-        <VibeModal v-model="folderOpen" title="Create Folder" centered>
-            <form @submit.prevent="submitFolder">
-<VibeFormGroup
-                    label="Folder Name"
-                    :error="folderForm.errors.folder_name"
-                    required
-                >
-                    <VibeFormInput v-model="folderForm.folder_name" required />
-                </VibeFormGroup>
-            </form>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</VibeButton>
+    <!-- Details modal -->
+    <VibeModal v-model="detailsOpen" :title="detailsItem?.name || 'Details'" centered fullscreen hide-footer>
+        <dl class="row mb-0">
+            <template v-for="row in detailsRows" :key="row.label">
+                <dt class="col-4 text-nowrap text-muted small">{{ row.label }}</dt>
+                <dd class="col-8 text-break font-monospace small mb-2">{{ row.value }}</dd>
             </template>
-        </VibeModal>
+        </dl>
+    </VibeModal>
 
-        <!-- Rename modal -->
-        <RenameModal v-model="renameOpen" :item="renameTarget" />
+    <!-- Share modal -->
+    <ShareModal v-model="shareOpen" :item="shareTarget" />
 
-        <!-- Move / Copy modal -->
-        <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
-            <form @submit.prevent="submitTransfer">
-                <VibeFormGroup
-                    label="Destination Folder"
-                    :error="transferForm.errors.target_id"
-                >
-                    <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
-                    <small v-if="allFoldersCapped" class="text-muted d-block mt-1">Showing first 2,000 folders — use search to find others.</small>
-                </VibeFormGroup>
-            </form>
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>
-                <VibeButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
-                    <VibeSpinner v-if="transferForm.processing" size="sm" class="me-1" />{{ transferForm.processing ? (transferMode === 'move' ? 'Moving…' : 'Copying…') : (transferMode === 'move' ? 'Move' : 'Copy') }}
-                </VibeButton>
+    <!-- Tags modal -->
+    <VibeModal v-model="tagsOpen" :title="`Tags — ${tagsItem?.name || ''}`" centered>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <VibeBadge
+                v-for="name in tagList"
+                :key="name"
+                variant="primary"
+                class="d-flex align-items-center"
+                :class="{ 'tag-flash': name === flashedTag }"
+            >
+                {{ name }}
+                <VibeIcon icon="x" class="ms-1" style="cursor: pointer" @click="removeTag(name)" />
+            </VibeBadge>
+            <span v-if="!tagList.length" class="text-muted small">No tags yet.</span>
+        </div>
+        <div class="d-flex gap-2 align-items-end">
+            <div class="flex-grow-1">
+                <VibeAutocomplete
+                    v-model="tagInput"
+                    :source="tagSuggestions"
+                    label="Add a tag"
+                    placeholder="Type a tag and press Add"
+                    @select="addTag"
+                    @keyup.enter="addTag()"
+                />
+            </div>
+            <VibeButton variant="secondary" @click="addTag()">Add</VibeButton>
+        </div>
+        <template #footer>
+            <VibeButton variant="secondary" outline @click="tagsOpen = false">Cancel</VibeButton>
+            <VibeButton variant="primary" :disabled="tagSaving" @click="saveTags"><VibeSpinner v-if="tagSaving" size="sm" class="me-1" />{{ tagSaving ? 'Saving…' : 'Save' }}</VibeButton>
+        </template>
+    </VibeModal>
+
+    <!-- Versions modal -->
+    <VibeModal v-model="versionsOpen" :title="`Versions — ${versionsItem?.name || ''}`" centered fullscreen hide-footer>
+        <p class="text-muted small">
+            Current: version {{ versionsItem?.version }}.
+            <span v-if="!versionsItem?.versions?.length">No previous versions.</span>
+        </p>
+        <VibeDataTable
+            v-if="versionsItem?.versions?.length"
+            :items="versionsItem.versions"
+            :columns="versionColumns"
+            row-key="_key"
+            hover
+            :searchable="false"
+            :show-per-page="false"
+            :per-page="100"
+            :responsive="true"
+        >
+            <template #cell(version)="{ item }">v{{ item.version }}</template>
+            <template #cell(note)="{ item }">
+                <span v-if="item.note" class="small">{{ item.note }}</span>
+                <span v-else class="text-muted fst-italic small">—</span>
             </template>
-        </VibeModal>
+            <template #cell(size)="{ item }">{{ fmtBytes(item.size) }}</template>
+            <template #cell(created_at)="{ item }"><span class="small">{{ item.created_at }}</span></template>
+            <template #cell(actions)="{ item }">
+                <div class="d-flex justify-content-end gap-1">
+                    <VibeButton
+                        variant="success"
+                        size="sm"
+                        :href="`/files/${versionsItem.id}/versions/${item.id}/download`"
+                        :aria-label="`Download version ${item.version}`"
+                    >
+                        <VibeIcon icon="download" />
+                    </VibeButton>
+                    <VibeButton variant="primary" size="sm" outline @click="restoreVersion(item)">
+                        <VibeIcon icon="arrow-counterclockwise" class="me-1" />Restore
+                    </VibeButton>
+                </div>
+            </template>
+        </VibeDataTable>
+    </VibeModal>
 
-        <!-- Advanced search -->
-        <AdvancedSearchModal
-            v-model="advOpen"
-            :filters="filters"
-            :all-tags="allTags"
-            :current-folder-id="currentId"
-            :current-folder-name="current?.name ?? null"
-        />
+    <!-- Quick Look modal -->
+    <QuickLookModal
+        v-model="quickOpen"
+        :file="quickFile"
+        :index="quickIndex"
+        :total="files.length"
+        :menu="quickFile ? fileMenu(quickFile) : []"
+        :prev-file="quickPrev"
+        :next-file="quickNext"
+        @step="quickStep"
+        @action="onQuickAction"
+    />
 
-        <!-- Right-click context menu -->
-        <ContextMenu
-            v-model="ctxOpen"
-            :x="ctxPos.x"
-            :y="ctxPos.y"
-            :items="ctxMenu"
-            @select="onContextSelect"
-        />
-    </AppLayout>
+    <!-- Upload modal -->
+    <UploadModal v-model="uploadOpen" :parent-id="currentId" :max-upload-kb="maxUploadKb" :storage="storage" />
+
+    <!-- Create folder modal -->
+    <VibeModal v-model="folderOpen" title="Create Folder" centered>
+        <form @submit.prevent="submitFolder">
+            <VibeFormGroup
+                label="Folder Name"
+                :error="folderForm.errors.folder_name"
+                required
+            >
+                <VibeFormInput v-model="folderForm.folder_name" required />
+            </VibeFormGroup>
+        </form>
+        <template #footer>
+            <VibeButton variant="secondary" outline @click="folderOpen = false">Cancel</VibeButton>
+            <VibeButton variant="primary" :disabled="folderForm.processing" @click="submitFolder"><VibeSpinner v-if="folderForm.processing" size="sm" class="me-1" />{{ folderForm.processing ? 'Creating…' : 'Create' }}</VibeButton>
+        </template>
+    </VibeModal>
+
+    <!-- Rename modal -->
+    <RenameModal v-model="renameOpen" :item="renameTarget" />
+
+    <!-- Move / Copy modal -->
+    <VibeModal v-model="transferOpen" :title="transferMode === 'move' ? 'Move To' : 'Copy To'" centered>
+        <form @submit.prevent="submitTransfer">
+            <VibeFormGroup
+                label="Destination Folder"
+                :error="transferForm.errors.target_id"
+            >
+                <VibeFormSelect v-model="transferForm.target_id" :options="destinationOptions" />
+                <small v-if="allFoldersCapped" class="text-muted d-block mt-1">Showing first 2,000 folders — use search to find others.</small>
+            </VibeFormGroup>
+        </form>
+        <template #footer>
+            <VibeButton variant="secondary" outline @click="transferOpen = false">Cancel</VibeButton>
+            <VibeButton variant="primary" :disabled="transferForm.processing" @click="submitTransfer">
+                <VibeSpinner v-if="transferForm.processing" size="sm" class="me-1" />{{ transferForm.processing ? (transferMode === 'move' ? 'Moving…' : 'Copying…') : (transferMode === 'move' ? 'Move' : 'Copy') }}
+            </VibeButton>
+        </template>
+    </VibeModal>
+
+    <!-- Advanced search -->
+    <AdvancedSearchModal
+        v-model="advOpen"
+        :filters="filters"
+        :all-tags="allTags"
+        :current-folder-id="currentId"
+        :current-folder-name="current?.name ?? null"
+    />
+
+    <!-- Right-click context menu -->
+    <ContextMenu
+        v-model="ctxOpen"
+        :x="ctxPos.x"
+        :y="ctxPos.y"
+        :items="ctxMenu"
+        @select="onContextSelect"
+    />
 </template>
 
 <style scoped>

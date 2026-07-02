@@ -8,7 +8,7 @@ const s = vi.hoisted(() => ({
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: s.get, post: s.post, put: s.put, delete: s.del, visit: s.visit, reload: s.reload, on: vi.fn(() => () => {}) },
     useForm: (data: Record<string, unknown>) => ({ ...data, processing: false, errors: {}, post: s.formPost, reset: s.formReset, clearErrors: vi.fn() }),
-    usePage: () => ({ props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
+    usePage: () => ({ url: '/', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
     Link: { name: 'Link', template: '<a><slot /></a>' },
     Head: { name: 'Head', template: '<span><slot /></span>' },
 }));

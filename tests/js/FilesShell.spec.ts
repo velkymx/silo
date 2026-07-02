@@ -2,8 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { router } from '@inertiajs/vue3';
 import { vi } from 'vitest';
-import FilesIndex from '@/Pages/Files/Index.vue';
 import { useDialogHost } from '@/composables/useConfirm';
+
+// Files now hosts on ShellLayout, which renders the real GlobalRail (not
+// stubbed in tests/js/setup.ts). GlobalRail reads `usePage().url` — override
+// just that export so it doesn't blow up on the module-level "no page yet"
+// state, while keeping the real `router` so `vi.spyOn(router, ...)` below
+// still works against the genuine module.
+vi.mock('@inertiajs/vue3', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@inertiajs/vue3')>();
+    return {
+        ...actual,
+        usePage: () => ({ url: '/', props: { auth: { user: { id: 1, is_admin: false } } } }),
+    };
+});
+
+import FilesIndex from '@/Pages/Files/Index.vue';
 
 const base = {
     folders: [], files: [], current: null, breadcrumbs: [], allFolders: [],
@@ -12,12 +26,21 @@ const base = {
 };
 
 describe('Files shell', () => {
-    it('renders the four-pane shell with the section rail', () => {
+    it('renders the four-pane shell with GlobalRail in column 1 and the section rail in column 2', () => {
         const wrapper = mount(FilesIndex, { props: base });
         expect(wrapper.findComponent({ name: 'FourPane' }).exists()).toBe(true);
+
+        // Column 1 (rail pane) is the universal GlobalRail app-nav now —
+        // the section rail no longer lives there.
+        const railPane = wrapper.get('[data-pane="rail"]');
+        expect(railPane.find('[data-nav]').exists()).toBe(true);
+        expect(railPane.find('[data-section]').exists()).toBe(false);
+
+        // Column 2 (folders/viewNav pane) hosts the section rail instead.
         expect(wrapper.findComponent({ name: 'SectionRail' }).exists()).toBe(true);
-        expect(wrapper.find('[data-section="all"]').exists()).toBe(true);
-        expect(wrapper.find('[data-section="trash"]').exists()).toBe(true);
+        const foldersPane = wrapper.get('[data-pane="folders"]');
+        expect(foldersPane.find('[data-section="all"]').exists()).toBe(true);
+        expect(foldersPane.find('[data-section="trash"]').exists()).toBe(true);
     });
 
     it('navigates to a folder from the accordion', async () => {
