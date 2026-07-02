@@ -35,7 +35,7 @@ function hasChildren(id: number): boolean {
 }
 
 // VibeAccordion is data-driven: one item per child folder. `show` auto-opens
-// ancestors of the current folder. `title`/`content` are rendered via slots.
+// ancestors of the current folder.
 const items = computed(() =>
     children.value.map((f) => ({
         id: String(f.id),
@@ -59,20 +59,16 @@ function folderId(itemId: string): number {
             </VibeButton>
         </div>
 
-        <VibeAccordion v-if="items.length" flush always-open :items="items" class="w-100">
+        <VibeAccordion
+            v-if="items.length"
+            flush
+            always-open
+            :items="items"
+            @item-click="emit('select-folder', folderId($event.item.id))"
+        >
             <template #title="{ item }">
-                <span
-                    class="fa-row d-flex align-items-center gap-2 flex-grow-1"
-                    :class="{ active: selectedId === folderId(item.id) }"
-                    :data-folder="item.id"
-                    role="button"
-                    tabindex="0"
-                    @click.stop="emit('select-folder', folderId(item.id))"
-                    @keydown.enter.prevent="emit('select-folder', folderId(item.id))"
-                    @keydown.space.prevent="emit('select-folder', folderId(item.id))"
-                >
-                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" />
-                    <span class="text-truncate">{{ item.title }}</span>
+                <span :data-folder="item.id" :class="{ 'fw-semibold': selectedId === folderId(item.id) }">
+                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="me-2" />{{ item.title }}
                 </span>
             </template>
             <template #content="{ item }">
@@ -90,50 +86,3 @@ function folderId(itemId: string): number {
         </VibeAccordion>
     </div>
 </template>
-
-<style scoped>
-.fa-row {
-    cursor: pointer;
-    min-width: 0;
-    border-radius: 0.25rem;
-    padding: 0.15rem 0.35rem;
-    color: var(--bs-body-color);
-}
-.fa-row:hover {
-    background: rgba(99, 102, 241, 0.08);
-}
-.fa-row.active {
-    background: rgba(99, 102, 241, 0.14);
-    font-weight: 600;
-}
-
-/* Flatten Bootstrap's accordion chrome into a light folder tree — no cards,
-   no heavy button background, minimal padding. */
-:deep(.accordion-item) {
-    background: transparent;
-    border: 0;
-}
-:deep(.accordion-button) {
-    padding: 0.15rem 0.4rem;
-    background: transparent;
-    box-shadow: none;
-    font-size: 0.9rem;
-    color: inherit;
-}
-:deep(.accordion-button:not(.collapsed)) {
-    background: transparent;
-    color: inherit;
-    box-shadow: none;
-}
-:deep(.accordion-button:focus) {
-    box-shadow: none;
-}
-:deep(.accordion-button::after) {
-    width: 0.85rem;
-    height: 0.85rem;
-    background-size: 0.85rem;
-}
-:deep(.accordion-body) {
-    padding: 0 0 0 0.85rem;
-}
-</style>

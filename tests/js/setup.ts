@@ -136,16 +136,19 @@ const components: Record<string, any> = {
         },
     },
 
-    // Accordion: render #title + #content slots for every item (the stub never
-    // collapses — expand/collapse is Bootstrap's job and not unit-tested).
+    // Accordion: render #title + #content slots for every item and emit
+    // item-click when a header is clicked (the stub never collapses —
+    // expand/collapse is Bootstrap's job and not unit-tested).
     VibeAccordion: {
         name: 'VibeAccordion',
         props: ['items', 'alwaysOpen', 'flush'],
-        setup(props: { items?: { id: string }[] }, { slots }: { slots: Slots }) {
+        emits: ['item-click'],
+        setup(props: { items?: { id: string }[] }, { slots, emit }: { slots: Slots; emit: (e: string, p: unknown) => void }) {
             return () => h('div', { 'data-stub': 'VibeAccordion' },
                 (props.items ?? []).map((item, index) =>
                     h('div', { 'data-acc-item': item.id }, [
-                        slots.title ? slots.title({ item, index }) : null,
+                        h('div', { class: 'acc-header', onClick: () => emit('item-click', { item, index }) },
+                            slots.title ? [slots.title({ item, index })] : []),
                         slots.content ? slots.content({ item, index }) : null,
                     ]),
                 ),
