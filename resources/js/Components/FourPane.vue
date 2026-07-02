@@ -21,7 +21,7 @@ function goBack(): void {
 </script>
 
 <template>
-    <div class="four-pane d-flex border rounded overflow-hidden bg-body">
+    <div class="four-pane d-flex overflow-hidden bg-body">
         <!-- Mobile nav bar: back chevron, hidden on the first (rail) pane. -->
         <div
             v-if="activePane !== 'rail'"
