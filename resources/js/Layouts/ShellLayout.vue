@@ -28,15 +28,28 @@ const tagline = 'Your Files Ready to Launch';
 const year = new Date().getFullYear();
 const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
 const searchValue = ref('');
+const searchScope = ref<'all' | 'folder'>('all');
+const currentFolder = computed(() => (page.props.currentFolder as { id: number } | null) ?? null);
+const scopeMenu = [
+    { text: 'All folders', value: 'all', icon: 'collection' },
+    { text: 'This folder', value: 'folder', icon: 'folder2' },
+];
 function syncSearchFromUrl(): void {
     const q = new URLSearchParams(page.url.split('?')[1] || '');
     searchValue.value = q.get('search') || '';
+    searchScope.value = q.get('scope') === 'folder' ? 'folder' : 'all';
 }
 syncSearchFromUrl();
 watch(() => page.url, syncSearchFromUrl);
 function runGlobalSearch(): void {
     const v = searchValue.value.trim();
-    router.get('/', v ? { search: v } : {});
+    if (!v) { router.get('/', {}); return; }
+    const params: Record<string, string | number> = { search: v };
+    if (searchScope.value === 'folder' && currentFolder.value) {
+        params.scope = 'folder';
+        params.folder = currentFolder.value.id;
+    }
+    router.get('/', params);
 }
 function clearGlobalSearch(): void {
     searchValue.value = '';
@@ -118,6 +131,19 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                         @keyup.enter="runGlobalSearch"
                     />
                     <template #append>
+                        <VibeDropdown
+                            variant="light"
+                            menu-end
+                            :items="scopeMenu"
+                            :title="searchScope === 'folder' ? 'Scope: this folder' : 'Scope: all folders'"
+                            @item-click="searchScope = $event.item.value; runGlobalSearch()"
+                        >
+                            <template #button>
+                                <VibeIcon :icon="searchScope === 'folder' ? 'folder2' : 'collection'" class="me-1" />
+                                {{ searchScope === 'folder' ? 'This folder' : 'All' }}
+                            </template>
+                            <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                        </VibeDropdown>
                         <VibeButton v-if="isSearching" variant="secondary" outline aria-label="Clear search" @click="clearGlobalSearch">
                             <VibeIcon icon="x-lg" />
                         </VibeButton>
