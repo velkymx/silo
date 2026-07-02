@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { useColorMode } from '@velkymx/vibeui';
 import { useCommandPalette } from '../composables/useCommandPalette';
 import { useToast } from '../composables/useToast';
 import ToastHost from '../Components/ToastHost.vue';
@@ -14,6 +15,8 @@ import GlobalRail from '../Components/GlobalRail.vue';
 // frame with GlobalRail fixed in column 1.
 const { toggle: togglePalette } = useCommandPalette();
 const toast = useToast();
+const { colorMode, toggleColorMode } = useColorMode();
+const themeIcon = computed(() => ({ light: 'sun-fill', dark: 'moon-stars-fill' }[colorMode.value] ?? 'circle-half'));
 const page = usePage();
 const user = computed(() => (page.props.auth as { user?: { name: string; avatar_url?: string | null } } | undefined)?.user);
 
@@ -64,7 +67,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                 <kbd class="ms-auto d-none d-lg-inline">⌘K</kbd>
             </button>
 
-            <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
+            <VibeButton size="sm" variant="secondary" outline class="rounded-pill" :title="`Theme: ${colorMode}`" aria-label="Toggle theme" @click="toggleColorMode">
+                <VibeIcon :icon="themeIcon" />
+            </VibeButton>
+
+            <VibeDropdown v-if="user" size="sm" variant="secondary" outline class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
                     <UserAvatar :user="user" :size="22" class="me-2" />
                     <span class="d-none d-sm-inline">{{ user.name }}</span>
