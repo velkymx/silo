@@ -891,18 +891,53 @@ onBeforeUnmount(() => {
                     </VibeButton>
                 </div>
             </div>
-            <div v-else-if="selectedDetail" class="p-3">
-                <h6 class="text-truncate mb-2">{{ selectedDetail.name }}</h6>
-                <p class="text-muted small mb-3">{{ typeLabel(selectedDetail) }} · {{ fmtBytes(selectedDetail.size) }}</p>
-                <p v-if="detailReadOnly" class="text-muted small">
-                    <VibeIcon icon="lock-fill" class="me-1" />Read-only
-                </p>
-                <div class="d-flex gap-2">
-                    <VibeButton v-if="isEditable(selectedDetail) && !detailReadOnly" variant="primary" @click="openEditor(selectedDetail)">
+            <div v-else-if="selectedDetail" class="p-3 overflow-auto">
+                <!-- Preview -->
+                <button
+                    type="button"
+                    class="d-block w-100 border-0 bg-transparent p-0 mb-3"
+                    title="Open preview"
+                    @click="quickLook(selectedDetail)"
+                >
+                    <img
+                        v-if="selectedDetail.thumb_url"
+                        :src="selectedDetail.thumb_url"
+                        :alt="selectedDetail.name"
+                        class="img-fluid rounded border w-100"
+                        style="max-height: 260px; object-fit: contain; background: var(--bs-tertiary-bg)"
+                    >
+                    <div v-else class="d-flex align-items-center justify-content-center rounded border py-5" style="background: var(--bs-tertiary-bg)">
+                        <VibeIcon icon="file-earmark" class="display-1 text-muted" />
+                    </div>
+                </button>
+
+                <h6 class="text-break mb-2">{{ selectedDetail.name }}</h6>
+
+                <!-- Info -->
+                <dl class="row small mb-3">
+                    <dt class="col-4 text-muted fw-normal">Type</dt>
+                    <dd class="col-8 text-break mb-1">{{ typeLabel(selectedDetail) }}</dd>
+                    <dt class="col-4 text-muted fw-normal">Size</dt>
+                    <dd class="col-8 mb-1">{{ fmtBytes(selectedDetail.size) }}</dd>
+                    <dt class="col-4 text-muted fw-normal">Modified</dt>
+                    <dd class="col-8 mb-0">{{ selectedDetail.modified }}</dd>
+                </dl>
+
+                <p v-if="detailReadOnly" class="text-muted small"><VibeIcon icon="lock-fill" class="me-1" />Read-only</p>
+
+                <!-- Actions -->
+                <div class="d-flex flex-wrap gap-2">
+                    <VibeButton variant="primary" @click="quickLook(selectedDetail)">
+                        <VibeIcon icon="eye" class="me-1" />{{ isEditable(selectedDetail) ? 'Preview' : 'Open' }}
+                    </VibeButton>
+                    <VibeButton v-if="isEditable(selectedDetail) && !detailReadOnly" variant="secondary" outline @click="openEditor(selectedDetail)">
                         <VibeIcon icon="pencil-square" class="me-1" />Edit
                     </VibeButton>
-                    <VibeButton variant="secondary" outline @click="quickLook(selectedDetail)">
-                        <VibeIcon icon="eye" class="me-1" />{{ isEditable(selectedDetail) ? 'Preview' : 'Open' }}
+                    <VibeButton variant="secondary" outline @click="openShare(selectedDetail)">
+                        <VibeIcon icon="person-plus" class="me-1" />Share
+                    </VibeButton>
+                    <VibeButton variant="secondary" outline @click="triggerDownload(`/download/${selectedDetail.id}`)">
+                        <VibeIcon icon="download" class="me-1" />Download
                     </VibeButton>
                 </div>
             </div>
