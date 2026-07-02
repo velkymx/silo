@@ -71,7 +71,7 @@ function folderId(itemId: string): number {
                     @keydown.enter.prevent="emit('select-folder', folderId(item.id))"
                     @keydown.space.prevent="emit('select-folder', folderId(item.id))"
                 >
-                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="text-warning" />
+                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" />
                     <span class="text-truncate">{{ item.title }}</span>
                 </span>
             </template>

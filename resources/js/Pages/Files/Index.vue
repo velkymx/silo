@@ -88,7 +88,7 @@ function visitFolder(id) {
 
 // ----- FourPane shell: icon rail | folder tree | contents | detail -----
 const SECTIONS = [
-    { key: 'all', icon: 'folder-fill', label: 'All' },
+    { key: 'all', icon: 'folder2', label: 'All' },
     { key: 'recent', icon: 'clock-history', label: 'Recent' },
     { key: 'starred', icon: 'star-fill', label: 'Starred' },
     { key: 'shared', icon: 'people-fill', label: 'Shared' },
@@ -714,7 +714,7 @@ onBeforeUnmount(() => {
                 @new-folder="() => folderOpen = true"
             />
             <div v-else class="side-heading">
-                <VibeIcon :icon="SECTIONS.find((s) => s.key === activeSection)?.icon || 'folder'" />
+                <VibeIcon :icon="SECTIONS.find((s) => s.key === activeSection)?.icon || 'folder2'" />
                 {{ SECTIONS.find((s) => s.key === activeSection)?.label }}
             </div>
 
@@ -740,7 +740,7 @@ onBeforeUnmount(() => {
             <div class="d-flex align-items-center px-3 py-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
-                        <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder-fill'" :class="index === 0 ? '' : 'text-warning'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                        <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
                 </VibeBreadcrumb>
             </div>

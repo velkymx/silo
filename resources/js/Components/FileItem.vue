@@ -94,7 +94,7 @@ const emit = defineEmits<{
                         >
                             <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
                                 <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="w-100 h-100" style="object-fit: cover">
-                                <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="display-4" :style="{ color: colorFor(item) }" />
+                                <VibeIcon v-else :icon="item.is_dir ? 'folder2' : iconFor(item.type)" class="display-4" :style="item.is_dir ? undefined : { color: colorFor(item) }" />
                             </div>
                             <div class="p-2">
                                 <div class="text-truncate small fw-medium" :title="item.name">{{ item.name }}</div>
@@ -124,7 +124,7 @@ const emit = defineEmits<{
                                 @click.stop="emit('toggle-select', item.id)"
                             />
                             <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
-                            <VibeIcon v-else :icon="item.is_dir ? 'folder-fill' : iconFor(item.type)" class="me-2 fs-4 flex-shrink-0" :style="{ color: colorFor(item) }" />
+                            <VibeIcon v-else :icon="item.is_dir ? 'folder2' : iconFor(item.type)" class="me-2 fs-4 flex-shrink-0" :style="item.is_dir ? undefined : { color: colorFor(item) }" />
                             <span class="text-truncate" :title="item.name">{{ item.name }}</span>
                             <VibeBadge v-if="item.status === FileStatus.PENDING" variant="info" class="ms-2"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
                             <VibeBadge v-else-if="item.status === FileStatus.INFECTED" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
