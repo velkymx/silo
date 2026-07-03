@@ -31,10 +31,11 @@ test('bulk select and trash in file list view', async ({ page }) => {
     const listToggle = page.getByRole('button', { name: /list/i }).or(page.locator('[aria-label="List view"]'));
     if (await listToggle.count()) await listToggle.first().click();
 
-    // Select the first row by clicking its checkbox (select-check icon).
+    // Select the first row via its hover checkbox column.
     const firstRow = page.locator('table tbody tr', { hasText: 'bulk-a.png' });
     await expect(firstRow).toBeVisible();
-    await firstRow.locator('.select-check').first().click();
+    await firstRow.hover();
+    await firstRow.locator('.fm-select-check input[type="checkbox"]').first().click();
 
     // BatchActions toolbar should appear.
     const toolbar = page.locator('[data-testid="batch-actions"]').or(page.getByText('selected'));
