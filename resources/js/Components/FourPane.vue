@@ -39,8 +39,7 @@ function goBack(): void {
             </VibeCol>
             <VibeCol
                 :cols="12"
-                :md="3"
-                :lg="2"
+                :md="2"
                 class="fp-folders h-100 border-end bg-body-tertiary"
                 data-pane="folders"
                 :class="{ 'fp-pane--hidden': activePane !== 'folders' }"

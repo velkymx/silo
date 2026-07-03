@@ -49,7 +49,7 @@ const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
 </script>
 
 <template>
-    <nav class="global-rail d-flex flex-column align-items-center gap-1 py-2 h-100 w-100" aria-label="Main navigation">
+    <nav class="global-rail d-flex flex-column align-items-center gap-1 px-2 py-2 h-100 w-100" aria-label="Main navigation">
         <Link
             v-for="item in mainNav"
             :key="item.key"
