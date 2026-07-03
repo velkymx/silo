@@ -22,7 +22,14 @@ vi.mock('@/lib/http', () => ({
 
 // Stub heavy modal children (each covered by its own spec) so their internal
 // async handlers don't fire during Files/Index interaction tests.
-vi.mock('@/Components/EditorModal.vue', () => ({ default: { name: 'EditorModal', template: '<div />' } }));
+// EditorModal loads via defineAsyncComponent. Vue only unwraps `default`
+// from the resolved module when it looks like an ES module; without the
+// marker it treats the vitest mock proxy itself as the component and every
+// property probe on it throws asynchronously (unhandled rejections).
+vi.mock('@/Components/EditorModal.vue', () => ({
+    __esModule: true,
+    default: { name: 'EditorModal', template: '<div />' },
+}));
 vi.mock('@/Components/ShareModal.vue', () => ({ default: { name: 'ShareModal', template: '<div />' } }));
 vi.mock('@/Components/QuickLookModal.vue', () => ({ default: { name: 'QuickLookModal', template: '<div />' } }));
 vi.mock('@/Components/UploadModal.vue', () => ({ default: { name: 'UploadModal', template: '<div />' } }));

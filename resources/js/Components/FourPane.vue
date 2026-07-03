@@ -66,11 +66,12 @@ function goBack(): void {
                     >
                         <slot name="contents" />
                     </VibeCol>
+                    <!-- Preview dominates when open: 7/12 (~60%) of the right
+                         region, the file list keeps the remaining ~40%. -->
                     <VibeCol
                         v-if="props.detailVisible"
                         :cols="12"
-                        :md="4"
-                        :xl="3"
+                        :md="7"
                         class="fp-detail h-100 bg-body d-flex flex-column"
                         data-pane="detail"
                         :class="{ 'fp-pane--hidden': activePane !== 'detail' }"
