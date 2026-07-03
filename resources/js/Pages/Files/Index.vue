@@ -553,6 +553,9 @@ function onKey(e) {
 
     const tag = (e.target?.tagName || '').toLowerCase();
     const inField = ['input', 'textarea', 'select'].includes(tag) || !!e.target?.isContentEditable;
+    // Row checkboxes are form fields but not text entry — Escape from one
+    // must still clear the selection (the checkbox has focus after a click).
+    const inTextField = inField && !['checkbox', 'radio', 'button'].includes((e.target?.type || '').toLowerCase());
 
     if (quickOpen.value) {
         if (!inField) {
@@ -564,7 +567,7 @@ function onKey(e) {
         return;
     }
 
-    if (!inField && e.key === 'Escape') {
+    if (!inTextField && e.key === 'Escape') {
         clearContentSelection();
         return;
     }
@@ -891,8 +894,8 @@ onBeforeUnmount(() => {
                     small
                     clickable
                     :searchable="false"
+                    :show-per-page="false"
                     :per-page="listPerPage"
-                    :per-page-options="[25, 50, 100, 250]"
                     v-model:current-page="listPage"
                     v-model:sort-by="listSortBy"
                     v-model:sort-desc="listSortDesc"
