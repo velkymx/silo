@@ -12,6 +12,9 @@ const props = defineProps({
     modelValue: { type: String, default: '' },
     // When set, the editor opens in markdown mode and enables [[ / @ autocomplete.
     enableLinks: { type: Boolean, default: false },
+    // When set, the editor fills its flex/height-constrained container instead
+    // of the fixed viewport-slice fallback height.
+    fill: { type: Boolean, default: false },
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -203,7 +206,7 @@ defineExpose({ jumpToLine });
 </script>
 
 <template>
-    <div class="md-editor-wrap position-relative" :class="{ 'md-editor-fill-host': enableLinks }">
+    <div class="md-editor-wrap position-relative" :class="{ 'md-editor-fill-host': fill || enableLinks }">
         <div ref="el" class="md-editor-fill"></div>
         <MentionPopup
             v-if="enableLinks && popup.open"
@@ -224,11 +227,13 @@ defineExpose({ jumpToLine });
     min-height: 360px;
 }
 
-/* In the Notes surface the editor fills its flex container instead of a fixed
-   viewport slice, so it stretches the full height of the 3-pane layout. */
+/* Fill mode: the editor stretches to its container's height. In a flex
+   column it grows into the leftover space (flex) and shrinks below the
+   100% basis when siblings need room (min-height: 0). */
 .md-editor-fill-host {
     height: 100%;
     min-height: 0;
+    flex: 1 1 auto;
 }
 .md-editor-fill-host .md-editor-fill {
     height: 100%;

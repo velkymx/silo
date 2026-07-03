@@ -90,11 +90,15 @@ function save(): void {
         </div>
         <div v-else-if="loadError" class="alert alert-danger" role="alert">{{ loadError }}</div>
         <template v-else>
-            <VibeFormGroup v-if="creating" label="File name" class="mb-3">
-                <VibeFormInput v-model="name" placeholder="untitled.md" />
-            </VibeFormGroup>
-            <MarkdownEditor v-if="kind === 'markdown'" v-model="content" />
-            <VibeFormWysiwyg v-else v-model="content" height="60vh" />
+            <!-- Full-height editing surface: the editor fills whatever the
+                 fullscreen modal body doesn't spend on the name field. -->
+            <div class="d-flex flex-column h-100">
+                <VibeFormGroup v-if="creating" label="File name" class="mb-3 flex-shrink-0">
+                    <VibeFormInput v-model="name" placeholder="untitled.md" />
+                </VibeFormGroup>
+                <MarkdownEditor v-if="kind === 'markdown'" v-model="content" fill />
+                <VibeFormWysiwyg v-else v-model="content" height="100%" class="flex-grow-1 min-h-0" />
+            </div>
         </template>
         <template #footer>
             <VibeButton variant="secondary" outline @click="tryClose">Cancel</VibeButton>
@@ -104,3 +108,9 @@ function save(): void {
         </template>
     </VibeModal>
 </template>
+
+<style scoped>
+.min-h-0 {
+    min-height: 0;
+}
+</style>

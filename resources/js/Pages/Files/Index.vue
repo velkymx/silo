@@ -961,14 +961,15 @@ onBeforeUnmount(() => {
                     </VibeButton>
                 </div>
             </div>
-            <div v-else-if="selectedDetail" class="p-2 overflow-auto">
-                <!-- Type-aware preview (image / pdf / markdown / office / …) -->
-                <FilePreview :file="selectedDetail" class="mb-3" />
+            <div v-else-if="selectedDetail" class="d-flex flex-column h-100 p-2">
+                <!-- Type-aware preview (image / pdf / markdown / office / …)
+                     fills every pixel the info block below doesn't need. -->
+                <FilePreview :file="selectedDetail" class="flex-grow-1 min-h-0 mb-3" />
 
-                <h6 class="text-break mb-2">{{ selectedDetail.name }}</h6>
+                <h6 class="text-break mb-2 flex-shrink-0">{{ selectedDetail.name }}</h6>
 
                 <!-- Info -->
-                <dl class="row small mb-3">
+                <dl class="row small mb-3 flex-shrink-0">
                     <dt class="col-4 text-muted fw-normal">Type</dt>
                     <dd class="col-8 text-break mb-1">{{ typeLabel(selectedDetail) }}</dd>
                     <dt class="col-4 text-muted fw-normal">Size</dt>
@@ -977,10 +978,10 @@ onBeforeUnmount(() => {
                     <dd class="col-8 mb-0">{{ selectedDetail.modified }}</dd>
                 </dl>
 
-                <p v-if="detailReadOnly" class="text-muted small"><VibeIcon icon="lock-fill" class="me-1" />Read-only</p>
+                <p v-if="detailReadOnly" class="text-muted small flex-shrink-0"><VibeIcon icon="lock-fill" class="me-1" />Read-only</p>
 
                 <!-- Actions -->
-                <div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2 flex-shrink-0">
                     <VibeButton variant="primary" @click="quickLook(selectedDetail)">
                         <VibeIcon icon="eye" class="me-1" />{{ isEditable(selectedDetail) ? 'Preview' : 'Open' }}
                     </VibeButton>
@@ -1172,6 +1173,9 @@ ol.breadcrumb {
 
 .min-w-0 {
     min-width: 0;
+}
+.min-h-0 {
+    min-height: 0;
 }
 /* Explorer table: sticky sortable header, tight fixed-purpose columns. */
 .fm-table-wrap :deep(thead th) {
