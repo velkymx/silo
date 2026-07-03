@@ -68,7 +68,7 @@ function safeUrl(url: string | undefined): string {
                 <div class="d-flex gap-2 align-items-center ms-3">
                     <small class="text-muted">{{ index + 1 }} / {{ total }}</small>
                     <div class="position-relative" @mouseenter="hoverSide = 'prev'" @mouseleave="hoverSide = null">
-                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
+                        <VibeButton variant="light" size="sm" title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
                             <VibeIcon icon="chevron-left" />
                         </VibeButton>
                         <div v-if="hoverSide === 'prev' && prevFile" class="ql-peek">
@@ -78,7 +78,7 @@ function safeUrl(url: string | undefined): string {
                         </div>
                     </div>
                     <div class="position-relative" @mouseenter="hoverSide = 'next'" @mouseleave="hoverSide = null">
-                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
+                        <VibeButton variant="light" size="sm" title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
                             <VibeIcon icon="chevron-right" />
                         </VibeButton>
                         <div v-if="hoverSide === 'next' && nextFile" class="ql-peek">
@@ -87,19 +87,20 @@ function safeUrl(url: string | undefined): string {
                             <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
                         </div>
                     </div>
-                    <VibeButton v-if="file?.id" variant="success" size="sm" :href="`/download/${file.id}`">
+                    <VibeButton v-if="file?.id" variant="primary" size="sm" :href="`/download/${file.id}`">
                         <VibeIcon icon="download" class="me-1" />Download
                     </VibeButton>
                     <VibeDropdown
                         v-if="file"
-                        variant="primary"
+                        variant="light"
                         size="sm"
+                        menu-end
                         :items="menu"
                         @item-click="emit('action', $event)"
                     >
-                        <VibeIcon icon="three-dots-vertical" class="me-1" />Actions
+                        <template #button><VibeIcon icon="three-dots-vertical" class="me-1" />Actions</template>
                     </VibeDropdown>
-                    <VibeButton variant="secondary" size="sm" outline title="Close" aria-label="Close preview" @click="open = false">
+                    <VibeButton variant="light" size="sm" title="Close" aria-label="Close preview" @click="open = false">
                         <VibeIcon icon="x-lg" />
                     </VibeButton>
                 </div>

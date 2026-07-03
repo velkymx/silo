@@ -17,7 +17,7 @@ const emit = defineEmits<{ star: [FileLike]; action: [unknown] }>();
         >
             <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
         </VibeButton>
-        <VibeDropdown v-vibe-tooltip="'File Actions'" size="sm" variant="secondary" outline menu-end title="File Actions" :items="menu" @item-click="emit('action', $event)">
+        <VibeDropdown v-vibe-tooltip="'File Actions'" size="sm" variant="light" menu-end title="File Actions" :items="menu" @item-click="emit('action', $event)">
             <template #button>
                 <VibeIcon icon="three-dots-vertical" />
                 <span class="visually-hidden">File Actions</span>

@@ -778,53 +778,52 @@ onBeforeUnmount(() => {
             </template>
         </template>
 
+        <!-- Breadcrumb + folder actions share one top-bar line: crumbs left,
+             actions right. Button system: one solid-primary CTA per region
+             (Upload); every icon-only utility is a quiet light ghost. -->
         <template #topBar>
-            <div class="d-flex align-items-center p-1">
-                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate" @item-click="onBreadcrumb">
+            <div class="d-flex align-items-center gap-2 p-1">
+                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
                 </VibeBreadcrumb>
+                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                    <VibeButtonGroup v-if="viewMode === 'grid'" size="sm" aria-label="Thumbnail size">
+                        <VibeButton
+                            v-for="s in GRID_SIZES"
+                            :key="s.value"
+                            size="sm"
+                            :variant="gridSize === s.value ? 'primary' : 'light'"
+                            :title="s.title"
+                            :aria-pressed="gridSize === s.value"
+                            @click="gridSize = s.value"
+                        >{{ s.label }}</VibeButton>
+                    </VibeButtonGroup>
+                    <VibeButton size="sm" variant="primary" title="Upload files" aria-label="Upload" @click="uploadOpen = true">
+                        <VibeIcon icon="upload" />
+                    </VibeButton>
+                    <VibeDropdown size="sm" variant="light" menu-end :items="newMenu" @item-click="onNewMenu">
+                        <template #button><VibeIcon icon="plus-lg" /></template>
+                        <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                    </VibeDropdown>
+                    <VibeButton size="sm" variant="light" title="Advanced search" aria-label="Advanced search" @click="advOpen = true">
+                        <VibeIcon icon="funnel" />
+                    </VibeButton>
+                    <VibeButton
+                        size="sm"
+                        variant="light"
+                        :title="viewMode === 'grid' ? 'List view' : 'Thumbnail view'"
+                        aria-label="Toggle view"
+                        @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
+                    >
+                        <VibeIcon :icon="viewMode === 'grid' ? 'list-ul' : 'grid-3x3-gap-fill'" />
+                    </VibeButton>
+                </div>
             </div>
         </template>
 
         <template #contents>
-            <!-- Compact per-view actions -->
-            <div class="d-flex align-items-center justify-content-end gap-2 px-2 py-1 border-bottom flex-shrink-0">
-                <VibeButtonGroup v-if="viewMode === 'grid'" size="sm" aria-label="Thumbnail size" class="me-auto">
-                    <VibeButton
-                        v-for="s in GRID_SIZES"
-                        :key="s.value"
-                        size="sm"
-                        :variant="gridSize === s.value ? 'primary' : 'secondary'"
-                        :outline="gridSize !== s.value"
-                        :title="s.title"
-                        :aria-pressed="gridSize === s.value"
-                        @click="gridSize = s.value"
-                    >{{ s.label }}</VibeButton>
-                </VibeButtonGroup>
-                <VibeButton size="sm" variant="primary" title="Upload files" aria-label="Upload" @click="uploadOpen = true">
-                    <VibeIcon icon="upload" />
-                </VibeButton>
-                <VibeDropdown size="sm" variant="secondary" outline :items="newMenu" @item-click="onNewMenu">
-                    <template #button><VibeIcon icon="plus-lg" /></template>
-                    <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                </VibeDropdown>
-                <VibeButton size="sm" variant="secondary" outline title="Advanced search" aria-label="Advanced search" @click="advOpen = true">
-                    <VibeIcon icon="funnel" />
-                </VibeButton>
-                <VibeButton
-                    size="sm"
-                    :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
-                    outline
-                    :title="viewMode === 'grid' ? 'List view' : 'Thumbnail view'"
-                    aria-label="Toggle view"
-                    @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
-                >
-                    <VibeIcon :icon="viewMode === 'grid' ? 'list-ul' : 'grid-3x3-gap-fill'" />
-                </VibeButton>
-            </div>
-
             <!-- Batch action bar + modals -->
             <BatchActions
                 :selected-items="selectedItems"
