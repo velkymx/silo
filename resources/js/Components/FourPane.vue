@@ -1,13 +1,8 @@
 <script setup lang="ts">
-const props = defineProps<{
-    railWidth?: string;
-    foldersWidth?: string;
-    contentsWidth?: string;
-}>();
-
-const railWidth = props.railWidth ?? '56px';
-const foldersWidth = props.foldersWidth ?? '240px';
-const contentsWidth = props.contentsWidth ?? '360px';
+const props = withDefaults(defineProps<{
+    /** Render the detail column. When false the contents column fills the row. */
+    detailVisible?: boolean;
+}>(), { detailVisible: true });
 
 const activePane = defineModel<string>('activePane', { default: 'contents' });
 
@@ -21,7 +16,7 @@ function goBack(): void {
 </script>
 
 <template>
-    <div class="four-pane d-flex overflow-hidden bg-body">
+    <div class="four-pane d-flex flex-column bg-body">
         <!-- Mobile nav bar: back chevron, hidden on the first (rail) pane. -->
         <div
             v-if="activePane !== 'rail'"
@@ -33,50 +28,59 @@ function goBack(): void {
             </VibeButton>
         </div>
 
-        <div
-            class="fp-rail h-100 border-end bg-body-tertiary"
-            data-pane="rail"
-            :class="{ 'fp-pane--hidden': activePane !== 'rail' }"
-            :style="{ width: railWidth }"
-        >
-            <slot name="rail" />
-        </div>
-        <div
-            class="fp-folders h-100 border-end bg-body-tertiary"
-            data-pane="folders"
-            :class="{ 'fp-pane--hidden': activePane !== 'folders' }"
-            :style="{ width: foldersWidth }"
-        >
-            <slot name="folders" />
-        </div>
-        <!-- Right region: an optional top bar spanning contents + detail. -->
-        <div
-            class="fp-right flex-grow-1 d-flex flex-column"
-            :class="{ 'fp-pane--hidden': activePane === 'rail' || activePane === 'folders' }"
-            style="min-width: 0; min-height: 0"
-        >
-            <div v-if="$slots.topBar" class="fp-topbar flex-shrink-0 border-bottom bg-body">
-                <slot name="topBar" />
-            </div>
-            <div class="d-flex flex-grow-1" style="min-height: 0">
-                <div
-                    class="fp-contents h-100 border-end bg-body d-flex flex-column"
-                    data-pane="contents"
-                    :class="{ 'fp-pane--hidden': activePane !== 'contents' }"
-                    :style="{ width: contentsWidth }"
-                >
-                    <slot name="contents" />
+        <VibeRow class="fp-grid g-0 flex-nowrap flex-grow-1">
+            <VibeCol
+                cols="auto"
+                class="fp-rail h-100 border-end bg-body-tertiary"
+                data-pane="rail"
+                :class="{ 'fp-pane--hidden': activePane !== 'rail' }"
+            >
+                <slot name="rail" />
+            </VibeCol>
+            <VibeCol
+                :cols="12"
+                :md="3"
+                :lg="2"
+                class="fp-folders h-100 border-end bg-body-tertiary"
+                data-pane="folders"
+                :class="{ 'fp-pane--hidden': activePane !== 'folders' }"
+            >
+                <slot name="folders" />
+            </VibeCol>
+            <!-- Right region: an optional top bar spanning contents + detail. -->
+            <VibeCol
+                :cols="12"
+                :md="true"
+                class="fp-right h-100 d-flex flex-column"
+                :class="{ 'fp-pane--hidden': activePane === 'rail' || activePane === 'folders' }"
+            >
+                <div v-if="$slots.topBar" class="fp-topbar flex-shrink-0 border-bottom bg-body">
+                    <slot name="topBar" />
                 </div>
-                <div
-                    class="fp-detail flex-grow-1 d-flex flex-column"
-                    data-pane="detail"
-                    :class="{ 'fp-pane--hidden': activePane !== 'detail' }"
-                    style="min-width: 0; min-height: 0"
-                >
-                    <slot name="detail" />
-                </div>
-            </div>
-        </div>
+                <VibeRow class="fp-grid g-0 flex-nowrap flex-grow-1">
+                    <VibeCol
+                        :cols="12"
+                        :md="true"
+                        class="fp-contents h-100 bg-body d-flex flex-column"
+                        data-pane="contents"
+                        :class="{ 'fp-pane--hidden': activePane !== 'contents', 'border-end': props.detailVisible }"
+                    >
+                        <slot name="contents" />
+                    </VibeCol>
+                    <VibeCol
+                        v-if="props.detailVisible"
+                        :cols="12"
+                        :md="4"
+                        :xl="3"
+                        class="fp-detail h-100 bg-body d-flex flex-column"
+                        data-pane="detail"
+                        :class="{ 'fp-pane--hidden': activePane !== 'detail' }"
+                    >
+                        <slot name="detail" />
+                    </VibeCol>
+                </VibeRow>
+            </VibeCol>
+        </VibeRow>
     </div>
 </template>
 
@@ -85,13 +89,24 @@ function goBack(): void {
     height: 100%;
     min-height: 0;
 }
+.fp-grid {
+    min-height: 0;
+}
+/* Scoped styles reach the VibeCol root elements (child component roots
+   inherit the parent scope id), so pane columns can be sized here. */
 .fp-rail,
 .fp-folders {
-    flex-shrink: 0;
     overflow-y: auto;
+    min-height: 0;
 }
-.fp-contents {
-    flex-shrink: 0;
+.fp-right,
+.fp-contents,
+.fp-detail {
+    min-width: 0;
+    min-height: 0;
+}
+.fp-detail {
+    overflow-y: auto;
 }
 .fp-pane--hidden {
     display: none !important;
@@ -99,7 +114,13 @@ function goBack(): void {
 
 /* Desktop shows every pane; the hidden class only applies on mobile. */
 @media (min-width: 768px) {
-    .fp-pane--hidden {
+    .fp-pane--hidden.fp-rail,
+    .fp-pane--hidden.fp-folders {
+        display: block !important;
+    }
+    .fp-pane--hidden.fp-right,
+    .fp-pane--hidden.fp-contents,
+    .fp-pane--hidden.fp-detail {
         display: flex !important;
     }
 }
@@ -107,7 +128,6 @@ function goBack(): void {
 /* Mobile: one pane at a time, full width. */
 @media (max-width: 767.98px) {
     .four-pane {
-        flex-direction: column;
         height: calc(100dvh - 100px);
     }
     .fp-rail,

@@ -111,8 +111,18 @@ const components: Record<string, any> = {
 
     VibeCard: passthrough('VibeCard'),
     VibeContainer: passthrough('VibeContainer'),
-    VibeRow: passthrough('VibeRow'),
-    VibeCol: passthrough('VibeCol'),
+    // Row/Col forward fallthrough attrs (class, data-pane, …) like the real
+    // components do — pane layout tests target those attributes.
+    VibeRow: {
+        name: 'VibeRow',
+        props: ['tag', 'gutters', 'rowCols', 'rowColsSm', 'rowColsMd', 'rowColsLg', 'rowColsXl', 'rowColsXxl', 'alignItems', 'justifyContent'],
+        template: '<div class="row" data-stub="VibeRow"><slot /></div>',
+    },
+    VibeCol: {
+        name: 'VibeCol',
+        props: ['tag', 'cols', 'sm', 'md', 'lg', 'xl', 'xxl', 'offset', 'order', 'alignSelf'],
+        template: '<div class="col" data-stub="VibeCol"><slot /></div>',
+    },
     VibeAlert: passthrough('VibeAlert'),
     VibeBadge: passthrough('VibeBadge'),
     VibeProgress: passthrough('VibeProgress'),

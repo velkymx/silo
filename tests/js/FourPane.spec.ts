@@ -48,4 +48,16 @@ describe('FourPane', () => {
         const wrapper = mount(FourPane, { slots, props: { activePane: 'rail' } });
         expect(wrapper.find('[data-testid="fp-back"]').exists()).toBe(false);
     });
+
+    it('renders the detail column by default', () => {
+        const wrapper = mount(FourPane, { slots });
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(true);
+    });
+
+    it('removes the detail column entirely when detail-visible is false', () => {
+        const wrapper = mount(FourPane, { slots, props: { detailVisible: false } });
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);
+        expect(wrapper.find('.s-detail').exists()).toBe(false);
+        expect(wrapper.find('[data-pane="contents"]').exists()).toBe(true);
+    });
 });
