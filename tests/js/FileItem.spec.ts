@@ -19,12 +19,24 @@ describe('FileItem', () => {
 
     it('grid view forwards star + action from ItemActions', async () => {
         const wrapper = mount(FileItem, { props: { item: file, view: 'grid', menu } });
-        const starBtn = wrapper.findAll('button').find((b) => b.html().includes('star'));
+        const starBtn = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Star');
         await starBtn!.trigger('click');
         expect(wrapper.emitted('star')).toBeTruthy();
 
         await wrapper.find('.dd-item').trigger('click');
         expect(wrapper.emitted('action')).toBeTruthy();
+    });
+
+    it('grid view select control toggles selection and idles until hover', async () => {
+        const wrapper = mount(FileItem, { props: { item: file, view: 'grid', selected: false, menu } });
+        const select = wrapper.get('.grid-select');
+        expect(select.classes()).toContain('grid-select-idle');
+        await select.trigger('click');
+        expect(wrapper.emitted('toggle-select')?.[0]).toEqual([7]);
+        expect(wrapper.emitted('open')).toBeFalsy();
+
+        const selectedWrapper = mount(FileItem, { props: { item: file, view: 'grid', selected: true, menu } });
+        expect(selectedWrapper.get('.grid-select').classes()).not.toContain('grid-select-idle');
     });
 
     it('list view renders the name cell + status/version badges', () => {
@@ -38,12 +50,16 @@ describe('FileItem', () => {
         expect(wrapper.find('span.text-truncate').attributes('title')).toBe('photo.png');
     });
 
-    it('list view emits tag + toggle-select', async () => {
+    it('list view emits tag from a tag pill click', async () => {
         const wrapper = mount(FileItem, { props: { item: file, view: 'list' } });
         await wrapper.find('.badge.rounded-pill').trigger('click');
         expect(wrapper.emitted('tag')?.[0]).toEqual([3]);
-        await wrapper.find('.select-check').trigger('click');
-        expect(wrapper.emitted('toggle-select')?.[0]).toEqual([7]);
+    });
+
+    it('list view emits context on right-click of the name cell', async () => {
+        const wrapper = mount(FileItem, { props: { item: file, view: 'list' } });
+        await wrapper.get('.fm-name-cell').trigger('contextmenu');
+        expect(wrapper.emitted('context')?.[0]?.[0]).toMatchObject({ item: { id: 7 } });
     });
 
     it('renders a colored icon when no thumbnail', () => {

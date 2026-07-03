@@ -103,6 +103,71 @@ describe('Files/Index page', () => {
         expect(detailPane.text()).toContain('Preview');
     });
 
+    it('table row click on a file opens the preview pane', async () => {
+        const wrapper = mountIndex();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const row = (table.props('items') as Array<{ id: number; is_dir: boolean }>).find((i) => !i.is_dir);
+        table.vm.$emit('row-clicked', row, 0);
+        await wrapper.vm.$nextTick();
+        expect(wrapper.get('[data-pane="detail"]').text()).toContain('memo.txt');
+    });
+
+    it('table row click on a folder navigates into it', async () => {
+        const wrapper = mountIndex();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const row = (table.props('items') as Array<{ id: number; is_dir: boolean }>).find((i) => i.is_dir);
+        table.vm.$emit('row-clicked', row, 0);
+        expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
+    });
+
+    it('row checkboxes drive multi-select for BatchActions', async () => {
+        const wrapper = mountIndex();
+        const checks = wrapper.get('[data-pane="contents"]').findAll('input[type="checkbox"]');
+        expect(checks.length).toBe(2); // one per row (folder + file)
+        await checks[0].setValue(true);
+        await checks[1].setValue(true);
+        const batch = wrapper.findComponent({ name: 'BatchActions' });
+        expect((batch.props('selectedItems') as unknown[]).length).toBe(2);
+    });
+
+    it('Escape clears the selection and collapses the preview pane', async () => {
+        const wrapper = mountIndex();
+        wrapper.vm.selectContentItem({ ...files[0], is_dir: false });
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(true);
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);
+    });
+
+    it('table omits checkbox and action columns for sections the viewer does not own', () => {
+        const wrapper = mountIndex({ section: 'shared' });
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const keys = (table.props('columns') as Array<{ key: string }>).map((c) => c.key);
+        expect(keys).toEqual(['name', 'modified', 'size', 'kind']);
+    });
+
+    it('table sorts by name ascending with sortable meta columns', () => {
+        const wrapper = mountIndex();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const keys = (table.props('columns') as Array<{ key: string }>).map((c) => c.key);
+        expect(keys).toEqual(['_select', 'name', 'modified', 'size', 'kind', '_actions']);
+        expect(table.attributes()).toMatchObject({ 'sort-by': 'name' });
+    });
+
+    it('there is no select-mode toggle in the toolbar', () => {
+        const wrapper = mountIndex();
+        expect(wrapper.findAll('button').some((b) => b.attributes('title') === 'Select multiple')).toBe(false);
+    });
+
+    it('grid thumbnail size control persists the choice', async () => {
+        localStorage.setItem('fm-view', 'grid');
+        const wrapper = mountIndex();
+        const large = wrapper.findAll('button').find((b) => b.attributes('title') === 'Large thumbnails');
+        await large!.trigger('click');
+        expect(localStorage.getItem('fm-grid-size')).toBe('l');
+    });
+
     it('HI-17: mounts without throwing when localStorage.getItem throws SecurityError', () => {
         vi.spyOn(Storage.prototype, 'getItem').mockImplementationOnce(() => {
             throw new DOMException('The operation is insecure.', 'SecurityError');

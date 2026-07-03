@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { iconFor, colorFor } from '../lib/fileTypes';
 import { fmtBytes } from '../lib/format';
 import { FileStatus } from '../lib/constants';
@@ -37,7 +36,6 @@ interface ActionItem { text: string; icon: string; action: string }
 defineProps<{
     item: FileItemData;
     view: 'grid' | 'list';
-    selectMode?: boolean;
     selected?: boolean;
     menu?: ActionItem[];
 }>();
@@ -71,11 +69,10 @@ const emit = defineEmits<{
                         @contextmenu.prevent="emit('context', { item, event: $event })"
                     >
                         <VibeButton
-                            v-if="selectMode || selected"
                             variant="light"
                             size="sm"
                             class="grid-select position-absolute top-0 start-0 m-1 p-0 lh-1 bg-body rounded-circle"
-                            :class="selected ? 'text-primary' : 'text-muted'"
+                            :class="[selected ? 'text-primary' : 'text-muted', { 'grid-select-idle': !selected }]"
                             :aria-pressed="selected"
                             :aria-label="selected ? `Deselect ${item.name}` : `Select ${item.name}`"
                             style="z-index: 3"
@@ -92,7 +89,7 @@ const emit = defineEmits<{
                             :aria-label="item.name"
                             @click="emit('open', item, $event)"
                         >
-                            <div class="d-flex align-items-center justify-content-center bg-body-tertiary rounded-top" style="height: 120px">
+                            <div class="grid-thumb d-flex align-items-center justify-content-center bg-body-tertiary rounded-top">
                                 <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="w-100 h-100" style="object-fit: cover">
                                 <VibeIcon v-else :icon="item.is_dir ? 'folder2' : iconFor(item.type)" class="display-4" :style="item.is_dir ? undefined : { color: colorFor(item) }" />
                             </div>
@@ -108,39 +105,35 @@ const emit = defineEmits<{
                         </button>
                     </div>
 
-                    <!-- LIST: name cell -->
-                    <template v-else>
-                        <button
-                            type="button"
-                            class="list-row d-flex align-items-center rounded w-100 border-0 bg-transparent text-body text-start p-0"
-                            :class="{ 'opacity-50': isDragging, 'bg-primary-subtle': (drop && drop.isOver) || selected }"
-                            @click="emit('open', item, $event)"
-                            @contextmenu.prevent="emit('context', { item, event: $event })"
-                        >
-                            <VibeIcon
-                                :icon="selected ? 'check-square-fill' : 'square'"
-                                class="me-2 flex-shrink-0 select-check"
-                                :class="selected ? 'text-primary' : 'text-muted'"
-                                @click.stop="emit('toggle-select', item.id)"
-                            />
-                            <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover">
-                            <VibeIcon v-else :icon="item.is_dir ? 'folder2' : iconFor(item.type)" class="me-2 fs-4 flex-shrink-0" :style="item.is_dir ? undefined : { color: colorFor(item) }" />
-                            <span class="text-truncate" :title="item.name">{{ item.name }}</span>
-                            <VibeBadge v-if="item.status === FileStatus.PENDING" variant="info" class="ms-2"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
-                            <VibeBadge v-else-if="item.status === FileStatus.INFECTED" variant="danger" class="ms-2"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
-                            <VibeBadge v-else-if="item.status === FileStatus.FAILED" variant="danger" class="ms-2">Failed</VibeBadge>
-                            <VibeBadge v-if="(item.version ?? 0) > 1" variant="secondary" class="ms-2">v{{ item.version }}</VibeBadge>
-                        </button>
-                        <div v-if="item.tags?.length" class="d-flex flex-wrap gap-1 mt-1 ms-5">
-                            <span
-                                v-for="t in item.tags"
-                                :key="t.id"
-                                class="badge rounded-pill"
-                                :style="{ backgroundColor: t.color || '#6c757d', color: readableFg(t.color || '#6c757d'), cursor: 'pointer' }"
-                                @click.stop="emit('tag', t.id)"
-                            >{{ t.name }}</span>
+                    <!-- LIST: name cell inside the explorer table (row click is the
+                         DataTable's job; this cell renders identity + drag/drop). -->
+                    <div
+                        v-else
+                        class="fm-name-cell d-flex align-items-center min-w-0"
+                        :class="{ 'opacity-50': isDragging, 'bg-primary-subtle rounded': drop && drop.isOver }"
+                        @contextmenu.prevent="emit('context', { item, event: $event })"
+                    >
+                        <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.name" class="rounded border me-2 flex-shrink-0" style="width: 28px; height: 28px; object-fit: cover">
+                        <VibeIcon v-else :icon="item.is_dir ? 'folder2' : iconFor(item.type)" class="me-2 fs-5 flex-shrink-0" :style="item.is_dir ? undefined : { color: colorFor(item) }" />
+                        <div class="min-w-0">
+                            <div class="d-flex align-items-center min-w-0">
+                                <span class="text-truncate" :title="item.name">{{ item.name }}</span>
+                                <VibeBadge v-if="item.status === FileStatus.PENDING" variant="info" class="ms-2 flex-shrink-0"><VibeSpinner size="sm" class="me-1" />Processing</VibeBadge>
+                                <VibeBadge v-else-if="item.status === FileStatus.INFECTED" variant="danger" class="ms-2 flex-shrink-0"><VibeIcon icon="shield-exclamation" class="me-1" />Infected</VibeBadge>
+                                <VibeBadge v-else-if="item.status === FileStatus.FAILED" variant="danger" class="ms-2 flex-shrink-0">Failed</VibeBadge>
+                                <VibeBadge v-if="(item.version ?? 0) > 1" variant="secondary" class="ms-2 flex-shrink-0">v{{ item.version }}</VibeBadge>
+                            </div>
+                            <div v-if="item.tags?.length" class="d-flex flex-wrap gap-1 mt-1">
+                                <span
+                                    v-for="t in item.tags"
+                                    :key="t.id"
+                                    class="badge rounded-pill"
+                                    :style="{ backgroundColor: t.color || '#6c757d', color: readableFg(t.color || '#6c757d'), cursor: 'pointer' }"
+                                    @click.stop="emit('tag', t.id)"
+                                >{{ t.name }}</span>
+                            </div>
                         </div>
-                    </template>
+                    </div>
                 </template>
             </component>
         </template>
@@ -172,21 +165,17 @@ const emit = defineEmits<{
     outline-offset: -2px;
     border-radius: 0 0 var(--bs-card-border-radius, 0.375rem) var(--bs-card-border-radius, 0.375rem);
 }
-/* Outside select mode the list checkbox stays hidden until the row is hovered
-   or focused, so it doesn't compete with the filename. */
-.select-check.check-idle {
+.grid-thumb {
+    height: 120px;
+}
+/* The grid select control stays hidden until the card is hovered or focused,
+   so it doesn't compete with the thumbnail; a selected card always shows it. */
+.grid-select-idle {
     opacity: 0;
     transition: opacity 0.15s;
 }
-.list-row:hover .select-check.check-idle,
-.list-row:focus-within .select-check.check-idle {
+.card:hover .grid-select-idle,
+.card:focus-within .grid-select-idle {
     opacity: 1;
-}
-button.list-row {
-    cursor: pointer;
-}
-button.list-row:focus-visible {
-    outline: 2px solid var(--bs-primary);
-    outline-offset: 1px;
 }
 </style>

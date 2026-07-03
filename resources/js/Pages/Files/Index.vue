@@ -165,27 +165,30 @@ const items = computed(() => [
     ...props.files.map((f) => ({ ...f, is_dir: false, modified: f.created_at, _sort: 1, _key: `file-${f.id}` })),
 ]);
 
-// Blueprint list column: a compact search box + sort select over a flush
-// list-group. Client-side over the loaded folder (folders sort ahead of files).
-const contentSearch = ref('');
-const contentSort = ref('name');
-const contentSortOptions = [
-    { value: 'name', text: 'Name' },
-    { value: 'modified', text: 'Last modified' },
-    { value: 'size', text: 'Size' },
-];
-const visibleItems = computed(() => {
-    const q = contentSearch.value.trim().toLowerCase();
-    const list = q ? items.value.filter((i) => i.name?.toLowerCase().includes(q)) : items.value;
-    const key = contentSort.value;
-    return [...list].sort((a, b) =>
-        (a._sort - b._sort)
-        || (key === 'size' ? (a.size || 0) - (b.size || 0)
-            : key === 'modified' ? String(b.modified ?? '').localeCompare(String(a.modified ?? ''))
-                : String(a.name ?? '').localeCompare(String(b.name ?? ''))),
-    );
-});
 const ownedSection = computed(() => ['all', 'recent', 'starred'].includes(activeSection.value));
+
+// ----- Explorer table (list view) -----
+// VibeDataTable owns sorting + pagination; the navbar owns search. Rows carry
+// a `kind` label for the Kind column and folders get size -1 so they sort
+// ahead of the smallest file on an ascending size sort.
+const tableItems = computed(() => items.value.map((item) => ({
+    ...item,
+    size: item.is_dir ? -1 : (item.size ?? 0),
+    kind: item.is_dir ? 'Folder' : typeLabel(item),
+})));
+
+const tableColumns = computed(() => [
+    ...(ownedSection.value ? [{ key: '_select', label: '', sortable: false, searchable: false, headerClass: 'fm-col-select', class: 'fm-col-select' }] : []),
+    { key: 'name', label: 'Name', class: 'fm-col-name' },
+    { key: 'modified', label: 'Modified', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell fm-col-meta' },
+    { key: 'size', label: 'Size', class: 'fm-col-meta' },
+    { key: 'kind', label: 'Kind', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell fm-col-meta' },
+    ...(ownedSection.value ? [{ key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'fm-col-actions', class: 'fm-col-actions' }] : []),
+]);
+
+const listSortBy = ref(props.filters?.sort === 'modified' || props.filters?.sort === 'size' ? props.filters.sort : 'name');
+const listSortDesc = ref(props.filters?.direction === 'desc');
+const listPerPage = ref(50);
 
 const versionColumns = [
     { key: 'version', label: 'Version' },
@@ -272,19 +275,13 @@ function onNewMenu({ item }) {
     }
 }
 
-// ----- Multi-select + batch operations (Finder-style) -----
-function openItem(item) {
-    if (item.is_dir) {
-        visitFolder(item.id);
-    } else {
-        quickLook(item);
-    }
-}
-
+// ----- Multi-select + batch operations (Drive-style) -----
+// A row click selects (file) or navigates (folder); the hover checkbox column
+// drives multi-select. The composable's click-modifier path is unused here.
 const {
-    selectMode, selectedIds, selectedItems,
-    isSelected, toggleSel, clearSelection, onItemClick,
-} = useSelection(items, openItem);
+    selectedIds, selectedItems,
+    isSelected, toggleSel, clearSelection,
+} = useSelection(items, selectContentItem);
 
 const { confirm } = useConfirm();
 const toast = useToast();
@@ -356,6 +353,26 @@ async function purgeFromTrash(item) {
 const detailReadOnly = computed(() => activeSection.value === 'shared'
     && !(selectedDetail.value?.abilities || []).includes('write'));
 
+// The detail column only exists while a row is selected; clearing the
+// selection (Esc, click on empty space, navigation) collapses it.
+const detailVisible = computed(() => !!selectedDetail.value);
+
+function clearContentSelection() {
+    clearSelection();
+    selectedDetail.value = null;
+    if (activePane.value === 'detail') activePane.value = 'contents';
+}
+
+// Navigating to another folder replaces the listing; drop any selection that
+// referenced the old one so the preview pane never shows a stale ghost.
+watch(() => props.current?.id ?? null, () => {
+    clearContentSelection();
+});
+
+function onRowClick(item) {
+    selectContentItem(item);
+}
+
 defineExpose({ selectContentItem });
 
 // List vs thumbnail grid view, remembered across visits. Guarded against
@@ -365,6 +382,22 @@ function safeLocalStorage(key, fallback = '') {
 }
 const viewMode = ref(safeLocalStorage('fm-view') === 'grid' ? 'grid' : 'list');
 watch(viewMode, (v) => { try { localStorage.setItem('fm-view', v); } catch { /* blocked */ } });
+
+// Thumbnail size (grid view only), remembered across visits. Each size maps
+// to responsive row-cols counts on the grid's VibeRow.
+const GRID_ROW_COLS = {
+    s: { rowCols: 4, rowColsMd: 5, rowColsXl: 6 },
+    m: { rowCols: 3, rowColsMd: 4, rowColsXl: 5 },
+    l: { rowCols: 2, rowColsMd: 3, rowColsXl: 4 },
+};
+const GRID_SIZES = [
+    { value: 's', label: 'S', title: 'Small thumbnails' },
+    { value: 'm', label: 'M', title: 'Medium thumbnails' },
+    { value: 'l', label: 'L', title: 'Large thumbnails' },
+];
+const gridSize = ref(['s', 'm', 'l'].includes(safeLocalStorage('fm-grid-size')) ? safeLocalStorage('fm-grid-size') : 'm');
+watch(gridSize, (v) => { try { localStorage.setItem('fm-grid-size', v); } catch { /* blocked */ } });
+const gridRowCols = computed(() => GRID_ROW_COLS[gridSize.value] ?? GRID_ROW_COLS.m);
 
 const { loading } = usePageLoading();
 
@@ -528,6 +561,11 @@ function onKey(e) {
             if (e.key === ' ') { e.preventDefault(); quickClose(); }
         }
         if (e.key === 'Escape') quickClose();
+        return;
+    }
+
+    if (!inField && e.key === 'Escape') {
+        clearContentSelection();
         return;
     }
 
@@ -704,7 +742,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <ShellLayout v-model:active-pane="activePane">
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="detailVisible">
         <template #viewNav>
             <FolderAccordion
                 v-if="activeSection === 'all'"
@@ -750,6 +788,18 @@ onBeforeUnmount(() => {
         <template #contents>
             <!-- Compact per-view actions -->
             <div class="d-flex align-items-center justify-content-end gap-2 px-2 py-1 border-bottom flex-shrink-0">
+                <VibeButtonGroup v-if="viewMode === 'grid'" size="sm" aria-label="Thumbnail size" class="me-auto">
+                    <VibeButton
+                        v-for="s in GRID_SIZES"
+                        :key="s.value"
+                        size="sm"
+                        :variant="gridSize === s.value ? 'primary' : 'secondary'"
+                        :outline="gridSize !== s.value"
+                        :title="s.title"
+                        :aria-pressed="gridSize === s.value"
+                        @click="gridSize = s.value"
+                    >{{ s.label }}</VibeButton>
+                </VibeButtonGroup>
                 <VibeButton size="sm" variant="primary" title="Upload files" aria-label="Upload" @click="uploadOpen = true">
                     <VibeIcon icon="upload" />
                 </VibeButton>
@@ -762,16 +812,6 @@ onBeforeUnmount(() => {
                 </VibeButton>
                 <VibeButton
                     size="sm"
-                    :variant="selectMode ? 'primary' : 'secondary'"
-                    :outline="!selectMode"
-                    title="Select multiple"
-                    aria-label="Select multiple"
-                    @click="selectMode ? clearSelection() : (selectMode = true)"
-                >
-                    <VibeIcon icon="check2-square" />
-                </VibeButton>
-                <VibeButton
-                    size="sm"
                     :variant="viewMode === 'grid' ? 'primary' : 'secondary'"
                     outline
                     :title="viewMode === 'grid' ? 'List view' : 'Thumbnail view'"
@@ -780,12 +820,6 @@ onBeforeUnmount(() => {
                 >
                     <VibeIcon :icon="viewMode === 'grid' ? 'list-ul' : 'grid-3x3-gap-fill'" />
                 </VibeButton>
-            </div>
-
-            <!-- Blueprint header: search this column + sort -->
-            <div class="d-flex align-items-center gap-2 px-2 py-1 border-bottom flex-shrink-0">
-                <VibeFormInput v-model="contentSearch" type="search" placeholder="Search this folder…" no-wrapper size="sm" class="flex-grow-1" />
-                <VibeFormSelect v-model="contentSort" :options="contentSortOptions" no-wrapper size="sm" style="width: auto" aria-label="Sort by" />
             </div>
 
             <!-- Batch action bar + modals -->
@@ -803,16 +837,21 @@ onBeforeUnmount(() => {
             <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
             <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
-            <div v-if="!loading && viewMode === 'grid'" class="overflow-auto flex-grow-1">
-                <VibeRow class="g-1 px-1">
-                    <VibeCol v-for="item in gridItems" :key="item._key" :cols="6">
+            <div v-if="!loading && viewMode === 'grid'" class="overflow-auto flex-grow-1" @click.self="clearContentSelection">
+                <VibeRow
+                    v-if="items.length"
+                    class="g-2 p-2"
+                    :row-cols="gridRowCols.rowCols"
+                    :row-cols-md="gridRowCols.rowColsMd"
+                    :row-cols-xl="gridRowCols.rowColsXl"
+                >
+                    <VibeCol v-for="item in gridItems" :key="item._key">
                         <FileItem
                             :item="item"
                             view="grid"
-                            :select-mode="selectMode"
                             :selected="isSelected(item.id)"
                             :menu="item.is_dir ? folderActions : fileMenu(item)"
-                            @open="onItemClick"
+                            @open="selectContentItem"
                             @toggle-select="toggleSel"
                             @star="toggleStar"
                             @action="onAction(item, $event)"
@@ -820,14 +859,13 @@ onBeforeUnmount(() => {
                             @context="openContext"
                         />
                     </VibeCol>
-                    <VibeCol v-if="!items.length" :cols="12">
-                        <EmptyState
-                            :icon="flat ? 'search' : 'folder2-open'"
-                            :title="flat ? 'No matching files' : 'This folder is empty'"
-                            :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
-                        />
-                    </VibeCol>
                 </VibeRow>
+                <EmptyState
+                    v-else
+                    :icon="flat ? 'search' : 'folder2-open'"
+                    :title="flat ? 'No matching files' : 'This folder is empty'"
+                    :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                />
                 <div v-if="gridShown < items.length" class="text-center my-3">
                     <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
                         Show more ({{ items.length - gridShown }} more)
@@ -835,49 +873,78 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Blueprint list view: flush list-group of folders + files. -->
-            <ul v-else-if="!loading" class="list-group list-group-flush overflow-auto flex-grow-1 mb-0">
-                <li
-                    v-for="item in visibleItems"
-                    :key="item._key"
-                    class="fm-row list-group-item list-group-item-action d-flex align-items-center gap-2 px-2 py-1"
-                    :class="{ active: !item.is_dir && selectedDetail && selectedDetail.id === item.id }"
-                    @contextmenu.prevent="openContext({ item, event: $event })"
+            <!-- Explorer table: sortable Name/Modified/Size/Kind columns, hover
+                 checkbox multi-select, row click selects (file) or navigates
+                 (folder). Search lives in the navbar. -->
+            <div
+                v-else-if="!loading"
+                class="fm-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'fm-has-selection': selectedIds.size > 0 }"
+                @click.self="clearContentSelection"
+            >
+                <VibeDataTable
+                    v-if="items.length"
+                    :items="tableItems"
+                    :columns="tableColumns"
+                    row-key="_key"
+                    hover
+                    small
+                    clickable
+                    :searchable="false"
+                    :per-page="listPerPage"
+                    :per-page-options="[25, 50, 100, 250]"
+                    v-model:current-page="listPage"
+                    v-model:sort-by="listSortBy"
+                    v-model:sort-desc="listSortDesc"
+                    class="fm-table"
+                    @row-clicked="onRowClick"
                 >
-                    <div class="flex-grow-1 min-w-0">
+                    <template #cell(_select)="{ item }">
+                        <VibeFormCheckbox
+                            class="fm-select-check"
+                            :model-value="isSelected(item.id)"
+                            :aria-label="isSelected(item.id) ? `Deselect ${item.name}` : `Select ${item.name}`"
+                            @update:model-value="toggleSel(item.id)"
+                            @click.stop
+                        />
+                    </template>
+                    <template #cell(name)="{ item }">
                         <FileItem
                             :item="item"
                             view="list"
-                            :select-mode="selectMode"
-                            :selected="isSelected(item.id)"
-                            @open="() => selectContentItem(item)"
-                            @toggle-select="toggleSel"
                             @drop="onDropToFolder"
                             @tag="filterByTag"
                             @context="openContext"
                         />
-                        <div class="fm-meta small text-muted text-truncate">
-                            {{ item.modified }} · {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
-                        </div>
-                    </div>
-                    <ItemActions
-                        v-if="ownedSection"
-                        :item="item"
-                        :menu="item.is_dir ? folderActions : fileMenu(item)"
-                        class="flex-shrink-0"
-                        @click.stop
-                        @star="toggleStar"
-                        @action="onAction(item, $event)"
-                    />
-                </li>
-                <li v-if="!visibleItems.length" class="list-group-item border-0 py-5">
-                    <EmptyState
-                        :icon="flat ? 'search' : 'folder2-open'"
-                        :title="flat ? 'No matching files' : 'This folder is empty'"
-                        :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
-                    />
-                </li>
-            </ul>
+                    </template>
+                    <template #cell(modified)="{ item }">
+                        <span class="text-muted small text-nowrap">{{ item.modified }}</span>
+                    </template>
+                    <template #cell(size)="{ item }">
+                        <span class="text-muted small text-nowrap">
+                            {{ item.is_dir ? pluralize(item.item_count, 'item') : fmtBytes(item.size) }}
+                        </span>
+                    </template>
+                    <template #cell(kind)="{ item }">
+                        <span class="text-muted small text-nowrap">{{ item.kind }}</span>
+                    </template>
+                    <template #cell(_actions)="{ item }">
+                        <ItemActions
+                            :item="item"
+                            :menu="item.is_dir ? folderActions : fileMenu(item)"
+                            @click.stop
+                            @star="toggleStar"
+                            @action="onAction(item, $event)"
+                        />
+                    </template>
+                </VibeDataTable>
+                <EmptyState
+                    v-else
+                    :icon="flat ? 'search' : 'folder2-open'"
+                    :title="flat ? 'No matching files' : 'This folder is empty'"
+                    :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                />
+            </div>
         </template>
 
         <template #detail>
@@ -926,7 +993,6 @@ onBeforeUnmount(() => {
                     </VibeButton>
                 </div>
             </div>
-            <EmptyState v-else icon="folder2-open" title="Select a file" />
         </template>
     </ShellLayout>
 
@@ -1102,23 +1168,39 @@ ol.breadcrumb {
     margin-bottom: 0 !important;
 }
 
-.select-check {
-    cursor: pointer;
-}
 .min-w-0 {
     min-width: 0;
 }
-.fm-row {
+/* Explorer table: sticky sortable header, tight fixed-purpose columns. */
+.fm-table-wrap :deep(thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg);
+}
+.fm-table-wrap :deep(td) {
+    vertical-align: middle;
+}
+.fm-table-wrap :deep(.fm-col-select),
+.fm-table-wrap :deep(.fm-col-actions) {
+    width: 1%;
+    white-space: nowrap;
+}
+.fm-table-wrap :deep(.fm-col-meta) {
+    width: 1%;
+    white-space: nowrap;
+}
+/* The row checkbox stays hidden until its row is hovered/focused or any
+   selection exists, so it doesn't compete with the filename. */
+.fm-table-wrap :deep(.fm-select-check) {
+    opacity: 0;
+    transition: opacity 0.15s;
     cursor: pointer;
-    border-left: 0;
-    border-right: 0;
 }
-.fm-row.active {
-    background: rgba(99, 102, 241, 0.12);
-}
-.fm-meta {
-    padding-left: 2.9rem;
-    margin-top: -0.2rem;
+.fm-table-wrap :deep(tr:hover .fm-select-check),
+.fm-table-wrap :deep(tr:focus-within .fm-select-check),
+.fm-table-wrap.fm-has-selection :deep(.fm-select-check) {
+    opacity: 1;
 }
 /* VibeBreadcrumb renders an inner <ol class="breadcrumb"> with a default
    bottom margin; flatten it since it sits in the topBar. */
