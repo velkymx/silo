@@ -205,6 +205,7 @@ class PhotoController extends Controller
         $meta = $f->metadata ?? [];
         $taken = $meta['taken_at'] ?? $meta['date_taken'] ?? $meta['DateTimeOriginal'] ?? null;
         $ts = ($taken ? @strtotime($taken) : false) ?: $f->created_at->getTimestamp();
+        $camera = trim(implode(' ', array_filter([$meta['camera_make'] ?? null, $meta['camera_model'] ?? null])));
 
         return [
             'id' => $f->id,
@@ -217,8 +218,14 @@ class PhotoController extends Controller
                 ? $f->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
                 : [],
             'taken_at' => $ts,
+            'added_at' => $f->created_at->getTimestamp(),
             'date' => date('Y-m', $ts),
             'date_label' => date('F Y', $ts),
+            // Picasa-style browse hooks: EXIF camera for filtering, dimensions
+            // for the justified-row grid (null when extraction hasn't run).
+            'camera' => $camera !== '' ? $camera : null,
+            'width' => isset($meta['width']) ? (int) $meta['width'] : null,
+            'height' => isset($meta['height']) ? (int) $meta['height'] : null,
         ];
     }
 }
