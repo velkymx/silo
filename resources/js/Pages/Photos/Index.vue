@@ -157,7 +157,11 @@ const lightboxMenu = computed(() => {
 function onLightboxAction({ item }) {
     const p = quickFile.value;
     if (!p) return;
-    if (item.action === 'star') star(p);
+    if (item.action === 'star') { star(p); return; }
+    // Close the lightbox before opening the action's own modal (editor /
+    // confirm dialog): two stacked Bootstrap modals share a z-index and the
+    // topmost backdrop swallows every click, leaving the editor unusable.
+    qlClose();
     if (item.action === 'edit') openEditor(p);
     if (item.action === 'delete') destroyPhoto(p);
 }

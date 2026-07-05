@@ -107,6 +107,22 @@ describe('Photos/Index page', () => {
         expect(() => item!.trigger('click')).not.toThrow();
     });
 
+    it('lightbox → Edit closes the lightbox before opening the editor (no stacked modals)', async () => {
+        const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
+        await wrapper.find('button.photo-thumb').trigger('click');
+        const lightbox = wrapper.findComponent({ name: 'QuickLookModal' });
+        expect(lightbox.props('modelValue')).toBe(true);
+
+        lightbox.vm.$emit('action', { item: { action: 'edit' } });
+        await wrapper.vm.$nextTick();
+
+        // Two Bootstrap modals at the same z-index block every click in the
+        // editor — the lightbox must close before the editor opens. The
+        // Cropper is v-if'd on the editor being open.
+        expect(lightbox.props('modelValue')).toBe(false);
+        expect(wrapper.find('.cropper-stub').exists()).toBe(true);
+    });
+
     it('lightbox prev/next step through photos', async () => {
         const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
         // Open the first photo into the lightbox.
