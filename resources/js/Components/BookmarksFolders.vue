@@ -12,7 +12,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="bookmarks-folders d-flex flex-column p-2 border-end bg-body-tertiary h-100">
+    <div class="bookmarks-folders d-flex flex-column p-2 w-100">
         <div class="d-flex align-items-center justify-content-between px-1 mb-1">
             <span class="fw-semibold small text-uppercase text-muted">Folders</span>
             <VibeButton size="sm" variant="light" title="New folder" aria-label="New folder" @click="emit('new-folder')">

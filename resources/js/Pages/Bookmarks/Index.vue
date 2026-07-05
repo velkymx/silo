@@ -1,11 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { useUrlFilter } from '../../composables/useUrlFilter';
 import { BookmarkStatus } from '../../lib/constants';
-import AppLayout from '../../Layouts/AppLayout.vue';
-import PageHeader from '../../Components/PageHeader.vue';
-import ThreePane from '../../Components/ThreePane.vue';
+import ShellLayout from '../../Layouts/ShellLayout.vue';
 import BookmarksFolders from '../../Components/BookmarksFolders.vue';
 import SelectBar from '../../Components/SelectBar.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
@@ -27,15 +24,8 @@ const toast = useToast();
 const { prompt } = usePrompt();
 const { loading } = usePageLoading();
 
-// ----- Server-side Scout search (debounced) -----
-const { filters: urlFilters, setFilter: setUrlFilter } = useUrlFilter({
-    basePath: '/bookmarks',
-    initialFilters: { search: props.filters?.search ?? '' },
-});
-const search = computed({
-    get: () => urlFilters.value.search,
-    set: (v) => setUrlFilter('search', v),
-});
+// ----- Shell panes -----
+const activePane = ref('contents');
 
 // ----- Folders (categories) -----
 const selectedFolder = ref(null); // null = All
@@ -51,46 +41,76 @@ const counts = computed(() => {
     return map;
 });
 
-// ----- Sort -----
-const sortOrder = ref('name-asc');
-const sortOptions = [
-    { value: 'name-asc', text: 'Name A–Z', icon: 'sort-alpha-down' },
-    { value: 'name-desc', text: 'Name Z–A', icon: 'sort-alpha-up' },
-    { value: 'opens', text: 'Most opened', icon: 'graph-up' },
-];
-
 const feedCount = computed(() => props.bookmarks.filter((b) => b.feed_url).length);
 
+function pickFolder(f) {
+    selectedFolder.value = f;
+    clearContentSelection();
+    activePane.value = 'contents'; // mobile: reveal the list after picking a folder/feed
+}
+
 const listed = computed(() => {
-    let list;
-    if (selectedFolder.value === null) list = props.bookmarks;
-    else if (selectedFolder.value === '__feeds__') list = props.bookmarks.filter((b) => b.feed_url);
-    else list = props.bookmarks.filter((b) => (b.category || 'General') === selectedFolder.value);
-    list = [...list];
-    if (sortOrder.value === 'name-asc') list.sort((a, b) => a.title.localeCompare(b.title));
-    else if (sortOrder.value === 'name-desc') list.sort((a, b) => b.title.localeCompare(a.title));
-    else if (sortOrder.value === 'opens') list.sort((a, b) => b.click_count - a.click_count);
-    return list;
+    if (selectedFolder.value === null) return props.bookmarks;
+    if (selectedFolder.value === '__feeds__') return props.bookmarks.filter((b) => b.feed_url);
+    return props.bookmarks.filter((b) => (b.category || 'General') === selectedFolder.value);
 });
+
+// ----- Explorer table -----
+// VibeDataTable owns search + sort + pagination over the loaded set.
+const tableColumns = [
+    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'bm-col-select', class: 'bm-col-select' },
+    { key: 'title', label: 'Title', class: 'bm-col-title' },
+    { key: 'url', label: 'URL', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell bm-col-meta' },
+    { key: 'category', label: 'Folder', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell bm-col-meta' },
+    { key: 'click_count', label: 'Opens', class: 'bm-col-meta' },
+    { key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'bm-col-actions', class: 'bm-col-actions' },
+];
+const tableItems = computed(() => listed.value.map((b) => ({ ...b, category: b.category || 'General' })));
+const listPage = ref(1);
+
+// ----- Breadcrumb -----
+const breadcrumbItems = computed(() => [
+    { text: 'Bookmarks', folder: null, href: '/bookmarks', active: selectedFolder.value === null },
+    ...(selectedFolder.value !== null ? [{
+        text: selectedFolder.value === '__feeds__' ? 'Feeds' : selectedFolder.value,
+        folder: selectedFolder.value,
+        href: '/bookmarks',
+        active: true,
+    }] : []),
+]);
+function onBreadcrumb({ item, event }) {
+    event?.preventDefault?.();
+    if (!item.active) pickFolder(item.folder);
+}
 
 // ----- Selection / detail -----
 const selectedId = ref(null);
 const selectedBookmark = computed(() => props.bookmarks.find((b) => b.id === selectedId.value) || null);
-const activePane = ref('list');
 
 function selectBookmark(id) {
     selectedId.value = id;
     activePane.value = 'detail';
 }
 
-function pickFolder(f) {
-    selectedFolder.value = f;
-    activePane.value = 'list'; // mobile: reveal the list after picking a folder/feed
+// ----- Multi-select (hover checkbox column) -----
+const bookmarksRef = computed(() => props.bookmarks);
+const { selectedIds: bmSelectedIds, selectedItems: selectedBms, isSelected: bmIsSelected, toggleSel: bmToggle, clearSelection: bmClearSel } = useSelection(bookmarksRef, (b) => selectBookmark(b.id));
+
+function clearContentSelection() {
+    bmClearSel();
+    selectedId.value = null;
+    if (activePane.value === 'detail') activePane.value = 'contents';
 }
 
-// ----- Multi-select -----
-const bookmarksRef = computed(() => props.bookmarks);
-const { selectMode: bmSelectMode, selectedItems: selectedBms, isSelected: bmIsSelected, toggleSel: bmToggle, clearSelection: bmClearSel } = useSelection(bookmarksRef, (b) => selectBookmark(b.id));
+function onKey(e) {
+    const tag = (e.target?.tagName || '').toLowerCase();
+    const type = (e.target?.type || '').toLowerCase();
+    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
+        || !!e.target?.isContentEditable;
+    if (!inTextField && e.key === 'Escape') clearContentSelection();
+}
+onMounted(() => window.addEventListener('keydown', onKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
 async function bulkDeleteBms() {
     if (!await confirm({ title: `Delete ${selectedBms.value.length} bookmarks`, message: 'Delete the selected bookmarks? This cannot be undone.', confirmLabel: 'Delete', variant: 'danger' })) return;
@@ -98,7 +118,7 @@ async function bulkDeleteBms() {
         router.delete(`/bookmarks/${b.id}`, { preserveScroll: true });
     }
     toast.push(`${selectedBms.value.length} bookmark(s) removed`, { variant: 'danger' });
-    bmClearSel();
+    clearContentSelection();
 }
 
 // ----- Favicon fallback -----
@@ -114,7 +134,9 @@ const bmModal = ref(null);
 const form = useForm({ title: '', url: '', description: '', icon: '', category: '', shared: false });
 
 function openAdd() {
-    const prefill = selectedFolder.value && selectedFolder.value !== 'General' ? { category: selectedFolder.value } : {};
+    const prefill = selectedFolder.value && !['__feeds__', 'General'].includes(selectedFolder.value)
+        ? { category: selectedFolder.value }
+        : {};
     bmModal.value?.openAdd(prefill);
 }
 
@@ -131,7 +153,7 @@ async function remove(b) {
     router.delete(`/bookmarks/${b.id}`, {
         preserveScroll: true,
         onSuccess: () => {
-            if (selectedId.value === b.id) selectedId.value = null;
+            if (selectedId.value === b.id) clearContentSelection();
             toast.push(`”${b.title}” removed`, { variant: 'danger' });
         },
     });
@@ -139,6 +161,16 @@ async function remove(b) {
 
 function toggleStar(b) {
     router.post(`/bookmarks/${b.id}/star`, {}, { preserveScroll: true, preserveState: true });
+}
+
+const rowMenu = [
+    { text: 'Edit', action: 'edit', icon: 'pencil' },
+    { divider: true },
+    { text: 'Delete', action: 'delete', icon: 'trash' },
+];
+function onRowMenu(b, { item }) {
+    if (item.action === 'edit') openEdit(b);
+    if (item.action === 'delete') remove(b);
 }
 
 async function addFolder() {
@@ -178,210 +210,253 @@ async function runMaintenance(action) {
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Bookmarks" icon="bookmark-star" />
-        <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
-        <ThreePane v-else v-model:activePane="activePane">
-            <template #sidebar>
-                <div class="d-flex flex-column p-2 h-100">
-                    <div v-if="feedCount" class="d-flex align-items-center justify-content-between px-1 mb-1">
-                        <span class="fw-semibold small text-uppercase text-muted">Feeds</span>
-                    </div>
-                    <button
-                        v-if="feedCount"
-                        type="button"
-                        class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                        :class="{ active: selectedFolder === '__feeds__' }"
-                        @click="pickFolder('__feeds__')"
-                    >
-                        <VibeIcon icon="rss-fill" class="text-warning" />
-                        <span class="flex-grow-1">Feeds</span>
-                        <span class="badge text-bg-light">{{ feedCount }}</span>
-                    </button>
-                    <div v-if="bookmarks.length" class="d-flex align-items-center justify-content-between px-1 mb-1 mt-2">
-                        <span class="fw-semibold small text-uppercase text-muted">Total</span>
-                    </div>
-                    <div v-if="bookmarks.length" class="px-1 text-muted small">
-                        {{ bookmarks.length }} bookmark{{ bookmarks.length === 1 ? '' : 's' }}
-                    </div>
-                </div>
-            </template>
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedBookmark">
+        <template #viewNav>
+            <button
+                v-if="feedCount"
+                type="button"
+                class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                :class="{ active: selectedFolder === '__feeds__' }"
+                @click="pickFolder('__feeds__')"
+            >
+                <VibeIcon icon="rss-fill" class="text-warning" />
+                <span class="flex-grow-1">Feeds</span>
+                <span class="badge text-bg-light">{{ feedCount }}</span>
+            </button>
+            <BookmarksFolders
+                :folders="[...folders, ...(counts['General'] ? ['General'] : [])]"
+                :counts="counts"
+                :selected-folder="selectedFolder"
+                @select-folder="pickFolder"
+                @new-folder="addFolder"
+            />
+        </template>
 
-            <template #folders>
-                <BookmarksFolders
-                    :folders="[...folders, ...(counts['General'] ? ['General'] : [])]"
-                    :counts="counts"
-                    :selected-folder="selectedFolder"
-                    @select-folder="pickFolder"
-                    @new-folder="addFolder"
-                />
-            </template>
-
-            <template #list>
-                <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
-                    <VibeFormInput v-model="search" type="search" placeholder="Search…" no-wrapper class="flex-grow-1" />
-                    <VibeDropdown size="sm" variant="light" menu-end title="Sort" :items="sortOptions" @item-click="sortOrder = $event.item.value">
-                        <template #button><VibeIcon icon="sort-down" /></template>
-                        <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                    </VibeDropdown>
+        <!-- Breadcrumb + actions share the top-bar line: one solid-primary CTA
+             (Add bookmark); icon-only utilities are quiet light ghosts. -->
+        <template #topBar>
+            <div class="d-flex align-items-center gap-2 p-1">
+                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
+                    <template #item="{ item, index }">
+                        <VibeIcon :icon="index === 0 ? 'bookmark-fill' : (item.folder === '__feeds__' ? 'rss-fill' : 'folder2')" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                    </template>
+                </VibeBreadcrumb>
+                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                    <VibeButton size="sm" variant="primary" title="New bookmark" aria-label="New bookmark" @click="openAdd">
+                        <VibeIcon icon="plus-lg" />
+                    </VibeButton>
+                    <VibeButton size="sm" variant="light" title="Import a Chrome/Firefox bookmarks HTML export" aria-label="Import bookmarks" @click="importInput?.click()">
+                        <VibeIcon icon="upload" />
+                    </VibeButton>
                     <VibeDropdown size="sm" variant="light" menu-end title="Maintenance" :items="maintenanceItems" @item-click="runMaintenance($event.item.action)">
                         <template #button><VibeIcon icon="three-dots-vertical" /></template>
                         <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
                     </VibeDropdown>
-                    <VibeButton size="sm" variant="secondary" outline title="Import a Chrome/Firefox bookmarks HTML export" aria-label="Import bookmarks" @click="importInput?.click()">
-                        <VibeIcon icon="upload" />
-                    </VibeButton>
-                    <VibeButton
-                        size="sm"
-                        :variant="bmSelectMode ? 'primary' : 'secondary'"
-                        outline
-                        title="Select bookmarks"
-                        aria-label="Select bookmarks"
-                        @click="bmSelectMode = !bmSelectMode"
-                    >
-                        <VibeIcon icon="check2-square" />
-                    </VibeButton>
-                    <VibeButton size="sm" variant="primary" title="New bookmark" aria-label="New bookmark" @click="openAdd">
-                        <VibeIcon icon="plus-lg" />
-                    </VibeButton>
                     <input ref="importInput" type="file" accept=".html,.htm,text/html" class="d-none" @change="onImportFile">
                 </div>
+            </div>
+        </template>
 
-                <SelectBar :count="selectedBms.length" class="mx-3 mt-2" @clear="bmClearSel">
-                    <VibeButton variant="danger" size="sm" outline @click="bulkDeleteBms">
-                        <VibeIcon icon="trash" class="me-1" />Delete
-                    </VibeButton>
-                </SelectBar>
+        <template #contents>
+            <SelectBar :count="selectedBms.length" class="mx-2 mt-2" @clear="bmClearSel">
+                <VibeButton variant="danger" size="sm" outline @click="bulkDeleteBms">
+                    <VibeIcon icon="trash" class="me-1" />Delete
+                </VibeButton>
+            </SelectBar>
 
-                <div class="flex-grow-1 overflow-auto">
-                    <EmptyState v-if="!listed.length" icon="bookmark-star" title="No bookmarks here" hint="Add a link to get started." />
-                    <button
-                        v-for="b in listed"
-                        :key="b.id"
-                        type="button"
-                        class="bm-row w-100 text-start border-0 border-bottom px-3 py-2 bg-transparent d-flex align-items-center gap-2"
-                        :class="{ active: b.id === selectedId, 'bg-primary-subtle': bmIsSelected(b.id) }"
-                        @click="bmSelectMode ? bmToggle(b.id) : selectBookmark(b.id)"
-                    >
-                        <VibeIcon
-                            v-if="bmSelectMode"
-                            :icon="bmIsSelected(b.id) ? 'check-circle-fill' : 'circle'"
-                            :class="bmIsSelected(b.id) ? 'text-primary' : 'text-muted'"
+            <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
+
+            <div
+                v-else
+                class="bm-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'bm-has-selection': bmSelectedIds.size > 0 }"
+                @click.self="clearContentSelection"
+            >
+                <VibeDataTable
+                    v-if="listed.length"
+                    :items="tableItems"
+                    :columns="tableColumns"
+                    row-key="id"
+                    hover
+                    small
+                    clickable
+                    search-placeholder="Search bookmarks…"
+                    :show-per-page="false"
+                    :per-page="50"
+                    v-model:current-page="listPage"
+                    sort-by="title"
+                    class="bm-table"
+                    @row-clicked="(b) => selectBookmark(b.id)"
+                >
+                    <template #cell(_select)="{ item }">
+                        <VibeFormCheckbox
+                            class="bm-select-check"
+                            :model-value="bmIsSelected(item.id)"
+                            :aria-label="bmIsSelected(item.id) ? `Deselect ${item.title}` : `Select ${item.title}`"
+                            @update:model-value="bmToggle(item.id)"
+                            @click.stop
                         />
-                        <img v-if="b.icon_url && !failedIcons.has(b.id)" :src="b.icon_url" alt="" width="18" height="18" @error="onIconError(b.id)">
-                        <VibeIcon v-else :icon="b.icon_name || 'link-45deg'" class="text-muted" />
-                        <span class="flex-grow-1" style="min-width: 0">
-                            <span class="d-block fw-medium text-truncate">{{ b.title }}</span>
-                            <span class="d-block small text-muted text-truncate">{{ b.url }}</span>
-                        </span>
-                        <VibeIcon v-if="b.starred" icon="star-fill" class="text-warning small" title="Starred" />
-                        <VibeIcon v-if="b.feed_url" icon="rss-fill" class="text-warning small" title="Has an RSS feed" />
-                        <VibeIcon v-if="b.status === BookmarkStatus.DEAD" icon="exclamation-triangle-fill" class="text-danger" title="Link unreachable" />
-                        <VibeIcon v-if="b.shared" icon="people-fill" class="text-muted small" title="Shared" />
-                    </button>
-                </div>
-            </template>
-
-            <template #detail>
-                <template v-if="selectedBookmark">
-                    <div class="p-4 overflow-auto">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <span class="bm-detail-icon d-inline-flex align-items-center justify-content-center rounded">
-                                <img v-if="selectedBookmark.icon_url && !failedIcons.has(selectedBookmark.id)" :src="selectedBookmark.icon_url" alt="" width="32" height="32" @error="onIconError(selectedBookmark.id)">
-                                <VibeIcon v-else :icon="selectedBookmark.icon_name || 'link-45deg'" class="fs-3" />
-                            </span>
-                            <div class="min-vw-0">
-                                <div class="h5 mb-0 text-break">{{ selectedBookmark.title }}</div>
-                                <div class="small text-muted">
-                                    {{ selectedBookmark.category || 'General' }} · {{ selectedBookmark.click_count }} opens
-                                    <VibeBadge v-if="selectedBookmark.shared" class="text-bg-light ms-1"><VibeIcon icon="people-fill" class="me-1" />Shared</VibeBadge>
-                                </div>
-                            </div>
+                    </template>
+                    <template #cell(title)="{ item }">
+                        <div class="d-flex align-items-center min-w-0">
+                            <img v-if="item.icon_url && !failedIcons.has(item.id)" :src="item.icon_url" alt="" width="18" height="18" class="me-2 flex-shrink-0" @error="onIconError(item.id)">
+                            <VibeIcon v-else :icon="item.icon_name || 'link-45deg'" class="me-2 text-muted flex-shrink-0" />
+                            <span class="text-truncate" :title="item.title">{{ item.title }}</span>
+                            <VibeIcon v-if="item.starred" icon="star-fill" class="text-warning small ms-2 flex-shrink-0" title="Starred" />
+                            <VibeIcon v-if="item.feed_url" icon="rss-fill" class="text-warning small ms-2 flex-shrink-0" title="Has an RSS feed" />
+                            <VibeIcon v-if="item.status === BookmarkStatus.DEAD" icon="exclamation-triangle-fill" class="text-danger ms-2 flex-shrink-0" title="Link unreachable" />
+                            <VibeIcon v-if="item.shared" icon="people-fill" class="text-muted small ms-2 flex-shrink-0" title="Shared" />
                         </div>
-
-                        <VibeAlert v-if="selectedBookmark.status === BookmarkStatus.DEAD" variant="warning" class="py-2">
-                            <VibeIcon icon="exclamation-triangle-fill" class="me-1" />This link did not respond on the last check.
-                        </VibeAlert>
-
-                        <a :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="text-break d-block">
-                            {{ selectedBookmark.url }}
-                        </a>
-                        <a v-if="selectedBookmark.feed_url" :href="selectedBookmark.feed_url" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mb-3">
-                            <VibeIcon icon="rss-fill" class="text-warning me-1" />RSS feed
-                        </a>
-                        <div v-else class="mb-3"></div>
-                        <p v-if="selectedBookmark.description" class="text-body">{{ selectedBookmark.description }}</p>
-
-                        <a v-if="selectedBookmark.screenshot_url" :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="d-block">
-                            <img :src="selectedBookmark.screenshot_url" alt="Site preview" class="bm-shot img-fluid rounded border mb-3">
-                        </a>
-
-                        <div class="d-flex gap-2 mt-2">
-                            <VibeButton :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" variant="primary">
-                                <VibeIcon icon="box-arrow-up-right" class="me-1" />Open
+                    </template>
+                    <template #cell(url)="{ item }">
+                        <span class="text-muted small text-truncate d-inline-block bm-url" :title="item.url">{{ item.url }}</span>
+                    </template>
+                    <template #cell(category)="{ item }">
+                        <span class="text-muted small text-nowrap">{{ item.category }}</span>
+                    </template>
+                    <template #cell(click_count)="{ item }">
+                        <span class="text-muted small text-nowrap">{{ item.click_count }}</span>
+                    </template>
+                    <template #cell(_actions)="{ item }">
+                        <div class="d-flex align-items-center gap-1" @click.stop>
+                            <VibeButton
+                                v-if="item.can_edit"
+                                variant="link"
+                                class="p-0 me-2"
+                                :aria-label="item.starred ? 'Unstar' : 'Star'"
+                                @click="toggleStar(item)"
+                            >
+                                <VibeIcon :icon="item.starred ? 'star-fill' : 'star'" :class="item.starred ? 'text-warning' : 'text-muted'" />
                             </VibeButton>
-                            <template v-if="selectedBookmark.can_edit">
-                                <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" :aria-label="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
-                                    <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
-                                </VibeButton>
-                                <VibeButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</VibeButton>
-                                <VibeButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Delete</VibeButton>
-                            </template>
+                            <VibeDropdown v-if="item.can_edit" size="sm" variant="light" menu-end title="Bookmark actions" :items="rowMenu" @item-click="onRowMenu(item, $event)">
+                                <template #button><VibeIcon icon="three-dots-vertical" /><span class="visually-hidden">Bookmark actions</span></template>
+                                <template #item="{ item: a }"><VibeIcon :icon="a.icon" class="me-2" />{{ a.text }}</template>
+                            </VibeDropdown>
+                        </div>
+                    </template>
+                </VibeDataTable>
+                <EmptyState v-else icon="bookmark-star" title="No bookmarks here" hint="Add a link to get started." />
+            </div>
+        </template>
+
+        <template #detail>
+            <div v-if="selectedBookmark" class="d-flex flex-column h-100 p-3 overflow-auto">
+                <div class="d-flex align-items-center gap-3 mb-3 flex-shrink-0">
+                    <span class="bm-detail-icon d-inline-flex align-items-center justify-content-center rounded">
+                        <img v-if="selectedBookmark.icon_url && !failedIcons.has(selectedBookmark.id)" :src="selectedBookmark.icon_url" alt="" width="32" height="32" @error="onIconError(selectedBookmark.id)">
+                        <VibeIcon v-else :icon="selectedBookmark.icon_name || 'link-45deg'" class="fs-3" />
+                    </span>
+                    <div class="min-w-0">
+                        <div class="h5 mb-0 text-break">{{ selectedBookmark.title }}</div>
+                        <div class="small text-muted">
+                            {{ selectedBookmark.category || 'General' }} · {{ selectedBookmark.click_count }} opens
+                            <VibeBadge v-if="selectedBookmark.shared" class="text-bg-light ms-1"><VibeIcon icon="people-fill" class="me-1" />Shared</VibeBadge>
                         </div>
                     </div>
-                </template>
-                <div v-else class="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
-                    <VibeIcon icon="bookmark" class="fs-1 mb-2" />
-                    <p class="mb-0">Select a bookmark.</p>
                 </div>
-            </template>
-        </ThreePane>
 
-        <ResourceModal
-            ref="bmModal"
-            :form="form"
-            store-url="/bookmarks"
-            :update-url="(id) => `/bookmarks/${id}`"
-            add-title="Add bookmark"
-            edit-title="Edit bookmark"
-        >
-            <VibeFormGroup label="Title" :error="form.errors.title">
-                <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
-            </VibeFormGroup>
-            <VibeFormGroup label="URL" :error="form.errors.url">
-                <VibeFormInput v-model="form.url" placeholder="https://…" />
-            </VibeFormGroup>
-            <VibeFormGroup label="Description" :error="form.errors.description">
-                <VibeFormInput v-model="form.description" placeholder="Optional" maxlength="500" />
-            </VibeFormGroup>
-            <div class="row">
-                <div class="col-6">
-                    <VibeFormGroup label="Folder" :error="form.errors.category" help-text="Type a name to create a folder">
-                        <VibeAutocomplete v-model="form.category" :source="folders" placeholder="e.g. Tools" />
-                    </VibeFormGroup>
-                </div>
-                <div class="col-6">
-                    <VibeFormGroup label="Icon" :error="form.errors.icon" help-text="Bootstrap icon name (blank = auto favicon)">
-                        <VibeFormInput v-model="form.icon" placeholder="link-45deg" />
-                    </VibeFormGroup>
+                <VibeAlert v-if="selectedBookmark.status === BookmarkStatus.DEAD" variant="warning" class="py-2 flex-shrink-0">
+                    <VibeIcon icon="exclamation-triangle-fill" class="me-1" />This link did not respond on the last check.
+                </VibeAlert>
+
+                <a :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="text-break d-block flex-shrink-0">
+                    {{ selectedBookmark.url }}
+                </a>
+                <a v-if="selectedBookmark.feed_url" :href="selectedBookmark.feed_url" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mb-3 flex-shrink-0">
+                    <VibeIcon icon="rss-fill" class="text-warning me-1" />RSS feed
+                </a>
+                <div v-else class="mb-3"></div>
+                <p v-if="selectedBookmark.description" class="text-body flex-shrink-0">{{ selectedBookmark.description }}</p>
+
+                <a v-if="selectedBookmark.screenshot_url" :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="d-block bm-shot-wrap flex-grow-1 min-h-0 mb-3">
+                    <img :src="selectedBookmark.screenshot_url" alt="Site preview" class="bm-shot rounded border">
+                </a>
+
+                <div class="d-flex gap-2 mt-auto flex-shrink-0">
+                    <VibeButton :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" variant="primary">
+                        <VibeIcon icon="box-arrow-up-right" class="me-1" />Open
+                    </VibeButton>
+                    <template v-if="selectedBookmark.can_edit">
+                        <VibeButton variant="secondary" outline :title="selectedBookmark.starred ? 'Unstar' : 'Star'" :aria-label="selectedBookmark.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedBookmark)">
+                            <VibeIcon :icon="selectedBookmark.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedBookmark.starred }" />
+                        </VibeButton>
+                        <VibeButton variant="secondary" outline @click="openEdit(selectedBookmark)"><VibeIcon icon="pencil" class="me-1" />Edit</VibeButton>
+                        <VibeButton variant="danger" outline @click="remove(selectedBookmark)"><VibeIcon icon="trash" class="me-1" />Delete</VibeButton>
+                    </template>
                 </div>
             </div>
-            <VibeFormCheckbox v-model="form.shared">Share with everyone</VibeFormCheckbox>
-        </ResourceModal>
-    </AppLayout>
+        </template>
+    </ShellLayout>
+
+    <ResourceModal
+        ref="bmModal"
+        :form="form"
+        store-url="/bookmarks"
+        :update-url="(id) => `/bookmarks/${id}`"
+        add-title="Add bookmark"
+        edit-title="Edit bookmark"
+    >
+        <VibeFormGroup label="Title" :error="form.errors.title">
+            <VibeFormInput v-model="form.title" placeholder="Payroll portal" />
+        </VibeFormGroup>
+        <VibeFormGroup label="URL" :error="form.errors.url">
+            <VibeFormInput v-model="form.url" placeholder="https://…" />
+        </VibeFormGroup>
+        <VibeFormGroup label="Description" :error="form.errors.description">
+            <VibeFormInput v-model="form.description" placeholder="Optional" maxlength="500" />
+        </VibeFormGroup>
+        <div class="row">
+            <div class="col-6">
+                <VibeFormGroup label="Folder" :error="form.errors.category" help-text="Type a name to create a folder">
+                    <VibeAutocomplete v-model="form.category" :source="folders" placeholder="e.g. Tools" />
+                </VibeFormGroup>
+            </div>
+            <div class="col-6">
+                <VibeFormGroup label="Icon" :error="form.errors.icon" help-text="Bootstrap icon name (blank = auto favicon)">
+                    <VibeFormInput v-model="form.icon" placeholder="link-45deg" />
+                </VibeFormGroup>
+            </div>
+        </div>
+        <VibeFormCheckbox v-model="form.shared">Share with everyone</VibeFormCheckbox>
+    </ResourceModal>
 </template>
 
 <style scoped>
-.bm-row {
+.min-w-0 {
+    min-width: 0;
+}
+.min-h-0 {
+    min-height: 0;
+}
+.bm-url {
+    max-width: 22rem;
+    vertical-align: middle;
+}
+/* Explorer table chrome (mirrors the Files table). */
+.bm-table-wrap :deep(thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg);
+}
+.bm-table-wrap :deep(td) {
+    vertical-align: middle;
+}
+.bm-table-wrap :deep(.bm-col-select),
+.bm-table-wrap :deep(.bm-col-actions),
+.bm-table-wrap :deep(.bm-col-meta) {
+    width: 1%;
+    white-space: nowrap;
+}
+.bm-table-wrap :deep(.bm-select-check) {
+    opacity: 0;
+    transition: opacity 0.15s;
     cursor: pointer;
-    color: var(--bs-body-color);
 }
-.bm-row:hover {
-    background: rgba(99, 102, 241, 0.07) !important;
-}
-.bm-row.active {
-    background: rgba(99, 102, 241, 0.12) !important;
-    font-weight: 600;
+.bm-table-wrap :deep(tr:hover .bm-select-check),
+.bm-table-wrap :deep(tr:focus-within .bm-select-check),
+.bm-table-wrap.bm-has-selection :deep(.bm-select-check) {
+    opacity: 1;
 }
 .bm-detail-icon {
     width: 3rem;
@@ -390,9 +465,12 @@ async function runMaintenance(action) {
     color: var(--bs-primary);
     flex-shrink: 0;
 }
+.bm-shot-wrap {
+    min-height: 0;
+}
 .bm-shot {
-    max-width: 100%;
-    max-height: 420px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     object-position: top;
 }
