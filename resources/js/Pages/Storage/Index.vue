@@ -1,8 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
-import PageHeader from '../../Components/PageHeader.vue';
+import ShellLayout from '../../Layouts/ShellLayout.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import { readableTextColor } from '../../lib/contrast';
 import { fmtBytes } from '../../lib/format';
@@ -138,23 +137,32 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
 </script>
 
 <template>
-    <AppLayout>
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <PageHeader title="Storage" icon="hdd-fill" />
-            <span class="text-muted">
-                {{ fmtBytes(summary.used) }}<template v-if="summary.quota > 0"> of {{ fmtBytes(summary.quota) }} ({{ pct }}%)</template> used
-            </span>
-            <span class="ms-auto small text-muted" style="min-height: 1.2rem">
-                <template v-if="hover"><strong>{{ hover.name }}</strong> · {{ fmtBytes(hover.size) }}<span v-if="!hover.is_dir"> · {{ hover.category }}</span></template>
-                <template v-else>Every file as a tile, nested inside its folder. Click to open.</template>
-            </span>
-        </div>
+    <ShellLayout :folders-visible="false" :detail-visible="false">
+        <!-- Breadcrumb + usage summary + hover readout on one top-bar line. -->
+        <template #topBar>
+            <div class="d-flex align-items-center gap-2 p-1">
+                <VibeBreadcrumb :items="[{ text: 'Storage', active: true }]" class="breadcrumb mb-0 pb-0 text-truncate min-w-0">
+                    <template #item="{ item }">
+                        <VibeIcon icon="hdd-fill" class="me-1" /><span>{{ item.text }}</span>
+                    </template>
+                </VibeBreadcrumb>
+                <span class="text-muted small">
+                    {{ fmtBytes(summary.used) }}<template v-if="summary.quota > 0"> of {{ fmtBytes(summary.quota) }} ({{ pct }}%)</template> used
+                </span>
+                <span class="ms-auto small text-muted text-truncate" style="min-height: 1.2rem">
+                    <template v-if="hover"><strong>{{ hover.name }}</strong> · {{ fmtBytes(hover.size) }}<span v-if="!hover.is_dir"> · {{ hover.category }}</span></template>
+                    <template v-else>Every file as a tile, nested inside its folder. Click to open.</template>
+                </span>
+            </div>
+        </template>
 
-        <LoadingSkeleton v-if="loading" :rows="8" :cols="4" />
-        <VibeAlert v-if="truncated && !loading" variant="info" class="py-2 small">
-            <VibeIcon icon="info-circle" class="me-1" />Showing the {{ tiles.length.toLocaleString() }} largest areas. Some smaller items are hidden — open a folder to drill in.
-        </VibeAlert>
-        <VibeRow v-show="!loading" class="g-3">
+        <template #contents>
+            <div class="overflow-auto flex-grow-1 p-3">
+                <LoadingSkeleton v-if="loading" :rows="8" :cols="4" />
+                <VibeAlert v-if="truncated && !loading" variant="info" class="py-2 small">
+                    <VibeIcon icon="info-circle" class="me-1" />Showing the {{ tiles.length.toLocaleString() }} largest areas. Some smaller items are hidden — open a folder to drill in.
+                </VibeAlert>
+                <VibeRow v-show="!loading" class="g-3">
             <VibeCol :lg="8">
                 <div ref="box" class="treemap-box border rounded">
                     <template v-for="t in tiles" :key="t.node.id">
@@ -211,11 +219,16 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
                     <p v-if="!largest.length" class="text-muted small mb-0">No files yet.</p>
                 </VibeCard>
             </VibeCol>
-        </VibeRow>
-    </AppLayout>
+                </VibeRow>
+            </div>
+        </template>
+    </ShellLayout>
 </template>
 
 <style scoped>
+.min-w-0 {
+    min-width: 0;
+}
 .treemap-box {
     position: relative;
     width: 100%;
