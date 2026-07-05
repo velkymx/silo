@@ -1,9 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
-import { useUrlFilter } from '../../composables/useUrlFilter';
-import AppLayout from '../../Layouts/AppLayout.vue';
-import PageHeader from '../../Components/PageHeader.vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import ShellLayout from '../../Layouts/ShellLayout.vue';
+import FolderAccordion from '../../Components/FolderAccordion.vue';
 import UserAvatar from '../../Components/UserAvatar.vue';
 import { http } from '../../lib/http';
 import EmptyState from '../../Components/EmptyState.vue';
@@ -16,37 +14,90 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
 });
 
-// Drive the server-side search the controller already supports — no giant
-// client-side payload to filter.
-const { filters: urlFilters, setFilter: setUrlFilter } = useUrlFilter({
-    basePath: '/directory',
-    initialFilters: { search: props.filters?.search ?? '', department: props.filters?.department ?? '' },
-});
-const search = computed({ get: () => urlFilters.value.search, set: (v) => setUrlFilter('search', v) });
-const department = computed({ get: () => urlFilters.value.department, set: (v) => setUrlFilter('department', v) });
+const { loading } = usePageLoading();
 
-// Group the server-filtered people under their department heading.
-const grouped = computed(() => {
-    const map = new Map();
+// ----- Shell panes -----
+const activePane = ref('contents');
+
+// ----- Departments as the folder pane -----
+// The full people list ships on the unfiltered page; department filtering is
+// client-side, matching the other shell surfaces.
+const selectedDept = ref(props.filters?.department || null);
+const deptNames = computed(() => {
+    const fromPeople = new Set(props.people.map((p) => p.department || 'Unassigned'));
+    return [...new Set([...props.departments, ...fromPeople])].sort();
+});
+const counts = computed(() => {
+    const map = {};
     for (const p of props.people) {
         const key = p.department || 'Unassigned';
-        if (!map.has(key)) map.set(key, []);
-        map.get(key).push(p);
+        map[key] = (map[key] ?? 0) + 1;
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    return map;
 });
 
-const showProfile = ref(false);
+// The tree roots at "Directory" (id 0) with each department as its child.
+const ROOT_ID = 0;
+const accordionFolders = computed(() => [
+    { id: ROOT_ID, name: 'Directory', parent_id: null, icon: 'person-rolodex' },
+    ...deptNames.value.map((name, i) => ({ id: i + 1, name, parent_id: ROOT_ID })),
+]);
+const accordionCounts = computed(() => {
+    const map = { [ROOT_ID]: props.people.length };
+    accordionFolders.value.forEach((f) => {
+        if (f.id !== ROOT_ID) map[f.id] = counts.value[f.name] ?? 0;
+    });
+    return map;
+});
+const selectedDeptId = computed(() =>
+    selectedDept.value === null
+        ? ROOT_ID
+        : (accordionFolders.value.find((f) => f.name === selectedDept.value)?.id ?? null));
+function pickDeptById(id) {
+    const folder = accordionFolders.value.find((f) => f.id === id);
+    selectedDept.value = (!folder || id === ROOT_ID) ? null : folder.name;
+    clearContentSelection();
+    activePane.value = 'contents';
+}
+
+const listed = computed(() => {
+    if (selectedDept.value === null) return props.people;
+    return props.people.filter((p) => (p.department || 'Unassigned') === selectedDept.value);
+});
+
+// ----- Explorer table -----
+const tableColumns = [
+    { key: 'name', label: 'Name', class: 'dir-col-name' },
+    { key: 'title', label: 'Title', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell dir-col-meta' },
+    { key: 'department', label: 'Department', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell dir-col-meta' },
+];
+const tableItems = computed(() => listed.value.map((p) => ({ ...p, department: p.department || 'Unassigned' })));
+const listPage = ref(1);
+
+// ----- Breadcrumb -----
+const breadcrumbItems = computed(() => [
+    { text: 'Directory', dept: null, href: '/directory', active: selectedDept.value === null },
+    ...(selectedDept.value !== null
+        ? [{ text: selectedDept.value, dept: selectedDept.value, href: '/directory', active: true }]
+        : []),
+]);
+function onBreadcrumb({ item, event }) {
+    event?.preventDefault?.();
+    if (!item.active) pickDeptById(ROOT_ID);
+}
+
+// ----- Profile detail pane (race-guarded fetch, unchanged) -----
+const selectedId = ref(null);
 const profile = ref(null);
 const profileLoading = ref(false);
 const profileError = ref('');
-const { loading } = usePageLoading();
 let requestedId = 0;
 
 async function open(person) {
     const id = person.id;
     requestedId = id;
-    showProfile.value = true;
+    selectedId.value = id;
+    activePane.value = 'detail';
     profileLoading.value = true;
     profileError.value = '';
     profile.value = null;
@@ -59,76 +110,131 @@ async function open(person) {
         if (requestedId === id) profileLoading.value = false;
     }
 }
+
+function clearContentSelection() {
+    selectedId.value = null;
+    profile.value = null;
+    profileError.value = '';
+    if (activePane.value === 'detail') activePane.value = 'contents';
+}
+
+function onKey(e) {
+    const tag = (e.target?.tagName || '').toLowerCase();
+    const type = (e.target?.type || '').toLowerCase();
+    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
+        || !!e.target?.isContentEditable;
+    if (!inTextField && e.key === 'Escape') clearContentSelection();
+}
+onMounted(() => window.addEventListener('keydown', onKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 </script>
 
 <template>
-    <AppLayout>
-        <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
-        <div v-else class="p-3 p-lg-4">
-            <PageHeader title="Directory" icon="person-rolodex" />
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="selectedId !== null">
+        <template #viewNav>
+            <FolderAccordion
+                :folders="accordionFolders"
+                :selected-id="selectedDeptId"
+                :open-ids="new Set([0])"
+                :counts="accordionCounts"
+                :can-create="false"
+                @select-folder="pickDeptById"
+            />
+        </template>
 
-            <div class="row g-2 mb-3">
-                <div class="col-12 col-md-6">
-                    <VibeFormInput v-model="search" type="search" placeholder="Search people, titles…" aria-label="Search people" />
-                </div>
-                <div class="col-12 col-md-4">
-                    <VibeFormSelect v-model="department" aria-label="Filter by department">
-                        <option value="">All departments</option>
-                        <option v-for="d in departments" :key="d" :value="d">{{ d }}</option>
-                    </VibeFormSelect>
-                </div>
+        <template #topBar>
+            <div class="d-flex align-items-center gap-2 p-1">
+                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
+                    <template #item="{ item, index }">
+                        <VibeIcon :icon="index === 0 ? 'person-rolodex' : 'people-fill'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                    </template>
+                </VibeBreadcrumb>
             </div>
+        </template>
 
-            <EmptyState v-if="!people.length" icon="person-rolodex" title="No people found" hint="Try adjusting your search or department filter." />
+        <template #contents>
+            <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
-            <div v-for="[dept, items] in grouped" :key="dept" class="mb-4">
-                <div class="text-uppercase small text-muted fw-semibold mb-2">{{ dept }}</div>
-                <VibeRow class="g-3">
-                    <VibeCol v-for="p in items" :key="p.id" :xs="12" :sm="6" :lg="4" :xxl="3">
-                        <button type="button" class="card h-100 w-100 text-start border-0 shadow-sm person-card" @click="open(p)">
-                            <div class="card-body d-flex align-items-center gap-3">
-                                <UserAvatar :user="p" :size="44" />
-                                <div class="min-vw-0">
-                                    <div class="fw-semibold text-truncate">{{ p.name }}</div>
-                                    <div class="small text-muted text-truncate">{{ p.title || '—' }}</div>
-                                </div>
-                            </div>
-                        </button>
-                    </VibeCol>
-                </VibeRow>
+            <div v-else class="dir-table-wrap overflow-auto flex-grow-1 px-2 pt-1" @click.self="clearContentSelection">
+                <VibeDataTable
+                    v-if="listed.length"
+                    :items="tableItems"
+                    :columns="tableColumns"
+                    row-key="id"
+                    hover
+                    small
+                    clickable
+                    search-placeholder="Search people, titles…"
+                    :show-per-page="false"
+                    :per-page="50"
+                    v-model:current-page="listPage"
+                    sort-by="name"
+                    class="dir-table"
+                    @row-clicked="open"
+                >
+                    <template #cell(name)="{ item }">
+                        <div class="d-flex align-items-center min-w-0">
+                            <UserAvatar :user="item" :size="28" class="me-2 flex-shrink-0" />
+                            <span class="text-truncate" :class="{ 'fw-semibold': item.id === selectedId }" :title="item.name">{{ item.name }}</span>
+                        </div>
+                    </template>
+                    <template #cell(title)="{ item }">
+                        <span class="text-muted small text-truncate d-inline-block dir-title" :title="item.title">{{ item.title || '—' }}</span>
+                    </template>
+                    <template #cell(department)="{ item }">
+                        <span class="text-muted small text-nowrap">{{ item.department }}</span>
+                    </template>
+                </VibeDataTable>
+                <EmptyState v-else icon="person-rolodex" title="No people found" hint="Try another department or search." />
             </div>
-        </div>
+        </template>
 
-        <VibeModal v-model="showProfile" :title="profile?.name || 'Profile'">
-            <p v-if="profileLoading" class="text-muted mb-0">Loading…</p>
-            <VibeAlert v-else-if="profileError" variant="danger" class="mb-0">{{ profileError }}</VibeAlert>
-            <div v-else-if="profile">
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <UserAvatar :user="profile" :size="64" />
-                    <div>
-                        <div class="h5 mb-0">{{ profile.name }}</div>
-                        <div class="text-muted">{{ profile.title }}<span v-if="profile.department"> · {{ profile.department }}</span></div>
+        <template #detail>
+            <div class="d-flex flex-column h-100 p-3 overflow-auto">
+                <p v-if="profileLoading" class="text-muted mb-0"><VibeSpinner size="sm" class="me-2" />Loading…</p>
+                <VibeAlert v-else-if="profileError" variant="danger" class="mb-0">{{ profileError }}</VibeAlert>
+                <template v-else-if="profile">
+                    <div class="d-flex align-items-center gap-3 mb-3 flex-shrink-0">
+                        <UserAvatar :user="profile" :size="64" />
+                        <div class="min-w-0">
+                            <div class="h5 mb-0 text-break">{{ profile.name }}</div>
+                            <div class="text-muted">{{ profile.title }}<span v-if="profile.department"> · {{ profile.department }}</span></div>
+                        </div>
                     </div>
-                </div>
-                <dl class="row mb-0 small">
-                    <template v-if="profile.email"><dt class="col-4 text-muted">Email</dt><dd class="col-8"><a :href="`mailto:${profile.email}`">{{ profile.email }}</a></dd></template>
-                    <template v-if="profile.phone"><dt class="col-4 text-muted">Phone</dt><dd class="col-8">{{ profile.phone }}</dd></template>
-                    <template v-if="profile.location"><dt class="col-4 text-muted">Location</dt><dd class="col-8">{{ profile.location }}</dd></template>
-                    <template v-if="profile.manager"><dt class="col-4 text-muted">Reports to</dt><dd class="col-8">{{ profile.manager.name }}</dd></template>
-                    <template v-if="profile.start_date"><dt class="col-4 text-muted">Started</dt><dd class="col-8">{{ profile.start_date }}</dd></template>
-                    <template v-if="profile.bio"><dt class="col-12 text-muted mt-2">About</dt><dd class="col-12">{{ profile.bio }}</dd></template>
-                </dl>
+                    <dl class="row mb-0 small">
+                        <template v-if="profile.email"><dt class="col-4 text-muted">Email</dt><dd class="col-8 text-break"><a :href="`mailto:${profile.email}`">{{ profile.email }}</a></dd></template>
+                        <template v-if="profile.phone"><dt class="col-4 text-muted">Phone</dt><dd class="col-8">{{ profile.phone }}</dd></template>
+                        <template v-if="profile.location"><dt class="col-4 text-muted">Location</dt><dd class="col-8">{{ profile.location }}</dd></template>
+                        <template v-if="profile.manager"><dt class="col-4 text-muted">Reports to</dt><dd class="col-8">{{ profile.manager.name }}</dd></template>
+                        <template v-if="profile.start_date"><dt class="col-4 text-muted">Started</dt><dd class="col-8">{{ profile.start_date }}</dd></template>
+                        <template v-if="profile.bio"><dt class="col-12 text-muted mt-2">About</dt><dd class="col-12">{{ profile.bio }}</dd></template>
+                    </dl>
+                </template>
             </div>
-        </VibeModal>
-    </AppLayout>
+        </template>
+    </ShellLayout>
 </template>
 
 <style scoped>
-.person-card {
-    cursor: pointer;
-    transition: box-shadow 0.15s;
+.min-w-0 {
+    min-width: 0;
 }
-.person-card:hover {
-    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1) !important;
+.dir-title {
+    max-width: 18rem;
+    vertical-align: middle;
+}
+/* Explorer table chrome (mirrors the Files table). */
+.dir-table-wrap :deep(thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg);
+}
+.dir-table-wrap :deep(td) {
+    vertical-align: middle;
+}
+.dir-table-wrap :deep(.dir-col-meta) {
+    width: 1%;
+    white-space: nowrap;
 }
 </style>

@@ -17,10 +17,13 @@ const props = withDefaults(defineProps<{
     showHeader?: boolean;
     /** Optional per-folder item counts, shown as a badge on each row. */
     counts?: Record<number, number> | null;
+    /** Read-only surfaces (e.g. Directory) hide the new-folder button. */
+    canCreate?: boolean;
 }>(), {
     parentId: null,
     showHeader: true,
     counts: null,
+    canCreate: true,
 });
 
 const emit = defineEmits<{
@@ -57,7 +60,7 @@ function itemFor(f: Folder) {
     <div class="folder-accordion w-100" :class="{ 'd-flex flex-column h-100 p-1': showHeader }">
         <div v-if="showHeader" class="d-flex align-items-center justify-content-between px-1 mb-1">
             <span class="fw-semibold small text-uppercase text-muted">Folders</span>
-            <VibeButton size="sm" variant="light" title="New folder" aria-label="New folder" data-testid="fa-new" @click="emit('new-folder')">
+            <VibeButton v-if="canCreate" size="sm" variant="light" title="New folder" aria-label="New folder" data-testid="fa-new" @click="emit('new-folder')">
                 <VibeIcon icon="folder-plus" />
             </VibeButton>
         </div>
