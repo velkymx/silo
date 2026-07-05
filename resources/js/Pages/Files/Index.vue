@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import FileItem from '../../Components/FileItem.vue';
@@ -726,6 +726,17 @@ async function destroy(item) {
     });
 }
 
+// ----- Smart Folders (saved searches, shared via Inertia middleware) -----
+const savedSearches = computed(() => usePage().props.savedSearches ?? []);
+function runSavedSearch(s) {
+    router.get('/', s.params || {});
+}
+async function deleteSavedSearch(s) {
+    if (await confirm({ title: 'Remove smart folder', message: `Remove smart folder "${s.name}"?`, confirmLabel: 'Remove', variant: 'danger' })) {
+        router.delete(`/saved-searches/${s.id}`, { preserveScroll: true });
+    }
+}
+
 // ----- Background-job status polling -----
 const filesRef = computed(() => props.files);
 const { start: startPolling } = useJobPolling(filesRef, () =>
@@ -763,6 +774,21 @@ onBeforeUnmount(() => {
                 @select-folder="selectAccordionFolder"
                 @new-folder="() => folderOpen = true"
             />
+
+            <template v-if="savedSearches.length">
+                <div class="side-heading"><VibeIcon icon="funnel-fill" />Smart Folders</div>
+                <div
+                    v-for="s in savedSearches"
+                    :key="s.id"
+                    class="side-row d-flex align-items-center saved-search px-2 py-1 rounded"
+                    role="button"
+                    @click="runSavedSearch(s)"
+                >
+                    <VibeIcon icon="bookmark-star-fill" class="me-2 text-primary" />
+                    <span class="text-truncate flex-grow-1">{{ s.name }}</span>
+                    <VibeIcon icon="x" class="del-btn text-muted" title="Remove" @click.stop="deleteSavedSearch(s)" />
+                </div>
+            </template>
 
             <template v-if="allTags.length">
                 <div class="side-heading"><VibeIcon icon="tags-fill" />Tags</div>

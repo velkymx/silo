@@ -1,7 +1,6 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import AppLayout from '../../../Layouts/AppLayout.vue';
-import PageHeader from '../../../Components/PageHeader.vue';
+import ShellPage from '../../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
@@ -25,8 +24,7 @@ function edit(id) {
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Users" icon="people" />
+    <ShellPage title="Users" icon="people" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
         <LoadingSkeleton v-if="loading" :rows="6" :cols="5" />
         <VibeDataTable v-else :items="users" :columns="columns" row-key="id" hover striped empty-text="No users.">
             <template #cell(is_admin)="{ item }">
@@ -40,5 +38,5 @@ function edit(id) {
                 </VibeButton>
             </template>
         </VibeDataTable>
-    </AppLayout>
+    </ShellPage>
 </template>

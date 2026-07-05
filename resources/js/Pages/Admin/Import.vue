@@ -1,8 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
-import PageHeader from '../../Components/PageHeader.vue';
+import ShellPage from '../../Components/ShellPage.vue';
 
 const props = defineProps({
     root: { type: String, default: '' },
@@ -31,8 +30,7 @@ function rescan() {
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Import Folder" icon="folder-symlink" />
+    <ShellPage title="Import Folder" icon="folder-symlink" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
 
         <VibeRow class="justify-content-center">
             <VibeCol :lg="8">
@@ -70,5 +68,5 @@ function rescan() {
                 </VibeCard>
             </VibeCol>
         </VibeRow>
-    </AppLayout>
+    </ShellPage>
 </template>

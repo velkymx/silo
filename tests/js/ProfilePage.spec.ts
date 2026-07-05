@@ -4,9 +4,11 @@ import { reactive } from 'vue';
 
 const { formPatch, formReset, routerPost } = vi.hoisted(() => ({ formPatch: vi.fn(), formReset: vi.fn(), routerPost: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
-    router: { post: routerPost },
+    router: { post: routerPost, get: vi.fn(), visit: vi.fn(), on: vi.fn(() => () => {}) },
     // reactive() so the page's computed (needsCurrentPassword) tracks field edits.
     useForm: (data: Record<string, unknown>) => reactive({ ...data, processing: false, errors: {}, patch: formPatch, reset: formReset }),
+    usePage: () => ({ url: '/profile', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, storage: { used: 0, quota: 0 } } }),
+    Link: { name: 'Link', template: '<a><slot /></a>' },
 }));
 vi.mock('vue-advanced-cropper', () => ({ Cropper: { name: 'Cropper', template: '<div class="cropper-stub" />' } }));
 vi.mock('vue-advanced-cropper/dist/style.css', () => ({}));

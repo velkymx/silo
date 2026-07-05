@@ -1,6 +1,5 @@
 <script setup>
-import AppLayout from '../../../Layouts/AppLayout.vue';
-import PageHeader from '../../../Components/PageHeader.vue';
+import ShellPage from '../../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
@@ -63,8 +62,7 @@ function safeMeta(meta, indent) {
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Audit Log" icon="clipboard-check" />
+    <ShellPage title="Audit Log" icon="clipboard-check" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
 
         <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
             <div class="col-sm-4">
@@ -122,7 +120,7 @@ function safeMeta(meta, indent) {
                 </template>
             </template>
         </VibeDataTable>
-    </AppLayout>
+    </ShellPage>
 </template>
 
 <style scoped>

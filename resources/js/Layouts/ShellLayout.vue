@@ -23,7 +23,7 @@ const themeIcon = computed(() => ({ light: 'sun-fill', dark: 'moon-stars-fill' }
 const page = usePage();
 const user = computed(() => (page.props.auth as { user?: { name: string; avatar_url?: string | null } } | undefined)?.user);
 
-// Brand + global file search (mirrors the AppLayout top bar).
+// Brand + global file search.
 const appName = import.meta.env.VITE_APP_NAME || 'Silo';
 const tagline = 'Your Files Ready to Launch';
 const year = new Date().getFullYear();

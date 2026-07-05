@@ -1,9 +1,8 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
+import ShellPage from '../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
-import PageHeader from '../../Components/PageHeader.vue';
 import { fmtBytes } from '../../lib/format';
 import { BackupStatus } from '../../lib/constants';
 import { useConfirm } from '../../composables/useConfirm';
@@ -73,14 +72,12 @@ onBeforeUnmount(() => clearInterval(poll));
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Backups" icon="archive">
-            <template #actions>
-                <VibeButton variant="primary" @click="runNow">
-                    <VibeIcon icon="play-fill" class="me-1" />Back up now
-                </VibeButton>
-            </template>
-        </PageHeader>
+    <ShellPage title="Backups" icon="archive" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
+        <template #actions>
+            <VibeButton variant="primary" @click="runNow">
+                <VibeIcon icon="play-fill" class="me-1" />Back up now
+            </VibeButton>
+        </template>
 
         <VibeRow class="g-3">
             <VibeCol :lg="4">
@@ -171,5 +168,5 @@ onBeforeUnmount(() => clearInterval(poll));
                 </VibeCard>
             </VibeCol>
         </VibeRow>
-    </AppLayout>
+    </ShellPage>
 </template>

@@ -36,7 +36,7 @@ interface QueueItem {
 }
 
 // Module-level singleton: every component that calls confirm()/prompt() drives
-// the same state, and a single <VibeModal> host (mounted in AppLayout) renders
+// the same state, and a single <VibeModal> host (the shared DialogHost component) renders
 // it. Replaces the unstyleable native window.confirm/window.prompt.
 const state = reactive<DialogState>({
     open: false,

@@ -176,17 +176,6 @@ config.global.directives = { 'vibe-tooltip': {} };
 // registered, to override the import.
 config.global.stubs = {
     UserAvatar: { name: 'UserAvatar', template: '<span class="user-avatar-stub" />', props: ['user', 'size'] },
-    AppLayout: {
-        name: 'AppLayout',
-        setup(_: unknown, { slots }: { slots: Slots }) {
-            return () => h('div', { 'data-stub': 'AppLayout' }, [
-                slots.sidebar ? slots.sidebar() : null,
-                slots['sidebar-bottom'] ? slots['sidebar-bottom']() : null,
-                slots.topbar ? slots.topbar() : null,
-                slots.default ? slots.default() : null,
-            ]);
-        },
-    },
     GuestLayout: passthrough('GuestLayout'),
 };
 

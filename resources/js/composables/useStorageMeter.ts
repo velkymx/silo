@@ -13,7 +13,7 @@ export interface StorageBar {
 /**
  * Shared storage-quota meter: percentage used (capped, 0 when unlimited) and a
  * VibeProgress bar whose color escalates as the quota fills. Used by both the
- * sidebar meter (AppLayout) and the Files page.
+ * sidebar meter (the shell layout.
  */
 export function useStorageMeter(storage: Ref<StorageUsage>) {
     const pct = computed(() =>

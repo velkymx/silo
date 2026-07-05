@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
-import AppLayout from '../../../Layouts/AppLayout.vue';
+import ShellPage from '../../../Components/ShellPage.vue';
 import { useConfirm } from '../../../composables/useConfirm';
 
 const props = defineProps({
@@ -40,7 +40,7 @@ async function submit() {
 </script>
 
 <template>
-    <AppLayout>
+    <ShellPage title="Edit User" icon="person-gear" :parents="[{ text: 'Admin', icon: 'shield-lock' }, { text: 'Users', icon: 'people' }]">
         <VibeRow class="justify-content-center">
             <VibeCol :md="8" :lg="6">
                 <VibeCard :header="`Edit User: ${user.name}`">
@@ -101,5 +101,5 @@ async function submit() {
                 </VibeCard>
             </VibeCol>
         </VibeRow>
-    </AppLayout>
+    </ShellPage>
 </template>

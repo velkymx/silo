@@ -13,7 +13,7 @@ const spies = vi.hoisted(() => ({
 }));
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: spies.routerGet, visit: spies.routerVisit, delete: spies.routerDelete, on: vi.fn(() => () => {}), post: vi.fn(), patch: vi.fn() },
-    usePage: () => ({ props: { flash: {}, errors: {} } }),
+    usePage: () => ({ url: '/', props: { flash: {}, errors: {} } }),
     useForm: (data: Record<string, unknown>) => ({
         ...data, processing: false, errors: {},
         post: spies.formPost, patch: spies.formPatch, delete: spies.formDelete,

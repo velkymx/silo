@@ -1,8 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
-import AppLayout from '../../../Layouts/AppLayout.vue';
-import PageHeader from '../../../Components/PageHeader.vue';
+import ShellPage from '../../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
 import { useConfirm } from '../../../composables/useConfirm';
 import { useToast } from '../../../composables/useToast';
@@ -57,8 +56,7 @@ async function destroy(group) {
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Groups" icon="people" />
+    <ShellPage title="Groups" icon="people" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
 
         <VibeRow class="g-2 align-items-end mb-4">
             <VibeCol :md="6">
@@ -106,5 +104,5 @@ async function destroy(group) {
                 </div>
             </template>
         </VibeDataTable>
-    </AppLayout>
+    </ShellPage>
 </template>

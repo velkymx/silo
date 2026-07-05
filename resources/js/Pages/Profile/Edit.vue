@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
+import ShellPage from '../../Components/ShellPage.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import UserAvatar from '../../Components/UserAvatar.vue';
@@ -85,7 +85,7 @@ function applyCrop() {
 </script>
 
 <template>
-    <AppLayout>
+    <ShellPage title="Profile" icon="person">
         <VibeRow class="justify-content-center">
             <VibeCol :md="8" :lg="6">
                 <VibeCard header="Edit Profile">
@@ -195,5 +195,5 @@ function applyCrop() {
                 <VibeButton variant="primary" :disabled="avatarSaving" @click="applyCrop">Use photo</VibeButton>
             </div>
         </VibeModal>
-    </AppLayout>
+    </ShellPage>
 </template>

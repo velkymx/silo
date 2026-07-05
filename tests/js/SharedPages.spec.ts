@@ -3,8 +3,9 @@ import { mount } from '@vue/test-utils';
 
 const { routerGet } = vi.hoisted(() => ({ routerGet: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
-    router: { get: routerGet, on: vi.fn(() => () => {}) },
-    usePage: () => ({ props: { flash: {}, errors: {} } }),
+    router: { get: routerGet, post: vi.fn(), visit: vi.fn(), on: vi.fn(() => () => {}) },
+    usePage: () => ({ url: '/', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
+    Link: { name: 'Link', template: '<a><slot /></a>' },
 }));
 
 import SharedFolder from '@/Pages/Shared/Folder.vue';

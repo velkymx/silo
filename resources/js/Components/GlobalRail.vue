@@ -10,10 +10,9 @@ interface NavItem {
     active: boolean;
 }
 
-// Global app-nav rail: column 1 of the universal FourPane shell. Reproduces
-// the nav items + active logic from AppLayout.vue (lines ~120-151) verbatim
-// so every route shares one source of truth for "what are the destinations
-// and which one is current."
+// Global app-nav rail: column 1 of the universal FourPane shell — the
+// single source of truth for "what are the destinations and which one is
+// current."
 const page = usePage();
 const path = computed(() => page.url.split('?')[0]);
 const query = computed(() => page.url.split('?')[1] || '');
@@ -36,8 +35,8 @@ const mainNav = computed<NavItem[]>(() => [
     { key: 'trash', text: 'Trash', href: '/trash', icon: 'trash-fill', active: active((p) => p.startsWith('/trash')) },
 ]);
 
-// Admin destinations are gated by page.props.auth.user.is_admin, mirroring
-// AppLayout's adminNav guard exactly — do not widen this.
+// Admin destinations are gated by page.props.auth.user.is_admin — do not
+// widen this.
 const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
     { key: 'users', text: 'Users', href: '/users', icon: 'person-gear', active: active((p) => p.startsWith('/users')) },
     { key: 'groups', text: 'Groups', href: '/groups', icon: 'diagram-3-fill', active: active((p) => p.startsWith('/groups')) },

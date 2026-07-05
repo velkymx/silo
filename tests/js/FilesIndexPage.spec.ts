@@ -8,7 +8,7 @@ const s = vi.hoisted(() => ({
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: s.get, post: s.post, put: s.put, delete: s.del, visit: s.visit, reload: s.reload, on: vi.fn(() => () => {}) },
     useForm: (data: Record<string, unknown>) => ({ ...data, processing: false, errors: {}, post: s.formPost, reset: s.formReset, clearErrors: vi.fn() }),
-    usePage: () => ({ url: '/', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
+    usePage: () => ({ url: '/', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 }, savedSearches: [{ id: 7, name: 'Big PDFs', params: { ftype: 'pdf' } }] } }),
     Link: { name: 'Link', template: '<a><slot /></a>' },
     Head: { name: 'Head', template: '<span><slot /></span>' },
 }));
@@ -68,6 +68,23 @@ describe('Files/Index page', () => {
         const wrapper = mountIndex();
         wrapper.findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 10, active: false } });
         expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
+    });
+
+    it('runs a smart folder (saved search) from the folders pane', async () => {
+        const wrapper = mountIndex();
+        expect(wrapper.text()).toContain('Big PDFs');
+        await wrapper.get('.saved-search').trigger('click');
+        expect(s.get).toHaveBeenCalledWith('/', { ftype: 'pdf' });
+    });
+
+    it('deletes a smart folder after confirming', async () => {
+        const wrapper = mountIndex();
+        await wrapper.get('.saved-search .del-btn').trigger('click');
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.accept();
+        await flushPromises();
+        expect(s.del).toHaveBeenCalledWith('/saved-searches/7', expect.anything());
     });
 
     it('clicking a sidebar tag filters by it', async () => {
