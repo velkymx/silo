@@ -65,7 +65,8 @@ describe('Vault/Index', () => {
         const wrapper = mount(VaultIndex, { props: { items, groups: [] } });
         expect(wrapper.findComponent({ name: 'VibeDataTable' }).exists()).toBe(true);
         expect(wrapper.text()).toContain('Prod DB');
-        expect(wrapper.text()).toContain('All Secrets');
+        // The tree roots at the section itself (id 0 = "Vault").
+        expect(wrapper.find('[data-folder="0"]').text()).toContain('Vault');
         expect(wrapper.text()).toContain('Infra');
     });
 

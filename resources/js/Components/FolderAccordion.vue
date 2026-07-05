@@ -5,6 +5,8 @@ interface Folder {
     id: number;
     name: string;
     parent_id: number | null;
+    /** Optional icon override (section roots use their own glyph). */
+    icon?: string;
 }
 
 const props = withDefaults(defineProps<{
@@ -45,6 +47,7 @@ const items = computed(() =>
         title: f.name,
         content: '',
         show: props.openIds.has(f.id),
+        icon: f.icon ?? null,
     })),
 );
 
@@ -71,7 +74,7 @@ function folderId(itemId: string): number {
         >
             <template #title="{ item }">
                 <span :data-folder="item.id" class="d-flex align-items-center flex-grow-1 min-w-0" :class="{ 'fw-semibold': selectedId === folderId(item.id) }">
-                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="me-2" />
+                    <VibeIcon :icon="item.icon ?? (openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2')" class="me-2" />
                     <span class="text-truncate flex-grow-1">{{ item.title }}</span>
                     <span v-if="counts && counts[folderId(item.id)] != null" class="badge text-bg-light ms-2 flex-shrink-0">{{ counts[folderId(item.id)] }}</span>
                 </span>

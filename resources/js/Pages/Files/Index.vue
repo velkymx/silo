@@ -58,10 +58,18 @@ const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => pr
 
 const currentId = computed(() => props.current?.id ?? null);
 
+// The tree roots at "Home" (id 0 — real folder ids start at 1); every
+// top-level folder becomes its child so the parent is always in the list.
+const HOME_ID = 0;
+const accordionFolders = computed(() => [
+    { id: HOME_ID, name: 'Home', parent_id: null, icon: 'house-door-fill' },
+    ...props.allFolders.map((f) => ({ ...f, parent_id: f.parent_id ?? HOME_ID })),
+]);
+
 // IDs along the path from root to the current folder — used to auto-expand the tree.
 const ancestorIds = computed(() => {
     const byId = Object.fromEntries(props.allFolders.map((f) => [f.id, f]));
-    const ids = new Set();
+    const ids = new Set([HOME_ID]);
     let id = currentId.value;
     while (id) {
         ids.add(id);
@@ -103,7 +111,7 @@ function visitFolder(id) {
 const activeSection = ref(props.section);
 const activePane = ref('contents');
 const openIds = computed(() => ancestorIds.value);
-function selectAccordionFolder(id) { visitFolder(id); activePane.value = 'contents'; }
+function selectAccordionFolder(id) { visitFolder(id === HOME_ID ? null : id); activePane.value = 'contents'; }
 
 function onBreadcrumb({ item, event }) {
     event?.preventDefault?.();
@@ -752,8 +760,8 @@ onBeforeUnmount(() => {
         <template #viewNav>
             <FolderAccordion
                 v-if="activeSection === 'all'"
-                :folders="allFolders"
-                :selected-id="currentId"
+                :folders="accordionFolders"
+                :selected-id="currentId ?? HOME_ID"
                 :open-ids="openIds"
                 @select-folder="selectAccordionFolder"
                 @new-folder="() => folderOpen = true"

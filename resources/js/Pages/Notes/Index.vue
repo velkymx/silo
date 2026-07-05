@@ -88,25 +88,30 @@ function fmtDate(iso) {
 }
 
 // ----- Folder accordion -----
-// Top-level note folders hang off the notes root; normalize their parent to
-// null so FolderAccordion's tree walk (rooted at null) covers both root
-// children and any orphaned top-level folders.
-const accordionFolders = computed(() => props.folders.map((f) => ({
-    ...f,
-    parent_id: f.parent_id === props.rootId ? null : f.parent_id,
-})));
-// Note counts per folder, shown as row badges.
+// The tree roots at the "Notes" section root itself; top-level note folders
+// (parented on the real root or orphaned) hang off it so the parent is
+// always visible in the list.
+const rootAccId = computed(() => props.rootId ?? 0);
+const accordionFolders = computed(() => [
+    { id: rootAccId.value, name: 'Notes', parent_id: null, icon: 'journal-text' },
+    ...props.folders.map((f) => ({
+        ...f,
+        parent_id: f.parent_id ?? rootAccId.value,
+    })),
+]);
+// Note counts per folder, shown as row badges (root counts its direct notes).
 const folderCounts = computed(() => {
     const map = {};
     for (const n of props.notes) {
-        map[n.parent_id] = (map[n.parent_id] ?? 0) + 1;
+        const key = (n.parent_id == null || n.parent_id === props.rootId) ? rootAccId.value : n.parent_id;
+        map[key] = (map[key] ?? 0) + 1;
     }
     return map;
 });
-// Auto-expand the path from the root to the selected folder.
+// Auto-expand the root plus the path down to the selected folder.
 const openFolderIds = computed(() => {
     const byId = Object.fromEntries(accordionFolders.value.map((f) => [f.id, f]));
-    const ids = new Set();
+    const ids = new Set([rootAccId.value]);
     let id = selectedFolder.value;
     while (id != null && byId[id]) {
         ids.add(id);
@@ -114,6 +119,9 @@ const openFolderIds = computed(() => {
     }
     return ids;
 });
+function selectAccordionFolder(id) {
+    selectFolder(id === rootAccId.value ? null : id);
+}
 
 // ----- Breadcrumb -----
 const selectedFolderName = computed(() =>
@@ -262,23 +270,12 @@ onMounted(() => {
 <template>
     <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedNote">
         <template #viewNav>
-            <div class="px-1 pt-1">
-                <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === null && activeTag === null }"
-                    @click="selectFolder(null)"
-                >
-                    <VibeIcon icon="journals" />
-                    <span>All Notes</span>
-                </button>
-            </div>
             <FolderAccordion
                 :folders="accordionFolders"
-                :selected-id="selectedFolder"
+                :selected-id="selectedFolder ?? (activeTag === null ? rootAccId : null)"
                 :open-ids="openFolderIds"
                 :counts="folderCounts"
-                @select-folder="selectFolder"
+                @select-folder="selectAccordionFolder"
                 @new-folder="newFolder"
             />
             <NotesSidebar

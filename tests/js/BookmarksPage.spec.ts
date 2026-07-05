@@ -50,7 +50,8 @@ describe('Bookmarks/Index (explorer shell)', () => {
         expect(wrapper.findComponent({ name: 'VibeDataTable' }).exists()).toBe(true);
         expect(wrapper.text()).toContain('Payroll');
         expect(wrapper.text()).toContain('Company Wiki');
-        expect(wrapper.text()).toContain('All Bookmarks');
+        // The tree roots at the section itself (id 0 = "Bookmarks").
+        expect(wrapper.find('[data-folder="0"]').text()).toContain('Bookmarks');
         expect(wrapper.text()).toContain('HR');
         expect(wrapper.text()).toContain('Docs');
     });

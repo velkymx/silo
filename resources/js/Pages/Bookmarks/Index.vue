@@ -44,18 +44,27 @@ const counts = computed(() => {
 const feedCount = computed(() => props.bookmarks.filter((b) => b.feed_url).length);
 
 // Categories are flat strings; FolderAccordion wants {id, name, parent_id}
-// rows, so each category gets a stable positional pseudo-id.
+// rows. The tree roots at "Bookmarks" (id 0) with each category as its
+// child under a stable positional pseudo-id.
+const ROOT_ID = 0;
 const folderNames = computed(() => [...folders.value, ...(counts.value['General'] ? ['General'] : [])]);
-const accordionFolders = computed(() =>
-    folderNames.value.map((name, i) => ({ id: i + 1, name, parent_id: null })));
+const accordionFolders = computed(() => [
+    { id: ROOT_ID, name: 'Bookmarks', parent_id: null, icon: 'bookmark-fill' },
+    ...folderNames.value.map((name, i) => ({ id: i + 1, name, parent_id: ROOT_ID })),
+]);
 const accordionCounts = computed(() => {
-    const map = {};
-    accordionFolders.value.forEach((f) => { map[f.id] = counts.value[f.name] ?? 0; });
+    const map = { [ROOT_ID]: props.bookmarks.length };
+    accordionFolders.value.forEach((f) => {
+        if (f.id !== ROOT_ID) map[f.id] = counts.value[f.name] ?? 0;
+    });
     return map;
 });
 const selectedFolderId = computed(() =>
-    accordionFolders.value.find((f) => f.name === selectedFolder.value)?.id ?? null);
+    selectedFolder.value === null
+        ? ROOT_ID
+        : (accordionFolders.value.find((f) => f.name === selectedFolder.value)?.id ?? null));
 function pickFolderById(id) {
+    if (id === ROOT_ID) { pickFolder(null); return; }
     const folder = accordionFolders.value.find((f) => f.id === id);
     if (folder) pickFolder(folder.name);
 }
@@ -229,18 +238,8 @@ async function runMaintenance(action) {
 <template>
     <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedBookmark">
         <template #viewNav>
-            <div class="px-1 pt-1">
+            <div v-if="feedCount" class="px-1 pt-1">
                 <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === null }"
-                    @click="pickFolder(null)"
-                >
-                    <VibeIcon icon="bookmark-fill" />
-                    <span class="flex-grow-1">All Bookmarks</span>
-                </button>
-                <button
-                    v-if="feedCount"
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: selectedFolder === '__feeds__' }"
@@ -254,7 +253,7 @@ async function runMaintenance(action) {
             <FolderAccordion
                 :folders="accordionFolders"
                 :selected-id="selectedFolderId"
-                :open-ids="new Set()"
+                :open-ids="new Set([0])"
                 :counts="accordionCounts"
                 @select-folder="pickFolderById"
                 @new-folder="addFolder"
