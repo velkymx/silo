@@ -29,12 +29,52 @@ class DailyWordGame
         return 6;
     }
 
+    /**
+     * Day zero of the puzzle sequence. Changing it (or the shuffle seed)
+     * reshuffles the entire schedule.
+     */
+    private const EPOCH = '2025-01-01';
+
+    private const SHUFFLE_SEED = 727272;
+
+    /** @var list<int>|null Lazily-built shuffled index order. */
+    private ?array $order = null;
+
     public function targetForDate(DateTimeInterface $date): string
     {
-        $key = $date->format('Y-m-d');
-        $index = abs(crc32($key)) % count($this->words);
+        // Walk a seeded shuffle of the pool by day number so every word is
+        // used exactly once per cycle. The old crc32(date) % count picker
+        // clustered badly: two years of dates reached only ~60% of the pool
+        // and repeated words within days of each other.
+        $epoch = new \DateTimeImmutable(self::EPOCH);
+        $days = (int) $epoch->diff(new \DateTimeImmutable($date->format('Y-m-d')))->format('%r%a');
+        $count = count($this->words);
+        $index = (($days % $count) + $count) % $count;
 
-        return $this->words[$index];
+        return $this->words[$this->shuffledOrder()[$index]];
+    }
+
+    /**
+     * Deterministic Fisher–Yates over the word indexes: identical on every
+     * request and server, so the daily word never depends on process state.
+     *
+     * @return list<int>
+     */
+    private function shuffledOrder(): array
+    {
+        if ($this->order !== null) {
+            return $this->order;
+        }
+
+        $order = range(0, count($this->words) - 1);
+        mt_srand(self::SHUFFLE_SEED);
+        for ($i = count($order) - 1; $i > 0; $i--) {
+            $j = mt_rand(0, $i);
+            [$order[$i], $order[$j]] = [$order[$j], $order[$i]];
+        }
+        mt_srand(); // restore unpredictable seeding for everyone else
+
+        return $this->order = $order;
     }
 
     public function isValidWord(string $word): bool

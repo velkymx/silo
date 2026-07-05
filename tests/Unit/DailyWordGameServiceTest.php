@@ -29,6 +29,36 @@ class DailyWordGameServiceTest extends TestCase
         $this->assertSame(5, strlen($first));
     }
 
+    public function test_no_word_repeats_within_a_full_cycle(): void
+    {
+        // The old crc32(date) picker repeated words within days of each
+        // other; the seeded-shuffle walk must use every word exactly once
+        // per pool-sized cycle.
+        $game = new DailyWordGame();
+        $poolSize = count(config('dwg.words'));
+
+        $seen = [];
+        $date = Carbon::create(2026, 1, 1);
+        for ($i = 0; $i < $poolSize; $i++) {
+            $word = $game->targetForDate($date->copy()->addDays($i));
+            $this->assertArrayNotHasKey($word, $seen, "'{$word}' repeated within one cycle");
+            $seen[$word] = true;
+        }
+
+        $this->assertCount($poolSize, $seen);
+    }
+
+    public function test_consecutive_days_get_different_words(): void
+    {
+        $game = new DailyWordGame();
+        $date = Carbon::create(2026, 7, 5);
+
+        $this->assertNotSame(
+            $game->targetForDate($date),
+            $game->targetForDate($date->copy()->addDay()),
+        );
+    }
+
     public function test_validates_words(): void
     {
         $game = new DailyWordGame();
