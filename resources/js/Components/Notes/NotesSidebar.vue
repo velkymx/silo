@@ -59,7 +59,7 @@ function toggleTag(path: string): void {
 </script>
 
 <template>
-    <div class="notes-sidebar d-flex flex-column h-100 border-end bg-body-tertiary p-2">
+    <div class="notes-sidebar d-flex flex-column w-100 p-2">
         <div class="d-flex align-items-center justify-content-between px-1 mb-1">
             <span class="fw-semibold small text-uppercase text-muted">Tags</span>
         </div>

@@ -1,12 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
-import PageHeader from '../../Components/PageHeader.vue';
-import ThreePane from '../../Components/ThreePane.vue';
+import ShellLayout from '../../Layouts/ShellLayout.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
 import NotesFolders from '../../Components/Notes/NotesFolders.vue';
-import NotesList from '../../Components/Notes/NotesList.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import SelectBar from '../../Components/SelectBar.vue';
@@ -38,8 +35,7 @@ const content = ref('');
 const saveState = ref('idle'); // 'idle' | 'saving' | 'saved' | 'error'
 const activeTag = ref(null);
 const selectedFolder = ref(null);
-const sortOrder = ref('name-asc');
-const activePane = ref(props.open ? 'detail' : 'folders');
+const activePane = ref(props.open ? 'detail' : 'contents');
 let suppressSave = false;
 let saveTimer = null;
 let suppressTimer = null;
@@ -48,7 +44,7 @@ let unmounted = false;
 
 const { loading } = usePageLoading();
 const notesRef = computed(() => props.notes);
-const { selectMode: noteSelectMode, selectedItems: selectedNotes, isSelected: noteIsSelected, toggleSel: noteToggle, clearSelection: noteClearSel } = useSelection(notesRef, (n) => selectNote(n.id));
+const { selectedIds: noteSelectedIds, selectedItems: selectedNotes, isSelected: noteIsSelected, toggleSel: noteToggle, clearSelection: noteClearSel } = useSelection(notesRef, (n) => selectNote(n.id));
 
 async function bulkDeleteNotes() {
     if (!await confirm({ title: `Move ${selectedNotes.value.length} note(s) to trash`, message: 'Move selected notes to trash?', confirmLabel: 'Move to trash', variant: 'danger' })) return;
@@ -56,7 +52,7 @@ async function bulkDeleteNotes() {
         router.delete(`/notes/${n.id}`, { preserveScroll: true });
     }
     toast.push(`${selectedNotes.value.length} note(s) deleted`);
-    noteClearSel();
+    clearContentSelection();
 }
 
 const filteredNotes = computed(() => {
@@ -70,22 +66,53 @@ const filteredNotes = computed(() => {
     if (selectedFolder.value !== null) {
         list = list.filter((n) => n.parent_id === selectedFolder.value);
     }
-    const sorted = [...list];
-    if (sortOrder.value === 'name-asc') sorted.sort((a, b) => a.title.localeCompare(b.title));
-    else if (sortOrder.value === 'name-desc') sorted.sort((a, b) => b.title.localeCompare(a.title));
-    else if (sortOrder.value === 'date') sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-    return sorted;
+    return list;
 });
+
+// ----- Explorer table -----
+// VibeDataTable owns search + sort + pagination over the filtered set.
+const tableColumns = [
+    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'nt-col-select', class: 'nt-col-select' },
+    { key: 'title', label: 'Title', class: 'nt-col-title' },
+    { key: 'updated_at', label: 'Edited', class: 'nt-col-meta' },
+];
+const listPage = ref(1);
+
+function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+        return iso;
+    }
+}
+
+// ----- Breadcrumb -----
+const selectedFolderName = computed(() =>
+    props.folders.find((f) => f.id === selectedFolder.value)?.name ?? null);
+const breadcrumbItems = computed(() => [
+    { text: 'Notes', kind: 'root', href: '/notes', active: selectedFolder.value === null && activeTag.value === null },
+    ...(selectedFolderName.value !== null
+        ? [{ text: selectedFolderName.value, kind: 'folder', href: '/notes', active: true }]
+        : []),
+    ...(activeTag.value !== null
+        ? [{ text: `#${activeTag.value}`, kind: 'tag', href: '/notes', active: true }]
+        : []),
+]);
+function onBreadcrumb({ item, event }) {
+    event?.preventDefault?.();
+    if (!item.active) selectFolder(null);
+}
 
 function selectFolder(id) {
     selectedFolder.value = id;
     activeTag.value = null;
-    activePane.value = 'list'; // mobile: reveal the list after picking a folder
+    activePane.value = 'contents'; // mobile: reveal the list after picking a folder
 }
 function selectTag(id) {
     activeTag.value = id;
     selectedFolder.value = null;
-    activePane.value = 'list'; // mobile: reveal the list after picking a tag
+    activePane.value = 'contents'; // mobile: reveal the list after picking a tag
 }
 
 async function newFolder() {
@@ -128,6 +155,7 @@ onBeforeUnmount(() => {
     unmounted = true;
     if (saveTimer) clearTimeout(saveTimer);
     if (suppressTimer) clearTimeout(suppressTimer);
+    window.removeEventListener('keydown', onKey);
 });
 
 function selectNote(id) {
@@ -135,6 +163,21 @@ function selectNote(id) {
     const note = props.notes.find((n) => n.id === id);
     if (note) { loadContent(note); activePane.value = 'detail'; }
 }
+
+function clearContentSelection() {
+    noteClearSel();
+    selectedId.value = null;
+    if (activePane.value === 'detail') activePane.value = 'contents';
+}
+
+function onKey(e) {
+    const tag = (e.target?.tagName || '').toLowerCase();
+    const type = (e.target?.type || '').toLowerCase();
+    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
+        || !!e.target?.isContentEditable;
+    if (!inTextField && e.key === 'Escape') clearContentSelection();
+}
+onMounted(() => window.addEventListener('keydown', onKey));
 
 function newNote() {
     router.post('/notes', { name: 'Untitled', parent_id: selectedFolder.value }, { preserveScroll: true });
@@ -189,106 +232,178 @@ onMounted(() => {
 </script>
 
 <template>
-    <AppLayout>
-        <PageHeader title="Notes" icon="journal-text" />
-        <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
-        <ThreePane v-else v-model:activePane="activePane">
-            <template #sidebar>
-                <NotesSidebar
-                    :tags="tags"
-                    :active-tag="activeTag"
-                    @select-tag="selectTag"
-                />
-            </template>
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedNote">
+        <template #viewNav>
+            <NotesFolders
+                :folders="folders"
+                :root-id="rootId"
+                :selected-folder="selectedFolder"
+                @select-folder="selectFolder"
+                @new-folder="newFolder"
+            />
+            <NotesSidebar
+                :tags="tags"
+                :active-tag="activeTag"
+                @select-tag="selectTag"
+            />
+        </template>
 
-            <template #folders>
-                <NotesFolders
-                    :folders="folders"
-                    :root-id="rootId"
-                    :selected-folder="selectedFolder"
-                    @select-folder="selectFolder"
-                    @new-folder="newFolder"
-                />
-            </template>
-
-            <template #list>
-                <SelectBar :count="selectedNotes.length" @clear="noteClearSel">
-                    <VibeButton variant="danger" size="sm" outline @click="bulkDeleteNotes">
-                        <VibeIcon icon="trash" class="me-1" />Delete
+        <!-- Breadcrumb + actions share the top-bar line: New note is the single
+             solid-primary CTA. -->
+        <template #topBar>
+            <div class="d-flex align-items-center gap-2 p-1">
+                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
+                    <template #item="{ item }">
+                        <VibeIcon :icon="item.kind === 'root' ? 'journal-text' : (item.kind === 'tag' ? 'tag-fill' : 'folder2')" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                    </template>
+                </VibeBreadcrumb>
+                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                    <VibeButton size="sm" variant="primary" title="New note" aria-label="New note" @click="newNote">
+                        <VibeIcon icon="plus-lg" />
                     </VibeButton>
-                </SelectBar>
-                <NotesList
-                    :notes="filteredNotes"
-                    :selected-id="selectedId"
-                    :sort="sortOrder"
-                    :select-mode="noteSelectMode"
-                    :is-selected="noteIsSelected"
-                    @select="selectNote"
-                    @new="newNote"
-                    @update:sort="sortOrder = $event"
-                    @toggle-select="noteToggle"
-                    @update:select-mode="noteSelectMode = $event"
-                />
-            </template>
-
-            <template #detail>
-                <template v-if="selectedNote">
-                    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom flex-shrink-0">
-                        <VibeButton
-                            variant="link"
-                            size="sm"
-                            class="p-0 fw-semibold text-truncate text-decoration-none text-body note-title"
-                            title="Rename note"
-                            @click="renameNote"
-                        >
-                            {{ selectedNote.title }}
-                            <VibeIcon icon="pencil" class="ms-1 small text-muted" />
-                        </VibeButton>
-                        <div class="d-flex align-items-center gap-2">
-                            <SaveIndicator :state="saveState" />
-                            <VibeButton size="sm" variant="secondary" outline :title="selectedNote.starred ? 'Unstar' : 'Star'" :aria-label="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
-                                <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />
-                            </VibeButton>
-                            <VibeDropdown
-                                size="sm"
-                                variant="secondary"
-                                outline
-                                menu-end
-                                title="Outline"
-                                :disabled="!outline.length"
-                                :items="outline"
-                                @item-click="jumpToHeading($event.item.line)"
-                            >
-                                <template #button><VibeIcon icon="list-nested" class="me-1" />Outline</template>
-                                <template #item="{ item }">
-                                    <span :class="`outline-h-${item.level}`">{{ item.text }}</span>
-                                </template>
-                            </VibeDropdown>
-                            <VibeButton size="sm" variant="secondary" outline title="Save a version" @click="saveVersion">
-                                <VibeIcon icon="bookmark-plus" class="me-1" />Save version
-                            </VibeButton>
-                        </div>
-                    </div>
-                    <div class="notes-editor-body">
-                        <MarkdownEditor ref="editorRef" v-model="content" enable-links />
-                    </div>
-                    <BacklinksPanel :note-id="selectedId" @open="selectNote" />
-                </template>
-
-                <div v-else class="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
-                    <EmptyState icon="journal-text" title="Select a note, or create a new one." />
                 </div>
+            </div>
+        </template>
+
+        <template #contents>
+            <SelectBar :count="selectedNotes.length" class="mx-2 mt-2" @clear="noteClearSel">
+                <VibeButton variant="danger" size="sm" outline @click="bulkDeleteNotes">
+                    <VibeIcon icon="trash" class="me-1" />Delete
+                </VibeButton>
+            </SelectBar>
+
+            <LoadingSkeleton v-if="loading" :rows="8" :cols="3" />
+
+            <div
+                v-else
+                class="nt-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'nt-has-selection': noteSelectedIds.size > 0 }"
+                @click.self="clearContentSelection"
+            >
+                <VibeDataTable
+                    v-if="filteredNotes.length"
+                    :items="filteredNotes"
+                    :columns="tableColumns"
+                    row-key="id"
+                    hover
+                    small
+                    clickable
+                    search-placeholder="Search notes…"
+                    :show-per-page="false"
+                    :per-page="50"
+                    v-model:current-page="listPage"
+                    sort-by="title"
+                    class="nt-table"
+                    @row-clicked="(n) => selectNote(n.id)"
+                >
+                    <template #cell(_select)="{ item }">
+                        <VibeFormCheckbox
+                            class="nt-select-check"
+                            :model-value="noteIsSelected(item.id)"
+                            :aria-label="noteIsSelected(item.id) ? `Deselect ${item.title}` : `Select ${item.title}`"
+                            @update:model-value="noteToggle(item.id)"
+                            @click.stop
+                        />
+                    </template>
+                    <template #cell(title)="{ item }">
+                        <div class="d-flex align-items-center min-w-0">
+                            <VibeIcon icon="journal-text" class="me-2 text-muted flex-shrink-0" />
+                            <span class="text-truncate" :class="{ 'fw-semibold': item.id === selectedId }" :title="item.title">{{ item.title }}</span>
+                            <VibeIcon v-if="item.starred" icon="star-fill" class="text-warning small ms-2 flex-shrink-0" title="Starred" />
+                            <span v-for="tag in item.tags" :key="tag.id" class="badge text-bg-light ms-2 flex-shrink-0">#{{ tag.name }}</span>
+                        </div>
+                    </template>
+                    <template #cell(updated_at)="{ item }">
+                        <span class="text-muted small text-nowrap">{{ fmtDate(item.updated_at) }}</span>
+                    </template>
+                </VibeDataTable>
+                <EmptyState v-else icon="journal-text" title="No notes yet" hint="Create your first note to get started." />
+            </div>
+        </template>
+
+        <template #detail>
+            <template v-if="selectedNote">
+                <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom flex-shrink-0">
+                    <VibeButton
+                        variant="link"
+                        size="sm"
+                        class="p-0 fw-semibold text-truncate text-decoration-none text-body note-title"
+                        title="Rename note"
+                        @click="renameNote"
+                    >
+                        {{ selectedNote.title }}
+                        <VibeIcon icon="pencil" class="ms-1 small text-muted" />
+                    </VibeButton>
+                    <div class="d-flex align-items-center gap-2">
+                        <SaveIndicator :state="saveState" />
+                        <VibeButton size="sm" variant="light" :title="selectedNote.starred ? 'Unstar' : 'Star'" :aria-label="selectedNote.starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedNote)">
+                            <VibeIcon :icon="selectedNote.starred ? 'star-fill' : 'star'" :class="{ 'text-warning': selectedNote.starred }" />
+                        </VibeButton>
+                        <VibeDropdown
+                            size="sm"
+                            variant="light"
+                            menu-end
+                            title="Outline"
+                            :disabled="!outline.length"
+                            :items="outline"
+                            @item-click="jumpToHeading($event.item.line)"
+                        >
+                            <template #button><VibeIcon icon="list-nested" class="me-1" />Outline</template>
+                            <template #item="{ item }">
+                                <span :class="`outline-h-${item.level}`">{{ item.text }}</span>
+                            </template>
+                        </VibeDropdown>
+                        <VibeButton size="sm" variant="light" title="Save a version" @click="saveVersion">
+                            <VibeIcon icon="bookmark-plus" class="me-1" />Save version
+                        </VibeButton>
+                    </div>
+                </div>
+                <div class="notes-editor-body">
+                    <MarkdownEditor ref="editorRef" v-model="content" enable-links />
+                </div>
+                <BacklinksPanel :note-id="selectedId" @open="selectNote" />
             </template>
-        </ThreePane>
-    </AppLayout>
+        </template>
+    </ShellLayout>
 </template>
 
 <style scoped>
+.min-w-0 {
+    min-width: 0;
+}
 .notes-editor-body {
     flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+}
+/* Explorer table chrome (mirrors the Files table). */
+.nt-table-wrap :deep(thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg);
+}
+.nt-table-wrap :deep(td) {
+    vertical-align: middle;
+}
+.nt-table-wrap :deep(.nt-col-select) {
+    width: 1%;
+    white-space: nowrap;
+}
+.nt-table-wrap :deep(.nt-col-meta) {
+    width: 1%;
+    white-space: nowrap;
+}
+.nt-table-wrap :deep(.nt-select-check) {
+    opacity: 0;
+    transition: opacity 0.15s;
+    cursor: pointer;
+}
+.nt-table-wrap :deep(tr:hover .nt-select-check),
+.nt-table-wrap :deep(tr:focus-within .nt-select-check),
+.nt-table-wrap.nt-has-selection :deep(.nt-select-check) {
+    opacity: 1;
 }
 /* Outline item indentation by heading level (1-6). */
 .outline-h-1 { padding-left: 0; }

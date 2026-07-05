@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, VueWrapper } from '@vue/test-utils';
 
 const h = vi.hoisted(() => ({
     post: vi.fn(),
     visit: vi.fn(),
+    del: vi.fn(),
+    routerPut: vi.fn(),
     put: vi.fn(() => Promise.resolve({})),
     get: vi.fn(() => Promise.resolve({ backlinks: [] as Array<Record<string, unknown>> })),
     getText: vi.fn(() => Promise.resolve('# Hello')),
@@ -11,12 +13,15 @@ const h = vi.hoisted(() => ({
     confirm: vi.fn(() => Promise.resolve(true)),
 }));
 
-vi.mock('@inertiajs/vue3', () => ({ router: { post: h.post, visit: h.visit, on: vi.fn(() => vi.fn()) } }));
+vi.mock('@inertiajs/vue3', () => ({
+    router: { post: h.post, visit: h.visit, delete: h.del, put: h.routerPut, on: vi.fn(() => vi.fn()) },
+    usePage: () => ({ url: '/notes', props: { auth: { user: { id: 1, name: 'QA' } }, storage: { used: 0, quota: 0 } } }),
+    Link: { name: 'Link', template: '<a><slot /></a>' },
+}));
 vi.mock('@/lib/http', () => ({ http: { get: h.get, put: h.put }, getText: h.getText }));
 vi.mock('@/composables/useConfirm', () => ({ usePrompt: () => ({ prompt: h.prompt }), useConfirm: () => ({ confirm: h.confirm }) }));
 
 import NotesIndex from '@/Pages/Notes/Index.vue';
-import NotesList from '@/Components/Notes/NotesList.vue';
 import NotesSidebar from '@/Components/Notes/NotesSidebar.vue';
 import NotesFolders from '@/Components/Notes/NotesFolders.vue';
 import BacklinksPanel from '@/Components/Notes/BacklinksPanel.vue';
@@ -31,6 +36,12 @@ const mountPage = () => mount(NotesIndex, {
     global: { stubs: { MarkdownEditor: { template: '<div class="md-stub" />', props: ['modelValue', 'enableLinks'] } } },
 });
 
+function selectRow(wrapper: VueWrapper, id: number) {
+    const table = wrapper.findComponent({ name: 'VibeDataTable' });
+    const row = (table.props('items') as Array<{ id: number }>).find((n) => n.id === id);
+    table.vm.$emit('row-clicked', row, 0);
+}
+
 beforeEach(() => {
     Object.values(h).forEach((f) => f.mockClear());
     h.getText.mockResolvedValue('# Hello');
@@ -38,15 +49,24 @@ beforeEach(() => {
 });
 
 describe('Notes/Index', () => {
-    it('lists the notes', () => {
+    it('lists the notes in the explorer table', () => {
         const wrapper = mountPage();
+        expect(wrapper.findComponent({ name: 'VibeDataTable' }).exists()).toBe(true);
         expect(wrapper.text()).toContain('First');
         expect(wrapper.text()).toContain('Second');
     });
 
-    it('loads a note body when selected', async () => {
+    it('collapses the editor pane until a note is selected', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesList).vm.$emit('select', 2);
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);
+        selectRow(wrapper, 2);
+        await flushPromises();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(true);
+    });
+
+    it('loads a note body when a row is selected', async () => {
+        const wrapper = mountPage();
+        selectRow(wrapper, 2);
         await flushPromises();
         expect(h.getText).toHaveBeenCalledWith('/raw/2');
     });
@@ -54,7 +74,7 @@ describe('Notes/Index', () => {
     it('shows a heading outline for the open note', async () => {
         h.getText.mockResolvedValue('# Alpha\n\nbody\n\n## Beta');
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesList).vm.$emit('select', 1);
+        selectRow(wrapper, 1);
         await flushPromises();
         expect(wrapper.text()).toContain('Alpha');
         expect(wrapper.text()).toContain('Beta');
@@ -62,10 +82,10 @@ describe('Notes/Index', () => {
         await wrapper.findAll('.dd-item')[0]?.trigger('click');
     });
 
-    it('creates a note in the current folder via the New button', async () => {
+    it('creates a note in the current folder via the New note button', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesFolders).vm.$emit("select-folder", 12);
-        await wrapper.findComponent(NotesList).vm.$emit('new');
+        await wrapper.findComponent(NotesFolders).vm.$emit('select-folder', 12);
+        await wrapper.get('[title="New note"]').trigger('click');
         expect(h.post).toHaveBeenCalledWith('/notes', { name: 'Untitled', parent_id: 12 }, expect.any(Object));
     });
 
@@ -73,8 +93,9 @@ describe('Notes/Index', () => {
         const wrapper = mountPage();
         await wrapper.findComponent(NotesSidebar).vm.$emit('select-tag', 'todo');
         await flushPromises();
-        expect(wrapper.text()).toContain('First');
-        expect(wrapper.text()).not.toContain('Second');
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
+        expect(titles).toEqual(['First']);
     });
 
     it('a parent tag includes nested-child notes', async () => {
@@ -93,25 +114,18 @@ describe('Notes/Index', () => {
         });
         await wrapper.findComponent(NotesSidebar).vm.$emit('select-tag', 'work');
         await flushPromises();
-        expect(wrapper.text()).toContain('Parent');
-        expect(wrapper.text()).toContain('Child');
-        expect(wrapper.text()).not.toContain('Other');
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
+        expect(titles).toEqual(['Parent', 'Child']);
     });
 
     it('filters the list by folder', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesFolders).vm.$emit("select-folder", 12);
+        await wrapper.findComponent(NotesFolders).vm.$emit('select-folder', 12);
         await flushPromises();
-        expect(wrapper.text()).toContain('Second');
-        expect(wrapper.text()).not.toContain('First');
-    });
-
-    it('reorders the list when the sort changes', async () => {
-        const wrapper = mountPage();
-        await wrapper.findComponent(NotesList).vm.$emit('update:sort', 'name-desc');
-        await flushPromises();
-        const titles = (wrapper.findComponent(NotesList).props('notes') as Array<{ title: string }>).map((n) => n.title);
-        expect(titles).toEqual(['Second', 'First']);
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
+        expect(titles).toEqual(['Second']);
     });
 
     it('ME-14: in-flight autosave does not mutate state after unmount', async () => {
@@ -124,7 +138,7 @@ describe('Notes/Index', () => {
             props: { rootId: 5, folders: [], notes, tags: [] },
             global: { stubs: { MarkdownEditor: namedStub } },
         });
-        await wrapper.findComponent(NotesList).vm.$emit('select', 1);
+        selectRow(wrapper, 1);
         await flushPromises();
         // Emit content change from the editor stub to trigger autosave debounce.
         wrapper.findComponent({ name: 'MarkdownEditor' }).vm.$emit('update:modelValue', 'new content');
@@ -144,6 +158,14 @@ describe('Notes/Index', () => {
         await flushPromises();
         expect(h.prompt).toHaveBeenCalled();
         expect(h.post).toHaveBeenCalledWith('/notes/folders', { name: 'Projects', parent_id: null }, expect.any(Object));
+    });
+
+    it('checkbox multi-select surfaces the bulk-delete bar', async () => {
+        const wrapper = mountPage();
+        const checks = wrapper.get('[data-pane="contents"]').findAll('input[type="checkbox"]');
+        expect(checks.length).toBe(2);
+        await checks[0].setValue(true);
+        expect(wrapper.text()).toContain('1 selected');
     });
 });
 
