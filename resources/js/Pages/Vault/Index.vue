@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
+import FolderAccordion from '../../Components/FolderAccordion.vue';
 import SelectBar from '../../Components/SelectBar.vue';
 import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
@@ -45,6 +46,22 @@ function pickFolder(f) {
     selectedFolder.value = f;
     clearContentSelection();
     activePane.value = 'contents';
+}
+
+// Categories are flat strings; FolderAccordion wants {id, name, parent_id}
+// rows, so each category gets a stable positional pseudo-id.
+const accordionFolders = computed(() =>
+    folders.value.map((name, i) => ({ id: i + 1, name, parent_id: null })));
+const accordionCounts = computed(() => {
+    const map = {};
+    accordionFolders.value.forEach((f) => { map[f.id] = counts.value[f.name] ?? 0; });
+    return map;
+});
+const selectedFolderId = computed(() =>
+    accordionFolders.value.find((f) => f.name === selectedFolder.value)?.id ?? null);
+function pickFolderById(id) {
+    const folder = accordionFolders.value.find((f) => f.id === id);
+    if (folder) pickFolder(folder.name);
 }
 
 const listed = computed(() => {
@@ -177,6 +194,15 @@ function openAdd() {
     vaultModal.value?.openAdd();
 }
 
+// A vault "folder" is a category string; it exists once a secret uses it, so
+// creating one opens the add-secret form with the category prefilled.
+async function addFolder() {
+    const name = await prompt({ title: 'New folder', message: 'Folder name:', confirmLabel: 'Create' });
+    if (!name || !name.trim()) return;
+    form.category = name.trim();
+    vaultModal.value?.openAdd();
+}
+
 function openEdit(item) {
     // The secret is never sent to the client; leave it blank (blank = keep existing).
     Object.assign(form, {
@@ -234,10 +260,7 @@ async function onImportFile(e) {
 <template>
     <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedItem">
         <template #viewNav>
-            <div class="d-flex flex-column p-2 w-100">
-                <div class="d-flex align-items-center justify-content-between px-1 mb-1">
-                    <span class="fw-semibold small text-uppercase text-muted">Folders</span>
-                </div>
+            <div class="px-1 pt-1">
                 <button
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
@@ -247,19 +270,15 @@ async function onImportFile(e) {
                     <VibeIcon icon="lock-fill" />
                     <span class="flex-grow-1">All Secrets</span>
                 </button>
-                <button
-                    v-for="folder in folders"
-                    :key="folder"
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === folder }"
-                    @click="pickFolder(folder)"
-                >
-                    <VibeIcon :icon="folder === 'General' ? 'folder' : 'folder-fill'" class="text-warning" />
-                    <span class="flex-grow-1 text-truncate">{{ folder }}</span>
-                    <span class="badge text-bg-light">{{ counts[folder] ?? 0 }}</span>
-                </button>
             </div>
+            <FolderAccordion
+                :folders="accordionFolders"
+                :selected-id="selectedFolderId"
+                :open-ids="new Set()"
+                :counts="accordionCounts"
+                @select-folder="pickFolderById"
+                @new-folder="addFolder"
+            />
         </template>
 
         <!-- Breadcrumb + actions on one top-bar line: Add secret is the single
