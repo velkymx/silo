@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
-import NotesFolders from '../../Components/Notes/NotesFolders.vue';
+import FolderAccordion from '../../Components/FolderAccordion.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import SelectBar from '../../Components/SelectBar.vue';
@@ -86,6 +86,34 @@ function fmtDate(iso) {
         return iso;
     }
 }
+
+// ----- Folder accordion -----
+// Top-level note folders hang off the notes root; normalize their parent to
+// null so FolderAccordion's tree walk (rooted at null) covers both root
+// children and any orphaned top-level folders.
+const accordionFolders = computed(() => props.folders.map((f) => ({
+    ...f,
+    parent_id: f.parent_id === props.rootId ? null : f.parent_id,
+})));
+// Note counts per folder, shown as row badges.
+const folderCounts = computed(() => {
+    const map = {};
+    for (const n of props.notes) {
+        map[n.parent_id] = (map[n.parent_id] ?? 0) + 1;
+    }
+    return map;
+});
+// Auto-expand the path from the root to the selected folder.
+const openFolderIds = computed(() => {
+    const byId = Object.fromEntries(accordionFolders.value.map((f) => [f.id, f]));
+    const ids = new Set();
+    let id = selectedFolder.value;
+    while (id != null && byId[id]) {
+        ids.add(id);
+        id = byId[id].parent_id;
+    }
+    return ids;
+});
 
 // ----- Breadcrumb -----
 const selectedFolderName = computed(() =>
@@ -234,10 +262,22 @@ onMounted(() => {
 <template>
     <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedNote">
         <template #viewNav>
-            <NotesFolders
-                :folders="folders"
-                :root-id="rootId"
-                :selected-folder="selectedFolder"
+            <div class="px-1 pt-1">
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: selectedFolder === null && activeTag === null }"
+                    @click="selectFolder(null)"
+                >
+                    <VibeIcon icon="journals" />
+                    <span>All Notes</span>
+                </button>
+            </div>
+            <FolderAccordion
+                :folders="accordionFolders"
+                :selected-id="selectedFolder"
+                :open-ids="openFolderIds"
+                :counts="folderCounts"
                 @select-folder="selectFolder"
                 @new-folder="newFolder"
             />

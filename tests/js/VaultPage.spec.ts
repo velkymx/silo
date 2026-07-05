@@ -26,6 +26,11 @@ vi.mock('@/lib/http', () => ({ http: { post: h.post, get: h.get }, getText: vi.f
 vi.mock('@/composables/useConfirm', () => ({
     useConfirm: () => ({ confirm: h.confirm }),
     usePrompt: () => ({ prompt: h.prompt }),
+    useDialogHost: () => ({
+        state: { open: false, mode: 'confirm', title: '', message: '', inputValue: '', placeholder: '', confirmLabel: 'OK', cancelLabel: 'Cancel', variant: 'primary' },
+        accept: vi.fn(),
+        cancel: vi.fn(),
+    }),
 }));
 
 import VaultIndex from '@/Pages/Vault/Index.vue';

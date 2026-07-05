@@ -7,6 +7,7 @@ import { useToast } from '../composables/useToast';
 import { useStorageMeter } from '../composables/useStorageMeter';
 import { fmtBytes } from '../lib/format';
 import ToastHost from '../Components/ToastHost.vue';
+import DialogHost from '../Components/DialogHost.vue';
 import CommandPalette from '../Components/CommandPalette.vue';
 import UserAvatar from '../Components/UserAvatar.vue';
 import FourPane from '../Components/FourPane.vue';
@@ -223,6 +224,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
             @dismiss="toast.dismiss($event)"
             @undo="(t) => { t.undo?.(); toast.dismiss(t.id); }"
         />
+
+        <!-- Single in-app confirm/prompt host (replaces native window.confirm/prompt). -->
+        <DialogHost />
 
         <CommandPalette />
     </div>

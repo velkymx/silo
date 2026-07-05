@@ -13,9 +13,12 @@ const props = withDefaults(defineProps<{
     openIds: Set<number>;
     parentId?: number | null;
     showHeader?: boolean;
+    /** Optional per-folder item counts, shown as a badge on each row. */
+    counts?: Record<number, number> | null;
 }>(), {
     parentId: null,
     showHeader: true,
+    counts: null,
 });
 
 const emit = defineEmits<{
@@ -67,8 +70,10 @@ function folderId(itemId: string): number {
             @item-click="emit('select-folder', folderId($event.item.id))"
         >
             <template #title="{ item }">
-                <span :data-folder="item.id" :class="{ 'fw-semibold': selectedId === folderId(item.id) }">
-                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="me-2" />{{ item.title }}
+                <span :data-folder="item.id" class="d-flex align-items-center flex-grow-1 min-w-0" :class="{ 'fw-semibold': selectedId === folderId(item.id) }">
+                    <VibeIcon :icon="openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2'" class="me-2" />
+                    <span class="text-truncate flex-grow-1">{{ item.title }}</span>
+                    <span v-if="counts && counts[folderId(item.id)] != null" class="badge text-bg-light ms-2 flex-shrink-0">{{ counts[folderId(item.id)] }}</span>
                 </span>
             </template>
             <template #content="{ item }">
@@ -79,6 +84,7 @@ function folderId(itemId: string): number {
                     :open-ids="openIds"
                     :parent-id="folderId(item.id)"
                     :show-header="false"
+                    :counts="counts"
                     @select-folder="emit('select-folder', $event)"
                     @new-folder="emit('new-folder')"
                 />
@@ -86,3 +92,9 @@ function folderId(itemId: string): number {
         </VibeAccordion>
     </div>
 </template>
+
+<style scoped>
+.min-w-0 {
+    min-width: 0;
+}
+</style>

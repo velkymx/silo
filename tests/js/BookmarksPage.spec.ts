@@ -22,6 +22,11 @@ vi.mock('@inertiajs/vue3', () => ({
 vi.mock('@/composables/useConfirm', () => ({
     useConfirm: () => ({ confirm: h.confirm }),
     usePrompt: () => ({ prompt: vi.fn(() => Promise.resolve('Tools')) }),
+    useDialogHost: () => ({
+        state: { open: false, mode: 'confirm', title: '', message: '', inputValue: '', placeholder: '', confirmLabel: 'OK', cancelLabel: 'Cancel', variant: 'primary' },
+        accept: vi.fn(),
+        cancel: vi.fn(),
+    }),
 }));
 
 import BookmarksIndex from '@/Pages/Bookmarks/Index.vue';
@@ -60,9 +65,9 @@ describe('Bookmarks/Index (explorer shell)', () => {
         expect(open).toBeTruthy();
     });
 
-    it('filters the table by folder', async () => {
+    it('filters the table by accordion folder', async () => {
         const wrapper = mount(BookmarksIndex, { props: { bookmarks, filters: {} } });
-        const docs = wrapper.findAll('.side-row').find((b) => b.text().includes('Docs'));
+        const docs = wrapper.findAll('[data-folder]').find((b) => b.text().includes('Docs'));
         await docs!.trigger('click');
         const table = wrapper.findComponent({ name: 'VibeDataTable' });
         const titles = (table.props('items') as Array<{ title: string }>).map((b) => b.title);

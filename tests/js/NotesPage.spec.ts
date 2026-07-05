@@ -19,11 +19,19 @@ vi.mock('@inertiajs/vue3', () => ({
     Link: { name: 'Link', template: '<a><slot /></a>' },
 }));
 vi.mock('@/lib/http', () => ({ http: { get: h.get, put: h.put }, getText: h.getText }));
-vi.mock('@/composables/useConfirm', () => ({ usePrompt: () => ({ prompt: h.prompt }), useConfirm: () => ({ confirm: h.confirm }) }));
+vi.mock('@/composables/useConfirm', () => ({
+    usePrompt: () => ({ prompt: h.prompt }),
+    useConfirm: () => ({ confirm: h.confirm }),
+    useDialogHost: () => ({
+        state: { open: false, mode: 'confirm', title: '', message: '', inputValue: '', placeholder: '', confirmLabel: 'OK', cancelLabel: 'Cancel', variant: 'primary' },
+        accept: vi.fn(),
+        cancel: vi.fn(),
+    }),
+}));
 
 import NotesIndex from '@/Pages/Notes/Index.vue';
 import NotesSidebar from '@/Components/Notes/NotesSidebar.vue';
-import NotesFolders from '@/Components/Notes/NotesFolders.vue';
+import FolderAccordion from '@/Components/FolderAccordion.vue';
 import BacklinksPanel from '@/Components/Notes/BacklinksPanel.vue';
 
 const notes = [
@@ -84,7 +92,7 @@ describe('Notes/Index', () => {
 
     it('creates a note in the current folder via the New note button', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesFolders).vm.$emit('select-folder', 12);
+        await wrapper.findComponent(FolderAccordion).vm.$emit('select-folder', 12);
         await wrapper.get('[title="New note"]').trigger('click');
         expect(h.post).toHaveBeenCalledWith('/notes', { name: 'Untitled', parent_id: 12 }, expect.any(Object));
     });
@@ -119,9 +127,9 @@ describe('Notes/Index', () => {
         expect(titles).toEqual(['Parent', 'Child']);
     });
 
-    it('filters the list by folder', async () => {
+    it('filters the list by folder via the accordion', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesFolders).vm.$emit('select-folder', 12);
+        await wrapper.get('[data-folder="12"]').trigger('click');
         await flushPromises();
         const table = wrapper.findComponent({ name: 'VibeDataTable' });
         const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
@@ -154,7 +162,7 @@ describe('Notes/Index', () => {
 
     it('creates a folder via the New Folder button', async () => {
         const wrapper = mountPage();
-        await wrapper.findComponent(NotesFolders).vm.$emit('new-folder');
+        await wrapper.get('[data-testid="fa-new"]').trigger('click');
         await flushPromises();
         expect(h.prompt).toHaveBeenCalled();
         expect(h.post).toHaveBeenCalledWith('/notes/folders', { name: 'Projects', parent_id: null }, expect.any(Object));
@@ -169,24 +177,23 @@ describe('Notes/Index', () => {
     });
 });
 
-describe('NotesFolders tree', () => {
-    it('expands and collapses folders', async () => {
-        const wrapper = mount(NotesFolders, {
+describe('Notes folder accordion', () => {
+    it('renders nested note folders through FolderAccordion (root normalized to null)', () => {
+        const wrapper = mount(NotesIndex, {
             props: {
                 rootId: 5,
                 folders: [
                     { id: 12, name: 'Parent', parent_id: 5 },
                     { id: 13, name: 'Child', parent_id: 12 },
                 ],
-                selectedFolder: null,
+                notes: [],
+                tags: [],
             },
+            global: { stubs: { MarkdownEditor: { template: '<div />', props: ['modelValue', 'enableLinks'] } } },
         });
-        // Child hidden until Parent is expanded.
-        expect(wrapper.text()).toContain('Parent');
-        expect(wrapper.text()).not.toContain('Child');
-
-        await wrapper.get('.chevron').trigger('click');
-        expect(wrapper.text()).toContain('Child');
+        // Both levels reach the accordion (the stub renders all content slots).
+        expect(wrapper.find('[data-folder="12"]').exists()).toBe(true);
+        expect(wrapper.find('[data-folder="13"]').exists()).toBe(true);
     });
 
     it('builds a nested tag tree, collapsed by default', async () => {

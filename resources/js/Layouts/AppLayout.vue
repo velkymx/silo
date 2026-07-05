@@ -2,19 +2,19 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { useColorMode, useBreakpoints } from '@velkymx/vibeui';
-import { useConfirm, useDialogHost } from '../composables/useConfirm';
+import { useConfirm } from '../composables/useConfirm';
 import { useCommandPalette } from '../composables/useCommandPalette';
 import { initials } from '../lib/initials';
 import { fmtBytes } from '../lib/format';
 import { useStorageMeter } from '../composables/useStorageMeter';
 import PageError from '../Components/PageError.vue';
+import DialogHost from '../Components/DialogHost.vue';
 import ToastHost from '../Components/ToastHost.vue';
 import UserAvatar from '../Components/UserAvatar.vue';
 import CommandPalette from '../Components/CommandPalette.vue';
 import { useToast } from '../composables/useToast';
 
 const { confirm } = useConfirm();
-const { state: dialog, accept: dialogAccept, cancel: dialogCancel } = useDialogHost();
 const { toggle: togglePalette } = useCommandPalette();
 const toast = useToast();
 
@@ -340,21 +340,7 @@ function onUserMenu({ item }) {
         </VibeOffcanvas>
 
         <!-- Single in-app confirm/prompt host (replaces native window.confirm/prompt). -->
-        <VibeModal v-model="dialog.open" :title="dialog.title" size="sm" centered @hide="dialogCancel">
-            <p class="mb-0">{{ dialog.message }}</p>
-            <VibeFormInput
-                v-if="dialog.mode === 'prompt'"
-                v-model="dialog.inputValue"
-                :placeholder="dialog.placeholder"
-                class="mt-3"
-                autofocus
-                @keyup.enter="dialogAccept"
-            />
-            <template #footer>
-                <VibeButton variant="secondary" outline @click="dialogCancel">{{ dialog.cancelLabel }}</VibeButton>
-                <VibeButton :variant="dialog.variant" @click="dialogAccept">{{ dialog.confirmLabel }}</VibeButton>
-            </template>
-        </VibeModal>
+        <DialogHost />
 
         <ToastHost
             :items="toast.state.items"
