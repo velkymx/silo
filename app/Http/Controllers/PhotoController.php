@@ -214,6 +214,11 @@ class PhotoController extends Controller
             'thumb_url' => $f->thumbnail_path ? route('files.thumbnail', $f) : route('files.raw', $f),
             'starred' => (bool) $f->starred,
             'status' => $f->status,
+            // Quick Look's type-aware preview needs these — without them the
+            // lightbox showed "No inline preview" for every photo.
+            'type' => strtolower(pathinfo($f->name, PATHINFO_EXTENSION)),
+            'mime' => $f->mime,
+            'size' => $f->size,
             'tags' => $f->relationLoaded('tags')
                 ? $f->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
                 : [],

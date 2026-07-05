@@ -60,12 +60,12 @@ function safeUrl(url: string | undefined): string {
 <template>
     <VibeModal v-model="open" fullscreen hide-footer>
         <template #header>
-            <div class="d-flex align-items-center justify-content-between w-100">
-                <h5 class="modal-title text-truncate mb-0">
+            <div class="ql-header d-flex align-items-center flex-grow-1 min-w-0">
+                <h5 class="modal-title text-truncate mb-0 flex-grow-1 min-w-0">
                     <VibeIcon :icon="file ? iconFor(file.type) : 'file-earmark'" class="me-2" />
                     {{ file?.name }}
                 </h5>
-                <div class="d-flex gap-2 align-items-center ms-3">
+                <div class="d-flex gap-2 align-items-center ms-auto flex-shrink-0 me-2">
                     <small class="text-muted">{{ index + 1 }} / {{ total }}</small>
                     <div class="position-relative" @mouseenter="hoverSide = 'prev'" @mouseleave="hoverSide = null">
                         <VibeButton variant="light" size="sm" title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
@@ -100,9 +100,6 @@ function safeUrl(url: string | undefined): string {
                     >
                         <template #button><VibeIcon icon="three-dots-vertical" class="me-1" />Actions</template>
                     </VibeDropdown>
-                    <VibeButton variant="light" size="sm" title="Close" aria-label="Close preview" @click="open = false">
-                        <VibeIcon icon="x-lg" />
-                    </VibeButton>
                 </div>
             </div>
         </template>
@@ -163,6 +160,17 @@ function safeUrl(url: string | undefined): string {
         <slot name="below" />
     </VibeModal>
 </template>
+
+<style>
+/* VibeModal wraps the header slot in a content-sized .modal-title h5,
+   teleports to <body> (out of scoped-CSS reach), and drops fallthrough
+   attrs — so key on our own slot content: grow the wrapping title to the
+   full header width so the nav/actions cluster can right-align. */
+.modal-header > .modal-title:has(> .ql-header) {
+    flex-grow: 1;
+    min-width: 0;
+}
+</style>
 
 <style scoped>
 /* Hover preview of the adjacent file under the prev/next buttons. */

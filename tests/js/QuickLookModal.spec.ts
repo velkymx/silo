@@ -66,13 +66,15 @@ describe('QuickLookModal', () => {
         expect(wrapper.text()).not.toContain('2048');
     });
 
-    it('closes via the close button', async () => {
+    it('closes via the modal chrome (built-in close button)', async () => {
         const wrapper = mount(QuickLookModal, {
             props: { modelValue: true, file, index: 0, total: 1, menu },
             global: { stubs },
         });
-        const close = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Close preview');
-        await close!.trigger('click');
+        // The duplicate in-header close is gone; VibeModal's own ✕ drives the
+        // v-model, which the component forwards.
+        wrapper.findComponent({ name: 'VibeModal' }).vm.$emit('update:modelValue', false);
+        await wrapper.vm.$nextTick();
         expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([false]);
     });
 });

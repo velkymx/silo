@@ -39,20 +39,17 @@ function hasChildren(id: number): boolean {
     return props.folders.some((f) => f.parent_id === id);
 }
 
-// VibeAccordion is data-driven: one item per child folder. `show` auto-opens
-// ancestors of the current folder.
-const items = computed(() =>
-    children.value.map((f) => ({
+// Only folders WITH children become collapsible accordion items; leaves are
+// plain rows. Toggling a collapse on an item with no body is what crashed
+// Bootstrap's Collapse (null classList) — and leaves don't need chevrons.
+function itemFor(f: Folder) {
+    return [{
         id: String(f.id),
         title: f.name,
         content: '',
         show: props.openIds.has(f.id),
         icon: f.icon ?? null,
-    })),
-);
-
-function folderId(itemId: string): number {
-    return Number(itemId);
+    }];
 }
 </script>
 
@@ -65,39 +62,66 @@ function folderId(itemId: string): number {
             </VibeButton>
         </div>
 
-        <VibeAccordion
-            v-if="items.length"
-            flush
-            always-open
-            :items="items"
-            @item-click="emit('select-folder', folderId($event.item.id))"
-        >
-            <template #title="{ item }">
-                <span :data-folder="item.id" class="d-flex align-items-center flex-grow-1 min-w-0" :class="{ 'fw-semibold': selectedId === folderId(item.id) }">
-                    <VibeIcon :icon="item.icon ?? (openIds.has(folderId(item.id)) ? 'folder2-open' : 'folder2')" class="me-2" />
-                    <span class="text-truncate flex-grow-1">{{ item.title }}</span>
-                    <span v-if="counts && counts[folderId(item.id)] != null" class="badge text-bg-light ms-2 flex-shrink-0">{{ counts[folderId(item.id)] }}</span>
-                </span>
-            </template>
-            <template #content="{ item }">
-                <FolderAccordion
-                    v-if="hasChildren(folderId(item.id))"
-                    :folders="folders"
-                    :selected-id="selectedId"
-                    :open-ids="openIds"
-                    :parent-id="folderId(item.id)"
-                    :show-header="false"
-                    :counts="counts"
-                    @select-folder="emit('select-folder', $event)"
-                    @new-folder="emit('new-folder')"
-                />
-            </template>
-        </VibeAccordion>
+        <template v-for="f in children" :key="f.id">
+            <VibeAccordion
+                v-if="hasChildren(f.id)"
+                flush
+                always-open
+                :items="itemFor(f)"
+                @item-click="emit('select-folder', f.id)"
+            >
+                <template #title="{ item }">
+                    <span :data-folder="item.id" class="d-flex align-items-center flex-grow-1 min-w-0" :class="{ 'fw-semibold': selectedId === f.id }">
+                        <VibeIcon :icon="item.icon ?? (openIds.has(f.id) ? 'folder2-open' : 'folder2')" class="me-2" />
+                        <span class="text-truncate flex-grow-1">{{ item.title }}</span>
+                        <span v-if="counts && counts[f.id] != null" class="badge text-bg-light ms-2 flex-shrink-0">{{ counts[f.id] }}</span>
+                    </span>
+                </template>
+                <template #content>
+                    <FolderAccordion
+                        :folders="folders"
+                        :selected-id="selectedId"
+                        :open-ids="openIds"
+                        :parent-id="f.id"
+                        :show-header="false"
+                        :counts="counts"
+                        @select-folder="emit('select-folder', $event)"
+                        @new-folder="emit('new-folder')"
+                    />
+                </template>
+            </VibeAccordion>
+            <button
+                v-else
+                type="button"
+                class="fa-leaf d-flex align-items-center w-100 text-start border-0 bg-transparent"
+                :data-folder="f.id"
+                :class="{ 'fw-semibold': selectedId === f.id }"
+                @click="emit('select-folder', f.id)"
+            >
+                <VibeIcon :icon="f.icon ?? 'folder2'" class="me-2" />
+                <span class="text-truncate flex-grow-1">{{ f.name }}</span>
+                <span v-if="counts && counts[f.id] != null" class="badge text-bg-light ms-2 flex-shrink-0">{{ counts[f.id] }}</span>
+            </button>
+        </template>
     </div>
 </template>
 
 <style scoped>
 .min-w-0 {
     min-width: 0;
+}
+/* Leaf rows line up with the flush accordion buttons around them. */
+.fa-leaf {
+    padding: 0.5rem 1.25rem;
+    color: var(--bs-body-color);
+    border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+    cursor: pointer;
+}
+.fa-leaf:hover {
+    background: rgba(99, 102, 241, 0.07);
+}
+.fa-leaf:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: -2px;
 }
 </style>

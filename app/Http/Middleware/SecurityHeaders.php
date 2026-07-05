@@ -53,14 +53,16 @@ class SecurityHeaders
         $nonceAttr = "'nonce-{$nonce}'";
         // 'unsafe-eval' is required ONLY by jspreadsheet-ce's formula engine on
         // the document editor page — every other route gets a stricter policy.
-        // 'unsafe-inline' (style) is still required for Bootstrap's runtime
-        // inline styles (progress widths, spinner colors). The nonce is added
-        // for Vite-injected scripts/styles.
         $script = ["'self'", $nonceAttr];
         if ($request->routeIs('files.edit')) {
             $script[] = "'unsafe-eval'";
         }
-        $style = ["'self'", $nonceAttr, "'unsafe-inline'"];
+        // style-src must NOT carry the nonce: per the CSP spec a nonce makes
+        // browsers ignore 'unsafe-inline', which Vue :style bindings and
+        // Bootstrap's runtime inline styles (progress widths, spinner colors)
+        // depend on — with both present every inline style was blocked.
+        // Production styles are compiled <link> files covered by 'self'.
+        $style = ["'self'", "'unsafe-inline'"];
         $font = ["'self'", 'data:'];
         $connect = ["'self'"];
 
