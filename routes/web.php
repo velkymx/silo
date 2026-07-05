@@ -75,6 +75,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/break/dwg/guess', [\App\Http\Controllers\DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
     Route::get('/break/sodoku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.sodoku');
 
+    Route::get('/recent', [FileController::class, 'index'])->defaults('section', 'recent')->name('files.recent');
+
     Route::get('/shared', [FileController::class, 'index'])->defaults('section', 'shared')->name('shared.index');
     Route::get('/shared/{folder}', [SharedController::class, 'show'])->name('shared.show');
 
@@ -138,8 +140,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vault/import', [\App\Http\Controllers\VaultController::class, 'import'])
         ->middleware('throttle:10,1')->name('vault.import');
 
-    // Starred — cross-app view of starred notes, bookmarks, and files.
-    Route::get('/starred', [\App\Http\Controllers\StarredController::class, 'index'])->name('starred.index');
+    // Starred — the files shell scoped to starred files and folders.
+    Route::get('/starred', [FileController::class, 'index'])->defaults('section', 'starred')->name('starred.index');
 
     // Staff directory.
     Route::get('/directory', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');

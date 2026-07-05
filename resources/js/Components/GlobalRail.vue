@@ -25,7 +25,7 @@ function active(test: (p: string, q: string) => boolean): boolean {
 
 const mainNav = computed<NavItem[]>(() => [
     { key: 'home', text: 'Home', href: '/', icon: 'house-door-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
-    { key: 'recent', text: 'Recent', href: '/?recent=1', icon: 'clock-history', active: active((p, q) => q.includes('recent=1')) },
+    { key: 'recent', text: 'Recent', href: '/recent', icon: 'clock-history', active: active((p) => p.startsWith('/recent')) },
     { key: 'starred', text: 'Starred', href: '/starred', icon: 'star-fill', active: active((p) => p.startsWith('/starred')) },
     { key: 'bookmarks', text: 'Bookmarks', href: '/bookmarks', icon: 'bookmark-fill', active: active((p) => p.startsWith('/bookmarks')) },
     { key: 'notes', text: 'Notes', href: '/notes', icon: 'journal-text', active: active((p) => p.startsWith('/notes')) },

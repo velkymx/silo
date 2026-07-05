@@ -61,8 +61,12 @@ const isSearching = computed(() => searchValue.value.length > 0);
 // `contents` -> `detail` on row select) bind their own `activePane` ref.
 const activePane = defineModel<string>('activePane', { default: 'contents' });
 
-// Passthrough: pages collapse the detail column when nothing is selected.
-const props = withDefaults(defineProps<{ detailVisible?: boolean }>(), { detailVisible: true });
+// Passthrough: pages collapse the detail column when nothing is selected and
+// drop the folders column on folder-less sections.
+const props = withDefaults(
+    defineProps<{ detailVisible?: boolean; foldersVisible?: boolean }>(),
+    { detailVisible: true, foldersVisible: true },
+);
 
 // Shared storage meter, shown in the user menu (was the old sidebar footer).
 const storage = computed(() => (page.props.storage as { used: number; quota: number } | null) ?? null);
@@ -181,7 +185,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
         <!-- FourPane fills the rest below the navbar. -->
         <div class="flex-grow-1 min-h-0 p-0">
-            <FourPane v-model:activePane="activePane" :detail-visible="props.detailVisible">
+            <FourPane v-model:activePane="activePane" :detail-visible="props.detailVisible" :folders-visible="props.foldersVisible">
                 <template #rail>
                     <GlobalRail />
                 </template>

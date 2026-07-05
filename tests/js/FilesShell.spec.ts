@@ -94,12 +94,14 @@ describe('Files shell', () => {
         expect(wrapper.get('[data-pane="folders"]').find('[data-folder]').exists()).toBe(true);
     });
 
-    it('hides the folder accordion for flat sections like trash', () => {
-        const wrapper = mount(FilesIndex, {
-            props: { ...base, section: 'trash', allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
-        });
-        expect(wrapper.get('[data-pane="folders"]').find('[data-folder]').exists()).toBe(false);
-    });
+    it.each(['recent', 'starred', 'shared', 'trash'])(
+        'drops the folders column entirely for the folder-less %s section', (section) => {
+            const wrapper = mount(FilesIndex, {
+                props: { ...base, section, allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
+            });
+            expect(wrapper.find('[data-pane="folders"]').exists()).toBe(false);
+        },
+    );
 
     it('shows an empty state in the contents pane when a section has no items', () => {
         localStorage.setItem('fm-view', 'grid');

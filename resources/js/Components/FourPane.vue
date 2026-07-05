@@ -1,17 +1,27 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 const props = withDefaults(defineProps<{
     /** Render the detail column. When false the contents column fills the row. */
     detailVisible?: boolean;
-}>(), { detailVisible: true });
+    /** Render the folders column. Folder-less sections (recent/starred/…) drop it. */
+    foldersVisible?: boolean;
+}>(), { detailVisible: true, foldersVisible: true });
 
 const activePane = defineModel<string>('activePane', { default: 'contents' });
 
-// Mobile shows one pane at a time; the back control walks left through the chain.
-const order = ['rail', 'folders', 'contents', 'detail'];
+// Mobile shows one pane at a time; the back control walks left through the
+// chain, skipping columns that aren't rendered.
+const order = computed(() => [
+    'rail',
+    ...(props.foldersVisible ? ['folders'] : []),
+    'contents',
+    ...(props.detailVisible ? ['detail'] : []),
+]);
 
 function goBack(): void {
-    const i = order.indexOf(activePane.value);
-    if (i > 0) activePane.value = order[i - 1];
+    const i = order.value.indexOf(activePane.value);
+    if (i > 0) activePane.value = order.value[i - 1];
 }
 </script>
 
@@ -38,6 +48,7 @@ function goBack(): void {
                 <slot name="rail" />
             </VibeCol>
             <VibeCol
+                v-if="props.foldersVisible"
                 :cols="12"
                 :md="2"
                 class="fp-folders h-100 border-end bg-body-tertiary"

@@ -73,8 +73,17 @@ const ancestorIds = computed(() => {
 // ----- Breadcrumb -----
 // `href` makes each crumb a real link (VibeBreadcrumb only wires clicks on
 // items with an href); we intercept the click for Inertia navigation.
+// Section pages root the trail at their own name (Recent, Starred, …).
+const SECTION_ROOTS = {
+    all: { text: 'Home', icon: 'house-door-fill', href: '/' },
+    recent: { text: 'Recent', icon: 'clock-history', href: '/recent' },
+    starred: { text: 'Starred', icon: 'star-fill', href: '/starred' },
+    shared: { text: 'Shared', icon: 'people-fill', href: '/shared' },
+    trash: { text: 'Trash', icon: 'trash-fill', href: '/trash' },
+};
+const sectionRoot = computed(() => SECTION_ROOTS[activeSection.value] ?? SECTION_ROOTS.all);
 const breadcrumbItems = computed(() => [
-    { text: 'Home', folder: null, href: '/', active: !props.current },
+    { text: sectionRoot.value.text, folder: null, href: sectionRoot.value.href, active: !props.current },
     ...props.breadcrumbs.map((b, i) => ({
         text: b.name,
         folder: b.id,
@@ -88,15 +97,9 @@ function visitFolder(id) {
 }
 
 // ----- FourPane shell: icon rail | folder tree | contents | detail -----
-const SECTIONS = [
-    { key: 'all', icon: 'folder2', label: 'All' },
-    { key: 'recent', icon: 'clock-history', label: 'Recent' },
-    { key: 'starred', icon: 'star-fill', label: 'Starred' },
-    { key: 'shared', icon: 'people-fill', label: 'Shared' },
-    { key: 'trash', icon: 'trash', label: 'Trash' },
-];
 // Section is driven by the GlobalRail (Home/Recent/Starred/Shared/Trash);
 // the page just reflects the server-sent `section` for per-section rendering.
+// Folder-less sections drop the folders column entirely (folders-visible).
 const activeSection = ref(props.section);
 const activePane = ref('contents');
 const openIds = computed(() => ancestorIds.value);
@@ -745,7 +748,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <ShellLayout v-model:active-pane="activePane" :detail-visible="detailVisible">
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="detailVisible" :folders-visible="activeSection === 'all'">
         <template #viewNav>
             <FolderAccordion
                 v-if="activeSection === 'all'"
@@ -755,10 +758,6 @@ onBeforeUnmount(() => {
                 @select-folder="selectAccordionFolder"
                 @new-folder="() => folderOpen = true"
             />
-            <div v-else class="side-heading">
-                <VibeIcon :icon="SECTIONS.find((s) => s.key === activeSection)?.icon || 'folder2'" />
-                {{ SECTIONS.find((s) => s.key === activeSection)?.label }}
-            </div>
 
             <template v-if="allTags.length">
                 <div class="side-heading"><VibeIcon icon="tags-fill" />Tags</div>
@@ -785,7 +784,7 @@ onBeforeUnmount(() => {
             <div class="d-flex align-items-center gap-2 p-1">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
-                        <VibeIcon :icon="index === 0 ? 'house-door-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                        <VibeIcon :icon="index === 0 ? sectionRoot.icon : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
                 </VibeBreadcrumb>
                 <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
