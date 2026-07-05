@@ -98,7 +98,7 @@ describe('Bookmarks/Index (explorer shell)', () => {
 
     it('checkbox multi-select surfaces the bulk-delete bar', async () => {
         const wrapper = mount(BookmarksIndex, { props: { bookmarks, filters: {} } });
-        const checks = wrapper.findAll('.bm-select-check input[type="checkbox"], input[type="checkbox"]');
+        const checks = wrapper.findAll('.st-select-check input[type="checkbox"], input[type="checkbox"]');
         await checks[0].setValue(true);
         expect(wrapper.text()).toContain('1 selected');
     });

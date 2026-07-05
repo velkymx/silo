@@ -5,6 +5,7 @@ import ShellLayout from '../../Layouts/ShellLayout.vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 import { triggerDownload } from '../../lib/download';
+import { isTextInputTarget } from '../../lib/dom';
 import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useQuickLook } from '../../composables/useQuickLook';
@@ -202,10 +203,7 @@ function onFilmstripReorder() {
 
 // Keyboard: lightbox navigation, Escape clears the grid selection.
 function onLightboxKey(e) {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const type = (e.target?.type || '').toLowerCase();
-    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
-        || !!e.target?.isContentEditable;
+    const inTextField = isTextInputTarget(e);
     if (!quickOpen.value) {
         if (!inTextField && e.key === 'Escape') clearSelection();
         return;
@@ -584,9 +582,6 @@ function saveEdit() {
 </template>
 
 <style scoped>
-.min-w-0 {
-    min-width: 0;
-}
 .ph-zoom {
     width: 120px;
 }

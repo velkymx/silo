@@ -35,7 +35,7 @@ test('bulk select and trash in file list view', async ({ page }) => {
     const firstRow = page.locator('table tbody tr', { hasText: 'bulk-a.png' });
     await expect(firstRow).toBeVisible();
     await firstRow.hover();
-    await firstRow.locator('.fm-select-check input[type="checkbox"]').first().click();
+    await firstRow.locator('.st-select-check input[type="checkbox"]').first().click();
 
     // BatchActions toolbar should appear.
     const toolbar = page.locator('[data-testid="batch-actions"]').or(page.getByText('selected'));

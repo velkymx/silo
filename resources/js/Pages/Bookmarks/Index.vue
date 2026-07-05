@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { BookmarkStatus } from '../../lib/constants';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
@@ -8,6 +8,8 @@ import SelectBar from '../../Components/SelectBar.vue';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
+import { useCategoryFolders } from '../../composables/useCategoryFolders';
+import { useEscapeToClear } from '../../composables/useEscapeToClear';
 import ResourceModal from '../../Components/ResourceModal.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
@@ -43,31 +45,24 @@ const counts = computed(() => {
 
 const feedCount = computed(() => props.bookmarks.filter((b) => b.feed_url).length);
 
-// Categories are flat strings; FolderAccordion wants {id, name, parent_id}
-// rows. The tree roots at "Bookmarks" (id 0) with each category as its
-// child under a stable positional pseudo-id.
-const ROOT_ID = 0;
+// Categories are flat strings; useCategoryFolders adapts them to
+// FolderAccordion rows rooted at the "Bookmarks" node.
 const folderNames = computed(() => [...folders.value, ...(counts.value['General'] ? ['General'] : [])]);
-const accordionFolders = computed(() => [
-    { id: ROOT_ID, name: 'Bookmarks', parent_id: null, icon: 'bookmark-fill' },
-    ...folderNames.value.map((name, i) => ({ id: i + 1, name, parent_id: ROOT_ID })),
-]);
-const accordionCounts = computed(() => {
-    const map = { [ROOT_ID]: props.bookmarks.length };
-    accordionFolders.value.forEach((f) => {
-        if (f.id !== ROOT_ID) map[f.id] = counts.value[f.name] ?? 0;
-    });
-    return map;
+const {
+    folders: accordionFolders,
+    counts: accordionCounts,
+    selectedId: selectedFolderId,
+    pickById: pickFolderById,
+    openIds: accordionOpenIds,
+} = useCategoryFolders({
+    rootName: 'Bookmarks',
+    rootIcon: 'bookmark-fill',
+    names: folderNames,
+    counts,
+    total: computed(() => props.bookmarks.length),
+    selected: selectedFolder,
+    onPick: (name) => pickFolder(name),
 });
-const selectedFolderId = computed(() =>
-    selectedFolder.value === null
-        ? ROOT_ID
-        : (accordionFolders.value.find((f) => f.name === selectedFolder.value)?.id ?? null));
-function pickFolderById(id) {
-    if (id === ROOT_ID) { pickFolder(null); return; }
-    const folder = accordionFolders.value.find((f) => f.id === id);
-    if (folder) pickFolder(folder.name);
-}
 
 function pickFolder(f) {
     selectedFolder.value = f;
@@ -84,12 +79,12 @@ const listed = computed(() => {
 // ----- Explorer table -----
 // VibeDataTable owns search + sort + pagination over the loaded set.
 const tableColumns = [
-    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'bm-col-select', class: 'bm-col-select' },
+    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'st-col-select', class: 'st-col-select' },
     { key: 'title', label: 'Title', class: 'bm-col-title' },
-    { key: 'url', label: 'URL', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell bm-col-meta' },
-    { key: 'category', label: 'Folder', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell bm-col-meta' },
-    { key: 'click_count', label: 'Opens', class: 'bm-col-meta' },
-    { key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'bm-col-actions', class: 'bm-col-actions' },
+    { key: 'url', label: 'URL', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell st-col-meta' },
+    { key: 'category', label: 'Folder', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell st-col-meta' },
+    { key: 'click_count', label: 'Opens', class: 'st-col-meta' },
+    { key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'st-col-actions', class: 'st-col-actions' },
 ];
 const tableItems = computed(() => listed.value.map((b) => ({ ...b, category: b.category || 'General' })));
 const listPage = ref(1);
@@ -128,15 +123,7 @@ function clearContentSelection() {
     if (activePane.value === 'detail') activePane.value = 'contents';
 }
 
-function onKey(e) {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const type = (e.target?.type || '').toLowerCase();
-    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
-        || !!e.target?.isContentEditable;
-    if (!inTextField && e.key === 'Escape') clearContentSelection();
-}
-onMounted(() => window.addEventListener('keydown', onKey));
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
+useEscapeToClear(clearContentSelection);
 
 async function bulkDeleteBms() {
     if (!await confirm({ title: `Delete ${selectedBms.value.length} bookmarks`, message: 'Delete the selected bookmarks? This cannot be undone.', confirmLabel: 'Delete', variant: 'danger' })) return;
@@ -253,7 +240,7 @@ async function runMaintenance(action) {
             <FolderAccordion
                 :folders="accordionFolders"
                 :selected-id="selectedFolderId"
-                :open-ids="new Set([0])"
+                :open-ids="accordionOpenIds"
                 :counts="accordionCounts"
                 @select-folder="pickFolderById"
                 @new-folder="addFolder"
@@ -296,8 +283,8 @@ async function runMaintenance(action) {
 
             <div
                 v-else
-                class="bm-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
-                :class="{ 'bm-has-selection': bmSelectedIds.size > 0 }"
+                class="st-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'st-has-selection': bmSelectedIds.size > 0 }"
                 @click.self="clearContentSelection"
             >
                 <VibeDataTable
@@ -318,7 +305,7 @@ async function runMaintenance(action) {
                 >
                     <template #cell(_select)="{ item }">
                         <VibeFormCheckbox
-                            class="bm-select-check"
+                            class="st-select-check"
                             :model-value="bmIsSelected(item.id)"
                             :aria-label="bmIsSelected(item.id) ? `Deselect ${item.title}` : `Select ${item.title}`"
                             @update:model-value="bmToggle(item.id)"
@@ -449,42 +436,12 @@ async function runMaintenance(action) {
     </ResourceModal>
 </template>
 
-<style scoped>
-.min-w-0 {
-    min-width: 0;
-}
-.min-h-0 {
+<style scoped>.min-h-0 {
     min-height: 0;
 }
 .bm-url {
     max-width: 22rem;
     vertical-align: middle;
-}
-/* Explorer table chrome (mirrors the Files table). */
-.bm-table-wrap :deep(thead th) {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--bs-body-bg);
-}
-.bm-table-wrap :deep(td) {
-    vertical-align: middle;
-}
-.bm-table-wrap :deep(.bm-col-select),
-.bm-table-wrap :deep(.bm-col-actions),
-.bm-table-wrap :deep(.bm-col-meta) {
-    width: 1%;
-    white-space: nowrap;
-}
-.bm-table-wrap :deep(.bm-select-check) {
-    opacity: 0;
-    transition: opacity 0.15s;
-    cursor: pointer;
-}
-.bm-table-wrap :deep(tr:hover .bm-select-check),
-.bm-table-wrap :deep(tr:focus-within .bm-select-check),
-.bm-table-wrap.bm-has-selection :deep(.bm-select-check) {
-    opacity: 1;
 }
 .bm-detail-icon {
     width: 3rem;

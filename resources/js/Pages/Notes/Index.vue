@@ -5,6 +5,7 @@ import ShellLayout from '../../Layouts/ShellLayout.vue';
 import NotesSidebar from '../../Components/Notes/NotesSidebar.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import BacklinksPanel from '../../Components/Notes/BacklinksPanel.vue';
+import { useEscapeToClear } from '../../composables/useEscapeToClear';
 import MarkdownEditor from '../../Components/MarkdownEditor.vue';
 import SelectBar from '../../Components/SelectBar.vue';
 import EmptyState from '../../Components/EmptyState.vue';
@@ -72,9 +73,9 @@ const filteredNotes = computed(() => {
 // ----- Explorer table -----
 // VibeDataTable owns search + sort + pagination over the filtered set.
 const tableColumns = [
-    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'nt-col-select', class: 'nt-col-select' },
+    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'st-col-select', class: 'st-col-select' },
     { key: 'title', label: 'Title', class: 'nt-col-title' },
-    { key: 'updated_at', label: 'Edited', class: 'nt-col-meta' },
+    { key: 'updated_at', label: 'Edited', class: 'st-col-meta' },
 ];
 const listPage = ref(1);
 
@@ -191,7 +192,6 @@ onBeforeUnmount(() => {
     unmounted = true;
     if (saveTimer) clearTimeout(saveTimer);
     if (suppressTimer) clearTimeout(suppressTimer);
-    window.removeEventListener('keydown', onKey);
 });
 
 function selectNote(id) {
@@ -206,14 +206,7 @@ function clearContentSelection() {
     if (activePane.value === 'detail') activePane.value = 'contents';
 }
 
-function onKey(e) {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const type = (e.target?.type || '').toLowerCase();
-    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
-        || !!e.target?.isContentEditable;
-    if (!inTextField && e.key === 'Escape') clearContentSelection();
-}
-onMounted(() => window.addEventListener('keydown', onKey));
+useEscapeToClear(clearContentSelection);
 
 function newNote() {
     router.post('/notes', { name: 'Untitled', parent_id: selectedFolder.value }, { preserveScroll: true });
@@ -313,8 +306,8 @@ onMounted(() => {
 
             <div
                 v-else
-                class="nt-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
-                :class="{ 'nt-has-selection': noteSelectedIds.size > 0 }"
+                class="st-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'st-has-selection': noteSelectedIds.size > 0 }"
                 @click.self="clearContentSelection"
             >
                 <VibeDataTable
@@ -335,7 +328,7 @@ onMounted(() => {
                 >
                     <template #cell(_select)="{ item }">
                         <VibeFormCheckbox
-                            class="nt-select-check"
+                            class="st-select-check"
                             :model-value="noteIsSelected(item.id)"
                             :aria-label="noteIsSelected(item.id) ? `Deselect ${item.title}` : `Select ${item.title}`"
                             @update:model-value="noteToggle(item.id)"
@@ -404,43 +397,11 @@ onMounted(() => {
     </ShellLayout>
 </template>
 
-<style scoped>
-.min-w-0 {
-    min-width: 0;
-}
-.notes-editor-body {
+<style scoped>.notes-editor-body {
     flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
     overflow: hidden;
-}
-/* Explorer table chrome (mirrors the Files table). */
-.nt-table-wrap :deep(thead th) {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--bs-body-bg);
-}
-.nt-table-wrap :deep(td) {
-    vertical-align: middle;
-}
-.nt-table-wrap :deep(.nt-col-select) {
-    width: 1%;
-    white-space: nowrap;
-}
-.nt-table-wrap :deep(.nt-col-meta) {
-    width: 1%;
-    white-space: nowrap;
-}
-.nt-table-wrap :deep(.nt-select-check) {
-    opacity: 0;
-    transition: opacity 0.15s;
-    cursor: pointer;
-}
-.nt-table-wrap :deep(tr:hover .nt-select-check),
-.nt-table-wrap :deep(tr:focus-within .nt-select-check),
-.nt-table-wrap.nt-has-selection :deep(.nt-select-check) {
-    opacity: 1;
 }
 /* Outline item indentation by heading level (1-6). */
 .outline-h-1 { padding-left: 0; }

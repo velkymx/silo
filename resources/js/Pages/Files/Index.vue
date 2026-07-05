@@ -27,6 +27,7 @@ import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { typeLabel } from '../../lib/fileTypes';
 import { triggerDownload } from '../../lib/download';
+import { isTextInputTarget } from '../../lib/dom';
 import { fmtBytes, pluralize } from '../../lib/format';
 import { TYPE_OPTIONS } from '../../composables/useAdvancedSearch';
 
@@ -52,7 +53,6 @@ const props = defineProps({
     filters: { type: Object, default: () => ({ search: '', sort: 'name', direction: 'asc' }) },
     section: { type: String, default: 'all' },
 });
-
 
 const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => props.storage));
 
@@ -189,12 +189,12 @@ const tableItems = computed(() => items.value.map((item) => ({
 })));
 
 const tableColumns = computed(() => [
-    ...(ownedSection.value ? [{ key: '_select', label: '', sortable: false, searchable: false, headerClass: 'fm-col-select', class: 'fm-col-select' }] : []),
+    ...(ownedSection.value ? [{ key: '_select', label: '', sortable: false, searchable: false, headerClass: 'st-col-select', class: 'st-col-select' }] : []),
     { key: 'name', label: 'Name', class: 'fm-col-name' },
-    { key: 'modified', label: 'Modified', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell fm-col-meta' },
-    { key: 'size', label: 'Size', class: 'fm-col-meta' },
-    { key: 'kind', label: 'Kind', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell fm-col-meta' },
-    ...(ownedSection.value ? [{ key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'fm-col-actions', class: 'fm-col-actions' }] : []),
+    { key: 'modified', label: 'Modified', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell st-col-meta' },
+    { key: 'size', label: 'Size', class: 'st-col-meta' },
+    { key: 'kind', label: 'Kind', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell st-col-meta' },
+    ...(ownedSection.value ? [{ key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'st-col-actions', class: 'st-col-actions' }] : []),
 ]);
 
 const listSortBy = ref(props.filters?.sort === 'modified' || props.filters?.sort === 'size' ? props.filters.sort : 'name');
@@ -429,7 +429,6 @@ watch(listPage, (p) => {
     window.history.replaceState({}, '', url.toString());
 });
 
-
 const fileActions = [
     { text: 'Download', action: 'download', icon: 'download' },
     { text: 'Edit', action: 'edit', icon: 'pencil-square' },
@@ -564,9 +563,7 @@ function onKey(e) {
 
     const tag = (e.target?.tagName || '').toLowerCase();
     const inField = ['input', 'textarea', 'select'].includes(tag) || !!e.target?.isContentEditable;
-    // Row checkboxes are form fields but not text entry — Escape from one
-    // must still clear the selection (the checkbox has focus after a click).
-    const inTextField = inField && !['checkbox', 'radio', 'button'].includes((e.target?.type || '').toLowerCase());
+
 
     if (quickOpen.value) {
         if (!inField) {
@@ -578,7 +575,7 @@ function onKey(e) {
         return;
     }
 
-    if (!inTextField && e.key === 'Escape') {
+    if (!isTextInputTarget(e) && e.key === 'Escape') {
         clearContentSelection();
         return;
     }
@@ -887,8 +884,8 @@ onBeforeUnmount(() => {
                  (folder). Search lives in the navbar. -->
             <div
                 v-else-if="!loading"
-                class="fm-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
-                :class="{ 'fm-has-selection': selectedIds.size > 0 }"
+                class="st-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'st-has-selection': selectedIds.size > 0 }"
                 @click.self="clearContentSelection"
             >
                 <VibeDataTable
@@ -910,7 +907,7 @@ onBeforeUnmount(() => {
                 >
                     <template #cell(_select)="{ item }">
                         <VibeFormCheckbox
-                            class="fm-select-check"
+                            class="st-select-check"
                             :model-value="isSelected(item.id)"
                             :aria-label="isSelected(item.id) ? `Deselect ${item.name}` : `Select ${item.name}`"
                             @update:model-value="toggleSel(item.id)"
@@ -1176,44 +1173,8 @@ onBeforeUnmount(() => {
 ol.breadcrumb {
     padding-bottom: 0 !important;
     margin-bottom: 0 !important;
-}
-
-.min-w-0 {
-    min-width: 0;
-}
-.min-h-0 {
+}.min-h-0 {
     min-height: 0;
-}
-/* Explorer table: sticky sortable header, tight fixed-purpose columns. */
-.fm-table-wrap :deep(thead th) {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--bs-body-bg);
-}
-.fm-table-wrap :deep(td) {
-    vertical-align: middle;
-}
-.fm-table-wrap :deep(.fm-col-select),
-.fm-table-wrap :deep(.fm-col-actions) {
-    width: 1%;
-    white-space: nowrap;
-}
-.fm-table-wrap :deep(.fm-col-meta) {
-    width: 1%;
-    white-space: nowrap;
-}
-/* The row checkbox stays hidden until its row is hovered/focused or any
-   selection exists, so it doesn't compete with the filename. */
-.fm-table-wrap :deep(.fm-select-check) {
-    opacity: 0;
-    transition: opacity 0.15s;
-    cursor: pointer;
-}
-.fm-table-wrap :deep(tr:hover .fm-select-check),
-.fm-table-wrap :deep(tr:focus-within .fm-select-check),
-.fm-table-wrap.fm-has-selection :deep(.fm-select-check) {
-    opacity: 1;
 }
 /* VibeBreadcrumb renders an inner <ol class="breadcrumb"> with a default
    bottom margin; flatten it since it sits in the topBar. */

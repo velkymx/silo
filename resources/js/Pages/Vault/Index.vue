@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
@@ -8,6 +8,8 @@ import { http } from '../../lib/http';
 import { useConfirm, usePrompt } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useSelection } from '../../composables/useSelection';
+import { useCategoryFolders } from '../../composables/useCategoryFolders';
+import { useEscapeToClear } from '../../composables/useEscapeToClear';
 import ResourceModal from '../../Components/ResourceModal.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
@@ -48,30 +50,23 @@ function pickFolder(f) {
     activePane.value = 'contents';
 }
 
-// Categories are flat strings; FolderAccordion wants {id, name, parent_id}
-// rows. The tree roots at "Vault" (id 0) with each category as its child
-// under a stable positional pseudo-id.
-const ROOT_ID = 0;
-const accordionFolders = computed(() => [
-    { id: ROOT_ID, name: 'Vault', parent_id: null, icon: 'lock-fill' },
-    ...folders.value.map((name, i) => ({ id: i + 1, name, parent_id: ROOT_ID })),
-]);
-const accordionCounts = computed(() => {
-    const map = { [ROOT_ID]: props.items.length };
-    accordionFolders.value.forEach((f) => {
-        if (f.id !== ROOT_ID) map[f.id] = counts.value[f.name] ?? 0;
-    });
-    return map;
+// Categories are flat strings; useCategoryFolders adapts them to
+// FolderAccordion rows rooted at the "Vault" node.
+const {
+    folders: accordionFolders,
+    counts: accordionCounts,
+    selectedId: selectedFolderId,
+    pickById: pickFolderById,
+    openIds: accordionOpenIds,
+} = useCategoryFolders({
+    rootName: 'Vault',
+    rootIcon: 'lock-fill',
+    names: folders,
+    counts,
+    total: computed(() => props.items.length),
+    selected: selectedFolder,
+    onPick: (name) => pickFolder(name),
 });
-const selectedFolderId = computed(() =>
-    selectedFolder.value === null
-        ? ROOT_ID
-        : (accordionFolders.value.find((f) => f.name === selectedFolder.value)?.id ?? null));
-function pickFolderById(id) {
-    if (id === ROOT_ID) { pickFolder(null); return; }
-    const folder = accordionFolders.value.find((f) => f.id === id);
-    if (folder) pickFolder(folder.name);
-}
 
 const listed = computed(() => {
     if (selectedFolder.value === null) return props.items;
@@ -80,11 +75,11 @@ const listed = computed(() => {
 
 // ----- Explorer table -----
 const tableColumns = [
-    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'vt-col-select', class: 'vt-col-select' },
+    { key: '_select', label: '', sortable: false, searchable: false, headerClass: 'st-col-select', class: 'st-col-select' },
     { key: 'name', label: 'Name', class: 'vt-col-name' },
-    { key: 'username', label: 'Username', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell vt-col-meta' },
-    { key: 'category', label: 'Folder', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell vt-col-meta' },
-    { key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'vt-col-actions', class: 'vt-col-actions' },
+    { key: 'username', label: 'Username', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell st-col-meta' },
+    { key: 'category', label: 'Folder', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell st-col-meta' },
+    { key: '_actions', label: '', sortable: false, searchable: false, headerClass: 'st-col-actions', class: 'st-col-actions' },
 ];
 const tableItems = computed(() => listed.value.map((i) => ({ ...i, category: i.category || 'General' })));
 const listPage = ref(1);
@@ -117,7 +112,6 @@ const timers = {};
 
 onBeforeUnmount(() => {
     Object.values(timers).forEach((id) => clearTimeout(id));
-    window.removeEventListener('keydown', onKey);
 });
 
 async function reveal(item) {
@@ -176,14 +170,7 @@ function clearContentSelection() {
     if (activePane.value === 'detail') activePane.value = 'contents';
 }
 
-function onKey(e) {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const type = (e.target?.type || '').toLowerCase();
-    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
-        || !!e.target?.isContentEditable;
-    if (!inTextField && e.key === 'Escape') clearContentSelection();
-}
-onMounted(() => window.addEventListener('keydown', onKey));
+useEscapeToClear(clearContentSelection);
 
 async function bulkDeleteVault() {
     if (!await confirm({ title: `Delete ${selectedVaultItems.value.length} secrets`, message: 'Delete the selected secrets? This cannot be undone.', confirmLabel: 'Delete', variant: 'danger' })) return;
@@ -272,7 +259,7 @@ async function onImportFile(e) {
             <FolderAccordion
                 :folders="accordionFolders"
                 :selected-id="selectedFolderId"
-                :open-ids="new Set([0])"
+                :open-ids="accordionOpenIds"
                 :counts="accordionCounts"
                 @select-folder="pickFolderById"
                 @new-folder="addFolder"
@@ -315,8 +302,8 @@ async function onImportFile(e) {
 
             <div
                 v-else
-                class="vt-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
-                :class="{ 'vt-has-selection': vaultSelectedIds.size > 0 }"
+                class="st-table-wrap overflow-auto flex-grow-1 px-2 pt-1"
+                :class="{ 'st-has-selection': vaultSelectedIds.size > 0 }"
                 @click.self="clearContentSelection"
             >
                 <VibeDataTable
@@ -337,7 +324,7 @@ async function onImportFile(e) {
                 >
                     <template #cell(_select)="{ item }">
                         <VibeFormCheckbox
-                            class="vt-select-check"
+                            class="st-select-check"
                             :model-value="vaultIsSelected(item.id)"
                             :aria-label="vaultIsSelected(item.id) ? `Deselect ${item.name}` : `Select ${item.name}`"
                             @update:model-value="vaultToggle(item.id)"
@@ -465,39 +452,9 @@ async function onImportFile(e) {
     </ResourceModal>
 </template>
 
-<style scoped>
-.min-w-0 {
-    min-width: 0;
-}
-.vt-username {
+<style scoped>.vt-username {
     max-width: 16rem;
     vertical-align: middle;
-}
-/* Explorer table chrome (mirrors the Files table). */
-.vt-table-wrap :deep(thead th) {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--bs-body-bg);
-}
-.vt-table-wrap :deep(td) {
-    vertical-align: middle;
-}
-.vt-table-wrap :deep(.vt-col-select),
-.vt-table-wrap :deep(.vt-col-actions),
-.vt-table-wrap :deep(.vt-col-meta) {
-    width: 1%;
-    white-space: nowrap;
-}
-.vt-table-wrap :deep(.vt-select-check) {
-    opacity: 0;
-    transition: opacity 0.15s;
-    cursor: pointer;
-}
-.vt-table-wrap :deep(tr:hover .vt-select-check),
-.vt-table-wrap :deep(tr:focus-within .vt-select-check),
-.vt-table-wrap.vt-has-selection :deep(.vt-select-check) {
-    opacity: 1;
 }
 .vt-detail-icon {
     width: 3rem;

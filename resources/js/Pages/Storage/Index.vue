@@ -19,7 +19,6 @@ const props = defineProps({
 
 const colorFor = (c) => categoryColor(c);
 
-
 // ----- Build the hierarchy (root = parent_id null) -----
 const tree = computed(() => {
     const byParent = {};
@@ -226,9 +225,6 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
 </template>
 
 <style scoped>
-.min-w-0 {
-    min-width: 0;
-}
 .treemap-box {
     position: relative;
     width: 100%;

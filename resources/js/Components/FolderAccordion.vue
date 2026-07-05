@@ -110,9 +110,6 @@ function itemFor(f: Folder) {
 </template>
 
 <style scoped>
-.min-w-0 {
-    min-width: 0;
-}
 /* Leaf rows line up with the flush accordion buttons around them. */
 .fa-leaf {
     padding: 0.5rem 1.25rem;

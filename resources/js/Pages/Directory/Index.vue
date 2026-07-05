@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed } from 'vue';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
+import { useCategoryFolders } from '../../composables/useCategoryFolders';
+import { useEscapeToClear } from '../../composables/useEscapeToClear';
 import UserAvatar from '../../Components/UserAvatar.vue';
 import { http } from '../../lib/http';
 import EmptyState from '../../Components/EmptyState.vue';
@@ -36,29 +38,27 @@ const counts = computed(() => {
     return map;
 });
 
-// The tree roots at "Directory" (id 0) with each department as its child.
-const ROOT_ID = 0;
-const accordionFolders = computed(() => [
-    { id: ROOT_ID, name: 'Directory', parent_id: null, icon: 'person-rolodex' },
-    ...deptNames.value.map((name, i) => ({ id: i + 1, name, parent_id: ROOT_ID })),
-]);
-const accordionCounts = computed(() => {
-    const map = { [ROOT_ID]: props.people.length };
-    accordionFolders.value.forEach((f) => {
-        if (f.id !== ROOT_ID) map[f.id] = counts.value[f.name] ?? 0;
-    });
-    return map;
+// Departments are flat strings; useCategoryFolders adapts them to
+// FolderAccordion rows rooted at the "Directory" node.
+const {
+    folders: accordionFolders,
+    counts: accordionCounts,
+    selectedId: selectedDeptId,
+    pickById: pickDeptById,
+    openIds: accordionOpenIds,
+} = useCategoryFolders({
+    rootName: 'Directory',
+    rootIcon: 'person-rolodex',
+    names: deptNames,
+    counts,
+    total: computed(() => props.people.length),
+    selected: selectedDept,
+    onPick: (name) => {
+        selectedDept.value = name;
+        clearContentSelection();
+        activePane.value = 'contents';
+    },
 });
-const selectedDeptId = computed(() =>
-    selectedDept.value === null
-        ? ROOT_ID
-        : (accordionFolders.value.find((f) => f.name === selectedDept.value)?.id ?? null));
-function pickDeptById(id) {
-    const folder = accordionFolders.value.find((f) => f.id === id);
-    selectedDept.value = (!folder || id === ROOT_ID) ? null : folder.name;
-    clearContentSelection();
-    activePane.value = 'contents';
-}
 
 const listed = computed(() => {
     if (selectedDept.value === null) return props.people;
@@ -68,8 +68,8 @@ const listed = computed(() => {
 // ----- Explorer table -----
 const tableColumns = [
     { key: 'name', label: 'Name', class: 'dir-col-name' },
-    { key: 'title', label: 'Title', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell dir-col-meta' },
-    { key: 'department', label: 'Department', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell dir-col-meta' },
+    { key: 'title', label: 'Title', headerClass: 'd-none d-lg-table-cell', class: 'd-none d-lg-table-cell st-col-meta' },
+    { key: 'department', label: 'Department', headerClass: 'd-none d-xl-table-cell', class: 'd-none d-xl-table-cell st-col-meta' },
 ];
 const tableItems = computed(() => listed.value.map((p) => ({ ...p, department: p.department || 'Unassigned' })));
 const listPage = ref(1);
@@ -83,7 +83,7 @@ const breadcrumbItems = computed(() => [
 ]);
 function onBreadcrumb({ item, event }) {
     event?.preventDefault?.();
-    if (!item.active) pickDeptById(ROOT_ID);
+    if (!item.active) pickDeptById(0);
 }
 
 // ----- Profile detail pane (race-guarded fetch, unchanged) -----
@@ -118,15 +118,7 @@ function clearContentSelection() {
     if (activePane.value === 'detail') activePane.value = 'contents';
 }
 
-function onKey(e) {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const type = (e.target?.type || '').toLowerCase();
-    const inTextField = (['input', 'textarea', 'select'].includes(tag) && !['checkbox', 'radio', 'button'].includes(type))
-        || !!e.target?.isContentEditable;
-    if (!inTextField && e.key === 'Escape') clearContentSelection();
-}
-onMounted(() => window.addEventListener('keydown', onKey));
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
+useEscapeToClear(clearContentSelection);
 </script>
 
 <template>
@@ -135,7 +127,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
             <FolderAccordion
                 :folders="accordionFolders"
                 :selected-id="selectedDeptId"
-                :open-ids="new Set([0])"
+                :open-ids="accordionOpenIds"
                 :counts="accordionCounts"
                 :can-create="false"
                 @select-folder="pickDeptById"
@@ -155,7 +147,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         <template #contents>
             <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
-            <div v-else class="dir-table-wrap overflow-auto flex-grow-1 px-2 pt-1" @click.self="clearContentSelection">
+            <div v-else class="st-table-wrap overflow-auto flex-grow-1 px-2 pt-1" @click.self="clearContentSelection">
                 <VibeDataTable
                     v-if="listed.length"
                     :items="tableItems"
@@ -216,25 +208,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 </template>
 
 <style scoped>
-.min-w-0 {
-    min-width: 0;
-}
 .dir-title {
     max-width: 18rem;
     vertical-align: middle;
-}
-/* Explorer table chrome (mirrors the Files table). */
-.dir-table-wrap :deep(thead th) {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--bs-body-bg);
-}
-.dir-table-wrap :deep(td) {
-    vertical-align: middle;
-}
-.dir-table-wrap :deep(.dir-col-meta) {
-    width: 1%;
-    white-space: nowrap;
 }
 </style>

@@ -54,9 +54,6 @@ const breadcrumbItems = computed(() => [
 </template>
 
 <style scoped>
-.min-w-0 {
-    min-width: 0;
-}
 .break-shell {
     --break-tile-size: clamp(2.5rem, 12vw, 4.375rem);
     --break-tile-gap: 0.375rem;

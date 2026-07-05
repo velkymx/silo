@@ -128,3 +128,39 @@
         transition: none;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Shell explorer-table chrome, shared by every ShellLayout table surface
+   (Files, Bookmarks, Vault, Notes, Directory). Pages opt in with
+   .st-table-wrap on the scroll container and st-* column classes.
+--------------------------------------------------------------------------- */
+.min-w-0 {
+    min-width: 0;
+}
+.st-table-wrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg);
+}
+.st-table-wrap td {
+    vertical-align: middle;
+}
+.st-table-wrap .st-col-select,
+.st-table-wrap .st-col-actions,
+.st-table-wrap .st-col-meta {
+    width: 1%;
+    white-space: nowrap;
+}
+/* The row checkbox stays hidden until its row is hovered/focused or any
+   selection exists, so it doesn't compete with the row's identity cell. */
+.st-table-wrap .st-select-check {
+    opacity: 0;
+    transition: opacity 0.15s;
+    cursor: pointer;
+}
+.st-table-wrap tr:hover .st-select-check,
+.st-table-wrap tr:focus-within .st-select-check,
+.st-table-wrap.st-has-selection .st-select-check {
+    opacity: 1;
+}
