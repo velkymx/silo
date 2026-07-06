@@ -325,6 +325,8 @@ function unmuteFeed(feed: Feed): void {
 
 interface Stats {
     articles_today: number;
+    articles_per_day: number;
+    articles_per_week: number;
     last_success_at: string | null;
     avg_frequency_hours: number | null;
     success_rate: number | null;
@@ -335,13 +337,18 @@ interface Stats {
 }
 const stats = ref<Stats | null>(null);
 const statsOpen = ref(false);
+const statsLoading = ref(false);
 async function toggleStats(): Promise<void> {
     statsOpen.value = !statsOpen.value;
-    if (statsOpen.value && stats.value === null) {
+    // Refetch every time the panel opens so it isn't stale after a refresh.
+    if (statsOpen.value) {
+        statsLoading.value = true;
         try {
             stats.value = await http.get<Stats>('/rss/stats');
         } catch (e) {
             toast.push('Could not load stats.', { variant: 'danger' });
+        } finally {
+            statsLoading.value = false;
         }
     }
 }
@@ -562,6 +569,7 @@ function submitEdit(): void {
                 >
                     <VibeIcon :icon="statsOpen ? 'chevron-down' : 'chevron-right'" class="me-1" />
                     Stats
+                    <VibeSpinner v-if="statsLoading" size="sm" class="ms-2" />
                 </button>
                 <div v-if="statsOpen && stats" class="px-2 pb-2 small text-muted">
                     <div class="d-flex justify-content-between">
@@ -571,6 +579,14 @@ function submitEdit(): void {
                     <div class="d-flex justify-content-between">
                         <span><VibeIcon icon="envelope" class="me-1" />Unread</span>
                         <span class="text-body">{{ stats.unread_total }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><VibeIcon icon="calendar-day" class="me-1" />Per day</span>
+                        <span class="text-body">{{ stats.articles_per_day }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><VibeIcon icon="calendar-week" class="me-1" />Per week</span>
+                        <span class="text-body">{{ stats.articles_per_week }}</span>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span><VibeIcon icon="arrow-repeat" class="me-1" />Last fetch</span>
