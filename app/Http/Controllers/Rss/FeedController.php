@@ -281,17 +281,18 @@ class FeedController extends Controller
         $avgFrequencyHours = null;
         $samples = 0;
         $sum = 0.0;
-        foreach ($feeds as $feed) {
-            $first = RssItem::where('feed_id', $feed->id)->min('published_at');
-            $last = RssItem::where('feed_id', $feed->id)->max('published_at');
-            $count = RssItem::where('feed_id', $feed->id)->count();
-            if (! $first || ! $last || $count < 2) {
+        $spans = RssItem::whereIn('feed_id', $feedIds)
+            ->selectRaw('feed_id, MIN(published_at) as first_at, MAX(published_at) as last_at, COUNT(*) as c')
+            ->groupBy('feed_id')
+            ->get();
+        foreach ($spans as $span) {
+            if (! $span->first_at || ! $span->last_at || (int) $span->c < 2) {
                 continue;
             }
-            $firstAt = \Carbon\Carbon::parse($first);
-            $lastAt = \Carbon\Carbon::parse($last);
+            $firstAt = \Carbon\Carbon::parse($span->first_at);
+            $lastAt = \Carbon\Carbon::parse($span->last_at);
             $spanHours = max(1, $firstAt->diffInHours($lastAt));
-            $sum += $spanHours / ($count - 1);
+            $sum += $spanHours / ((int) $span->c - 1);
             $samples++;
         }
         if ($samples > 0) {
