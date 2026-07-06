@@ -61,6 +61,9 @@ class FeedController extends Controller
             ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
             ->when($filter === 'starred', fn ($q) => $q->starred())
             ->when($filter === 'unread', fn ($q) => $q->unread())
+            ->when($filter === 'today', fn ($q) => $q->where('published_at', '>=', now()->startOfDay()))
+            ->when($filter === 'week', fn ($q) => $q->where('published_at', '>=', now()->subDays(7)))
+            ->when($filter === 'recent', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))
             ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($w) use ($search) {
@@ -83,6 +86,18 @@ class FeedController extends Controller
             ->unread()
             ->count();
         $starredTotal = RssItem::ownedBy($userId)->starred()->count();
+        $todayCount = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->where('published_at', '>=', now()->startOfDay())
+            ->count();
+        $weekCount = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->where('published_at', '>=', now()->subDays(7))
+            ->count();
+        $recentCount = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->where('created_at', '>=', now()->subDays(7))
+            ->count();
         $mutedCount = RssFeed::ownedBy($userId)->muted()->count();
         $automationEnabled = (bool) Setting::get('rss.automation_enabled', true);
 
@@ -99,6 +114,9 @@ class FeedController extends Controller
             'counts' => [
                 'unread' => $unreadTotal,
                 'starred' => $starredTotal,
+                'today' => $todayCount,
+                'week' => $weekCount,
+                'recent' => $recentCount,
                 'feeds' => $feeds->count(),
                 'muted' => $mutedCount,
             ],

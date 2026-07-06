@@ -84,7 +84,7 @@ const props = defineProps<{
     items: Item[];
     itemsNextCursor?: string | null;
     filters: { filter: string | null; feed: number | null; search: string | null; show_muted: boolean };
-    counts: { unread: number; starred: number; feeds: number; muted: number };
+    counts: { unread: number; starred: number; today: number; week: number; recent: number; feeds: number; muted: number };
     automationEnabled: boolean;
 }>();
 
@@ -301,6 +301,38 @@ function submitEdit(): void {
                     <VibeIcon icon="star-fill" class="text-warning" />
                     <span class="flex-grow-1">Starred</span>
                     <span class="badge text-bg-light">{{ counts.starred }}</span>
+                </button>
+                <hr class="my-2">
+                <div class="text-uppercase small text-muted px-2 mb-1">Smart folders</div>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'today' }"
+                    @click="selectFeed(null); router.get('/rss', { filter: 'today' }, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="calendar-day" class="text-primary" />
+                    <span class="flex-grow-1">Today</span>
+                    <span v-if="counts.today" class="badge text-bg-light">{{ counts.today }}</span>
+                </button>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'week' }"
+                    @click="selectFeed(null); router.get('/rss', { filter: 'week' }, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="calendar-week" class="text-primary" />
+                    <span class="flex-grow-1">This week</span>
+                    <span v-if="counts.week" class="badge text-bg-light">{{ counts.week }}</span>
+                </button>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'recent' }"
+                    @click="selectFeed(null); router.get('/rss', { filter: 'recent' }, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="clock-history" class="text-primary" />
+                    <span class="flex-grow-1">Recently added</span>
+                    <span v-if="counts.recent" class="badge text-bg-light">{{ counts.recent }}</span>
                 </button>
                 <hr class="my-2">
                 <div v-for="[folder, feeds] in grouped" :key="folder" class="mb-2">
