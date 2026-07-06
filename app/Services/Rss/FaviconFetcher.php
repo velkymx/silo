@@ -24,6 +24,13 @@ class FaviconFetcher
 
     private const CACHE_DIR = 'rss-favicons';
 
+    private SafeUrl $safeUrl;
+
+    public function __construct(?SafeUrl $safeUrl = null)
+    {
+        $this->safeUrl = $safeUrl ?? new SafeUrl;
+    }
+
     public function fetch(string $siteUrl): ?string
     {
         $siteUrl = trim($siteUrl);
@@ -35,9 +42,21 @@ class FaviconFetcher
             return null;
         }
         $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+        if (! $this->safeUrl->isSafe($origin.'/')) {
+            return null;
+        }
 
         $html = $this->tryFetchHtml($origin.'/');
-        $iconUrl = $this->discover($html) ?? $origin.'/favicon.ico';
+        $discovered = $this->discover($html);
+        $iconUrl = $discovered !== null ? $this->absolutize($origin, $discovered) : null;
+        if ($iconUrl === null || ! $this->safeUrl->isSafe($iconUrl)) {
+            // Discovered icon missing/relative-unresolvable/unsafe — fall back
+            // to the well-known /favicon.ico on the origin.
+            $iconUrl = $origin.'/favicon.ico';
+        }
+        if (! $this->safeUrl->isSafe($iconUrl)) {
+            return null;
+        }
         $bytes = $this->download($iconUrl);
         if ($bytes === null) {
             return null;
@@ -53,7 +72,7 @@ class FaviconFetcher
     private function tryFetchHtml(string $url): ?string
     {
         try {
-            $response = Http::timeout(8)->withOptions(['allow_redirects' => ['max' => 5]])->get($url);
+            $response = Http::timeout(8)->withOptions(['allow_redirects' => $this->safeUrl->allowRedirects(5)])->get($url);
         } catch (Throwable) {
             return null;
         }
@@ -108,7 +127,7 @@ class FaviconFetcher
     private function download(string $url): ?string
     {
         try {
-            $response = Http::timeout(8)->withOptions(['allow_redirects' => ['max' => 5]])->get($url);
+            $response = Http::timeout(8)->withOptions(['allow_redirects' => $this->safeUrl->allowRedirects(5)])->get($url);
         } catch (Throwable) {
             return null;
         }
@@ -121,6 +140,32 @@ class FaviconFetcher
         }
 
         return $body;
+    }
+
+    /**
+     * Resolve an icon href (absolute, protocol-relative, root-relative, or
+     * path-relative) against the site origin. Returns null when it cannot be
+     * turned into an absolute http(s) URL.
+     */
+    private function absolutize(string $origin, string $href): ?string
+    {
+        $href = trim($href);
+        if ($href === '') {
+            return null;
+        }
+        if (preg_match('#^https?://#i', $href)) {
+            return $href;
+        }
+        if (str_starts_with($href, '//')) {
+            $scheme = parse_url($origin, PHP_URL_SCHEME) ?: 'https';
+
+            return $scheme.':'.$href;
+        }
+        if (str_starts_with($href, '/')) {
+            return $origin.$href;
+        }
+
+        return $origin.'/'.$href;
     }
 
     private function extension(string $url, string $bytes): string

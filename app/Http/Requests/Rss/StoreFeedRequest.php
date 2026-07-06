@@ -18,7 +18,7 @@ class StoreFeedRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:120'],
-            'url' => ['required', 'url', 'max:2048'],
+            'url' => ['required', 'url:http,https', 'max:2048'],
             'folder' => ['nullable', 'string', 'max:60'],
             'enabled' => ['boolean'],
             'refresh_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],

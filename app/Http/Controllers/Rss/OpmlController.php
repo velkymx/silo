@@ -8,6 +8,7 @@ use App\Http\Requests\Rss\ImportOpmlRequest;
 use App\Jobs\Rss\ImportOpml;
 use App\Models\RssFeed;
 use App\Services\Rss\OpmlExporter;
+use App\Services\Rss\SafeUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -34,14 +35,18 @@ class OpmlController extends Controller
      * once, the body is forwarded to the same queued ImportOpml job as
      * the file path, so all parsing and dedup rules stay in one place.
      */
-    public function importFromUrl(ImportOpmlFromUrlRequest $request): RedirectResponse
+    public function importFromUrl(ImportOpmlFromUrlRequest $request, SafeUrl $safeUrl): RedirectResponse
     {
         $url = $request->string('url')->toString();
+
+        if (! $safeUrl->isSafe($url)) {
+            return back()->with('error', 'That URL is not allowed (it must be a public http(s) address).');
+        }
 
         try {
             $response = Http::withHeaders(['User-Agent' => 'Silo-OPML-Import/1.0'])
                 ->timeout(15)
-                ->withOptions(['allow_redirects' => ['max' => 5]])
+                ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
                 ->get($url);
         } catch (Throwable $e) {
             return back()->with('error', 'Could not fetch that URL: '.$e->getMessage());

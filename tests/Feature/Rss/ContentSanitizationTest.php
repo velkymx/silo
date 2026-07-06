@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Rss\FaviconFetcher;
 use App\Services\Rss\HtmlSanitizer;
 use App\Services\Rss\Parser;
+use App\Services\Rss\SafeUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -65,6 +66,7 @@ class ContentSanitizationTest extends TestCase
             app(EventDispatcher::class),
             app(FaviconFetcher::class),
             app(HtmlSanitizer::class),
+            app(SafeUrl::class),
         );
 
         $item = RssItem::where('feed_id', $feed->id)->firstOrFail();

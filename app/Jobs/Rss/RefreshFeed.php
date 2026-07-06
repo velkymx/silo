@@ -9,6 +9,7 @@ use App\Services\Audit;
 use App\Services\Rss\FaviconFetcher;
 use App\Services\Rss\HtmlSanitizer;
 use App\Services\Rss\Parser;
+use App\Services\Rss\SafeUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,7 +38,7 @@ class RefreshFeed implements ShouldQueue
 
     public function __construct(public int $feedId) {}
 
-    public function handle(Parser $parser, EventDispatcher $events, FaviconFetcher $favicons, HtmlSanitizer $sanitizer): void
+    public function handle(Parser $parser, EventDispatcher $events, FaviconFetcher $favicons, HtmlSanitizer $sanitizer, SafeUrl $safeUrl): void
     {
         $feed = RssFeed::find($this->feedId);
         if (! $feed || ! $feed->enabled || $feed->isMuted()) {
@@ -47,6 +48,16 @@ class RefreshFeed implements ShouldQueue
         if (! preg_match('#^https?://#i', $feed->url)) {
             $feed->update([
                 'last_error' => 'URL must be http(s)',
+                'last_http_status' => null,
+                'consecutive_failures' => $feed->consecutive_failures + 1,
+            ]);
+
+            return;
+        }
+
+        if (! $safeUrl->isSafe($feed->url)) {
+            $feed->update([
+                'last_error' => 'Blocked: URL resolves to a private or reserved address',
                 'last_http_status' => null,
                 'consecutive_failures' => $feed->consecutive_failures + 1,
             ]);
@@ -69,7 +80,7 @@ class RefreshFeed implements ShouldQueue
         try {
             $response = Http::withHeaders($headers)
                 ->timeout(20)
-                ->withOptions(['allow_redirects' => ['max' => 5]])
+                ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
                 ->get($feed->url);
         } catch (ConnectionException $e) {
             $feed->update([

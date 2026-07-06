@@ -26,16 +26,23 @@ class FeedDiscovery
         'text/xml',
     ];
 
+    private SafeUrl $safeUrl;
+
+    public function __construct(?SafeUrl $safeUrl = null)
+    {
+        $this->safeUrl = $safeUrl ?? new SafeUrl;
+    }
+
     public function discover(string $pageUrl): ?DiscoveredFeed
     {
-        if (! preg_match('#^https?://#i', $pageUrl)) {
+        if (! preg_match('#^https?://#i', $pageUrl) || ! $this->safeUrl->isSafe($pageUrl)) {
             return null;
         }
 
         try {
             $response = Http::withHeaders(['User-Agent' => 'Silo-RSS-Discovery/1.0'])
                 ->timeout(10)
-                ->withOptions(['allow_redirects' => ['max' => 5]])
+                ->withOptions(['allow_redirects' => $this->safeUrl->allowRedirects(5)])
                 ->get($pageUrl);
         } catch (Throwable) {
             return null;

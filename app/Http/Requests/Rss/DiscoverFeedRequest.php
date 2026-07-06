@@ -17,7 +17,7 @@ class DiscoverFeedRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'url' => ['required', 'string', 'url', 'max:2048'],
+            'url' => ['required', 'string', 'url:http,https', 'max:2048'],
         ];
     }
 }

@@ -18,7 +18,7 @@ class UpdateFeedRequest extends FormRequest
     {
         return [
             'title' => ['sometimes', 'required', 'string', 'max:120'],
-            'url' => ['sometimes', 'required', 'url', 'max:2048'],
+            'url' => ['sometimes', 'required', 'url:http,https', 'max:2048'],
             'folder' => ['sometimes', 'nullable', 'string', 'max:60'],
             'enabled' => ['sometimes', 'boolean'],
             'refresh_interval_minutes' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:1440'],
