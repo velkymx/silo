@@ -38,12 +38,27 @@ interface Item {
 }
 
 const opmlInput = ref<HTMLInputElement | null>(null);
+const opmlUrlOpen = ref(false);
 function onOpmlChosen(e: Event): void {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
     router.post('/rss/opml/import', { opml: file }, { forceFormData: true, preserveScroll: true });
     input.value = '';
+}
+
+const opmlUrl = ref('');
+const importingUrl = ref(false);
+async function importOpmlFromUrl(): Promise<void> {
+    const url = opmlUrl.value.trim();
+    if (!url) return;
+    importingUrl.value = true;
+    try {
+        await router.post('/rss/opml/import-url', { url });
+        opmlUrl.value = '';
+    } finally {
+        importingUrl.value = false;
+    }
 }
 
 const detecting = ref(false);
@@ -491,9 +506,20 @@ function submitEdit(): void {
                     <VibeButton variant="secondary" size="sm" title="Import an OPML subscription file" aria-label="Import OPML" @click="opmlInput?.click()">
                         <VibeIcon icon="upload" class="me-1" />Import
                     </VibeButton>
+                    <VibeButton variant="secondary" size="sm" title="Import OPML from a URL (Feedly, Inoreader, NetNewsWire)" aria-label="Import OPML from URL" @click="opmlUrlOpen = !opmlUrlOpen">
+                        <VibeIcon icon="link-45deg" class="me-1" />From URL
+                    </VibeButton>
                     <a href="/rss/opml/export" class="btn btn-secondary btn-sm" download title="Export all feeds as OPML" aria-label="Export OPML">
                         <VibeIcon icon="download" class="me-1" />Export
                     </a>
+                    <input ref="opmlInput" type="file" accept=".opml,.xml,text/xml,application/xml" class="d-none" @change="onOpmlChosen">
+                    <div v-if="opmlUrlOpen" class="d-flex gap-1 mt-1">
+                        <VibeFormInput v-model="opmlUrl" type="url" placeholder="https://feedly.com/export/opml" size="sm" no-wrapper class="flex-grow-1" />
+                        <VibeButton size="sm" variant="primary" :disabled="importingUrl || !opmlUrl.trim()" @click="importOpmlFromUrl">
+                            <VibeSpinner v-if="importingUrl" size="sm" />
+                            <VibeIcon v-else icon="cloud-download" />
+                        </VibeButton>
+                    </div>
                     <input ref="opmlInput" type="file" accept=".opml,.xml,text/xml,application/xml" class="d-none" @change="onOpmlChosen">
                     <VibeButton size="sm" variant="primary" @click="openAdd">
                         <VibeIcon icon="plus-lg" class="me-1" />Add feed

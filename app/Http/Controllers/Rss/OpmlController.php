@@ -8,8 +8,10 @@ use App\Jobs\Rss\ImportOpml;
 use App\Models\RssFeed;
 use App\Services\Rss\OpmlExporter;
 use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * OPML surface: bulk import (queued) and bulk export (streamed). The
@@ -24,6 +26,41 @@ class OpmlController extends Controller
         ImportOpml::dispatch($request->user()->id, $xml);
 
         return back()->with('success', 'OPML queued. Feeds will appear shortly.');
+    }
+
+    /**
+     * Import OPML by URL — covers the Feedly / Inoreader / NetNewsWire
+     * export-URL flow without a file download step. The URL is fetched
+     * once, the body is forwarded to the same queued ImportOpml job as
+     * the file path, so all parsing and dedup rules stay in one place.
+     */
+    public function importFromUrl(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'url' => ['required', 'string', 'url', 'max:2048'],
+        ]);
+
+        try {
+            $response = Http::withHeaders(['User-Agent' => 'Silo-OPML-Import/1.0'])
+                ->timeout(15)
+                ->withOptions(['allow_redirects' => ['max' => 5]])
+                ->get($data['url']);
+        } catch (Throwable $e) {
+            return back()->with('error', 'Could not fetch that URL: '.$e->getMessage());
+        }
+
+        if (! $response->successful()) {
+            return back()->with('error', 'OPML endpoint returned HTTP '.$response->status().'.');
+        }
+
+        $xml = $response->body();
+        if (strlen($xml) > 5 * 1024 * 1024) {
+            return back()->with('error', 'OPML file is too large (5MB cap).');
+        }
+
+        ImportOpml::dispatch($request->user()->id, $xml);
+
+        return back()->with('success', 'OPML from URL queued. Feeds will appear shortly.');
     }
 
     public function export(OpmlExporter $exporter): StreamedResponse

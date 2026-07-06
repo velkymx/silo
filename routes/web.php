@@ -212,6 +212,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/discover', [RssFeedController::class, 'discover'])->name('feeds.discover');
         Route::get('/stats', [RssFeedController::class, 'stats'])->name('stats');
         Route::post('/opml/import', [RssOpmlController::class, 'store'])->name('opml.import');
+        Route::post('/opml/import-url', [RssOpmlController::class, 'importFromUrl'])->name('opml.importUrl');
         Route::get('/opml/export', [RssOpmlController::class, 'export'])->name('opml.export');
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
