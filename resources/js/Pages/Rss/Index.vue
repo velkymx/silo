@@ -46,6 +46,39 @@ function onOpmlChosen(e: Event): void {
     input.value = '';
 }
 
+const detecting = ref(false);
+async function detectFeed(): Promise<void> {
+    const url = addForm.url.trim();
+    if (!url) {
+        addForm.setError('url', 'Paste a page URL first, then click Detect.');
+        return;
+    }
+    detecting.value = true;
+    try {
+        const res = await fetch('/rss/discover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: JSON.stringify({ url }),
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            toast.push(data.message ?? 'No feed found on that page.', { variant: 'danger' });
+            return;
+        }
+        const data = await res.json() as { url: string; title?: string | null; source: string };
+        addForm.url = data.url;
+        if (data.title && !addForm.title) {
+            addForm.title = data.title;
+        }
+        addForm.clearErrors('url');
+        toast.push(data.url === data.source ? 'URL already points at a feed.' : `Found ${data.url}`, { variant: 'success' });
+    } catch (e) {
+        toast.push('Detection failed. Check the URL and try again.', { variant: 'danger' });
+    } finally {
+        detecting.value = false;
+    }
+}
+
 const props = defineProps<{
     feeds: Feed[];
     items: Item[];
@@ -364,8 +397,14 @@ function submitEdit(): void {
             <VibeFormGroup label="Title" :error="addForm.errors.title">
                 <VibeFormInput v-model="addForm.title" placeholder="Laravel News" required />
             </VibeFormGroup>
-            <VibeFormGroup label="Feed URL" :error="addForm.errors.url" help-text="Paste the RSS/Atom URL.">
-                <VibeFormInput v-model="addForm.url" type="url" placeholder="https://…" required />
+            <VibeFormGroup label="Feed URL" :error="addForm.errors.url" help-text="Paste a page URL and click Detect, or paste the feed URL directly.">
+                <div class="d-flex gap-2">
+                    <VibeFormInput v-model="addForm.url" type="url" placeholder="https://…" required class="flex-grow-1" />
+                    <VibeButton type="button" variant="secondary" outline :disabled="detecting" @click="detectFeed">
+                        <VibeSpinner v-if="detecting" size="sm" class="me-1" />
+                        <VibeIcon v-else icon="search" class="me-1" />Detect
+                    </VibeButton>
+                </div>
             </VibeFormGroup>
             <VibeFormGroup label="Folder" :error="addForm.errors.folder" help-text="Optional grouping (e.g. 'Tech').">
                 <VibeFormInput v-model="addForm.folder" placeholder="Tech" />

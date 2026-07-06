@@ -7,6 +7,8 @@ use App\Jobs\Rss\RefreshFeed;
 use App\Models\RssFeed;
 use App\Models\RssItem;
 use App\Models\Setting;
+use App\Services\Rss\FeedDiscovery;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -125,6 +127,31 @@ class FeedController extends Controller
         $feed->delete();
 
         return back()->with('success', 'Feed removed.');
+    }
+
+    /**
+     * Best-effort feed discovery. Given a page URL, fetch its HTML and
+     * look for the first <link rel="alternate" type="application/rss+xml">
+     * (or atom). Returns the resolved feed URL, or 422 if nothing found.
+     */
+    public function discover(Request $request, FeedDiscovery $discovery): JsonResponse
+    {
+        $data = $request->validate([
+            'url' => ['required', 'string', 'url', 'max:2048'],
+        ]);
+
+        $found = $discovery->discover($data['url']);
+        if (! $found) {
+            return response()->json([
+                'message' => 'No feed link found on that page.',
+            ], 422);
+        }
+
+        return response()->json([
+            'url' => $found->url,
+            'title' => $found->title,
+            'source' => $data['url'],
+        ]);
     }
 
     public function refresh(RssFeed $feed)
