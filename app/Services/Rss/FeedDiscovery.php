@@ -102,7 +102,7 @@ class FeedDiscovery
                 }
             }
 
-            $candidates[] = ['href' => $href, 'type' => $type, 'title' => $title, 'index' => count($candidates)];
+            $candidates[] = ['href' => $href, 'type' => $type, 'title' => $title];
         }
 
         if (! $candidates) {

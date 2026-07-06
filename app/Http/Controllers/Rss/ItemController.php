@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rss;
 
 use App\Automation\EventDispatcher;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Rss\Item as RssItemResource;
 use App\Models\RssItem;
 use App\Services\Audit;
 use App\Services\Rss\InboxItemQuery;
@@ -18,7 +19,7 @@ class ItemController extends Controller
         $item->load('feed:id,title,folder,site_url');
 
         return Inertia::render('Rss/Show', [
-            'item' => $this->shapeFull($item),
+            'item' => (new RssItemResource($item))->withFull()->toArray(request()),
             'related' => $this->shapeRelated($item),
         ]);
     }
@@ -103,30 +104,6 @@ class ItemController extends Controller
         }
 
         return back()->with('success', "Marked {$count} item(s) as read.");
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function shapeFull(RssItem $item): array
-    {
-        return [
-            'id' => $item->id,
-            'feed_id' => $item->feed_id,
-            'feed_title' => $item->feed?->title,
-            'feed_site_url' => $item->feed?->site_url,
-            'guid' => $item->guid,
-            'title' => $item->title,
-            'content' => $item->content,
-            'excerpt' => $item->excerpt,
-            'author' => $item->author,
-            'categories' => $item->categories ?? [],
-            'image_url' => $item->image_url,
-            'url' => $item->url,
-            'published_at' => optional($item->published_at)->toIso8601String(),
-            'is_read' => (bool) $item->is_read,
-            'is_starred' => (bool) $item->is_starred,
-        ];
     }
 
     /**

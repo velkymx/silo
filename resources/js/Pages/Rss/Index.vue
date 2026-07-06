@@ -97,7 +97,6 @@ const props = defineProps<{
     itemsNextCursor?: string | null;
     filters: { filter: string | null; feed: number | null; search: string | null; show_muted: boolean };
     counts: { unread: number; starred: number; today: number; yesterday: number; week: number; month: number; recent: number; read_recent: number; feeds: number; muted: number };
-    automationEnabled: boolean;
 }>();
 
 const { confirm } = useConfirm();

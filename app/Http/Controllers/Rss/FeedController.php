@@ -12,14 +12,12 @@ use App\Jobs\Rss\RefreshFeed;
 use App\Models\RssFeed;
 use App\Models\RssItem;
 use App\Models\RssRefreshLog;
-use App\Models\Setting;
 use App\Services\Audit;
 use App\Services\Rss\FeedDiscovery;
 use App\Services\Rss\InboxItemQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 /**
@@ -102,7 +100,6 @@ class FeedController extends Controller
         $readRecentCount = (int) ($agg->read_recent ?? 0);
         $starredTotal = RssItem::ownedBy($userId)->starred()->count();
         $mutedCount = RssFeed::ownedBy($userId)->muted()->count();
-        $automationEnabled = (bool) Setting::get('rss.automation_enabled', true);
 
         return Inertia::render('Rss/Index', [
             'feeds' => $feeds,
@@ -126,7 +123,6 @@ class FeedController extends Controller
                 'feeds' => $feeds->count(),
                 'muted' => $mutedCount,
             ],
-            'automationEnabled' => $automationEnabled,
         ]);
     }
 
@@ -426,13 +422,5 @@ class FeedController extends Controller
             'longest_outage_minutes' => $longestOutageMinutes,
             'items_per_day' => $itemsPerDay,
         ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function shapeItem(RssItem $item): array
-    {
-        return (new RssItemResource($item))->toArray(request());
     }
 }
