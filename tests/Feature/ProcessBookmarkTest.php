@@ -56,6 +56,28 @@ class ProcessBookmarkTest extends TestCase
         $this->assertSame('https://blog.example.com/feed.xml', $bookmark->fresh()->feed_url);
     }
 
+    public function test_adopt_feed_is_dispatched_only_after_feed_url_is_persisted(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        Storage::fake('public');
+        Http::fake([
+            'https://blog.example.com' => Http::response(
+                '<html><head><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head></html>', 200),
+            '*' => Http::response('', 404),
+        ]);
+        $bookmark = Bookmark::factory()->create(['url' => 'https://blog.example.com', 'status' => 'pending']);
+
+        (new ProcessBookmark($bookmark->id))->handle();
+
+        // feed_url is persisted, and the adopt job (which reads it from the DB)
+        // was queued — proving dispatch happens after the write, not before.
+        $this->assertSame('https://blog.example.com/feed.xml', $bookmark->fresh()->feed_url);
+        \Illuminate\Support\Facades\Queue::assertPushed(
+            \App\Jobs\Rss\AdoptBookmarkFeed::class,
+            fn (\App\Jobs\Rss\AdoptBookmarkFeed $job) => $job->bookmarkId === $bookmark->id
+        );
+    }
+
     public function test_rejects_non_http_schemes(): void
     {
         $bookmark = Bookmark::factory()->create(['url' => 'ftp://example.com', 'status' => 'pending']);

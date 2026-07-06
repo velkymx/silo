@@ -56,15 +56,23 @@ class ProcessBookmark implements ShouldQueue
         if ($iconPath = $this->fetchFavicon($bookmark, $response->body())) {
             $attributes['icon_path'] = $iconPath;
         }
+        $adoptFeed = false;
         if ($feed = $this->detectFeed($bookmark->url, $response->body())) {
             $attributes['feed_url'] = $feed;
-            AdoptBookmarkFeed::dispatch($bookmark->id);
+            $adoptFeed = true;
         }
         if ($shotPath = $this->screenshot($bookmark)) {
             $attributes['screenshot_path'] = $shotPath;
         }
 
         $bookmark->update($attributes);
+
+        // Dispatch only after feed_url is persisted (and after any surrounding
+        // transaction commits) — the adopt job reads feed_url from the DB, so
+        // dispatching earlier races the write and silently drops the feed.
+        if ($adoptFeed) {
+            AdoptBookmarkFeed::dispatch($bookmark->id)->afterCommit();
+        }
     }
 
     /** Download the site favicon and store it; returns the stored path or null. */
