@@ -141,7 +141,26 @@ class FeedController extends Controller
 
     public function update(UpdateFeedRequest $request, RssFeed $feed)
     {
-        $feed->update($request->validated());
+        $data = $request->validated();
+
+        // A changed URL points at a different resource: the stored HTTP cache
+        // validators and health snapshot no longer apply, so clear them or a
+        // conditional GET could 304 against the new URL and skip its content.
+        if (array_key_exists('url', $data) && $data['url'] !== $feed->url) {
+            $data += [
+                'etag' => null,
+                'last_modified' => null,
+                'last_error' => null,
+                'last_http_status' => null,
+                'last_response_time_ms' => null,
+                'last_fetched_at' => null,
+                'last_success_at' => null,
+                'consecutive_failures' => 0,
+            ];
+        }
+
+        $feed->update($data);
+        Audit::log('rss.feed.update', null, ['feed_id' => $feed->id], subjectName: $feed->title);
 
         return back()->with('success', 'Feed updated.');
     }
