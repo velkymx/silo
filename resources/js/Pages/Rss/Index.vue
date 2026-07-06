@@ -257,6 +257,8 @@ async function markAllRead(): Promise<void> {
     if (selectedFeedId.value) payload.feed = selectedFeedId.value;
     if (props.filters.filter) payload.filter = props.filters.filter;
     if (search.value.trim()) payload.search = search.value.trim();
+    // Include the advanced filters so the server marks exactly the visible set.
+    applyAdvancedFilters(payload);
     router.post('/rss/items/mark-all-read', payload, { preserveScroll: true });
     toast.push('Marked as read', { variant: 'success' });
 }

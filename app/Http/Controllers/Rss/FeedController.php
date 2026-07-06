@@ -14,8 +14,8 @@ use App\Models\RssItem;
 use App\Models\RssRefreshLog;
 use App\Models\Setting;
 use App\Services\Audit;
-use App\Services\Rss\BooleanSearchParser;
 use App\Services\Rss\FeedDiscovery;
+use App\Services\Rss\InboxItemQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +36,6 @@ class FeedController extends Controller
         $search = trim((string) $request->string('search'));
         $feedId = $request->integer('feed');
         $showMuted = $request->boolean('show_muted');
-        $blocked = $request->user()?->blocked_keywords ?? [];
 
         $feedsQuery = RssFeed::ownedBy($userId)
             ->when(! $showMuted, fn ($q) => $q->unmuted());
@@ -55,44 +54,11 @@ class FeedController extends Controller
             ];
         })->values();
 
-        $author = trim((string) $request->string('author')->toString());
-        $exclude = trim((string) $request->string('exclude')->toString());
-        $feedIdsParam = array_values(array_filter(array_map('intval', explode(',', (string) $request->string('feeds')->toString()))));
-
-        $topFeedIds = $filter === 'top_feeds'
-            ? RssItem::ownedBy($userId)
-                ->whereIn('feed_id', RssFeed::ownedBy($userId)->whereNull('muted_at')->pluck('id'))
-                ->where('published_at', '>=', now()->subDays(7))
-                ->selectRaw('feed_id, count(*) as c')
-                ->groupBy('feed_id')
-                ->orderByDesc('c')
-                ->limit(5)
-                ->pluck('feed_id')
-                ->all()
-            : [];
-
         $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->unmuted())
-            ->inboxFilter($filter, $feedId, $author, $exclude)
-            ->when($search !== '', function ($q) use ($search) {
-                app(BooleanSearchParser::class)->apply($q, $search);
-            })
-            ->when($feedIdsParam !== [], fn ($q) => $q->whereIn('feed_id', $feedIdsParam))
-            ->when($filter === 'top_feeds' && $topFeedIds !== [], fn ($q) => $q->whereIn('feed_id', $topFeedIds))
-            ->when($filter === 'top_feeds' && $topFeedIds === [], fn ($q) => $q->whereRaw('0 = 1'))
-            ->when($blocked !== [], function ($q) use ($blocked) {
-                $q->where(function ($w) use ($blocked) {
-                    foreach ($blocked as $kw) {
-                        $kw = trim((string) $kw);
-                        if ($kw === '') {
-                            continue;
-                        }
-                        $w->where('title', 'not like', "%{$kw}%")
-                            ->where('excerpt', 'not like', "%{$kw}%");
-                    }
-                });
-            })
+            ->whereHas('feed', fn ($q) => $q->unmuted());
+        app(InboxItemQuery::class)->apply($items, $request, $userId);
+        $items = $items
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->cursorPaginate(50);

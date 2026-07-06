@@ -6,6 +6,7 @@ use App\Automation\EventDispatcher;
 use App\Http\Controllers\Controller;
 use App\Models\RssItem;
 use App\Services\Audit;
+use App\Services\Rss\InboxItemQuery;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -72,19 +73,17 @@ class ItemController extends Controller
         return back();
     }
 
-    public function markAllRead(Request $request, EventDispatcher $events)
+    public function markAllRead(Request $request, EventDispatcher $events, InboxItemQuery $inbox)
     {
         $userId = auth()->id();
-        $filter = $request->string('filter')->lower()->toString();
-        $feedId = $request->integer('feed');
-        $search = trim((string) $request->string('search'));
 
-        // Scope to exactly the visible set: unmuted feeds, the active smart
-        // folder / feed / search — same filters as the inbox listing.
+        // Scope to exactly the visible set — the same filter chain the inbox
+        // listing uses (smart folder, feed, author/exclude, boolean search,
+        // feed combinations, top-feeds, blocked keywords).
         $base = RssItem::ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->unmuted())
-            ->unread()
-            ->inboxFilter($filter, $feedId, $search);
+            ->unread();
+        $inbox->apply($base, $request, $userId);
 
         $now = now();
         $count = (clone $base)->update(['is_read' => true, 'read_at' => $now]);
@@ -93,8 +92,8 @@ class ItemController extends Controller
             $events->dispatch('rss.item.read', $userId, [
                 'phase' => 'bulk',
                 'count' => $count,
-                'filter' => $filter ?: null,
-                'feed_id' => $feedId ?: null,
+                'filter' => $request->string('filter')->lower()->toString() ?: null,
+                'feed_id' => $request->integer('feed') ?: null,
                 'read_at' => $now->toIso8601String(),
             ], 'rss.item.read@1:bulk:'.$userId.':'.$now->timestamp);
         }
