@@ -44,9 +44,11 @@ class OpmlController extends Controller
         }
 
         try {
+            // stream => true so Guzzle does not buffer the whole body into
+            // memory before we get a chance to enforce the cap.
             $response = Http::withHeaders(['User-Agent' => 'Silo-OPML-Import/1.0'])
                 ->timeout(15)
-                ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
+                ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5), 'stream' => true])
                 ->get($url);
         } catch (Throwable $e) {
             return back()->with('error', 'Could not fetch that URL: '.$e->getMessage());
@@ -56,9 +58,23 @@ class OpmlController extends Controller
             return back()->with('error', 'OPML endpoint returned HTTP '.$response->status().'.');
         }
 
-        $xml = $response->body();
-        if (strlen($xml) > 5 * 1024 * 1024) {
+        $cap = 5 * 1024 * 1024;
+        $stream = $response->toPsrResponse()->getBody();
+
+        // Reject early when the server declares a size over the cap.
+        $declared = $stream->getSize();
+        if ($declared !== null && $declared > $cap) {
             return back()->with('error', 'OPML file is too large (5MB cap).');
+        }
+
+        // Read incrementally and abort the moment the cap is exceeded, so a
+        // hostile endpoint can't push hundreds of MB into memory.
+        $xml = '';
+        while (! $stream->eof()) {
+            $xml .= $stream->read(8192);
+            if (strlen($xml) > $cap) {
+                return back()->with('error', 'OPML file is too large (5MB cap).');
+            }
         }
 
         ImportOpml::dispatch($request->user()->id, $xml);
