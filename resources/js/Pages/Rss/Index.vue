@@ -133,6 +133,7 @@ async function loadMore(): Promise<void> {
         if (props.filters.feed) params.feed = props.filters.feed;
         if (props.filters.search) params.search = props.filters.search;
         if (props.filters.show_muted) params.show_muted = 1;
+        applyAdvancedFilters(params);
         await router.get('/rss', params, {
             only: ['items', 'itemsNextCursor'],
             preserveState: true,
@@ -153,6 +154,24 @@ const showAddFeed = ref(false);
 const showEditFeed = ref(false);
 const editingFeed = ref<Feed | null>(null);
 const search = ref(props.filters.search ?? '');
+const authorFilter = ref('');
+const excludeFilter = ref('');
+
+function applyAdvancedFilters(extra: Record<string, string | number>): Record<string, string | number> {
+    if (authorFilter.value.trim()) extra.author = authorFilter.value.trim();
+    if (excludeFilter.value.trim()) extra.exclude = excludeFilter.value.trim();
+    return extra;
+}
+
+watch([authorFilter, excludeFilter], () => {
+    const params: Record<string, string | number> = {};
+    if (props.filters.filter) params.filter = props.filters.filter;
+    if (props.filters.feed) params.feed = props.filters.feed;
+    if (props.filters.search) params.search = props.filters.search;
+    if (props.filters.show_muted) params.show_muted = 1;
+    applyAdvancedFilters(params);
+    router.get('/rss', params, { preserveState: true, replace: true });
+});
 
 const grouped = computed(() => {
     const map = new Map<string, Feed[]>();
@@ -552,6 +571,22 @@ function submitEdit(): void {
                     <span>{{ selectedFeed ? selectedFeed.title : (filters.filter === 'starred' ? 'Starred' : 'Inbox') }}</span>
                 </h1>
                 <VibeFormInput v-model="search" type="search" placeholder="Search articles…" class="ms-3 flex-grow-1" style="max-width: 320px" no-wrapper />
+                <VibeFormInput
+                    v-model="authorFilter"
+                    type="text"
+                    placeholder="Author…"
+                    class="flex-grow-0"
+                    style="width: 110px"
+                    no-wrapper
+                />
+                <VibeFormInput
+                    v-model="excludeFilter"
+                    type="text"
+                    placeholder="Exclude…"
+                    class="flex-grow-0"
+                    style="width: 110px"
+                    no-wrapper
+                />
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <VibeButton variant="secondary" size="sm" :title="`${counts.unread} unread`" :disabled="counts.unread === 0" @click="markAllRead">
                         <VibeIcon icon="check2-all" class="me-1" />Mark all read
