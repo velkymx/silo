@@ -41,7 +41,6 @@ class FeedController extends Controller
         $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'favicon_path', 'refresh_interval_minutes', 'last_fetched_at', 'last_success_at', 'last_error', 'last_http_status', 'last_response_time_ms', 'consecutive_failures', 'etag', 'last_modified']);
 
         $unreadByFeed = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId))
             ->unread()
             ->selectRaw('feed_id, count(*) as c')
             ->groupBy('feed_id')
@@ -55,7 +54,7 @@ class FeedController extends Controller
 
         $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->whereHas('feed', fn ($q) => $q->unmuted())
             ->when($filter === 'starred', fn ($q) => $q->starred())
             ->when($filter === 'unread', fn ($q) => $q->unread())
             ->when($filter === 'today', fn ($q) => $q->where('published_at', '>=', now()->startOfDay()))
@@ -81,36 +80,39 @@ class FeedController extends Controller
             ->values();
         $itemsNextCursor = $items->nextCursor()?->encode();
 
-        $unreadTotal = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->unread()
-            ->count();
+        // Sidebar counters in one conditional-aggregate pass over the user's
+        // unmuted items. rss_items.user_id already scopes ownership, so the
+        // unmuted-feed constraint is expressed with a single id whitelist
+        // instead of a per-count whereHas join.
+        $startOfDay = now()->startOfDay();
+        $yesterdayStart = now()->subDay()->startOfDay();
+        $yesterdayEnd = now()->subDay()->endOfDay();
+        $weekAgo = now()->subDays(7);
+        $monthAgo = now()->subDays(30);
+        $unmutedFeedIds = RssFeed::ownedBy($userId)->unmuted()->pluck('id');
+
+        $agg = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $unmutedFeedIds)
+            ->selectRaw(
+                'SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,'
+                .' SUM(CASE WHEN published_at >= ? THEN 1 ELSE 0 END) as today,'
+                .' SUM(CASE WHEN published_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as yesterday,'
+                .' SUM(CASE WHEN published_at >= ? THEN 1 ELSE 0 END) as week,'
+                .' SUM(CASE WHEN published_at >= ? THEN 1 ELSE 0 END) as month,'
+                .' SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as recent,'
+                .' SUM(CASE WHEN is_read = 1 AND read_at >= ? THEN 1 ELSE 0 END) as read_recent',
+                [$startOfDay, $yesterdayStart, $yesterdayEnd, $weekAgo, $monthAgo, $weekAgo, $weekAgo]
+            )
+            ->first();
+
+        $unreadTotal = (int) ($agg->unread ?? 0);
+        $todayCount = (int) ($agg->today ?? 0);
+        $yesterdayCount = (int) ($agg->yesterday ?? 0);
+        $weekCount = (int) ($agg->week ?? 0);
+        $monthCount = (int) ($agg->month ?? 0);
+        $recentCount = (int) ($agg->recent ?? 0);
+        $readRecentCount = (int) ($agg->read_recent ?? 0);
         $starredTotal = RssItem::ownedBy($userId)->starred()->count();
-        $todayCount = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->where('published_at', '>=', now()->startOfDay())
-            ->count();
-        $weekCount = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->where('published_at', '>=', now()->subDays(7))
-            ->count();
-        $recentCount = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->where('created_at', '>=', now()->subDays(7))
-            ->count();
-        $readRecentCount = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->where('is_read', true)
-            ->where('read_at', '>=', now()->subDays(7))
-            ->count();
-        $yesterdayCount = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->whereBetween('published_at', [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()])
-            ->count();
-        $monthCount = RssItem::ownedBy($userId)
-            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
-            ->where('published_at', '>=', now()->subDays(30))
-            ->count();
         $mutedCount = RssFeed::ownedBy($userId)->muted()->count();
         $automationEnabled = (bool) Setting::get('rss.automation_enabled', true);
 
