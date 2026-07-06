@@ -56,6 +56,7 @@ class FeedController extends Controller
 
         $author = trim((string) $request->string('author')->toString());
         $exclude = trim((string) $request->string('exclude')->toString());
+        $feedIdsParam = array_values(array_filter(array_map('intval', explode(',', (string) $request->string('feeds')->toString()))));
 
         $topFeedIds = $filter === 'top_feeds'
             ? RssItem::ownedBy($userId)
@@ -73,6 +74,7 @@ class FeedController extends Controller
             ->ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->unmuted())
             ->inboxFilter($filter, $feedId, $search, $author, $exclude)
+            ->when($feedIdsParam !== [], fn ($q) => $q->whereIn('feed_id', $feedIdsParam))
             ->when($filter === 'top_feeds' && $topFeedIds !== [], fn ($q) => $q->whereIn('feed_id', $topFeedIds))
             ->when($filter === 'top_feeds' && $topFeedIds === [], fn ($q) => $q->whereRaw('0 = 1'))
             ->when($blocked !== [], function ($q) use ($blocked) {
