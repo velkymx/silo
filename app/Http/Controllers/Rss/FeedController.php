@@ -11,11 +11,13 @@ use App\Http\Resources\Rss\Item as RssItemResource;
 use App\Jobs\Rss\RefreshFeed;
 use App\Models\RssFeed;
 use App\Models\RssItem;
+use App\Models\RssRefreshLog;
 use App\Models\Setting;
 use App\Services\Audit;
 use App\Services\Rss\FeedDiscovery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
@@ -364,6 +366,60 @@ class FeedController extends Controller
             'consecutive_failures' => $f->consecutive_failures,
         ])->values()->sortByDesc('last_success_at')->values();
 
+        // Historical analytics from the rss_refresh_logs append-only log.
+        $refreshHistory = RssRefreshLog::query()
+            ->whereIn('rss_feed_id', $feeds->pluck('id'))
+            ->where('started_at', '>=', now()->subDays(30))
+            ->orderByDesc('started_at')
+            ->limit(20)
+            ->get(['rss_feed_id', 'started_at', 'completed_at', 'http_status', 'response_time_ms', 'outcome', 'new_items_count', 'error'])
+            ->map(fn (RssRefreshLog $l) => [
+                'feed_id' => $l->rss_feed_id,
+                'started_at' => $l->started_at?->toIso8601String(),
+                'completed_at' => $l->completed_at?->toIso8601String(),
+                'http_status' => $l->http_status,
+                'response_time_ms' => $l->response_time_ms,
+                'outcome' => $l->outcome,
+                'outcome_label' => $l->outcomeLabel(),
+                'new_items_count' => $l->new_items_count,
+                'error' => $l->error,
+            ])
+            ->all();
+
+        // Longest outage: the longest run of consecutive non-success attempts
+        // across all feeds in the last 30 days. A run is bounded by the
+        // next success or the window edge.
+        $logs = RssRefreshLog::query()
+            ->whereIn('rss_feed_id', $feeds->pluck('id'))
+            ->where('started_at', '>=', now()->subDays(30))
+            ->orderBy('started_at')
+            ->get(['started_at', 'outcome']);
+        $longestOutageMinutes = 0;
+        $outageStart = null;
+        foreach ($logs as $log) {
+            if ($log->outcome !== RssRefreshLog::OUTCOME_SUCCESS) {
+                $outageStart ??= $log->started_at;
+            } else {
+                if ($outageStart) {
+                    $longestOutageMinutes = max($longestOutageMinutes, $outageStart->diffInMinutes($log->started_at));
+                    $outageStart = null;
+                }
+            }
+        }
+        if ($outageStart) {
+            $longestOutageMinutes = max($longestOutageMinutes, $outageStart->diffInMinutes(now()));
+        }
+
+        // Items per day, last 30 days, bucketed per day.
+        $itemsPerDay = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $feedIds)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->select(DB::raw('DATE(created_at) as d'), DB::raw('count(*) as c'))
+            ->groupBy('d')
+            ->orderBy('d')
+            ->pluck('c', 'd')
+            ->all();
+
         return response()->json([
             'articles_today' => $articlesToday,
             'articles_per_day' => $articlesPerDay,
@@ -375,6 +431,9 @@ class FeedController extends Controller
             'unread_total' => $unreadTotal,
             'feeds_count' => $feeds->count(),
             'per_feed' => $perFeed,
+            'refresh_history' => $refreshHistory,
+            'longest_outage_minutes' => $longestOutageMinutes,
+            'items_per_day' => $itemsPerDay,
         ]);
     }
 

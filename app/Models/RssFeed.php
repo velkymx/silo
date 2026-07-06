@@ -67,6 +67,11 @@ class RssFeed extends Model
         return $this->hasMany(RssItem::class, 'feed_id');
     }
 
+    public function refreshLogs(): HasMany
+    {
+        return $this->hasMany(RssRefreshLog::class, 'rss_feed_id');
+    }
+
     /** Feeds owned by the given user. */
     public function scopeOwnedBy(Builder $query, int $userId): Builder
     {

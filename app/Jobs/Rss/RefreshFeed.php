@@ -5,6 +5,7 @@ namespace App\Jobs\Rss;
 use App\Automation\EventDispatcher;
 use App\Models\RssFeed;
 use App\Models\RssItem;
+use App\Models\RssRefreshLog;
 use App\Services\Audit;
 use App\Services\Rss\FaviconFetcher;
 use App\Services\Rss\HtmlSanitizer;
@@ -45,7 +46,10 @@ class RefreshFeed implements ShouldQueue
             return;
         }
 
+        $startedAt = now();
+
         if (! preg_match('#^https?://#i', $feed->url)) {
+            $this->logAttempt($feed, $startedAt, null, null, RssRefreshLog::OUTCOME_CONNECTION, 0, 'URL must be http(s)');
             $feed->update([
                 'last_error' => 'URL must be http(s)',
                 'last_http_status' => null,
@@ -207,6 +211,8 @@ class RefreshFeed implements ShouldQueue
             'fetched_at' => $now->toIso8601String(),
         ], "rss.feed.fetched@1:source:{$feed->id}:".$now->timestamp);
 
+        $this->logAttempt($feed, $startedAt, $now, $elapsedMs, RssRefreshLog::OUTCOME_SUCCESS, $newCount, null, $response->status());
+
         // Best-effort favicon fetch on the first successful pull — only
         // runs when the feed has no icon yet, and only when the parser
         // actually discovered a site_url from the channel metadata.
@@ -224,6 +230,26 @@ class RefreshFeed implements ShouldQueue
                     'reason' => $e->getMessage(),
                 ]);
             }
+        }
+    }
+
+    private function logAttempt(RssFeed $feed, \Illuminate\Support\Carbon $startedAt, ?\Illuminate\Support\Carbon $completedAt, ?int $ms, int $outcome, int $newItems, ?string $error, ?int $httpStatus = null): void
+    {
+        try {
+            RssRefreshLog::create([
+                'rss_feed_id' => $feed->id,
+                'user_id' => $feed->user_id,
+                'started_at' => $startedAt,
+                'completed_at' => $completedAt,
+                'http_status' => $httpStatus,
+                'response_time_ms' => $ms,
+                'outcome' => $outcome,
+                'new_items_count' => $newItems,
+                'error' => $error !== null ? substr($error, 0, 500) : null,
+            ]);
+        } catch (Throwable $e) {
+            // The log is best-effort — never let a logging failure break a refresh.
+            Log::warning('rss.refresh_log.write_failed', ['feed' => $feed->id, 'reason' => $e->getMessage()]);
         }
     }
 
