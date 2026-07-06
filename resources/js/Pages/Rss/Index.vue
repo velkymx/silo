@@ -222,6 +222,14 @@ function selectFeed(id: number | null): void {
     router.get('/rss', id ? { feed: id } : {}, { preserveState: true, replace: true });
 }
 
+// Smart-folder / inbox selection — one navigation. (Calling selectFeed(null)
+// and then router.get() separately fired two competing visits per click.)
+function selectFilter(filter: string | null): void {
+    selectedFeedId.value = null;
+    activePane.value = 'contents';
+    router.get('/rss', filter ? { filter } : {}, { preserveState: true, replace: true });
+}
+
 function selectItem(id: number): void {
     selectedItemId.value = id;
     activePane.value = 'detail';
@@ -369,7 +377,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: selectedFeedId === null && !filters.filter }"
-                    @click="selectFeed(null); router.get('/rss', {}, { preserveState: true, replace: true })"
+                    @click="selectFilter(null)"
                 >
                     <VibeIcon icon="inbox-fill" class="text-primary" />
                     <span class="flex-grow-1">Inbox</span>
@@ -379,7 +387,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'starred' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'starred' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('starred')"
                 >
                     <VibeIcon icon="star-fill" class="text-warning" />
                     <span class="flex-grow-1">Starred</span>
@@ -391,7 +399,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'today' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'today' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('today')"
                 >
                     <VibeIcon icon="calendar-day" class="text-primary" />
                     <span class="flex-grow-1">Today</span>
@@ -401,7 +409,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'yesterday' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'yesterday' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('yesterday')"
                 >
                     <VibeIcon icon="calendar-minus" class="text-primary" />
                     <span class="flex-grow-1">Yesterday</span>
@@ -411,7 +419,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'week' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'week' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('week')"
                 >
                     <VibeIcon icon="calendar-week" class="text-primary" />
                     <span class="flex-grow-1">This week</span>
@@ -421,7 +429,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'month' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'month' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('month')"
                 >
                     <VibeIcon icon="calendar3" class="text-primary" />
                     <span class="flex-grow-1">Last 30 days</span>
@@ -431,7 +439,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'recent' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'recent' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('recent')"
                 >
                     <VibeIcon icon="clock-history" class="text-primary" />
                     <span class="flex-grow-1">Recently added</span>
@@ -441,7 +449,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'top_feeds' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'top_feeds' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('top_feeds')"
                 >
                     <VibeIcon icon="fire" class="text-primary" />
                     <span class="flex-grow-1">Most active feeds</span>
@@ -450,7 +458,7 @@ function submitEdit(): void {
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'read' }"
-                    @click="selectFeed(null); router.get('/rss', { filter: 'read' }, { preserveState: true, replace: true })"
+                    @click="selectFilter('read')"
                 >
                     <VibeIcon icon="check2-circle" class="text-primary" />
                     <span class="flex-grow-1">Recently read</span>
@@ -622,7 +630,6 @@ function submitEdit(): void {
                             <VibeIcon v-else icon="cloud-download" />
                         </VibeButton>
                     </div>
-                    <input ref="opmlInput" type="file" accept=".opml,.xml,text/xml,application/xml" class="d-none" @change="onOpmlChosen">
                     <VibeButton size="sm" variant="primary" @click="openAdd">
                         <VibeIcon icon="plus-lg" class="me-1" />Add feed
                     </VibeButton>
