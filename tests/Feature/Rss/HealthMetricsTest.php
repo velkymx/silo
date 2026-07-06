@@ -58,6 +58,28 @@ class HealthMetricsTest extends TestCase
         $this->assertSame(1, $feed->consecutive_failures);
     }
 
+    public function test_failure_increments_atomically_from_existing_count(): void
+    {
+        $user = User::factory()->create();
+        $feed = RssFeed::factory()->for($user)->create([
+            'url' => 'https://example.com/feed.xml',
+            'consecutive_failures' => 5,
+        ]);
+
+        Http::fake(['https://example.com/feed.xml' => Http::response('', 500)]);
+
+        (new RefreshFeed($feed->id))->handle(
+            app(\App\Services\Rss\Parser::class),
+            app(\App\Automation\EventDispatcher::class),
+            app(\App\Services\Rss\FaviconFetcher::class),
+            app(\App\Services\Rss\HtmlSanitizer::class),
+            app(\App\Services\Rss\SafeUrl::class),
+        );
+
+        $feed->refresh();
+        $this->assertSame(6, $feed->consecutive_failures, 'increment adds to the DB value, not a stale read');
+    }
+
     public function test_successful_fetch_after_failure_resets_counter(): void
     {
         $user = User::factory()->create();

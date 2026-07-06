@@ -12,6 +12,7 @@ use App\Services\Rss\HtmlSanitizer;
 use App\Services\Rss\Parser;
 use App\Services\Rss\SafeUrl;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\ConnectionException;
@@ -27,7 +28,7 @@ use Throwable;
  * row through the automation engine. The job is idempotent: re-running it
  * over an already-ingested feed is a no-op aside from refreshing cache state.
  */
-class RefreshFeed implements ShouldQueue
+class RefreshFeed implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -37,7 +38,16 @@ class RefreshFeed implements ShouldQueue
 
     public int $timeout = 60;
 
+    /** Release the uniqueness lock after 5 minutes even if the worker dies. */
+    public int $uniqueFor = 300;
+
     public function __construct(public int $feedId) {}
+
+    /** One in-flight refresh per feed — overlapping fetches would race the failure counter. */
+    public function uniqueId(): string
+    {
+        return (string) $this->feedId;
+    }
 
     public function handle(Parser $parser, EventDispatcher $events, FaviconFetcher $favicons, HtmlSanitizer $sanitizer, SafeUrl $safeUrl): void
     {
@@ -50,20 +60,18 @@ class RefreshFeed implements ShouldQueue
 
         if (! preg_match('#^https?://#i', $feed->url)) {
             $this->logAttempt($feed, $startedAt, null, null, RssRefreshLog::OUTCOME_CONNECTION, 0, 'URL must be http(s)');
-            $feed->update([
+            $feed->increment('consecutive_failures', 1, [
                 'last_error' => 'URL must be http(s)',
                 'last_http_status' => null,
-                'consecutive_failures' => $feed->consecutive_failures + 1,
             ]);
 
             return;
         }
 
         if (! $safeUrl->isSafe($feed->url)) {
-            $feed->update([
+            $feed->increment('consecutive_failures', 1, [
                 'last_error' => 'Blocked: URL resolves to a private or reserved address',
                 'last_http_status' => null,
-                'consecutive_failures' => $feed->consecutive_failures + 1,
             ]);
 
             return;
@@ -87,20 +95,18 @@ class RefreshFeed implements ShouldQueue
                 ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
                 ->get($feed->url);
         } catch (ConnectionException $e) {
-            $feed->update([
+            $feed->increment('consecutive_failures', 1, [
                 'last_error' => 'connection: '.$e->getMessage(),
                 'last_http_status' => null,
                 'last_response_time_ms' => (int) round((microtime(true) - $start) * 1000),
-                'consecutive_failures' => $feed->consecutive_failures + 1,
             ]);
 
             return;
         } catch (Throwable $e) {
-            $feed->update([
+            $feed->increment('consecutive_failures', 1, [
                 'last_error' => substr($e->getMessage(), 0, 480),
                 'last_http_status' => null,
                 'last_response_time_ms' => (int) round((microtime(true) - $start) * 1000),
-                'consecutive_failures' => $feed->consecutive_failures + 1,
             ]);
             throw $e;
         }
@@ -127,12 +133,11 @@ class RefreshFeed implements ShouldQueue
         }
 
         if (! $response->successful()) {
-            $feed->update([
+            $feed->increment('consecutive_failures', 1, [
                 'last_fetched_at' => $now,
                 'last_error' => 'HTTP '.$response->status(),
                 'last_http_status' => $response->status(),
                 'last_response_time_ms' => $elapsedMs,
-                'consecutive_failures' => $feed->consecutive_failures + 1,
             ]);
 
             return;
