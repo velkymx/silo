@@ -56,7 +56,7 @@ class ItemController extends Controller
         return back();
     }
 
-    public function toggleStar(RssItem $item, EventDispatcher $events)
+    public function toggleStar(RssItem $item, Request $request, EventDispatcher $events)
     {
         $this->authorize('update', $item);
         $starred = $item->toggleStar();
@@ -69,6 +69,10 @@ class ItemController extends Controller
             'starred_at' => $item->starred_at?->toIso8601String(),
         ], "rss.item.starred@1:item:{$item->id}:".$item->starred_at?->timestamp);
         Audit::log($starred ? 'rss.item.star' : 'rss.item.unstar', null, ['item_id' => $item->id, 'feed_id' => $item->feed_id], subjectName: $item->title);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'is_starred' => $starred]);
+        }
 
         return back();
     }

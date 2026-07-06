@@ -245,18 +245,36 @@ function selectItem(id: number): void {
     }
 }
 
+// Item bookkeeping (read / unread / star) mutates local state optimistically
+// and persists via fetch. Using router.post would fire a full Inertia visit,
+// flashing the list skeleton (usePageLoading) and resetting displayedItems.
 function markSelectedRead(): void {
-    if (!selectedItem.value || selectedItem.value.is_read) return;
-    router.post(`/rss/items/${selectedItem.value.id}/read`, {}, { preserveScroll: true, preserveState: true });
+    const item = selectedItem.value;
+    if (!item || item.is_read) return;
+    item.is_read = true;
+    http.post(`/rss/items/${item.id}/read`).catch(() => {
+        item.is_read = false;
+        toast.push('Could not mark as read.', { variant: 'danger' });
+    });
 }
 
 function markSelectedUnread(): void {
-    if (!selectedItem.value || !selectedItem.value.is_read) return;
-    router.post(`/rss/items/${selectedItem.value.id}/unread`, {}, { preserveScroll: true, preserveState: true });
+    const item = selectedItem.value;
+    if (!item || !item.is_read) return;
+    item.is_read = false;
+    http.post(`/rss/items/${item.id}/unread`).catch(() => {
+        item.is_read = true;
+        toast.push('Could not mark as unread.', { variant: 'danger' });
+    });
 }
 
 function toggleStar(item: Item): void {
-    router.post(`/rss/items/${item.id}/star`, {}, { preserveScroll: true, preserveState: true });
+    const prev = item.is_starred;
+    item.is_starred = !item.is_starred;
+    http.post(`/rss/items/${item.id}/star`).catch(() => {
+        item.is_starred = prev;
+        toast.push('Could not update star.', { variant: 'danger' });
+    });
 }
 
 async function markAllRead(): Promise<void> {
