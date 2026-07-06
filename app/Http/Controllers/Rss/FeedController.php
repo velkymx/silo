@@ -55,10 +55,24 @@ class FeedController extends Controller
         $author = trim((string) $request->string('author')->toString());
         $exclude = trim((string) $request->string('exclude')->toString());
 
+        $topFeedIds = $filter === 'top_feeds'
+            ? RssItem::ownedBy($userId)
+                ->whereIn('feed_id', RssFeed::ownedBy($userId)->whereNull('muted_at')->pluck('id'))
+                ->where('published_at', '>=', now()->subDays(7))
+                ->selectRaw('feed_id, count(*) as c')
+                ->groupBy('feed_id')
+                ->orderByDesc('c')
+                ->limit(5)
+                ->pluck('feed_id')
+                ->all()
+            : [];
+
         $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->unmuted())
             ->inboxFilter($filter, $feedId, $search, $author, $exclude)
+            ->when($filter === 'top_feeds' && $topFeedIds !== [], fn ($q) => $q->whereIn('feed_id', $topFeedIds))
+            ->when($filter === 'top_feeds' && $topFeedIds === [], fn ($q) => $q->whereRaw('0 = 1'))
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->cursorPaginate(50);

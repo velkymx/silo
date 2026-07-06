@@ -438,6 +438,15 @@ function submitEdit(): void {
                 <button
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'top_feeds' }"
+                    @click="selectFeed(null); router.get('/rss', { filter: 'top_feeds' }, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="fire" class="text-primary" />
+                    <span class="flex-grow-1">Most active feeds</span>
+                </button>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'read' }"
                     @click="selectFeed(null); router.get('/rss', { filter: 'read' }, { preserveState: true, replace: true })"
                 >
