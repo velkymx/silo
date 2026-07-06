@@ -97,7 +97,7 @@ class HandleInertiaRequests extends Middleware
             return false;
         }
         $sidebar = 'files.* photos.* bookmarks.* notes.* vault.* directory.* trash.* '
-            .'shared.* admin.* profile.* storage.* break.*';
+            .'shared.* admin.* profile.* storage.* break.* search.*';
 
         return $request->routeIs(...array_map('trim', explode(' ', $sidebar)));
     }

@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import EmptyState from '../../Components/EmptyState.vue';
+import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
 
 interface ResultItem {
     id: number;
@@ -18,11 +20,21 @@ interface Results {
     bookmarks: ResultItem[];
 }
 
+interface SavedSearch {
+    id: number;
+    name: string;
+    params: { q?: string; search?: string; [k: string]: unknown };
+}
+
 const props = defineProps<{
     q: string;
     results: Results;
     total: number;
+    savedSearches?: SavedSearch[];
 }>();
+
+const { confirm } = useConfirm();
+const toast = useToast();
 
 const query = ref(props.q);
 watch(() => props.q, (next) => { query.value = next; });
@@ -33,6 +45,26 @@ function go(): void {
 }
 
 const hasResults = computed(() => props.total > 0);
+
+const savedGlobalSearches = computed(() => (props.savedSearches ?? []).filter((s) => !!s.params.q));
+
+async function saveCurrentSearch(): Promise<void> {
+    const q = query.value.trim();
+    if (!q) return;
+    const name = window.prompt('Name this search:', q);
+    if (!name?.trim()) return;
+    await router.post('/saved-searches', { name: name.trim(), params: { q } });
+    toast.push('Search saved', { variant: 'success' });
+}
+
+async function deleteSavedSearch(s: SavedSearch): Promise<void> {
+    if (!await confirm({ title: 'Remove saved search', message: `Remove “${s.name}”?`, confirmLabel: 'Remove', variant: 'danger' })) return;
+    await router.delete(`/saved-searches/${s.id}`);
+}
+
+function runSavedSearch(s: SavedSearch): void {
+    router.get('/search', { q: s.params.q });
+}
 
 function sectionMeta(key: keyof Results): { title: string; icon: string; count: number } {
     const map: Record<keyof Results, { title: string; icon: string }> = {
@@ -58,6 +90,17 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                     @keyup.enter="go"
                 >
                 <VibeButton size="sm" variant="primary" @click="go">Search</VibeButton>
+                <VibeButton
+                    v-if="query.trim()"
+                    size="sm"
+                    variant="secondary"
+                    outline
+                    title="Save this search"
+                    aria-label="Save search"
+                    @click="saveCurrentSearch"
+                >
+                    <VibeIcon icon="bookmark-plus" />
+                </VibeButton>
             </div>
         </template>
 
@@ -67,15 +110,33 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                     <VibeIcon icon="search" class="display-6 mb-2 d-block" />
                     <p class="mb-0">Type a query to search across files, articles, and bookmarks.</p>
                 </div>
-                <div v-else-if="!hasResults" class="text-center text-muted py-5">
-                    <VibeIcon icon="search" class="display-6 mb-2 d-block" />
-                    <p class="mb-0">No results for “{{ q }}”.</p>
-                </div>
                 <template v-else>
-                    <div class="d-flex align-items-center gap-2 mb-3 small text-muted">
-                        <VibeIcon icon="search" />
-                        <span>{{ total }} result{{ total === 1 ? '' : 's' }} for “<strong class="text-body">{{ q }}</strong>”</span>
+                    <div v-if="!hasResults" class="text-center text-muted py-5">
+                        <VibeIcon icon="search" class="display-6 mb-2 d-block" />
+                        <p class="mb-0">No results for “{{ q }}”.</p>
                     </div>
+                    <template v-if="savedGlobalSearches.length">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-3 small">
+                            <VibeIcon icon="bookmark-star-fill" class="text-primary" />
+                            <span class="text-muted">Saved searches:</span>
+                            <button
+                                v-for="s in savedGlobalSearches"
+                                :key="s.id"
+                                type="button"
+                                class="btn btn-link btn-sm p-0 d-inline-flex align-items-center text-decoration-none me-2"
+                                @click="runSavedSearch(s)"
+                            >
+                                <span>{{ s.name }}</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm p-0 ms-1 text-muted border-0 bg-transparent"
+                                    :aria-label="`Remove saved search ${s.name}`"
+                                    title="Remove"
+                                    @click.stop="deleteSavedSearch(s)"
+                                ><VibeIcon icon="x" /></button>
+                            </button>
+                        </div>
+                    </template>
 
                     <section v-for="key in (['rss', 'files', 'bookmarks'] as Array<keyof Results>)" :key="key" class="mb-4">
                         <template v-if="results[key].length">
@@ -83,8 +144,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                                 <VibeIcon :icon="sectionMeta(key).icon" /> {{ sectionMeta(key).title }} ({{ sectionMeta(key).count }})
                             </h2>
                             <div class="list-group">
-                                <component
-                                    :is="key === 'rss' ? 'a' : key === 'bookmarks' ? 'a' : 'a'"
+                                <a
                                     v-for="r in results[key]"
                                     :key="r.id"
                                     :href="r.url"
@@ -112,7 +172,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                                             <span v-if="(r.meta as { size?: number }).size">{{ Math.ceil(((r.meta as { size: number }).size || 0) / 1024) }} KB</span>
                                         </template>
                                     </div>
-                                </component>
+                                </a>
                             </div>
                         </template>
                     </section>
@@ -121,3 +181,4 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
         </template>
     </ShellLayout>
 </template>
+
