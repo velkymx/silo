@@ -660,7 +660,7 @@ function submitEdit(): void {
             <VibeFormGroup label="Refresh interval (minutes)" :error="addForm.errors.refresh_interval_minutes">
                 <VibeFormInput v-model="addForm.refresh_interval_minutes" type="number" min="5" max="1440" />
             </VibeFormGroup>
-            <VibeFormCheckbox v-model="addForm.enabled">Enabled</VibeFormCheckbox>
+            <VibeFormCheckbox v-model="addForm.enabled" label="Enabled" />
         </form>
         <template #footer>
             <VibeButton variant="secondary" outline @click="showAddFeed = false">Cancel</VibeButton>
@@ -681,7 +681,7 @@ function submitEdit(): void {
             <VibeFormGroup label="Refresh interval (minutes)" :error="editForm.errors.refresh_interval_minutes">
                 <VibeFormInput v-model="editForm.refresh_interval_minutes" type="number" min="5" max="1440" />
             </VibeFormGroup>
-            <VibeFormCheckbox v-model="editForm.enabled">Enabled</VibeFormCheckbox>
+            <VibeFormCheckbox v-model="editForm.enabled" label="Enabled" />
         </form>
         <template #footer>
             <VibeButton variant="secondary" outline @click="showEditFeed = false">Cancel</VibeButton>

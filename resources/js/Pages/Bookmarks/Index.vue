@@ -448,7 +448,7 @@ async function runMaintenance(action) {
                 </VibeFormGroup>
             </div>
         </div>
-        <VibeFormCheckbox v-model="form.shared">Share with everyone</VibeFormCheckbox>
+        <VibeFormCheckbox v-model="form.shared" label="Share with everyone" />
     </ResourceModal>
 </template>
 

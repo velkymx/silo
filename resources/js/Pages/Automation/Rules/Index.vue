@@ -178,7 +178,7 @@ const actionLabels: Record<string, string> = {
             <VibeFormGroup label="Description" :error="form.errors.description">
                 <VibeFormInput v-model="form.description" placeholder="Optional" />
             </VibeFormGroup>
-            <VibeFormCheckbox v-model="form.enabled">Enabled</VibeFormCheckbox>
+            <VibeFormCheckbox v-model="form.enabled" label="Enabled" />
 
             <VibeFormGroup label="Conditions (JSON)" :error="form.errors.conditions_json" help-text='e.g. { "feed_title_contains": "Laravel", "title_contains": "security" }'>
                 <textarea v-model="form.conditions_json" class="form-control font-monospace small" rows="4"></textarea>
