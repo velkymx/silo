@@ -115,7 +115,11 @@ const displayedItems = ref<Item[]>([...props.items]);
 const currentCursor = ref<string | null>(props.itemsNextCursor ?? null);
 const loadingMore = ref(false);
 watch(() => props.items, (next) => {
-    // Server pushed a fresh page (e.g. search changed) — reset the list.
+    // A load-more visit is a partial reload that also updates props.items;
+    // its onSuccess appends the new page, so skip the reset or the two race
+    // and the appended page clobbers the accumulated list.
+    if (loadingMore.value) return;
+    // Server pushed a fresh page (e.g. search/filter changed) — reset the list.
     displayedItems.value = [...next];
     currentCursor.value = props.itemsNextCursor ?? null;
 }, { flush: 'post' });
@@ -190,7 +194,7 @@ const filteredItems = computed(() => {
     return list;
 });
 
-const selectedItem = computed(() => props.items.find((i) => i.id === selectedItemId.value) ?? null);
+const selectedItem = computed(() => displayedItems.value.find((i) => i.id === selectedItemId.value) ?? null);
 const selectedFeed = computed(() => props.feeds.find((f) => f.id === selectedFeedId.value) ?? null);
 
 function selectFeed(id: number | null): void {
@@ -202,9 +206,15 @@ function selectFeed(id: number | null): void {
 function selectItem(id: number): void {
     selectedItemId.value = id;
     activePane.value = 'detail';
-    const item = props.items.find((i) => i.id === id);
+    const item = displayedItems.value.find((i) => i.id === id);
     if (item && !item.is_read) {
-        router.post(`/rss/items/${id}/read`, {}, { preserveScroll: true, preserveState: true });
+        // Optimistically flip local state so the detail pane and row update
+        // without a full Inertia reload that would reset the appended list.
+        item.is_read = true;
+        http.post(`/rss/items/${id}/read`).catch(() => {
+            item.is_read = false;
+            toast.push('Could not mark as read.', { variant: 'danger' });
+        });
     }
 }
 
