@@ -209,11 +209,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/feeds/refresh-all', [RssFeedController::class, 'refreshAll'])->name('feeds.refreshAll');
         Route::post('/feeds/{feed}/mute', [RssFeedController::class, 'mute'])->name('feeds.mute');
         Route::post('/feeds/{feed}/unmute', [RssFeedController::class, 'unmute'])->name('feeds.unmute');
+        Route::post('/discover', [RssFeedController::class, 'discover'])->name('feeds.discover');
         Route::post('/opml/import', [RssOpmlController::class, 'store'])->name('opml.import');
         Route::get('/opml/export', [RssOpmlController::class, 'export'])->name('opml.export');
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
         Route::post('/items/{item}/read', [RssItemController::class, 'markRead'])->name('items.read');
+        Route::post('/items/{item}/unread', [RssItemController::class, 'markUnread'])->name('items.unread');
         Route::post('/items/{item}/star', [RssItemController::class, 'toggleStar'])->name('items.star');
         Route::post('/items/mark-all-read', [RssItemController::class, 'markAllRead'])->name('items.markAllRead');
 

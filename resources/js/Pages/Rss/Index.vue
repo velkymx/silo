@@ -151,6 +151,16 @@ function selectItem(id: number): void {
     }
 }
 
+function markSelectedRead(): void {
+    if (!selectedItem.value || selectedItem.value.is_read) return;
+    router.post(`/rss/items/${selectedItem.value.id}/read`, {}, { preserveScroll: true, preserveState: true });
+}
+
+function markSelectedUnread(): void {
+    if (!selectedItem.value || !selectedItem.value.is_read) return;
+    router.post(`/rss/items/${selectedItem.value.id}/unread`, {}, { preserveScroll: true, preserveState: true });
+}
+
 function toggleStar(item: Item): void {
     router.post(`/rss/items/${item.id}/star`, {}, { preserveScroll: true, preserveState: true });
 }
@@ -380,7 +390,13 @@ function submitEdit(): void {
                 </div>
                 <a :href="selectedItem.url" target="_blank" rel="noopener" class="text-break small text-muted d-block mb-3">{{ selectedItem.url }}</a>
                 <div v-if="selectedItem.excerpt" class="rss-excerpt mb-3">{{ selectedItem.excerpt }}</div>
-                <div class="mt-auto d-flex gap-2">
+                <div class="mt-auto d-flex gap-2 flex-wrap">
+                    <VibeButton v-if="!selectedItem.is_read" variant="primary" @click="markSelectedRead">
+                        <VibeIcon icon="check2" class="me-1" />Mark read
+                    </VibeButton>
+                    <VibeButton v-else variant="secondary" @click="markSelectedUnread">
+                        <VibeIcon icon="circle" class="me-1" />Mark unread
+                    </VibeButton>
                     <VibeButton :href="selectedItem.url" target="_blank" rel="noopener" variant="primary">
                         <VibeIcon icon="box-arrow-up-right" class="me-1" />Open original
                     </VibeButton>

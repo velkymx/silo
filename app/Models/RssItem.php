@@ -102,6 +102,16 @@ class RssItem extends Model
         $this->save();
     }
 
+    public function markUnread(): void
+    {
+        if (! $this->is_read) {
+            return;
+        }
+        $this->is_read = false;
+        $this->read_at = null;
+        $this->save();
+    }
+
     public function toggleStar(): bool
     {
         $this->is_starred = ! $this->is_starred;

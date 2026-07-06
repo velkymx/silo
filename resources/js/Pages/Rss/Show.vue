@@ -34,6 +34,10 @@ function markRead(): void {
     if (props.item.is_read) return;
     router.post(`/rss/items/${props.item.id}/read`, {}, { preserveScroll: true, preserveState: true });
 }
+function markUnread(): void {
+    if (!props.item.is_read) return;
+    router.post(`/rss/items/${props.item.id}/unread`, {}, { preserveScroll: true, preserveState: true });
+}
 import { ref } from 'vue';
 </script>
 
@@ -47,6 +51,9 @@ import { ref } from 'vue';
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <VibeButton size="sm" variant="secondary" @click="markRead" :disabled="item.is_read">
                         <VibeIcon icon="check2" class="me-1" />Mark read
+                    </VibeButton>
+                    <VibeButton size="sm" variant="secondary" @click="markUnread" :disabled="!item.is_read">
+                        <VibeIcon icon="circle" class="me-1" />Mark unread
                     </VibeButton>
                     <VibeButton size="sm" variant="secondary" @click="toggleStar">
                         <VibeIcon :icon="item.is_starred ? 'star-fill' : 'star'" :class="item.is_starred ? 'text-warning' : ''" class="me-1" />

@@ -42,6 +42,18 @@ class ItemController extends Controller
         return back();
     }
 
+    public function markUnread(RssItem $item, Request $request)
+    {
+        $this->authorize('update', $item);
+        $item->markUnread();
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'is_read' => false]);
+        }
+
+        return back();
+    }
+
     public function toggleStar(RssItem $item, EventDispatcher $events)
     {
         $this->authorize('update', $item);
