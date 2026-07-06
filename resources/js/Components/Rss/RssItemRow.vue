@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRelativeTime } from '../../composables/useRelativeTime';
 
 interface Item {
     id: number;
@@ -20,16 +21,8 @@ interface Item {
 const props = defineProps<{ item: Item; selected: boolean }>();
 const emit = defineEmits<{ click: []; 'toggle-star': [] }>();
 
-const when = computed(() => {
-    if (!props.item.published_at) return '';
-    const d = new Date(props.item.published_at);
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
-    return d.toLocaleDateString();
-});
+const { short } = useRelativeTime();
+const when = computed(() => short(props.item.published_at));
 
 const cats = computed(() => (props.item.categories ?? []).filter((c) => c && c.trim() !== '').slice(0, 3));
 </script>
@@ -80,10 +73,10 @@ const cats = computed(() => (props.item.categories ?? []).filter((c) => c && c.t
     transition: background 0.1s;
 }
 .rss-row:hover {
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(var(--bs-primary-rgb), 0.06);
 }
 .rss-row--selected {
-    background: rgba(99, 102, 241, 0.12);
+    background: rgba(var(--bs-primary-rgb), 0.12);
 }
 .rss-row--unread .fw-semibold {
     color: var(--bs-body-color);

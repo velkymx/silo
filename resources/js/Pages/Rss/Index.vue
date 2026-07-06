@@ -9,6 +9,7 @@ import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { usePageLoading } from '../../composables/usePageLoading';
 import { http, HttpError } from '../../lib/http';
+import { useRelativeTime } from '../../composables/useRelativeTime';
 
 interface Feed {
     id: number;
@@ -102,6 +103,7 @@ const props = defineProps<{
 const { confirm } = useConfirm();
 const toast = useToast();
 const { loading } = usePageLoading();
+const { ago: fmtRelative } = useRelativeTime();
 
 const activePane = ref<'folders' | 'contents' | 'detail'>('contents');
 const selectedFeedId = ref<number | null>(props.filters.feed ?? null);
@@ -350,15 +352,6 @@ async function toggleStats(): Promise<void> {
             statsLoading.value = false;
         }
     }
-}
-function fmtRelative(iso: string | null): string {
-    if (!iso) return 'never';
-    const d = new Date(iso);
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
 }
 
 async function deleteFeed(feed: Feed): Promise<void> {
@@ -784,10 +777,10 @@ function submitEdit(): void {
     color: var(--bs-body-color);
 }
 .side-row:hover {
-    background: rgba(99, 102, 241, 0.08);
+    background: rgba(var(--bs-primary-rgb), 0.08);
 }
 .side-row.active {
-    background: rgba(99, 102, 241, 0.14);
+    background: rgba(var(--bs-primary-rgb), 0.14);
     color: var(--bs-primary);
     font-weight: 500;
 }

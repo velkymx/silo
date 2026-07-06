@@ -115,10 +115,10 @@ function setFilter(f: string | null): void {
     border: 1px solid var(--bs-border-color);
 }
 .notif-row:hover {
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(var(--bs-primary-rgb), 0.06);
 }
 .notif-row--unread {
-    background: rgba(99, 102, 241, 0.04);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(var(--bs-primary-rgb), 0.04);
+    border-color: rgba(var(--bs-primary-rgb), 0.3);
 }
 </style>
