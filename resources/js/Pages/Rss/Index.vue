@@ -51,16 +51,16 @@ function onOpmlChosen(e: Event): void {
 
 const opmlUrl = ref('');
 const importingUrl = ref(false);
-async function importOpmlFromUrl(): Promise<void> {
+function importOpmlFromUrl(): void {
     const url = opmlUrl.value.trim();
     if (!url) return;
-    importingUrl.value = true;
-    try {
-        await router.post('/rss/opml/import-url', { url });
-        opmlUrl.value = '';
-    } finally {
-        importingUrl.value = false;
-    }
+    // Drive the spinner from the real request lifecycle — router.post returns
+    // void, so awaiting it cleared the flag (and the input) immediately.
+    router.post('/rss/opml/import-url', { url }, {
+        onStart: () => { importingUrl.value = true; },
+        onFinish: () => { importingUrl.value = false; },
+        onSuccess: () => { opmlUrl.value = ''; },
+    });
 }
 
 const detecting = ref(false);
