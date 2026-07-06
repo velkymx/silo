@@ -64,11 +64,15 @@ class FaviconFetcher
             if (! $this->safeUrl->isSafe($candidate)) {
                 continue;
             }
-            $bytes = $this->download($candidate);
-            if ($bytes !== null) {
-                $iconUrl = $candidate;
-                break;
+            $downloaded = $this->download($candidate);
+            // Refuse SVG icons: an SVG can carry <script> that would execute
+            // when the cached favicon URL is opened directly from our origin.
+            if ($downloaded === null || $this->isSvg($candidate, $downloaded)) {
+                continue;
             }
+            $bytes = $downloaded;
+            $iconUrl = $candidate;
+            break;
         }
         if ($bytes === null || $iconUrl === null) {
             return null;
@@ -180,11 +184,16 @@ class FaviconFetcher
         return $origin.'/'.$href;
     }
 
+    /**
+     * SVG is intentionally excluded — see isSvg()/fetch(). It never reaches
+     * this method, so the extension allowlist and byte sniffs cover only the
+     * raster formats we store.
+     */
     private function extension(string $url, string $bytes): string
     {
         $path = parse_url($url, PHP_URL_PATH) ?? '';
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (in_array($ext, ['ico', 'png', 'jpg', 'jpeg', 'gif', 'svg'], true)) {
+        if (in_array($ext, ['ico', 'png', 'jpg', 'jpeg', 'gif'], true)) {
             return $ext === 'jpeg' ? 'jpg' : $ext;
         }
         if (str_starts_with($bytes, "\x89PNG")) {
@@ -196,10 +205,23 @@ class FaviconFetcher
         if (str_starts_with($bytes, 'GIF8')) {
             return 'gif';
         }
-        if (str_starts_with($bytes, '<?xml') || str_starts_with($bytes, '<svg')) {
-            return 'svg';
-        }
 
         return 'ico';
+    }
+
+    /**
+     * Detect SVG by URL extension or content sniff. SVGs are refused because
+     * they can contain executable script that would run in our origin when
+     * the cached favicon is opened directly.
+     */
+    private function isSvg(string $url, string $bytes): bool
+    {
+        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+        if ($ext === 'svg') {
+            return true;
+        }
+        $head = ltrim(substr($bytes, 0, 256));
+
+        return str_starts_with($head, '<?xml') || stripos($head, '<svg') !== false;
     }
 }

@@ -70,6 +70,32 @@ class FaviconTest extends TestCase
         $this->assertStringEndsWith('.ico', $path);
     }
 
+    public function test_fetcher_refuses_svg_and_falls_back_to_ico(): void
+    {
+        Http::fake([
+            'example.com/' => Http::response('<html><head><link rel="icon" href="/icon.svg"></head></html>', 200, ['Content-Type' => 'text/html']),
+            'example.com/icon.svg' => Http::response('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 200, ['Content-Type' => 'image/svg+xml']),
+            'example.com/favicon.ico' => Http::response("\x00\x00\x01\x00\x02\x00", 200, ['Content-Type' => 'image/x-icon']),
+        ]);
+
+        $path = (new \App\Services\Rss\FaviconFetcher)->fetch('https://example.com');
+
+        $this->assertNotNull($path);
+        $this->assertStringEndsWith('.ico', $path, 'SVG must be refused and skipped in favor of the .ico fallback');
+    }
+
+    public function test_favicon_endpoint_sends_nosniff_header(): void
+    {
+        $user = User::factory()->create();
+        $feed = RssFeed::factory()->for($user)->create(['favicon_path' => 'rss-favicons/test.png']);
+        Storage::disk('local')->put('rss-favicons/test.png', $this->pngBytes());
+
+        $this->actingAs($user)
+            ->get("/rss/feeds/{$feed->id}/favicon")
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
     public function test_fetcher_returns_null_on_non_http(): void
     {
         $this->assertNull((new \App\Services\Rss\FaviconFetcher)->fetch('not-a-url'));

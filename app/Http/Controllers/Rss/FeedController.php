@@ -221,16 +221,19 @@ class FeedController extends Controller
         }
         $bytes = \Storage::disk('local')->get($feed->favicon_path);
         $ext = strtolower(pathinfo($feed->favicon_path, PATHINFO_EXTENSION));
+        // No image/svg+xml: the fetcher refuses SVG, but any legacy .svg on
+        // disk is served as a raster type + nosniff so it can never execute.
         $mime = match ($ext) {
             'png' => 'image/png',
             'jpg', 'jpeg' => 'image/jpeg',
             'gif' => 'image/gif',
-            'svg' => 'image/svg+xml',
             default => 'image/x-icon',
         };
 
         return response($bytes, 200, [
             'Content-Type' => $mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; sandbox",
             'Cache-Control' => 'public, max-age=86400',
         ]);
     }
