@@ -1,29 +1,43 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BatchController;
-use App\Http\Controllers\FileController;
-use App\Http\Controllers\FolderController;
-use App\Http\Controllers\VersionController;
-use App\Http\Controllers\NoteController;
-use App\Http\Controllers\FilePermissionController;
-use App\Http\Controllers\GroupController;
-use App\Http\Controllers\PhotoController;
-use App\Http\Controllers\ImportController;
-use App\Http\Controllers\PublicShareController;
-use App\Http\Controllers\ShareLinkController;
-use App\Http\Controllers\SharedController;
-use App\Http\Controllers\TrashController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\Automation\RuleController as AutomationRuleController;
+use App\Http\Controllers\Automation\RuleExecutionController as AutomationRuleExecutionController;
+use App\Http\Controllers\Automation\TemplateController as AutomationTemplateController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\BatchController;
+use App\Http\Controllers\BookmarkController;
+use App\Http\Controllers\DailyWordGameController;
+use App\Http\Controllers\DirectoryController;
+use App\Http\Controllers\FileController;
+use App\Http\Controllers\FilePermissionController;
+use App\Http\Controllers\FolderController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\ImportController;
+use App\Http\Controllers\NoteController;
+use App\Http\Controllers\PhotoController;
+use App\Http\Controllers\PublicShareController;
+use App\Http\Controllers\Rss\FeedController as RssFeedController;
+use App\Http\Controllers\Rss\ItemController as RssItemController;
+use App\Http\Controllers\Rss\NotificationController as RssNotificationController;
+use App\Http\Controllers\SavedSearchController;
+use App\Http\Controllers\SharedController;
+use App\Http\Controllers\ShareLinkController;
+use App\Http\Controllers\SodokuController;
+use App\Http\Controllers\StorageController;
+use App\Http\Controllers\TrashController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\VaultController;
+use App\Http\Controllers\VersionController;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // HI-06: Constrain all numeric model-binding parameters globally so non-integer
 // segments return 404 instead of a model-not-found exception (consistent behaviour).
 foreach (['file', 'folder', 'user', 'group', 'backup', 'album', 'permission',
-          'link', 'version', 'bookmark', 'savedSearch', 'vaultItem'] as $param) {
+    'link', 'version', 'bookmark', 'savedSearch', 'vaultItem',
+    'feed', 'item', 'rule', 'ruleExecution', 'notification'] as $param) {
     Route::pattern($param, '[0-9]+');
 }
 
@@ -67,13 +81,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/photos/albums/{album}/cover', [PhotoController::class, 'setCover'])->name('photos.albums.cover');
     Route::post('/photos/reorder', [PhotoController::class, 'reorder'])->name('photos.reorder');
 
-    Route::get('/usage', [\App\Http\Controllers\StorageController::class, 'index'])->name('storage.index');
+    Route::get('/usage', [StorageController::class, 'index'])->name('storage.index');
 
     Route::get('/break/crush', fn () => Inertia::render('Break/Crush'))->name('break.crush');
 
-    Route::get('/break/dwg', [\App\Http\Controllers\DailyWordGameController::class, 'index'])->name('break.dwg');
-    Route::post('/break/dwg/guess', [\App\Http\Controllers\DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
-    Route::get('/break/sodoku', [\App\Http\Controllers\SodokuController::class, 'index'])->name('break.sodoku');
+    Route::get('/break/dwg', [DailyWordGameController::class, 'index'])->name('break.dwg');
+    Route::post('/break/dwg/guess', [DailyWordGameController::class, 'guess'])->name('break.dwg.guess');
+    Route::get('/break/sodoku', [SodokuController::class, 'index'])->name('break.sodoku');
 
     Route::get('/recent', [FileController::class, 'index'])->defaults('section', 'recent')->name('files.recent');
 
@@ -118,8 +132,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/files/batch/folder', [BatchController::class, 'folder'])->name('files.batch.folder');
     Route::post('/files/batch/rename', [BatchController::class, 'rename'])->name('files.batch.rename');
 
-    Route::post('/saved-searches', [\App\Http\Controllers\SavedSearchController::class, 'store'])->name('saved-searches.store');
-    Route::delete('/saved-searches/{savedSearch}', [\App\Http\Controllers\SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
+    Route::post('/saved-searches', [SavedSearchController::class, 'store'])->name('saved-searches.store');
+    Route::delete('/saved-searches/{savedSearch}', [SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
 
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.create');
     // ME-03: lazy folder lookup for the move/copy picker. Returns matching
@@ -129,40 +143,41 @@ Route::middleware(['auth'])->group(function () {
 
     // Secrets vault. Reveal/generate are rate-limited; reveal also re-checks the
     // user's password (in the controller) and is audited.
-    Route::get('/vault', [\App\Http\Controllers\VaultController::class, 'index'])->name('vault.index');
-    Route::post('/vault', [\App\Http\Controllers\VaultController::class, 'store'])->name('vault.store');
-    Route::put('/vault/{vaultItem}', [\App\Http\Controllers\VaultController::class, 'update'])->whereNumber('vaultItem')->name('vault.update');
-    Route::delete('/vault/{vaultItem}', [\App\Http\Controllers\VaultController::class, 'destroy'])->whereNumber('vaultItem')->name('vault.destroy');
-    Route::post('/vault/{vaultItem}/reveal', [\App\Http\Controllers\VaultController::class, 'reveal'])
+    Route::get('/vault', [VaultController::class, 'index'])->name('vault.index');
+    Route::post('/vault', [VaultController::class, 'store'])->name('vault.store');
+    Route::put('/vault/{vaultItem}', [VaultController::class, 'update'])->whereNumber('vaultItem')->name('vault.update');
+    Route::delete('/vault/{vaultItem}', [VaultController::class, 'destroy'])->whereNumber('vaultItem')->name('vault.destroy');
+    Route::post('/vault/{vaultItem}/reveal', [VaultController::class, 'reveal'])
         ->whereNumber('vaultItem')->middleware('throttle:20,1')->name('vault.reveal');
-    Route::get('/vault/generate', [\App\Http\Controllers\VaultController::class, 'generate'])
+    Route::get('/vault/generate', [VaultController::class, 'generate'])
         ->middleware('throttle:60,1')->name('vault.generate');
-    Route::post('/vault/import', [\App\Http\Controllers\VaultController::class, 'import'])
+    Route::post('/vault/import', [VaultController::class, 'import'])
         ->middleware('throttle:10,1')->name('vault.import');
 
     // Starred — the files shell scoped to starred files and folders.
     Route::get('/starred', [FileController::class, 'index'])->defaults('section', 'starred')->name('starred.index');
 
     // Staff directory.
-    Route::get('/directory', [\App\Http\Controllers\DirectoryController::class, 'index'])->name('directory.index');
-    Route::get('/directory/{user}', [\App\Http\Controllers\DirectoryController::class, 'show'])->whereNumber('user')->name('directory.show');
+    Route::get('/directory', [DirectoryController::class, 'index'])->name('directory.index');
+    Route::get('/directory/{user}', [DirectoryController::class, 'show'])->whereNumber('user')->name('directory.show');
 
     // Bookmarks — the internal-links launchpad.
-    Route::get('/bookmarks', [\App\Http\Controllers\BookmarkController::class, 'index'])->name('bookmarks.index');
-    Route::post('/bookmarks', [\App\Http\Controllers\BookmarkController::class, 'store'])->name('bookmarks.store');
-    Route::put('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'update'])->name('bookmarks.update');
-    Route::delete('/bookmarks/{bookmark}', [\App\Http\Controllers\BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
-    Route::get('/bookmarks/{bookmark}/go', [\App\Http\Controllers\BookmarkController::class, 'go'])->whereNumber('bookmark')->name('bookmarks.go');
-    Route::post('/bookmarks/{bookmark}/star', [\App\Http\Controllers\BookmarkController::class, 'star'])->whereNumber('bookmark')->name('bookmarks.star');
-    Route::get('/bookmarks/{bookmark}/icon', [\App\Http\Controllers\BookmarkController::class, 'icon'])->whereNumber('bookmark')->name('bookmarks.icon');
-    Route::get('/bookmarks/{bookmark}/screenshot', [\App\Http\Controllers\BookmarkController::class, 'screenshot'])->whereNumber('bookmark')->name('bookmarks.screenshot');
-    Route::post('/bookmarks/import', [\App\Http\Controllers\BookmarkController::class, 'import'])
+    Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');
+    Route::post('/bookmarks', [BookmarkController::class, 'store'])->name('bookmarks.store');
+    Route::put('/bookmarks/{bookmark}', [BookmarkController::class, 'update'])->name('bookmarks.update');
+    Route::delete('/bookmarks/{bookmark}', [BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
+    Route::get('/bookmarks/{bookmark}/go', [BookmarkController::class, 'go'])->whereNumber('bookmark')->name('bookmarks.go');
+    Route::post('/bookmarks/{bookmark}/star', [BookmarkController::class, 'star'])->whereNumber('bookmark')->name('bookmarks.star');
+    Route::post('/bookmarks/{bookmark}/subscribe', [BookmarkController::class, 'subscribeFeed'])->whereNumber('bookmark')->name('bookmarks.subscribe');
+    Route::get('/bookmarks/{bookmark}/icon', [BookmarkController::class, 'icon'])->whereNumber('bookmark')->name('bookmarks.icon');
+    Route::get('/bookmarks/{bookmark}/screenshot', [BookmarkController::class, 'screenshot'])->whereNumber('bookmark')->name('bookmarks.screenshot');
+    Route::post('/bookmarks/import', [BookmarkController::class, 'import'])
         ->middleware('throttle:10,1')->name('bookmarks.import');
-    Route::post('/bookmarks/dedup', [\App\Http\Controllers\BookmarkController::class, 'dedup'])->name('bookmarks.dedup');
-    Route::post('/bookmarks/prune', [\App\Http\Controllers\BookmarkController::class, 'prune'])->name('bookmarks.prune');
-    Route::post('/bookmarks/validate', [\App\Http\Controllers\BookmarkController::class, 'validateAll'])
+    Route::post('/bookmarks/dedup', [BookmarkController::class, 'dedup'])->name('bookmarks.dedup');
+    Route::post('/bookmarks/prune', [BookmarkController::class, 'prune'])->name('bookmarks.prune');
+    Route::post('/bookmarks/validate', [BookmarkController::class, 'validateAll'])
         ->middleware('throttle:6,1')->name('bookmarks.validate');
-    Route::post('/bookmarks/hydrate', [\App\Http\Controllers\BookmarkController::class, 'hydrate'])
+    Route::post('/bookmarks/hydrate', [BookmarkController::class, 'hydrate'])
         ->middleware('throttle:6,1')->name('bookmarks.hydrate');
 
     // Notes — a note-centric surface over markdown files.
@@ -181,6 +196,38 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('throttle:120,1')->name('notes.search.notes');
     Route::get('/notes/search/users', [NoteController::class, 'searchUsers'])
         ->middleware('throttle:120,1')->name('notes.search.users');
+
+    // RSS reader — the first event-driven subsystem. Feeds, items, rules,
+    // execution logs, and notification center all hang off the same /rss tree.
+    Route::prefix('rss')->name('rss.')->group(function () {
+        Route::get('/', [RssFeedController::class, 'index'])->name('index');
+        Route::post('/feeds', [RssFeedController::class, 'store'])->name('feeds.store');
+        Route::patch('/feeds/{feed}', [RssFeedController::class, 'update'])->name('feeds.update');
+        Route::delete('/feeds/{feed}', [RssFeedController::class, 'destroy'])->name('feeds.destroy');
+        Route::post('/feeds/{feed}/refresh', [RssFeedController::class, 'refresh'])->name('feeds.refresh');
+        Route::post('/feeds/refresh-all', [RssFeedController::class, 'refreshAll'])->name('feeds.refreshAll');
+
+        Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
+        Route::post('/items/{item}/read', [RssItemController::class, 'markRead'])->name('items.read');
+        Route::post('/items/{item}/star', [RssItemController::class, 'toggleStar'])->name('items.star');
+        Route::post('/items/mark-all-read', [RssItemController::class, 'markAllRead'])->name('items.markAllRead');
+
+        Route::get('/rules', [AutomationRuleController::class, 'index'])->name('rules.index');
+        Route::post('/rules', [AutomationRuleController::class, 'store'])->name('rules.store');
+        Route::patch('/rules/{rule}', [AutomationRuleController::class, 'update'])->name('rules.update');
+        Route::delete('/rules/{rule}', [AutomationRuleController::class, 'destroy'])->name('rules.destroy');
+        Route::post('/rules/{rule}/toggle', [AutomationRuleController::class, 'toggle'])->name('rules.toggle');
+
+        Route::get('/rules/logs', [AutomationRuleExecutionController::class, 'index'])->name('rules.logs');
+        Route::post('/rules/logs/{ruleExecution}/replay', [AutomationRuleExecutionController::class, 'replay'])->name('rules.logs.replay');
+
+        Route::get('/rules/templates', [AutomationTemplateController::class, 'index'])->name('rules.templates');
+        Route::post('/rules/templates/{template}/apply', [AutomationTemplateController::class, 'apply'])->name('rules.templates.apply');
+
+        Route::get('/notifications', [RssNotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/{notification}/read', [RssNotificationController::class, 'markRead'])->name('notifications.read');
+        Route::post('/notifications/read-all', [RssNotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    });
 });
 
 // Public share links (no authentication). Rate-limited: the unlock endpoint
