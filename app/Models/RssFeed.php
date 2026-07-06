@@ -32,6 +32,9 @@ class RssFeed extends Model
         'last_fetched_at',
         'last_success_at',
         'last_error',
+        'last_http_status',
+        'last_response_time_ms',
+        'consecutive_failures',
         'enabled',
         'muted_at',
         'refresh_interval_minutes',
@@ -48,6 +51,9 @@ class RssFeed extends Model
             'last_success_at' => 'datetime',
             'refresh_interval_minutes' => 'integer',
             'sort_order' => 'integer',
+            'last_http_status' => 'integer',
+            'last_response_time_ms' => 'integer',
+            'consecutive_failures' => 'integer',
         ];
     }
 

@@ -38,7 +38,7 @@ class FeedController extends Controller
             ->when(! $showMuted, fn ($q) => $q->unmuted())
             ->orderBy('folder')->orderBy('sort_order')->orderBy('title');
 
-        $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'refresh_interval_minutes', 'last_fetched_at', 'last_error']);
+        $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'favicon_path', 'refresh_interval_minutes', 'last_fetched_at', 'last_success_at', 'last_error', 'last_http_status', 'last_response_time_ms', 'consecutive_failures', 'etag', 'last_modified']);
 
         $unreadByFeed = RssItem::ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->where('user_id', $userId))
@@ -309,6 +309,9 @@ class FeedController extends Controller
             'last_fetched_at' => optional($f->last_fetched_at)->toIso8601String(),
             'last_success_at' => optional($f->last_success_at)->toIso8601String(),
             'last_error' => $f->last_error,
+            'last_http_status' => $f->last_http_status,
+            'last_response_time_ms' => $f->last_response_time_ms,
+            'consecutive_failures' => $f->consecutive_failures,
         ])->values();
 
         return response()->json([

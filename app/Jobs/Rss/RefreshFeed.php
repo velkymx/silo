@@ -44,7 +44,11 @@ class RefreshFeed implements ShouldQueue
         }
 
         if (! preg_match('#^https?://#i', $feed->url)) {
-            $feed->update(['last_error' => 'URL must be http(s)']);
+            $feed->update([
+                'last_error' => 'URL must be http(s)',
+                'last_http_status' => null,
+                'consecutive_failures' => $feed->consecutive_failures + 1,
+            ]);
 
             return;
         }
@@ -60,23 +64,42 @@ class RefreshFeed implements ShouldQueue
             $headers['If-Modified-Since'] = $feed->last_modified;
         }
 
+        $start = microtime(true);
         try {
             $response = Http::withHeaders($headers)
                 ->timeout(20)
                 ->withOptions(['allow_redirects' => ['max' => 5]])
                 ->get($feed->url);
         } catch (ConnectionException $e) {
-            $feed->update(['last_error' => 'connection: '.$e->getMessage()]);
+            $feed->update([
+                'last_error' => 'connection: '.$e->getMessage(),
+                'last_http_status' => null,
+                'last_response_time_ms' => (int) round((microtime(true) - $start) * 1000),
+                'consecutive_failures' => $feed->consecutive_failures + 1,
+            ]);
 
             return;
         } catch (Throwable $e) {
-            $feed->update(['last_error' => substr($e->getMessage(), 0, 480)]);
+            $feed->update([
+                'last_error' => substr($e->getMessage(), 0, 480),
+                'last_http_status' => null,
+                'last_response_time_ms' => (int) round((microtime(true) - $start) * 1000),
+                'consecutive_failures' => $feed->consecutive_failures + 1,
+            ]);
             throw $e;
         }
+        $elapsedMs = (int) round((microtime(true) - $start) * 1000);
 
         $now = now();
         if ($response->status() === 304) {
-            $feed->update(['last_fetched_at' => $now, 'last_success_at' => $now, 'last_error' => null]);
+            $feed->update([
+                'last_fetched_at' => $now,
+                'last_success_at' => $now,
+                'last_error' => null,
+                'last_http_status' => 304,
+                'last_response_time_ms' => $elapsedMs,
+                'consecutive_failures' => 0,
+            ]);
             $events->dispatch('rss.feed.fetched', $feed->user_id, [
                 'feed_id' => $feed->id,
                 'new_count' => 0,
@@ -88,7 +111,13 @@ class RefreshFeed implements ShouldQueue
         }
 
         if (! $response->successful()) {
-            $feed->update(['last_fetched_at' => $now, 'last_error' => 'HTTP '.$response->status()]);
+            $feed->update([
+                'last_fetched_at' => $now,
+                'last_error' => 'HTTP '.$response->status(),
+                'last_http_status' => $response->status(),
+                'last_response_time_ms' => $elapsedMs,
+                'consecutive_failures' => $feed->consecutive_failures + 1,
+            ]);
 
             return;
         }
@@ -102,6 +131,9 @@ class RefreshFeed implements ShouldQueue
             'last_fetched_at' => $now,
             'last_success_at' => $now,
             'last_error' => null,
+            'last_http_status' => $response->status(),
+            'last_response_time_ms' => $elapsedMs,
+            'consecutive_failures' => 0,
             'etag' => is_string($etag) ? $etag : $feed->etag,
             'last_modified' => is_string($lastModified) ? $lastModified : $feed->last_modified,
         ];

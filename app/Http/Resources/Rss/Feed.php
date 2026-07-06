@@ -32,7 +32,13 @@ class Feed extends JsonResource
             'favicon_url' => $feed->favicon_path ? route('rss.feeds.favicon', $feed) : null,
             'refresh_interval_minutes' => (int) $feed->refresh_interval_minutes,
             'last_fetched_at' => optional($feed->last_fetched_at)->toIso8601String(),
+            'last_success_at' => optional($feed->last_success_at)->toIso8601String(),
             'last_error' => $feed->last_error,
+            'last_http_status' => $feed->last_http_status,
+            'last_response_time_ms' => $feed->last_response_time_ms,
+            'consecutive_failures' => $feed->consecutive_failures,
+            'etag' => $feed->etag,
+            'last_modified' => $feed->last_modified,
         ];
     }
 }
