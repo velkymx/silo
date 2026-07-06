@@ -208,14 +208,18 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/feeds', [RssFeedController::class, 'store'])->name('feeds.store');
         Route::patch('/feeds/{feed}', [RssFeedController::class, 'update'])->name('feeds.update');
         Route::delete('/feeds/{feed}', [RssFeedController::class, 'destroy'])->name('feeds.destroy');
-        Route::post('/feeds/{feed}/refresh', [RssFeedController::class, 'refresh'])->name('feeds.refresh');
-        Route::post('/feeds/refresh-all', [RssFeedController::class, 'refreshAll'])->name('feeds.refreshAll');
+        Route::post('/feeds/{feed}/refresh', [RssFeedController::class, 'refresh'])
+            ->middleware('throttle:12,1')->name('feeds.refresh');
+        Route::post('/feeds/refresh-all', [RssFeedController::class, 'refreshAll'])
+            ->middleware('throttle:4,1')->name('feeds.refreshAll');
         Route::post('/feeds/{feed}/mute', [RssFeedController::class, 'mute'])->name('feeds.mute');
         Route::post('/feeds/{feed}/unmute', [RssFeedController::class, 'unmute'])->name('feeds.unmute');
-        Route::post('/discover', [RssFeedController::class, 'discover'])->name('feeds.discover');
+        Route::post('/discover', [RssFeedController::class, 'discover'])
+            ->middleware('throttle:6,1')->name('feeds.discover');
         Route::get('/stats', [RssFeedController::class, 'stats'])->name('stats');
         Route::post('/opml/import', [RssOpmlController::class, 'store'])->name('opml.import');
-        Route::post('/opml/import-url', [RssOpmlController::class, 'importFromUrl'])->name('opml.importUrl');
+        Route::post('/opml/import-url', [RssOpmlController::class, 'importFromUrl'])
+            ->middleware('throttle:6,1')->name('opml.importUrl');
         Route::get('/opml/export', [RssOpmlController::class, 'export'])->name('opml.export');
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
