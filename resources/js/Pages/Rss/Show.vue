@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import { sanitizeHtml } from '../../lib/sanitize';
+import { http } from '../../lib/http';
 
 interface Item {
     id: number;
@@ -33,16 +34,31 @@ const props = defineProps<{ item: Item; related: Related[] }>();
 const safeContent = computed(() => (props.item.content ? sanitizeHtml(props.item.content) : ''));
 
 const activePane = ref('contents');
+// Local read state so optimistic updates (and the mount auto-read) reflect in
+// the toolbar without a page reload.
+const isRead = ref(props.item.is_read);
+
+// Opening the full view marks the article read — same semantics as clicking
+// it in the inbox.
+onMounted(() => {
+    if (!isRead.value) {
+        isRead.value = true;
+        http.post(`/rss/items/${props.item.id}/read`).catch(() => { isRead.value = false; });
+    }
+});
+
 function toggleStar(): void {
     router.post(`/rss/items/${props.item.id}/star`, {}, { preserveScroll: true, preserveState: true });
 }
 function markRead(): void {
-    if (props.item.is_read) return;
-    router.post(`/rss/items/${props.item.id}/read`, {}, { preserveScroll: true, preserveState: true });
+    if (isRead.value) return;
+    isRead.value = true;
+    http.post(`/rss/items/${props.item.id}/read`).catch(() => { isRead.value = false; });
 }
 function markUnread(): void {
-    if (!props.item.is_read) return;
-    router.post(`/rss/items/${props.item.id}/unread`, {}, { preserveScroll: true, preserveState: true });
+    if (!isRead.value) return;
+    isRead.value = false;
+    http.post(`/rss/items/${props.item.id}/unread`).catch(() => { isRead.value = true; });
 }
 </script>
 
@@ -54,10 +70,10 @@ function markUnread(): void {
                     <VibeIcon icon="chevron-left" class="me-1" />Back to inbox
                 </Link>
                 <div class="ms-auto d-flex align-items-center gap-2">
-                    <VibeButton size="sm" variant="secondary" @click="markRead" :disabled="item.is_read">
+                    <VibeButton size="sm" variant="secondary" @click="markRead" :disabled="isRead">
                         <VibeIcon icon="check2" class="me-1" />Mark read
                     </VibeButton>
-                    <VibeButton size="sm" variant="secondary" @click="markUnread" :disabled="!item.is_read">
+                    <VibeButton size="sm" variant="secondary" @click="markUnread" :disabled="!isRead">
                         <VibeIcon icon="circle" class="me-1" />Mark unread
                     </VibeButton>
                     <VibeButton size="sm" variant="secondary" @click="toggleStar">
