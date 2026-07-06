@@ -59,7 +59,9 @@ class FeedController extends Controller
             ->when($filter === 'starred', fn ($q) => $q->starred())
             ->when($filter === 'unread', fn ($q) => $q->unread())
             ->when($filter === 'today', fn ($q) => $q->where('published_at', '>=', now()->startOfDay()))
+            ->when($filter === 'yesterday', fn ($q) => $q->whereBetween('published_at', [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()]))
             ->when($filter === 'week', fn ($q) => $q->where('published_at', '>=', now()->subDays(7)))
+            ->when($filter === 'month', fn ($q) => $q->where('published_at', '>=', now()->subDays(30)))
             ->when($filter === 'recent', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))
             ->when($filter === 'read', fn ($q) => $q->where('is_read', true)->where('read_at', '>=', now()->subDays(7)))
             ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
@@ -101,6 +103,14 @@ class FeedController extends Controller
             ->where('is_read', true)
             ->where('read_at', '>=', now()->subDays(7))
             ->count();
+        $yesterdayCount = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->whereBetween('published_at', [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()])
+            ->count();
+        $monthCount = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->where('published_at', '>=', now()->subDays(30))
+            ->count();
         $mutedCount = RssFeed::ownedBy($userId)->muted()->count();
         $automationEnabled = (bool) Setting::get('rss.automation_enabled', true);
 
@@ -118,7 +128,9 @@ class FeedController extends Controller
                 'unread' => $unreadTotal,
                 'starred' => $starredTotal,
                 'today' => $todayCount,
+                'yesterday' => $yesterdayCount,
                 'week' => $weekCount,
+                'month' => $monthCount,
                 'recent' => $recentCount,
                 'read_recent' => $readRecentCount,
                 'feeds' => $feeds->count(),
