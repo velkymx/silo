@@ -174,13 +174,17 @@ class RefreshFeed implements ShouldQueue
                     'feed_id' => $feed->id,
                     'user_id' => $feed->user_id,
                     'guid' => $entry['guid'],
-                    'title' => $entry['title'] !== '' ? $entry['title'] : '(untitled)',
+                    // Column is string(255); truncate so an oversize title/author
+                    // never throws and drops the item on every refresh.
+                    'title' => $entry['title'] !== '' ? mb_substr($entry['title'], 0, 255) : '(untitled)',
                     'content' => $sanitizer->clean($entry['content'] ?: null),
                     'excerpt' => $entry['excerpt'] ?: null,
-                    'author' => $entry['author'],
+                    'author' => $entry['author'] !== null ? mb_substr($entry['author'], 0, 255) : null,
                     'categories' => $entry['categories'] ?? null,
                     'image_url' => $entry['image_url'] ?? null,
-                    'url' => $entry['url'] !== '' ? $entry['url'] : $feed->site_url,
+                    // url is NOT NULL; fall back to '' when neither the entry nor
+                    // the feed supplies one, rather than violating the constraint.
+                    'url' => $entry['url'] !== '' ? $entry['url'] : ($feed->site_url ?? ''),
                     'published_at' => $entry['published_at'],
                 ]);
             } catch (Throwable $e) {

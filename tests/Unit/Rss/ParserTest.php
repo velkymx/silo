@@ -89,6 +89,19 @@ XML;
         $this->assertSame('https://x/y', $out['entries'][0]['guid']);
     }
 
+    public function test_overlong_guid_is_hashed_to_fit_the_column(): void
+    {
+        $long = str_repeat('x', 300);
+        $xml = '<rss><channel><item><title>t</title><guid>'.$long.'</guid></item></channel></rss>';
+
+        $parser = new Parser;
+        $guid = $parser->parse($xml)['entries'][0]['guid'];
+
+        $this->assertLessThanOrEqual(255, strlen($guid));
+        $this->assertStringStartsWith('sha1:', $guid);
+        $this->assertSame($guid, $parser->parse($xml)['entries'][0]['guid'], 'Hashed guid must be stable for dedupe');
+    }
+
     public function test_guidless_and_linkless_entry_gets_deterministic_surrogate(): void
     {
         $xml = <<<'XML'

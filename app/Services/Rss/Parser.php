@@ -132,14 +132,12 @@ class Parser
     private function guid(string $guid, string $url, string $fingerprint): string
     {
         $guid = trim($guid);
-        if ($guid !== '') {
-            return $guid;
-        }
-        if ($url !== '') {
-            return $url;
-        }
+        $id = $guid !== '' ? $guid : ($url !== '' ? $url : 'sha1:'.sha1($fingerprint));
 
-        return 'sha1:'.sha1($fingerprint);
+        // guid column is string(255); a longer id (some feeds use very long
+        // permalinks as the guid) is hashed deterministically so it fits and
+        // still dedupes identically across fetches.
+        return strlen($id) > 255 ? 'sha1:'.sha1($id) : $id;
     }
 
     private function content(?SimpleXMLElement $primary, ?SimpleXMLElement $fallback): string
