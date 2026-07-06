@@ -52,10 +52,13 @@ class FeedController extends Controller
             ];
         })->values();
 
+        $author = trim((string) $request->string('author')->toString());
+        $exclude = trim((string) $request->string('exclude')->toString());
+
         $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->unmuted())
-            ->inboxFilter($filter, $feedId, $search)
+            ->inboxFilter($filter, $feedId, $search, $author, $exclude)
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->cursorPaginate(50);

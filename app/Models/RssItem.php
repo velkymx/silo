@@ -113,7 +113,7 @@ class RssItem extends Model
      * Shared by the inbox listing and "mark all read" so both operate on the
      * exact same visible set.
      */
-    public function scopeInboxFilter(Builder $query, string $filter, int $feedId, string $search): Builder
+    public function scopeInboxFilter(Builder $query, string $filter, int $feedId, string $search, string $author = '', string $exclude = ''): Builder
     {
         return $query
             ->when($filter === 'starred', fn ($q) => $q->starred())
@@ -125,11 +125,18 @@ class RssItem extends Model
             ->when($filter === 'recent', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))
             ->when($filter === 'read', fn ($q) => $q->where('is_read', true)->where('read_at', '>=', now()->subDays(7)))
             ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
+            ->when($author !== '', fn ($q) => $q->where('author', 'like', "%{$author}%"))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($w) use ($search) {
                     $w->where('title', 'like', "%{$search}%")
                         ->orWhere('excerpt', 'like', "%{$search}%")
                         ->orWhere('author', 'like', "%{$search}%");
+                });
+            })
+            ->when($exclude !== '', function ($q) use ($exclude) {
+                $q->where(function ($w) use ($exclude) {
+                    $w->where('title', 'not like', "%{$exclude}%")
+                        ->where('excerpt', 'not like', "%{$exclude}%");
                 });
             });
     }
