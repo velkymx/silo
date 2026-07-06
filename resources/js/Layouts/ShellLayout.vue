@@ -142,7 +142,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                     />
                     <template #append>
                         <VibeDropdown
-                            variant="light"
+                            variant="secondary"
                             menu-end
                             :items="scopeMenu"
                             :title="searchScope === 'folder' ? 'Scope: this folder' : 'Scope: all folders'"
@@ -164,13 +164,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                 </VibeInputGroup>
             </div>
 
-            <VibeButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
+            <VibeButton variant="secondary" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
                 <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
             </VibeButton>
 
             <NotificationBell v-if="user" :notifications="notifications" />
 
-            <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
+            <VibeDropdown v-if="user" size="sm" variant="secondary" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
                     <UserAvatar :user="user" :size="22" class="me-2" />
                     <span class="d-none d-sm-inline">{{ user.name }}</span>

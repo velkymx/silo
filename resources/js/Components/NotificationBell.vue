@@ -84,7 +84,7 @@ function markAll(e: Event): void {
 
 <template>
     <div class="notif-bell">
-        <VibeDropdown size="sm" variant="light" menu-end auto-close="outside" :items="items" @item-click="onItemClick">
+        <VibeDropdown size="sm" variant="secondary" menu-end auto-close="outside" :items="items" @item-click="onItemClick">
             <template #button>
                 <span class="position-relative d-inline-flex align-items-center">
                     <VibeIcon icon="bell-fill" />
