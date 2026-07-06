@@ -271,8 +271,9 @@ class FeedController extends Controller
 
     /**
      * Aggregate inbox metrics for the stats panel: today's intake, last
-     * successful fetch, average publish frequency, success rate over
-     * the last 30 days, failed feeds, and items-per-feed.
+     * successful fetch, average publish frequency, current health (share of
+     * enabled feeds whose last fetch succeeded — a snapshot, not a windowed
+     * rate), failed feeds, and items-per-feed.
      */
     public function stats(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -311,10 +312,9 @@ class FeedController extends Controller
             $avgFrequencyHours = (int) round($sum / $samples);
         }
 
-        // Success rate over the last 30 days: feeds with last_error set vs
-        // total enabled feeds. A 30-day sliding window is too short to
-        // compute from per-fetch logs we don't keep, so this is the
-        // current health snapshot (last fetch result).
+        // Current health snapshot: share of enabled feeds whose last fetch
+        // succeeded (no last_error). Not a windowed rate — we don't keep
+        // per-fetch logs here, so this reflects only each feed's latest result.
         $enabledFeeds = $feeds->where('enabled', true);
         $totalEnabled = $enabledFeeds->count();
         $failedCount = $enabledFeeds->whereNotNull('last_error')->count();
