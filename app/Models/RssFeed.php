@@ -73,15 +73,34 @@ class RssFeed extends Model
         return $query->where('user_id', $userId);
     }
 
-    /** Feeds due for refresh: enabled, unmuted, and last_fetched_at older than the interval. */
+    /**
+     * Refresh candidates: enabled and unmuted. This is the DB-cheap filter;
+     * the exact per-feed interval gate (last_fetched_at older than
+     * refresh_interval_minutes) is applied in PHP via isDueForRefresh(),
+     * because a column-driven interval comparison is not portable across
+     * the MySQL (app) and SQLite (test) grammars.
+     */
     public function scopeDueForRefresh(Builder $query): Builder
     {
-        return $query->where('enabled', true)
-            ->whereNull('muted_at')
-            ->where(function (Builder $q) {
-                $q->whereNull('last_fetched_at')
-                    ->orWhereRaw('last_fetched_at <= DATE_SUB(NOW(), INTERVAL refresh_interval_minutes MINUTE)');
-            });
+        return $query->where('enabled', true)->whereNull('muted_at');
+    }
+
+    /**
+     * Whether this feed's refresh interval has elapsed since the last fetch.
+     * A never-fetched feed is always due.
+     */
+    public function isDueForRefresh(): bool
+    {
+        if (! $this->enabled || $this->isMuted()) {
+            return false;
+        }
+        if ($this->last_fetched_at === null) {
+            return true;
+        }
+
+        $interval = $this->refresh_interval_minutes ?: 60;
+
+        return $this->last_fetched_at->copy()->addMinutes($interval)->lessThanOrEqualTo(now());
     }
 
     /** Feeds that are currently muted. */

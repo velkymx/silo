@@ -26,17 +26,21 @@ class RefreshAllFeeds implements ShouldQueue
     public function handle(): void
     {
         $count = 0;
-        RssFeed::query()
-            ->where('enabled', true)
-            ->whereNull('muted_at')
+        $skipped = 0;
+        RssFeed::dueForRefresh()
             ->orderBy('id')
-            ->chunkById(200, function ($feeds) use (&$count) {
+            ->chunkById(200, function ($feeds) use (&$count, &$skipped) {
                 foreach ($feeds as $feed) {
+                    if (! $feed->isDueForRefresh()) {
+                        $skipped++;
+
+                        continue;
+                    }
                     RefreshFeed::dispatch($feed->id);
                     $count++;
                 }
             });
 
-        Log::info('rss.refresh_all.dispatched', ['count' => $count, 'muted_skipped' => true]);
+        Log::info('rss.refresh_all.dispatched', ['count' => $count, 'not_due_skipped' => $skipped]);
     }
 }
