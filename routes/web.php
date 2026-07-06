@@ -210,6 +210,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/feeds/{feed}/mute', [RssFeedController::class, 'mute'])->name('feeds.mute');
         Route::post('/feeds/{feed}/unmute', [RssFeedController::class, 'unmute'])->name('feeds.unmute');
         Route::post('/discover', [RssFeedController::class, 'discover'])->name('feeds.discover');
+        Route::get('/stats', [RssFeedController::class, 'stats'])->name('stats');
         Route::post('/opml/import', [RssOpmlController::class, 'store'])->name('opml.import');
         Route::get('/opml/export', [RssOpmlController::class, 'export'])->name('opml.export');
 

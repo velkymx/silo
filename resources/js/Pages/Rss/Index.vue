@@ -246,6 +246,35 @@ function unmuteFeed(feed: Feed): void {
     router.post(`/rss/feeds/${feed.id}/unmute`, {}, { preserveScroll: true });
 }
 
+interface Stats {
+    articles_today: number;
+    last_success_at: string | null;
+    avg_frequency_hours: number | null;
+    success_rate: number | null;
+    failed_count: number;
+    unread_total: number;
+    feeds_count: number;
+    per_feed: Array<{ id: number; title: string; folder: string | null; count: number; last_fetched_at: string | null; last_success_at: string | null; last_error: string | null }>;
+}
+const stats = ref<Stats | null>(null);
+const statsOpen = ref(false);
+async function toggleStats(): Promise<void> {
+    statsOpen.value = !statsOpen.value;
+    if (statsOpen.value && stats.value === null) {
+        const res = await fetch('/rss/stats', { headers: { 'Accept': 'application/json' } });
+        if (res.ok) stats.value = await res.json();
+    }
+}
+function fmtRelative(iso: string | null): string {
+    if (!iso) return 'never';
+    const d = new Date(iso);
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
 async function deleteFeed(feed: Feed): Promise<void> {
     if (!await confirm({ title: 'Delete feed', message: `Delete “${feed.title}” and all its items?`, confirmLabel: 'Delete', variant: 'danger' })) return;
     router.delete(`/rss/feeds/${feed.id}`, { preserveScroll: true });
@@ -398,6 +427,50 @@ function submitEdit(): void {
                 >
                     <VibeIcon icon="bell-fill" class="me-1" />Hide muted
                 </button>
+                <hr class="my-2">
+                <button
+                    type="button"
+                    class="btn btn-link btn-sm text-decoration-none px-2 d-flex align-items-center"
+                    @click="toggleStats"
+                >
+                    <VibeIcon :icon="statsOpen ? 'chevron-down' : 'chevron-right'" class="me-1" />
+                    Stats
+                </button>
+                <div v-if="statsOpen && stats" class="px-2 pb-2 small text-muted">
+                    <div class="d-flex justify-content-between">
+                        <span><VibeIcon icon="plus-circle" class="me-1" />Today</span>
+                        <span class="text-body">{{ stats.articles_today }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><VibeIcon icon="envelope" class="me-1" />Unread</span>
+                        <span class="text-body">{{ stats.unread_total }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><VibeIcon icon="arrow-repeat" class="me-1" />Last fetch</span>
+                        <span class="text-body">{{ fmtRelative(stats.last_success_at) }}</span>
+                    </div>
+                    <div v-if="stats.avg_frequency_hours !== null" class="d-flex justify-content-between">
+                        <span><VibeIcon icon="clock-history" class="me-1" />Avg cadence</span>
+                        <span class="text-body">~{{ stats.avg_frequency_hours }}h</span>
+                    </div>
+                    <div v-if="stats.success_rate !== null" class="d-flex justify-content-between">
+                        <span><VibeIcon icon="heart-pulse" class="me-1" />Health</span>
+                        <span :class="stats.success_rate >= 80 ? 'text-success' : stats.success_rate >= 50 ? 'text-warning' : 'text-danger'">{{ stats.success_rate }}%</span>
+                    </div>
+                    <div v-if="stats.failed_count > 0" class="d-flex justify-content-between">
+                        <span><VibeIcon icon="exclamation-triangle" class="me-1 text-warning" />Failing</span>
+                        <span class="text-body">{{ stats.failed_count }}</span>
+                    </div>
+                    <hr class="my-1">
+                    <div class="text-uppercase fw-semibold mb-1" style="font-size: 0.65rem; letter-spacing: 0.04em">Per feed</div>
+                    <div v-for="f in stats.per_feed" :key="f.id" class="d-flex justify-content-between text-truncate">
+                        <span class="text-truncate me-1" :title="f.title">
+                            <VibeIcon v-if="f.last_error" icon="exclamation-triangle" class="text-warning me-1" />
+                            {{ f.title }}
+                        </span>
+                        <span class="text-body flex-shrink-0">{{ f.count }}</span>
+                    </div>
+                </div>
             </div>
         </template>
 

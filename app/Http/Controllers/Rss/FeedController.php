@@ -213,6 +213,91 @@ class FeedController extends Controller
     }
 
     /**
+     * Aggregate inbox metrics for the stats panel: today's intake, last
+     * successful fetch, average publish frequency, success rate over
+     * the last 30 days, failed feeds, and items-per-feed.
+     */
+    public function stats(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = auth()->id();
+        $feeds = RssFeed::ownedBy($userId)->whereNull('muted_at')->get();
+        $feedIds = $feeds->pluck('id');
+
+        $articlesToday = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $feedIds)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->count();
+
+        $lastSuccessAt = $feeds->whereNotNull('last_success_at')->max('last_success_at');
+
+        // Average publish frequency in hours: mean of (range / items) for
+        // feeds with >= 2 items, computed from the actual published_at span
+        // so a one-time scrape doesn't skew the average to infinity.
+        $avgFrequencyHours = null;
+        $samples = 0;
+        $sum = 0.0;
+        foreach ($feeds as $feed) {
+            $first = RssItem::where('feed_id', $feed->id)->min('published_at');
+            $last = RssItem::where('feed_id', $feed->id)->max('published_at');
+            $count = RssItem::where('feed_id', $feed->id)->count();
+            if (! $first || ! $last || $count < 2) {
+                continue;
+            }
+            $firstAt = \Carbon\Carbon::parse($first);
+            $lastAt = \Carbon\Carbon::parse($last);
+            $spanHours = max(1, $firstAt->diffInHours($lastAt));
+            $sum += $spanHours / ($count - 1);
+            $samples++;
+        }
+        if ($samples > 0) {
+            $avgFrequencyHours = (int) round($sum / $samples);
+        }
+
+        // Success rate over the last 30 days: feeds with last_error set vs
+        // total enabled feeds. A 30-day sliding window is too short to
+        // compute from per-fetch logs we don't keep, so this is the
+        // current health snapshot (last fetch result).
+        $enabledFeeds = $feeds->where('enabled', true);
+        $totalEnabled = $enabledFeeds->count();
+        $failedCount = $enabledFeeds->whereNotNull('last_error')->count();
+        $successRate = $totalEnabled > 0
+            ? round((($totalEnabled - $failedCount) / $totalEnabled) * 100)
+            : null;
+
+        $unreadTotal = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $feedIds)
+            ->unread()
+            ->count();
+
+        $articlesPerFeed = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $feedIds)
+            ->selectRaw('feed_id, count(*) as c')
+            ->groupBy('feed_id')
+            ->pluck('c', 'feed_id');
+
+        $perFeed = $feeds->map(fn (RssFeed $f) => [
+            'id' => $f->id,
+            'title' => $f->title,
+            'folder' => $f->folder,
+            'count' => (int) ($articlesPerFeed[$f->id] ?? 0),
+            'last_fetched_at' => optional($f->last_fetched_at)->toIso8601String(),
+            'last_success_at' => optional($f->last_success_at)->toIso8601String(),
+            'last_error' => $f->last_error,
+        ])->values();
+
+        return response()->json([
+            'articles_today' => $articlesToday,
+            'last_success_at' => optional($lastSuccessAt)->toIso8601String(),
+            'avg_frequency_hours' => $avgFrequencyHours,
+            'success_rate' => $successRate,
+            'failed_count' => $failedCount,
+            'unread_total' => $unreadTotal,
+            'feeds_count' => $feeds->count(),
+            'per_feed' => $perFeed,
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validateFeed(Request $request, bool $partial = false): array
