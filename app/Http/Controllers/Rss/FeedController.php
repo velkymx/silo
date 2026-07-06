@@ -320,6 +320,17 @@ class FeedController extends Controller
             ->groupBy('feed_id')
             ->pluck('c', 'feed_id');
 
+        $articlesLast24h = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $feedIds)
+            ->where('created_at', '>=', now()->subDay())
+            ->count();
+        $articlesLastWeek = RssItem::ownedBy($userId)
+            ->whereIn('feed_id', $feedIds)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->count();
+        $articlesPerDay = $articlesLastWeek > 0 ? round($articlesLastWeek / 7, 1) : 0;
+        $articlesPerWeek = $articlesLastWeek;
+
         $perFeed = $feeds->map(fn (RssFeed $f) => [
             'id' => $f->id,
             'title' => $f->title,
@@ -331,10 +342,12 @@ class FeedController extends Controller
             'last_http_status' => $f->last_http_status,
             'last_response_time_ms' => $f->last_response_time_ms,
             'consecutive_failures' => $f->consecutive_failures,
-        ])->values();
+        ])->values()->sortByDesc('last_success_at')->values();
 
         return response()->json([
             'articles_today' => $articlesToday,
+            'articles_per_day' => $articlesPerDay,
+            'articles_per_week' => $articlesPerWeek,
             'last_success_at' => optional($lastSuccessAt)->toIso8601String(),
             'avg_frequency_hours' => $avgFrequencyHours,
             'success_rate' => $successRate,
