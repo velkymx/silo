@@ -45,17 +45,12 @@ syncSearchFromUrl();
 watch(() => page.url, syncSearchFromUrl);
 function runGlobalSearch(): void {
     const v = searchValue.value.trim();
-    if (!v) { router.get('/', {}); return; }
-    const params: Record<string, string | number> = { search: v };
-    if (searchScope.value === 'folder' && currentFolder.value) {
-        params.scope = 'folder';
-        params.folder = currentFolder.value.id;
-    }
-    router.get('/', params);
+    if (!v) { router.get('/'); return; }
+    router.get('/search', { q: v });
 }
 function clearGlobalSearch(): void {
     searchValue.value = '';
-    router.get('/', {});
+    router.get('/');
 }
 const isSearching = computed(() => searchValue.value.length > 0);
 

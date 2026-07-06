@@ -50,8 +50,10 @@ class RssItem extends Model
     }
 
     /**
-     * Columns indexed in the search index. Kept narrow — title + excerpt are
-     * enough to surface a useful hit; full HTML content is too noisy.
+     * Columns indexed in the search index. Kept narrow — title + excerpt
+     * are the primary signal; author and feed name are kept so the
+     * search results page can group and display the right context.
+     * Full HTML content is too noisy for the index.
      *
      * @return array<string, mixed>
      */
@@ -61,8 +63,19 @@ class RssItem extends Model
             'title' => $this->title,
             'excerpt' => $this->excerpt,
             'author' => $this->author,
+            'feed_title' => $this->feed?->title,
             'url' => $this->url,
         ];
+    }
+
+    /**
+     * Muted-feed items never enter the search index — a user who muted a
+     * feed has explicitly opted out of seeing its content, so making it
+     * searchable from the global search would bypass that intent.
+     */
+    public function shouldBeSearchable(): bool
+    {
+        return $this->feed !== null && $this->feed->muted_at === null;
     }
 
     public function feed(): BelongsTo

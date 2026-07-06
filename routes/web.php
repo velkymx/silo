@@ -23,6 +23,7 @@ use App\Http\Controllers\Rss\ItemController as RssItemController;
 use App\Http\Controllers\Rss\NotificationController as RssNotificationController;
 use App\Http\Controllers\Rss\OpmlController as RssOpmlController;
 use App\Http\Controllers\SavedSearchController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedController;
 use App\Http\Controllers\ShareLinkController;
 use App\Http\Controllers\SodokuController;
@@ -71,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [UserController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [UserController::class, 'updateAvatar'])->name('profile.avatar');
     Route::get('/avatars/{user}', [UserController::class, 'avatar'])->name('users.avatar');
+    Route::get('/search', [SearchController::class, 'index'])->name('search.index');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
     Route::get('/photos', [PhotoController::class, 'index'])->name('photos.index');
     Route::post('/photos/upload', [PhotoController::class, 'upload'])
