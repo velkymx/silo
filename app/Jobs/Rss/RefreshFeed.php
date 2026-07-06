@@ -6,6 +6,7 @@ use App\Automation\EventDispatcher;
 use App\Models\RssFeed;
 use App\Models\RssItem;
 use App\Services\Audit;
+use App\Services\Rss\FaviconFetcher;
 use App\Services\Rss\Parser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,7 +36,7 @@ class RefreshFeed implements ShouldQueue
 
     public function __construct(public int $feedId) {}
 
-    public function handle(Parser $parser, EventDispatcher $events): void
+    public function handle(Parser $parser, EventDispatcher $events, FaviconFetcher $favicons): void
     {
         $feed = RssFeed::find($this->feedId);
         if (! $feed || ! $feed->enabled || $feed->isMuted()) {
@@ -161,6 +162,25 @@ class RefreshFeed implements ShouldQueue
             'not_modified' => false,
             'fetched_at' => $now->toIso8601String(),
         ], "rss.feed.fetched@1:source:{$feed->id}:".$now->timestamp);
+
+        // Best-effort favicon fetch on the first successful pull — only
+        // runs when the feed has no icon yet, and only when the parser
+        // actually discovered a site_url from the channel metadata.
+        if (empty($feed->favicon_path) && $feed->site_url) {
+            try {
+                $path = $favicons->fetch($feed->site_url);
+                if ($path !== null) {
+                    $feed->favicon_path = $path;
+                    $feed->save();
+                }
+            } catch (Throwable $e) {
+                Log::warning('rss.favicon.fetch_failed', [
+                    'feed' => $feed->id,
+                    'site' => $feed->site_url,
+                    'reason' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function failed(Throwable $e): void

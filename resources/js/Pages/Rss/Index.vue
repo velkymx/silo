@@ -16,6 +16,7 @@ interface Feed {
     enabled: boolean;
     muted: boolean;
     muted_at: string | null;
+    favicon_url: string | null;
     refresh_interval_minutes: number;
     last_fetched_at: string | null;
     last_error: string | null;
@@ -398,7 +399,15 @@ function submitEdit(): void {
                             class="flex-grow-1 d-flex align-items-center gap-2 text-start border-0 bg-transparent p-0 text-truncate"
                             @click="selectFeed(feed.id)"
                         >
-                            <VibeIcon :icon="feed.enabled ? 'rss-fill' : 'rss'" :class="feedIconClass(feed)" />
+                            <img
+                                v-if="feed.favicon_url"
+                                :src="feed.favicon_url"
+                                alt=""
+                                class="rss-row__favicon flex-shrink-0"
+                                loading="lazy"
+                                @error="($event.target as HTMLImageElement).style.display = 'none'"
+                            >
+                            <VibeIcon v-else :icon="feed.enabled ? 'rss-fill' : 'rss'" :class="feedIconClass(feed)" />
                             <span class="flex-grow-1 text-truncate" :title="feed.title">{{ feed.title }}</span>
                         </button>
                         <span v-if="feed.unread_count > 0" class="badge text-bg-light">{{ feed.unread_count }}</span>

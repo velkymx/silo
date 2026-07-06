@@ -218,6 +218,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/opml/export', [RssOpmlController::class, 'export'])->name('opml.export');
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
+        Route::get('/feeds/{feed}/favicon', [\App\Http\Controllers\Rss\FeedController::class, 'favicon'])->name('feeds.favicon');
         Route::post('/items/{item}/read', [RssItemController::class, 'markRead'])->name('items.read');
         Route::post('/items/{item}/unread', [RssItemController::class, 'markUnread'])->name('items.unread');
         Route::post('/items/{item}/star', [RssItemController::class, 'toggleStar'])->name('items.star');

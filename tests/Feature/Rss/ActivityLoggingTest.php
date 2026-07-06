@@ -91,6 +91,7 @@ class ActivityLoggingTest extends TestCase
         (new RefreshFeed($feed->id))->handle(
             app(\App\Services\Rss\Parser::class),
             app(\App\Automation\EventDispatcher::class),
+            app(\App\Services\Rss\FaviconFetcher::class),
         );
 
         $this->assertSame(1, AuditLog::where('action', 'rss.item.create')->count());

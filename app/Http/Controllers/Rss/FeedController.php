@@ -202,6 +202,33 @@ class FeedController extends Controller
         return back()->with('success', "“{$feed->title}” muted. It is hidden from the inbox and skipped on refresh.");
     }
 
+    /**
+     * Stream the cached favicon for a feed, or 404. The disk path is
+     * opaque — the route is policy-gated by RssFeedPolicy::view, so a
+     * muted feed's icon is still fetchable but only for its owner.
+     */
+    public function favicon(RssFeed $feed)
+    {
+        $this->authorize('view', $feed);
+        if (! $feed->favicon_path || ! \Storage::disk('local')->exists($feed->favicon_path)) {
+            abort(404);
+        }
+        $bytes = \Storage::disk('local')->get($feed->favicon_path);
+        $ext = strtolower(pathinfo($feed->favicon_path, PATHINFO_EXTENSION));
+        $mime = match ($ext) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+            default => 'image/x-icon',
+        };
+
+        return response($bytes, 200, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
     public function unmute(RssFeed $feed)
     {
         $this->authorize('mute', $feed);

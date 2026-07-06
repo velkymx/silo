@@ -155,6 +155,7 @@ class FeedMuteTest extends TestCase
         (new RefreshFeed($feed->id))->handle(
             app(\App\Services\Rss\Parser::class),
             app(\App\Automation\EventDispatcher::class),
+            app(\App\Services\Rss\FaviconFetcher::class),
         );
 
         \Illuminate\Support\Facades\Http::assertNothingSent();
