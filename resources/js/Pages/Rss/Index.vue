@@ -8,6 +8,7 @@ import RssItemRow from '../../Components/Rss/RssItemRow.vue';
 import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { usePageLoading } from '../../composables/usePageLoading';
+import { http, HttpError } from '../../lib/http';
 
 interface Feed {
     id: number;
@@ -71,17 +72,7 @@ async function detectFeed(): Promise<void> {
     }
     detecting.value = true;
     try {
-        const res = await fetch('/rss/discover', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-            body: JSON.stringify({ url }),
-        });
-        if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            toast.push(data.message ?? 'No feed found on that page.', { variant: 'danger' });
-            return;
-        }
-        const data = await res.json() as { url: string; title?: string | null; source: string };
+        const data = await http.post<{ url: string; title?: string | null; source: string }>('/rss/discover', { url });
         addForm.url = data.url;
         if (data.title && !addForm.title) {
             addForm.title = data.title;
@@ -89,7 +80,12 @@ async function detectFeed(): Promise<void> {
         addForm.clearErrors('url');
         toast.push(data.url === data.source ? 'URL already points at a feed.' : `Found ${data.url}`, { variant: 'success' });
     } catch (e) {
-        toast.push('Detection failed. Check the URL and try again.', { variant: 'danger' });
+        if (e instanceof HttpError) {
+            const message = (e.data as { message?: string } | null)?.message;
+            toast.push(message ?? 'No feed found on that page.', { variant: 'danger' });
+        } else {
+            toast.push('Detection failed. Check the URL and try again.', { variant: 'danger' });
+        }
     } finally {
         detecting.value = false;
     }
@@ -283,8 +279,11 @@ const statsOpen = ref(false);
 async function toggleStats(): Promise<void> {
     statsOpen.value = !statsOpen.value;
     if (statsOpen.value && stats.value === null) {
-        const res = await fetch('/rss/stats', { headers: { 'Accept': 'application/json' } });
-        if (res.ok) stats.value = await res.json();
+        try {
+            stats.value = await http.get<Stats>('/rss/stats');
+        } catch (e) {
+            toast.push('Could not load stats.', { variant: 'danger' });
+        }
     }
 }
 function fmtRelative(iso: string | null): string {
