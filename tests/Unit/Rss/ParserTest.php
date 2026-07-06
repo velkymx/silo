@@ -103,6 +103,25 @@ XML;
         $this->assertNotNull($entry['published_at']);
     }
 
+    public function test_excerpt_falls_back_to_content_when_no_description(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel><title>F</title><link>https://x</link>
+    <item>
+      <title>No summary</title>
+      <guid>c-1</guid>
+      <content:encoded><![CDATA[<p>The full body text is here.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>
+XML;
+
+        $out = (new Parser)->parse($xml);
+        $this->assertSame('The full body text is here.', $out['entries'][0]['excerpt']);
+    }
+
     public function test_garbage_returns_empty(): void
     {
         $parser = new Parser;

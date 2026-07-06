@@ -66,7 +66,7 @@ class Parser
                 'title' => $itemTitle,
                 'url' => $link,
                 'content' => $content,
-                'excerpt' => $this->excerpt($item->description ?? null),
+                'excerpt' => $this->excerpt($item->description ?? null, $content),
                 'author' => $this->authorRss($item),
                 'categories' => $this->categoriesRss($item),
                 'image_url' => $this->imageRss($item, $content),
@@ -100,7 +100,7 @@ class Parser
                 'title' => $itemTitle,
                 'url' => trim((string) ($item->link ?? '')),
                 'content' => $content,
-                'excerpt' => $this->excerpt($item->description ?? null),
+                'excerpt' => $this->excerpt($item->description ?? null, $content),
                 'author' => $this->authorRss($item),
                 'categories' => $this->categoriesRss($item),
                 'image_url' => $this->imageRss($item, $content),
@@ -154,7 +154,7 @@ class Parser
                 'title' => $entryTitle,
                 'url' => $entryUrl,
                 'content' => $content,
-                'excerpt' => $this->excerpt($entry->summary ?? null),
+                'excerpt' => $this->excerpt($entry->summary ?? null, $content),
                 'author' => isset($entry->author->name) ? trim((string) $entry->author->name) : null,
                 'categories' => $this->categoriesAtom($entry),
                 'image_url' => $this->imageAtom($entry, $content),
@@ -195,14 +195,19 @@ class Parser
         return '';
     }
 
-    private function excerpt(?SimpleXMLElement $node): string
+    private function excerpt(?SimpleXMLElement $node, string $contentFallback = ''): string
     {
-        if ($node === null) {
+        $text = $node !== null ? trim(strip_tags((string) $node)) : '';
+        if ($text === '') {
+            // Some feeds ship only <content:encoded> and no description/summary;
+            // derive the preview from the article body so the row isn't blank.
+            $text = trim(strip_tags($contentFallback));
+        }
+        if ($text === '') {
             return '';
         }
-        $text = trim(strip_tags((string) $node));
 
-        return $text === '' ? '' : (mb_strlen($text) > 280 ? mb_substr($text, 0, 277).'…' : $text);
+        return mb_strlen($text) > 280 ? mb_substr($text, 0, 277).'…' : $text;
     }
 
     private function authorRss(SimpleXMLElement $item): ?string
