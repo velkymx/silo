@@ -1,0 +1,167 @@
+<?php
+
+namespace App\Jobs\Rss;
+
+use App\Automation\EventDispatcher;
+use App\Models\RssFeed;
+use App\Models\RssItem;
+use App\Services\Rss\Parser;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+/**
+ * Fetches one feed with HTTP cache headers, parses the body, persists new
+ * items (GUID dedupe), and dispatches one rss.item.created event per new
+ * row through the automation engine. The job is idempotent: re-running it
+ * over an already-ingested feed is a no-op aside from refreshing cache state.
+ */
+class RefreshFeed implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+
+    public int $backoff = 30;
+
+    public int $timeout = 60;
+
+    public function __construct(public int $feedId) {}
+
+    public function handle(Parser $parser, EventDispatcher $events): void
+    {
+        $feed = RssFeed::find($this->feedId);
+        if (! $feed || ! $feed->enabled) {
+            return;
+        }
+
+        if (! preg_match('#^https?://#i', $feed->url)) {
+            $feed->update(['last_error' => 'URL must be http(s)']);
+
+            return;
+        }
+
+        $headers = [
+            'User-Agent' => config('app.name').'/RSS-Reader (+'.config('app.url').')',
+            'Accept' => 'application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8',
+        ];
+        if ($feed->etag) {
+            $headers['If-None-Match'] = $feed->etag;
+        }
+        if ($feed->last_modified) {
+            $headers['If-Modified-Since'] = $feed->last_modified;
+        }
+
+        try {
+            $response = Http::withHeaders($headers)
+                ->timeout(20)
+                ->withOptions(['allow_redirects' => ['max' => 5]])
+                ->get($feed->url);
+        } catch (ConnectionException $e) {
+            $feed->update(['last_error' => 'connection: '.$e->getMessage()]);
+
+            return;
+        } catch (Throwable $e) {
+            $feed->update(['last_error' => substr($e->getMessage(), 0, 480)]);
+            throw $e;
+        }
+
+        $now = now();
+        if ($response->status() === 304) {
+            $feed->update(['last_fetched_at' => $now, 'last_success_at' => $now, 'last_error' => null]);
+            $events->dispatch('rss.feed.fetched', $feed->user_id, [
+                'feed_id' => $feed->id,
+                'new_count' => 0,
+                'not_modified' => true,
+                'fetched_at' => $now->toIso8601String(),
+            ], "rss.feed.fetched@1:source:{$feed->id}:".$now->timestamp);
+
+            return;
+        }
+
+        if (! $response->successful()) {
+            $feed->update(['last_fetched_at' => $now, 'last_error' => 'HTTP '.$response->status()]);
+
+            return;
+        }
+
+        $parsed = $parser->parse($response->body());
+
+        $etag = $response->header('ETag');
+        $lastModified = $response->header('Last-Modified');
+
+        $attributes = [
+            'last_fetched_at' => $now,
+            'last_success_at' => $now,
+            'last_error' => null,
+            'etag' => is_string($etag) ? $etag : $feed->etag,
+            'last_modified' => is_string($lastModified) ? $lastModified : $feed->last_modified,
+        ];
+        if (($feed->title === null || $feed->title === '') && ! empty($parsed['title'])) {
+            $attributes['title'] = $parsed['title'];
+        }
+        if (! $feed->site_url && ! empty($parsed['site_url'])) {
+            $attributes['site_url'] = $parsed['site_url'];
+        }
+        $feed->update($attributes);
+
+        $existing = $feed->items()->pluck('guid')->all();
+        $existingSet = array_flip($existing);
+        $newCount = 0;
+
+        foreach ($parsed['entries'] as $entry) {
+            if (isset($existingSet[$entry['guid']])) {
+                continue;
+            }
+            try {
+                $item = RssItem::create([
+                    'feed_id' => $feed->id,
+                    'user_id' => $feed->user_id,
+                    'guid' => $entry['guid'],
+                    'title' => $entry['title'] !== '' ? $entry['title'] : '(untitled)',
+                    'content' => $entry['content'] ?: null,
+                    'excerpt' => $entry['excerpt'] ?: null,
+                    'author' => $entry['author'],
+                    'url' => $entry['url'] !== '' ? $entry['url'] : $feed->site_url,
+                    'published_at' => $entry['published_at'],
+                ]);
+            } catch (Throwable $e) {
+                Log::warning('rss.item.create.skipped', ['feed' => $feed->id, 'guid' => $entry['guid'], 'reason' => $e->getMessage()]);
+
+                continue;
+            }
+            $existingSet[$entry['guid']] = true;
+            $newCount++;
+
+            $events->dispatch('rss.item.created', $feed->user_id, [
+                'item_id' => $item->id,
+                'feed_id' => $feed->id,
+                'title' => $item->title,
+                'excerpt' => $item->excerpt,
+                'author' => $item->author,
+                'url' => $item->url,
+                'feed_url' => $feed->url,
+                'published_at' => optional($item->published_at)->toIso8601String(),
+            ], "rss.item.created@1:item:{$item->id}");
+        }
+
+        $events->dispatch('rss.feed.fetched', $feed->user_id, [
+            'feed_id' => $feed->id,
+            'new_count' => $newCount,
+            'not_modified' => false,
+            'fetched_at' => $now->toIso8601String(),
+        ], "rss.feed.fetched@1:source:{$feed->id}:".$now->timestamp);
+    }
+
+    public function failed(Throwable $e): void
+    {
+        RssFeed::whereKey($this->feedId)->update(['last_error' => substr($e->getMessage(), 0, 480)]);
+        Log::error('rss.refresh_feed.failed', ['feed' => $this->feedId, 'error' => $e->getMessage()]);
+    }
+}
