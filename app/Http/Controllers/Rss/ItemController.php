@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Rss;
 use App\Automation\EventDispatcher;
 use App\Http\Controllers\Controller;
 use App\Models\RssItem;
+use App\Services\Audit;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -66,6 +67,7 @@ class ItemController extends Controller
             'starred' => $starred,
             'starred_at' => $item->starred_at?->toIso8601String(),
         ], "rss.item.starred@1:item:{$item->id}:".$item->starred_at?->timestamp);
+        Audit::log($starred ? 'rss.item.star' : 'rss.item.unstar', null, ['item_id' => $item->id, 'feed_id' => $item->feed_id], subjectName: $item->title);
 
         return back();
     }

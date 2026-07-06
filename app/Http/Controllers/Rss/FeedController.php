@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Rss\DiscoverFeedRequest;
 use App\Http\Requests\Rss\StoreFeedRequest;
 use App\Http\Requests\Rss\UpdateFeedRequest;
+use App\Http\Resources\Rss\Feed as RssFeedResource;
+use App\Http\Resources\Rss\Item as RssItemResource;
 use App\Jobs\Rss\RefreshFeed;
 use App\Models\RssFeed;
 use App\Models\RssItem;
 use App\Models\Setting;
+use App\Services\Audit;
 use App\Services\Rss\FeedDiscovery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,16 +48,7 @@ class FeedController extends Controller
             ->pluck('c', 'feed_id');
 
         $feeds = $feeds->map(function (RssFeed $feed) use ($unreadByFeed) {
-            return [
-                'id' => $feed->id,
-                'title' => $feed->title,
-                'folder' => $feed->folder,
-                'enabled' => $feed->enabled,
-                'muted' => $feed->isMuted(),
-                'muted_at' => optional($feed->muted_at)->toIso8601String(),
-                'refresh_interval_minutes' => (int) $feed->refresh_interval_minutes,
-                'last_fetched_at' => optional($feed->last_fetched_at)->toIso8601String(),
-                'last_error' => $feed->last_error,
+            return (new RssFeedResource($feed))->toArray(request()) + [
                 'unread_count' => (int) ($unreadByFeed[$feed->id] ?? 0),
             ];
         })->values();
@@ -80,7 +74,7 @@ class FeedController extends Controller
             ->cursorPaginate(50);
 
         $itemRows = collect($items->items())
-            ->map(fn (RssItem $i) => $this->shapeItem($i))
+            ->map(fn (RssItem $i) => (new RssItemResource($i))->toArray(request()))
             ->values();
         $itemsNextCursor = $items->nextCursor()?->encode();
 
@@ -131,6 +125,7 @@ class FeedController extends Controller
     {
         $feed = RssFeed::create($request->validatedFeedAttributes() + ['user_id' => auth()->id()]);
         RefreshFeed::dispatch($feed->id);
+        Audit::log('rss.feed.create', null, ['feed_id' => $feed->id, 'url' => $feed->url], subjectName: $feed->title);
 
         return back()->with('success', 'Feed added. Refreshing in the background…');
     }
@@ -145,7 +140,10 @@ class FeedController extends Controller
     public function destroy(RssFeed $feed)
     {
         $this->authorize('delete', $feed);
+        $title = $feed->title;
+        $id = $feed->id;
         $feed->delete();
+        Audit::log('rss.feed.delete', null, ['feed_id' => $id], subjectName: $title);
 
         return back()->with('success', 'Feed removed.');
     }
@@ -178,6 +176,7 @@ class FeedController extends Controller
             return back()->with('error', 'Feed is muted; unmute it to refresh.');
         }
         RefreshFeed::dispatch($feed->id);
+        Audit::log('rss.feed.refresh', null, ['feed_id' => $feed->id], subjectName: $feed->title);
 
         return back()->with('success', 'Refresh queued.');
     }
@@ -187,6 +186,9 @@ class FeedController extends Controller
         $query = RssFeed::ownedBy(auth()->id())->where('enabled', true)->unmuted();
         $count = (clone $query)->count();
         $query->orderBy('id')->each(fn (RssFeed $f) => RefreshFeed::dispatch($f->id));
+        if ($count > 0) {
+            Audit::log('rss.feed.refresh_all', null, ['count' => $count]);
+        }
 
         return back()->with('success', "Queued {$count} feed(s) for refresh.");
     }
@@ -195,6 +197,7 @@ class FeedController extends Controller
     {
         $this->authorize('mute', $feed);
         $feed->mute();
+        Audit::log('rss.feed.mute', null, ['feed_id' => $feed->id], subjectName: $feed->title);
 
         return back()->with('success', "“{$feed->title}” muted. It is hidden from the inbox and skipped on refresh.");
     }
@@ -203,6 +206,7 @@ class FeedController extends Controller
     {
         $this->authorize('mute', $feed);
         $feed->unmute();
+        Audit::log('rss.feed.unmute', null, ['feed_id' => $feed->id], subjectName: $feed->title);
 
         return back()->with('success', "“{$feed->title}” unmuted.");
     }
@@ -297,21 +301,6 @@ class FeedController extends Controller
      */
     private function shapeItem(RssItem $item): array
     {
-        return [
-            'id' => $item->id,
-            'feed_id' => $item->feed_id,
-            'feed_title' => $item->feed?->title,
-            'feed_folder' => $item->feed?->folder,
-            'guid' => $item->guid,
-            'title' => $item->title,
-            'excerpt' => $item->excerpt,
-            'author' => $item->author,
-            'categories' => $item->categories ?? [],
-            'image_url' => $item->image_url,
-            'url' => $item->url,
-            'published_at' => optional($item->published_at)->toIso8601String(),
-            'is_read' => (bool) $item->is_read,
-            'is_starred' => (bool) $item->is_starred,
-        ];
+        return (new RssItemResource($item))->toArray(request());
     }
 }

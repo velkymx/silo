@@ -5,6 +5,7 @@ namespace App\Jobs\Rss;
 use App\Automation\EventDispatcher;
 use App\Models\RssFeed;
 use App\Models\RssItem;
+use App\Services\Audit;
 use App\Services\Rss\Parser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -140,6 +141,7 @@ class RefreshFeed implements ShouldQueue
             }
             $existingSet[$entry['guid']] = true;
             $newCount++;
+            Audit::log('rss.item.create', null, ['item_id' => $item->id, 'feed_id' => $feed->id], userId: $feed->user_id, subjectName: $item->title);
 
             $events->dispatch('rss.item.created', $feed->user_id, [
                 'item_id' => $item->id,
