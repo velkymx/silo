@@ -21,6 +21,7 @@ use App\Http\Controllers\PublicShareController;
 use App\Http\Controllers\Rss\FeedController as RssFeedController;
 use App\Http\Controllers\Rss\ItemController as RssItemController;
 use App\Http\Controllers\Rss\NotificationController as RssNotificationController;
+use App\Http\Controllers\Rss\OpmlController as RssOpmlController;
 use App\Http\Controllers\SavedSearchController;
 use App\Http\Controllers\SharedController;
 use App\Http\Controllers\ShareLinkController;
@@ -208,6 +209,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/feeds/refresh-all', [RssFeedController::class, 'refreshAll'])->name('feeds.refreshAll');
         Route::post('/feeds/{feed}/mute', [RssFeedController::class, 'mute'])->name('feeds.mute');
         Route::post('/feeds/{feed}/unmute', [RssFeedController::class, 'unmute'])->name('feeds.unmute');
+        Route::post('/opml/import', [RssOpmlController::class, 'store'])->name('opml.import');
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
         Route::post('/items/{item}/read', [RssItemController::class, 'markRead'])->name('items.read');
