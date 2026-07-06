@@ -17,6 +17,7 @@ class ActivityLoggingTest extends TestCase
 
     public function test_store_logs_feed_create(): void
     {
+        Http::fake(); // the create dispatches RefreshFeed (sync) — keep it off the network
         $user = User::factory()->create();
         $this->actingAs($user)
             ->post('/rss/feeds', [
@@ -59,6 +60,7 @@ class ActivityLoggingTest extends TestCase
 
     public function test_refresh_logs_action(): void
     {
+        Http::fake();
         $user = User::factory()->create();
         $feed = RssFeed::factory()->for($user)->create();
         $this->actingAs($user)->post("/rss/feeds/{$feed->id}/refresh")->assertRedirect();
@@ -103,6 +105,7 @@ class ActivityLoggingTest extends TestCase
 
     public function test_refresh_all_logs_action(): void
     {
+        Http::fake();
         $user = User::factory()->create();
         RssFeed::factory()->count(3)->for($user)->create();
         $this->actingAs($user)->post('/rss/feeds/refresh-all')->assertRedirect();

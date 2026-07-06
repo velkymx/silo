@@ -57,6 +57,15 @@ class RssFeed extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // Keep url_hash in lockstep with url so the (user_id, url_hash) unique
+        // index dedupes subscriptions regardless of how the feed was created.
+        static::saving(function (RssFeed $feed) {
+            $feed->url_hash = sha1((string) $feed->url);
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

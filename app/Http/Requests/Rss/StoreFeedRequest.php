@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Rss;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreFeedRequest extends FormRequest
 {
@@ -18,7 +19,10 @@ class StoreFeedRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:120'],
-            'url' => ['required', 'url:http,https', 'max:2048'],
+            'url' => [
+                'required', 'url:http,https', 'max:2048',
+                Rule::unique('rss_feeds', 'url')->where('user_id', $this->user()->id),
+            ],
             'folder' => ['nullable', 'string', 'max:60'],
             'enabled' => ['boolean'],
             'refresh_interval_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],

@@ -19,7 +19,7 @@ class RssFeedFactory extends Factory
         return [
             'user_id' => User::factory(),
             'title' => fake()->unique()->words(2, true),
-            'url' => fake()->url(),
+            'url' => fake()->unique()->url(),
             'site_url' => fake()->url(),
             'description' => fake()->sentence(),
             'enabled' => true,

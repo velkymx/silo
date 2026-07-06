@@ -36,6 +36,38 @@ class FeedManagementTest extends TestCase
         $this->assertSame(120, (int) $feed->refresh_interval_minutes);
     }
 
+    public function test_cannot_subscribe_to_the_same_url_twice(): void
+    {
+        $user = User::factory()->create();
+        RssFeed::factory()->for($user)->create(['url' => 'https://example.com/feed.xml']);
+
+        $this->actingAs($user)
+            ->post('/rss/feeds', [
+                'title' => 'Dupe',
+                'url' => 'https://example.com/feed.xml',
+            ])
+            ->assertSessionHasErrors('url');
+
+        $this->assertSame(1, RssFeed::where('user_id', $user->id)->count());
+    }
+
+    public function test_different_users_may_share_a_feed_url(): void
+    {
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        RssFeed::factory()->for($a)->create(['url' => 'https://example.com/feed.xml']);
+
+        $this->actingAs($b)
+            ->post('/rss/feeds', [
+                'title' => 'Mine too',
+                'url' => 'https://example.com/feed.xml',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertSame(1, RssFeed::where('user_id', $b->id)->count());
+    }
+
     public function test_index_payload_carries_refresh_interval_for_the_edit_modal(): void
     {
         $user = User::factory()->create();
