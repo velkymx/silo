@@ -67,6 +67,42 @@ XML;
         $this->assertSame('World', $out['entries'][0]['excerpt']);
     }
 
+    public function test_parses_rss_1_rdf_feed(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://example.com">
+    <title>RDF Feed</title>
+    <link>https://example.com</link>
+  </channel>
+  <item rdf:about="https://example.com/post-1">
+    <title>RDF Post</title>
+    <link>https://example.com/post-1</link>
+    <description>Summary here</description>
+    <dc:creator>Ada</dc:creator>
+    <dc:date>2026-07-06T09:00:00Z</dc:date>
+  </item>
+</rdf:RDF>
+XML;
+
+        $parser = new Parser;
+        $out = $parser->parse($xml);
+
+        $this->assertSame('RDF Feed', $out['title']);
+        $this->assertSame('https://example.com', $out['site_url']);
+        $this->assertCount(1, $out['entries']);
+        $entry = $out['entries'][0];
+        $this->assertSame('RDF Post', $entry['title']);
+        $this->assertSame('https://example.com/post-1', $entry['guid']);
+        $this->assertSame('https://example.com/post-1', $entry['url']);
+        $this->assertSame('Ada', $entry['author']);
+        $this->assertSame('Summary here', $entry['excerpt']);
+        $this->assertNotNull($entry['published_at']);
+    }
+
     public function test_garbage_returns_empty(): void
     {
         $parser = new Parser;

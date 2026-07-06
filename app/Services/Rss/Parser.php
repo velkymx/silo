@@ -31,7 +31,50 @@ class Parser
 
         $root = $doc->getName();
 
-        return $root === 'rss' ? $this->parseRss($doc) : $this->parseAtom($doc);
+        return match ($root) {
+            'rss' => $this->parseRss($doc),
+            'RDF' => $this->parseRdf($doc),
+            default => $this->parseAtom($doc),
+        };
+    }
+
+    /**
+     * RSS 1.0 (RDF). Items are siblings of <channel> under the rdf:RDF root
+     * and live in the http://purl.org/rss/1.0/ namespace; dates/authors come
+     * from Dublin Core.
+     *
+     * @return array{title: ?string, site_url: ?string, entries: array<int, array<string, mixed>>}
+     */
+    private function parseRdf(SimpleXMLElement $doc): array
+    {
+        $rss1 = 'http://purl.org/rss/1.0/';
+        $root = $doc->children($rss1);
+        $channel = $root->channel ?? null;
+        $title = $channel ? trim((string) $channel->title) : null;
+        $siteUrl = $channel ? trim((string) $channel->link) : null;
+
+        $entries = [];
+        foreach ($root->item as $item) {
+            $content = $this->content($item->children('content', true)->encoded ?? null, $item->description ?? null);
+            $itemTitle = trim((string) ($item->title ?? ''));
+            $link = trim((string) ($item->link ?? ''));
+            $about = trim((string) ($item->attributes('rdf', true)['about'] ?? ''));
+            $date = (string) ($item->children('dc', true)->date ?? '');
+            $fingerprint = implode('|', [$itemTitle, $date, $content]);
+            $entries[] = [
+                'guid' => $this->guid($about !== '' ? $about : $link, $link, $fingerprint),
+                'title' => $itemTitle,
+                'url' => $link,
+                'content' => $content,
+                'excerpt' => $this->excerpt($item->description ?? null),
+                'author' => $this->authorRss($item),
+                'categories' => $this->categoriesRss($item),
+                'image_url' => $this->imageRss($item, $content),
+                'published_at' => $this->parseDate($date),
+            ];
+        }
+
+        return ['title' => $title ?: null, 'site_url' => $siteUrl ?: null, 'entries' => $entries];
     }
 
     /**
