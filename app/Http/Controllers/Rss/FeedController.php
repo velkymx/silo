@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Rss;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Rss\DiscoverFeedRequest;
+use App\Http\Requests\Rss\StoreFeedRequest;
+use App\Http\Requests\Rss\UpdateFeedRequest;
 use App\Jobs\Rss\RefreshFeed;
 use App\Models\RssFeed;
 use App\Models\RssItem;
@@ -124,21 +127,17 @@ class FeedController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreFeedRequest $request)
     {
-        Gate::authorize('create', RssFeed::class);
-        $data = $this->validateFeed($request);
-        $feed = RssFeed::create($data + ['user_id' => auth()->id()]);
+        $feed = RssFeed::create($request->validatedFeedAttributes() + ['user_id' => auth()->id()]);
         RefreshFeed::dispatch($feed->id);
 
         return back()->with('success', 'Feed added. Refreshing in the background…');
     }
 
-    public function update(Request $request, RssFeed $feed)
+    public function update(UpdateFeedRequest $request, RssFeed $feed)
     {
-        $this->authorize('update', $feed);
-        $data = $this->validateFeed($request, partial: true);
-        $feed->update($data);
+        $feed->update($request->validated());
 
         return back()->with('success', 'Feed updated.');
     }
@@ -156,13 +155,9 @@ class FeedController extends Controller
      * look for the first <link rel="alternate" type="application/rss+xml">
      * (or atom). Returns the resolved feed URL, or 422 if nothing found.
      */
-    public function discover(Request $request, FeedDiscovery $discovery): JsonResponse
+    public function discover(DiscoverFeedRequest $request, FeedDiscovery $discovery): JsonResponse
     {
-        $data = $request->validate([
-            'url' => ['required', 'string', 'url', 'max:2048'],
-        ]);
-
-        $found = $discovery->discover($data['url']);
+        $found = $discovery->discover($request->string('url')->toString());
         if (! $found) {
             return response()->json([
                 'message' => 'No feed link found on that page.',
@@ -172,7 +167,7 @@ class FeedController extends Controller
         return response()->json([
             'url' => $found->url,
             'title' => $found->title,
-            'source' => $data['url'],
+            'source' => $request->string('url')->toString(),
         ]);
     }
 
@@ -295,22 +290,6 @@ class FeedController extends Controller
             'feeds_count' => $feeds->count(),
             'per_feed' => $perFeed,
         ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validateFeed(Request $request, bool $partial = false): array
-    {
-        $required = $partial ? 'sometimes' : 'required';
-
-        return $request->validate([
-            'title' => $required.'|string|max:120',
-            'url' => $required.'|url|max:2048',
-            'folder' => 'nullable|string|max:60',
-            'enabled' => 'boolean',
-            'refresh_interval_minutes' => 'nullable|integer|min:5|max:1440',
-        ]) + ($partial ? [] : ['enabled' => $request->boolean('enabled', true), 'refresh_interval_minutes' => (int) $request->input('refresh_interval_minutes', 60)]);
     }
 
     /**
