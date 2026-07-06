@@ -70,10 +70,13 @@ class FeedController extends Controller
                 });
             })
             ->orderByDesc('published_at')
-            ->limit(200)
-            ->get()
+            ->orderByDesc('id')
+            ->cursorPaginate(50);
+
+        $itemRows = collect($items->items())
             ->map(fn (RssItem $i) => $this->shapeItem($i))
             ->values();
+        $itemsNextCursor = $items->nextCursor()?->encode();
 
         $unreadTotal = RssItem::ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
@@ -85,7 +88,8 @@ class FeedController extends Controller
 
         return Inertia::render('Rss/Index', [
             'feeds' => $feeds,
-            'items' => $items,
+            'items' => $itemRows,
+            'itemsNextCursor' => $itemsNextCursor,
             'filters' => [
                 'filter' => $filter ?: null,
                 'feed' => $feedId ?: null,

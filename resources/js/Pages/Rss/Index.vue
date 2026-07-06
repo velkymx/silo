@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import EmptyState from '../../Components/EmptyState.vue';
@@ -82,6 +82,7 @@ async function detectFeed(): Promise<void> {
 const props = defineProps<{
     feeds: Feed[];
     items: Item[];
+    itemsNextCursor?: string | null;
     filters: { filter: string | null; feed: number | null; search: string | null; show_muted: boolean };
     counts: { unread: number; starred: number; feeds: number; muted: number };
     automationEnabled: boolean;
@@ -94,6 +95,44 @@ const { loading } = usePageLoading();
 const activePane = ref<'folders' | 'contents' | 'detail'>('contents');
 const selectedFeedId = ref<number | null>(props.filters.feed ?? null);
 const selectedItemId = ref<number | null>(null);
+
+// Load-more: keep a local copy of items so successive pages append to the
+// same list rather than replace it. itemsNextCursor comes from the server
+// as a string when more pages are available, null when exhausted.
+const displayedItems = ref<Item[]>([...props.items]);
+const currentCursor = ref<string | null>(props.itemsNextCursor ?? null);
+const loadingMore = ref(false);
+watch(() => props.items, (next) => {
+    // Server pushed a fresh page (e.g. search changed) — reset the list.
+    displayedItems.value = [...next];
+    currentCursor.value = props.itemsNextCursor ?? null;
+}, { flush: 'post' });
+
+async function loadMore(): Promise<void> {
+    if (!currentCursor.value || loadingMore.value) return;
+    loadingMore.value = true;
+    try {
+        const params: Record<string, string | number> = { cursor: currentCursor.value };
+        if (props.filters.filter) params.filter = props.filters.filter;
+        if (props.filters.feed) params.feed = props.filters.feed;
+        if (props.filters.search) params.search = props.filters.search;
+        if (props.filters.show_muted) params.show_muted = 1;
+        await router.get('/rss', params, {
+            only: ['items', 'itemsNextCursor'],
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const incoming = (page.props.items as Item[]) ?? [];
+                const known = new Set(displayedItems.value.map((i) => i.id));
+                for (const it of incoming) {
+                    if (!known.has(it.id)) displayedItems.value.push(it);
+                }
+            },
+        });
+    } finally {
+        loadingMore.value = false;
+    }
+}
 const showAddFeed = ref(false);
 const showEditFeed = ref(false);
 const editingFeed = ref<Feed | null>(null);
@@ -117,7 +156,7 @@ function toggleShowMuted(): void {
 }
 
 const filteredItems = computed(() => {
-    let list = props.items;
+    let list = displayedItems.value;
     if (selectedFeedId.value !== null) {
         list = list.filter((i) => i.feed_id === selectedFeedId.value);
     }
@@ -370,6 +409,12 @@ function submitEdit(): void {
                     @click="selectItem(item.id)"
                     @toggle-star="toggleStar(item)"
                 />
+                <div v-if="currentCursor" class="text-center my-3">
+                    <VibeButton variant="secondary" outline :disabled="loadingMore" @click="loadMore">
+                        <VibeSpinner v-if="loadingMore" size="sm" class="me-1" />
+                        Load more
+                    </VibeButton>
+                </div>
             </div>
         </template>
 
