@@ -786,7 +786,14 @@ onBeforeUnmount(() => {
                 >
                     <VibeIcon icon="bookmark-star-fill" class="me-2 text-primary" />
                     <span class="text-truncate flex-grow-1">{{ s.name }}</span>
-                    <VibeIcon icon="x" class="del-btn text-muted" title="Remove" @click.stop="deleteSavedSearch(s)" />
+                    <!-- Real button: click listeners on a bare VibeIcon never fire. -->
+                    <button
+                        type="button"
+                        class="del-btn border-0 bg-transparent p-0 text-muted"
+                        :aria-label="`Remove smart folder ${s.name}`"
+                        title="Remove"
+                        @click.stop="deleteSavedSearch(s)"
+                    ><VibeIcon icon="x" /></button>
                 </div>
             </template>
 

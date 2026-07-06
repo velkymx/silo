@@ -53,11 +53,18 @@ function applyAdvanced(): void {
 }
 
 async function saveSmartFolder(): Promise<void> {
+    // Capture the form first, then close this modal BEFORE prompting: two
+    // open VibeModals inert each other (and share a z-index), leaving the
+    // prompt unclickable. Cancelling reopens the search form.
+    const savedParams = params();
+    open.value = false;
     const name = await prompt({ title: 'Save smart folder', message: 'Name this smart folder:', placeholder: 'My Smart Folder', confirmLabel: 'Save' });
-    if (!name) return;
-    router.post('/saved-searches', { name, params: params() }, {
+    if (!name) {
+        open.value = true;
+        return;
+    }
+    router.post('/saved-searches', { name, params: savedParams }, {
         preserveScroll: true,
-        onSuccess: () => { open.value = false; },
     });
 }
 </script>
