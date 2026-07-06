@@ -61,6 +61,7 @@ class FeedController extends Controller
             ->when($filter === 'today', fn ($q) => $q->where('published_at', '>=', now()->startOfDay()))
             ->when($filter === 'week', fn ($q) => $q->where('published_at', '>=', now()->subDays(7)))
             ->when($filter === 'recent', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))
+            ->when($filter === 'read', fn ($q) => $q->where('is_read', true)->where('read_at', '>=', now()->subDays(7)))
             ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($w) use ($search) {
@@ -95,6 +96,11 @@ class FeedController extends Controller
             ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
             ->where('created_at', '>=', now()->subDays(7))
             ->count();
+        $readRecentCount = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->where('is_read', true)
+            ->where('read_at', '>=', now()->subDays(7))
+            ->count();
         $mutedCount = RssFeed::ownedBy($userId)->muted()->count();
         $automationEnabled = (bool) Setting::get('rss.automation_enabled', true);
 
@@ -114,6 +120,7 @@ class FeedController extends Controller
                 'today' => $todayCount,
                 'week' => $weekCount,
                 'recent' => $recentCount,
+                'read_recent' => $readRecentCount,
                 'feeds' => $feeds->count(),
                 'muted' => $mutedCount,
             ],

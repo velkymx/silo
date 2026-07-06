@@ -100,7 +100,7 @@ const props = defineProps<{
     items: Item[];
     itemsNextCursor?: string | null;
     filters: { filter: string | null; feed: number | null; search: string | null; show_muted: boolean };
-    counts: { unread: number; starred: number; today: number; week: number; recent: number; feeds: number; muted: number };
+    counts: { unread: number; starred: number; today: number; week: number; recent: number; read_recent: number; feeds: number; muted: number };
     automationEnabled: boolean;
 }>();
 
@@ -384,6 +384,16 @@ function submitEdit(): void {
                     <VibeIcon icon="clock-history" class="text-primary" />
                     <span class="flex-grow-1">Recently added</span>
                     <span v-if="counts.recent" class="badge text-bg-light">{{ counts.recent }}</span>
+                </button>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'read' }"
+                    @click="selectFeed(null); router.get('/rss', { filter: 'read' }, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="check2-circle" class="text-primary" />
+                    <span class="flex-grow-1">Recently read</span>
+                    <span v-if="counts.read_recent" class="badge text-bg-light">{{ counts.read_recent }}</span>
                 </button>
                 <hr class="my-2">
                 <div v-for="[folder, feeds] in grouped" :key="folder" class="mb-2">
