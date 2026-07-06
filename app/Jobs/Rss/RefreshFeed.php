@@ -181,7 +181,7 @@ class RefreshFeed implements ShouldBeUnique, ShouldQueue
                 continue;
             }
             try {
-                $item = RssItem::create([
+                $item = new RssItem([
                     'feed_id' => $feed->id,
                     'user_id' => $feed->user_id,
                     'guid' => $entry['guid'],
@@ -198,6 +198,11 @@ class RefreshFeed implements ShouldBeUnique, ShouldQueue
                     'url' => $entry['url'] !== '' ? $entry['url'] : ($feed->site_url ?? ''),
                     'published_at' => $entry['published_at'],
                 ]);
+                // Point the item at the already-loaded feed so the Scout
+                // index write (toSearchableArray reads feed->title) doesn't
+                // lazy-load the feed once per item.
+                $item->setRelation('feed', $feed);
+                $item->save();
             } catch (Throwable $e) {
                 Log::warning('rss.item.create.skipped', ['feed' => $feed->id, 'guid' => $entry['guid'], 'reason' => $e->getMessage()]);
 

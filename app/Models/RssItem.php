@@ -143,7 +143,9 @@ class RssItem extends Model
         }
         $this->is_read = true;
         $this->read_at = now();
-        $this->save();
+        // is_read/read_at are not indexed — skip the redundant Scout re-sync
+        // (which would also lazy-load the feed for toSearchableArray).
+        static::withoutSyncingToSearch(fn () => $this->save());
     }
 
     public function markUnread(): void
@@ -153,14 +155,14 @@ class RssItem extends Model
         }
         $this->is_read = false;
         $this->read_at = null;
-        $this->save();
+        static::withoutSyncingToSearch(fn () => $this->save());
     }
 
     public function toggleStar(): bool
     {
         $this->is_starred = ! $this->is_starred;
         $this->starred_at = $this->is_starred ? now() : null;
-        $this->save();
+        static::withoutSyncingToSearch(fn () => $this->save());
 
         return $this->is_starred;
     }
