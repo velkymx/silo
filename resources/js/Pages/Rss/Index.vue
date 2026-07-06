@@ -1,0 +1,356 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { Link, router, useForm } from '@inertiajs/vue3';
+import ShellLayout from '../../Layouts/ShellLayout.vue';
+import EmptyState from '../../Components/EmptyState.vue';
+import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import RssItemRow from '../../Components/Rss/RssItemRow.vue';
+import { useConfirm } from '../../composables/useConfirm';
+import { useToast } from '../../composables/useToast';
+import { usePageLoading } from '../../composables/usePageLoading';
+
+interface Feed {
+    id: number;
+    title: string;
+    folder: string | null;
+    enabled: boolean;
+    refresh_interval_minutes: number;
+    last_fetched_at: string | null;
+    last_error: string | null;
+    unread_count: number;
+}
+
+interface Item {
+    id: number;
+    feed_id: number;
+    feed_title: string | null;
+    feed_folder: string | null;
+    guid: string;
+    title: string;
+    excerpt: string | null;
+    author: string | null;
+    url: string;
+    published_at: string | null;
+    is_read: boolean;
+    is_starred: boolean;
+}
+
+const props = defineProps<{
+    feeds: Feed[];
+    items: Item[];
+    filters: { filter: string | null; feed: number | null; search: string | null };
+    counts: { unread: number; starred: number; feeds: number };
+    automationEnabled: boolean;
+}>();
+
+const { confirm } = useConfirm();
+const toast = useToast();
+const { loading } = usePageLoading();
+
+const activePane = ref<'folders' | 'contents' | 'detail'>('contents');
+const selectedFeedId = ref<number | null>(props.filters.feed ?? null);
+const selectedItemId = ref<number | null>(null);
+const showAddFeed = ref(false);
+const showEditFeed = ref(false);
+const editingFeed = ref<Feed | null>(null);
+const search = ref(props.filters.search ?? '');
+
+const grouped = computed(() => {
+    const map = new Map<string, Feed[]>();
+    for (const f of props.feeds) {
+        const key = f.folder || 'Uncategorized';
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(f);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+});
+
+const filteredItems = computed(() => {
+    let list = props.items;
+    if (selectedFeedId.value !== null) {
+        list = list.filter((i) => i.feed_id === selectedFeedId.value);
+    }
+    if (props.filters.filter === 'starred') {
+        list = list.filter((i) => i.is_starred);
+    } else if (props.filters.filter === 'unread') {
+        list = list.filter((i) => !i.is_read);
+    }
+    if (search.value.trim()) {
+        const q = search.value.trim().toLowerCase();
+        list = list.filter((i) => (i.title + ' ' + (i.excerpt ?? '')).toLowerCase().includes(q));
+    }
+    return list;
+});
+
+const selectedItem = computed(() => props.items.find((i) => i.id === selectedItemId.value) ?? null);
+const selectedFeed = computed(() => props.feeds.find((f) => f.id === selectedFeedId.value) ?? null);
+
+function selectFeed(id: number | null): void {
+    selectedFeedId.value = id;
+    activePane.value = 'contents';
+    router.get('/rss', id ? { feed: id } : {}, { preserveState: true, replace: true });
+}
+
+function selectItem(id: number): void {
+    selectedItemId.value = id;
+    activePane.value = 'detail';
+    const item = props.items.find((i) => i.id === id);
+    if (item && !item.is_read) {
+        router.post(`/rss/items/${id}/read`, {}, { preserveScroll: true, preserveState: true });
+    }
+}
+
+function toggleStar(item: Item): void {
+    router.post(`/rss/items/${item.id}/star`, {}, { preserveScroll: true, preserveState: true });
+}
+
+async function markAllRead(): Promise<void> {
+    if (!await confirm({ title: 'Mark all as read', message: 'Mark every visible item as read?', confirmLabel: 'Mark all' })) return;
+    const payload: Record<string, number> = {};
+    if (selectedFeedId.value) payload.feed = selectedFeedId.value;
+    router.post('/rss/items/mark-all-read', payload, { preserveScroll: true });
+    toast.push('Marked as read', { variant: 'success' });
+}
+
+async function refreshAll(): Promise<void> {
+    if (!await confirm({ title: 'Refresh feeds', message: 'Queue a refresh for every enabled feed?', confirmLabel: 'Refresh' })) return;
+    router.post('/rss/feeds/refresh-all', {}, { preserveScroll: true });
+    toast.push('Refreshing feeds in the background…', { variant: 'info' });
+}
+
+const feedMenu = [
+    { text: 'Refresh', action: 'refresh', icon: 'arrow-repeat' },
+    { text: 'Edit', action: 'edit', icon: 'pencil' },
+    { divider: true },
+    { text: 'Delete', action: 'delete', icon: 'trash' },
+];
+function onFeedMenu(feed: Feed, { item }: { item: { action?: string } }): void {
+    if (item.action === 'refresh') refreshOne(feed);
+    if (item.action === 'edit') openEdit(feed);
+    if (item.action === 'delete') deleteFeed(feed);
+}
+
+function refreshOne(feed: Feed): void {
+    router.post(`/rss/feeds/${feed.id}/refresh`, {}, { preserveScroll: true });
+    toast.push(`Refreshing “${feed.title}”…`, { variant: 'info' });
+}
+
+async function deleteFeed(feed: Feed): Promise<void> {
+    if (!await confirm({ title: 'Delete feed', message: `Delete “${feed.title}” and all its items?`, confirmLabel: 'Delete', variant: 'danger' })) return;
+    router.delete(`/rss/feeds/${feed.id}`, { preserveScroll: true });
+    toast.push(`Feed “${feed.title}” deleted`, { variant: 'danger' });
+}
+
+const addForm = useForm({ title: '', url: '', folder: '', refresh_interval_minutes: 60, enabled: true });
+function openAdd(): void {
+    addForm.reset();
+    addForm.clearErrors();
+    showAddFeed.value = true;
+}
+function submitAdd(): void {
+    addForm.post('/rss/feeds', { preserveScroll: true, onSuccess: () => { showAddFeed.value = false; } });
+}
+
+const editForm = useForm({ title: '', folder: '', refresh_interval_minutes: 60, enabled: true });
+function openEdit(feed: Feed): void {
+    editingFeed.value = feed;
+    editForm.title = feed.title;
+    editForm.folder = feed.folder ?? '';
+    editForm.refresh_interval_minutes = feed.refresh_interval_minutes;
+    editForm.enabled = feed.enabled;
+    editForm.clearErrors();
+    showEditFeed.value = true;
+}
+function submitEdit(): void {
+    if (!editingFeed.value) return;
+    editForm.patch(`/rss/feeds/${editingFeed.value.id}`, { preserveScroll: true, onSuccess: () => { showEditFeed.value = false; } });
+}
+</script>
+
+<template>
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedItem" :folders-visible="true">
+        <template #viewNav>
+            <div class="px-2 py-2 d-flex flex-column gap-1">
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: selectedFeedId === null && !filters.filter }"
+                    @click="selectFeed(null); router.get('/rss', {}, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="inbox-fill" class="text-primary" />
+                    <span class="flex-grow-1">Inbox</span>
+                    <span v-if="counts.unread" class="badge text-bg-light">{{ counts.unread }}</span>
+                </button>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'starred' }"
+                    @click="selectFeed(null); router.get('/rss', { filter: 'starred' }, { preserveState: true, replace: true })"
+                >
+                    <VibeIcon icon="star-fill" class="text-warning" />
+                    <span class="flex-grow-1">Starred</span>
+                    <span class="badge text-bg-light">{{ counts.starred }}</span>
+                </button>
+                <hr class="my-2">
+                <div v-for="[folder, feeds] in grouped" :key="folder" class="mb-2">
+                    <div class="text-uppercase small text-muted px-2 mb-1">{{ folder }}</div>
+                    <div
+                        v-for="feed in feeds"
+                        :key="feed.id"
+                        class="side-row w-100 d-flex align-items-center gap-2 px-2 py-1 rounded"
+                        :class="{ active: selectedFeedId === feed.id }"
+                    >
+                        <button
+                            type="button"
+                            class="flex-grow-1 d-flex align-items-center gap-2 text-start border-0 bg-transparent p-0 text-truncate"
+                            @click="selectFeed(feed.id)"
+                        >
+                            <VibeIcon :icon="feed.enabled ? 'rss-fill' : 'rss'" :class="feed.enabled ? 'text-warning' : 'text-muted'" />
+                            <span class="flex-grow-1 text-truncate" :title="feed.title">{{ feed.title }}</span>
+                        </button>
+                        <span v-if="feed.unread_count > 0" class="badge text-bg-light">{{ feed.unread_count }}</span>
+                        <VibeDropdown size="sm" variant="light" menu-end title="Feed actions" :items="feedMenu" @click.stop @item-click="onFeedMenu(feed, $event)">
+                            <template #button><VibeIcon icon="three-dots" /><span class="visually-hidden">Feed actions</span></template>
+                            <template #item="{ item }">
+                                <VibeIcon :icon="item.icon" class="me-2" :class="item.action === 'delete' ? 'text-danger' : ''" /><span :class="item.action === 'delete' ? 'text-danger' : ''">{{ item.text }}</span>
+                            </template>
+                        </VibeDropdown>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template #topBar>
+            <div class="d-flex align-items-center gap-2 p-2">
+                <h1 class="h5 mb-0 d-flex align-items-center gap-2">
+                    <VibeIcon icon="rss-fill" class="text-warning" />
+                    <span>{{ selectedFeed ? selectedFeed.title : (filters.filter === 'starred' ? 'Starred' : 'Inbox') }}</span>
+                </h1>
+                <VibeFormInput v-model="search" type="search" placeholder="Search articles…" class="ms-3 flex-grow-1" style="max-width: 320px" no-wrapper />
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <VibeButton variant="light" size="sm" :title="`${counts.unread} unread`" :disabled="counts.unread === 0" @click="markAllRead">
+                        <VibeIcon icon="check2-all" class="me-1" />Mark all read
+                    </VibeButton>
+                    <VibeButton variant="light" size="sm" title="Refresh all feeds" @click="refreshAll">
+                        <VibeIcon icon="arrow-repeat" />
+                    </VibeButton>
+                    <VibeButton size="sm" variant="primary" @click="openAdd">
+                        <VibeIcon icon="plus-lg" class="me-1" />Add feed
+                    </VibeButton>
+                </div>
+            </div>
+        </template>
+
+        <template #contents>
+            <LoadingSkeleton v-if="loading" :rows="6" :cols="1" />
+            <div v-else class="rss-list overflow-auto flex-grow-1 px-2 pt-2">
+                <EmptyState v-if="filteredItems.length === 0" icon="rss" title="Nothing in the inbox" hint="Add a feed to start ingesting." />
+                <RssItemRow
+                    v-for="item in filteredItems"
+                    :key="item.id"
+                    :item="item"
+                    :selected="item.id === selectedItemId"
+                    @click="selectItem(item.id)"
+                    @toggle-star="toggleStar(item)"
+                />
+            </div>
+        </template>
+
+        <template #detail>
+            <div v-if="selectedItem" class="rss-detail h-100 d-flex flex-column p-3 overflow-auto">
+                <div class="d-flex align-items-start gap-2 mb-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <a :href="selectedItem.url" target="_blank" rel="noopener" class="h5 text-break d-block mb-1">{{ selectedItem.title }}</a>
+                        <div class="small text-muted">
+                            <VibeIcon icon="rss-fill" class="me-1 text-warning" />{{ selectedItem.feed_title }}
+                            <template v-if="selectedItem.author"> · {{ selectedItem.author }}</template>
+                            <template v-if="selectedItem.published_at"> · {{ new Date(selectedItem.published_at).toLocaleString() }}</template>
+                        </div>
+                    </div>
+                    <VibeButton variant="link" size="sm" :title="selectedItem.is_starred ? 'Unstar' : 'Star'" @click="toggleStar(selectedItem)">
+                        <VibeIcon :icon="selectedItem.is_starred ? 'star-fill' : 'star'" :class="selectedItem.is_starred ? 'text-warning' : 'text-muted'" />
+                    </VibeButton>
+                </div>
+                <a :href="selectedItem.url" target="_blank" rel="noopener" class="text-break small text-muted d-block mb-3">{{ selectedItem.url }}</a>
+                <div v-if="selectedItem.excerpt" class="rss-excerpt mb-3">{{ selectedItem.excerpt }}</div>
+                <div class="mt-auto d-flex gap-2">
+                    <VibeButton :href="selectedItem.url" target="_blank" rel="noopener" variant="primary">
+                        <VibeIcon icon="box-arrow-up-right" class="me-1" />Open original
+                    </VibeButton>
+                    <Link v-if="selectedItem" :href="`/rss/items/${selectedItem.id}`" class="btn btn-secondary">
+                        <VibeIcon icon="arrows-fullscreen" class="me-1" />Full view
+                    </Link>
+                </div>
+            </div>
+        </template>
+    </ShellLayout>
+
+    <VibeModal v-model="showAddFeed" title="Add RSS feed" centered>
+        <form @submit.prevent="submitAdd">
+            <VibeFormGroup label="Title" :error="addForm.errors.title">
+                <VibeFormInput v-model="addForm.title" placeholder="Laravel News" required />
+            </VibeFormGroup>
+            <VibeFormGroup label="Feed URL" :error="addForm.errors.url" help-text="Paste the RSS/Atom URL.">
+                <VibeFormInput v-model="addForm.url" type="url" placeholder="https://…" required />
+            </VibeFormGroup>
+            <VibeFormGroup label="Folder" :error="addForm.errors.folder" help-text="Optional grouping (e.g. 'Tech').">
+                <VibeFormInput v-model="addForm.folder" placeholder="Tech" />
+            </VibeFormGroup>
+            <VibeFormGroup label="Refresh interval (minutes)" :error="addForm.errors.refresh_interval_minutes">
+                <VibeFormInput v-model="addForm.refresh_interval_minutes" type="number" min="5" max="1440" />
+            </VibeFormGroup>
+            <VibeFormCheckbox v-model="addForm.enabled">Enabled</VibeFormCheckbox>
+        </form>
+        <template #footer>
+            <VibeButton variant="secondary" outline @click="showAddFeed = false">Cancel</VibeButton>
+            <VibeButton variant="primary" :disabled="addForm.processing" @click="submitAdd">
+                <VibeIcon icon="plus-lg" class="me-1" />Add feed
+            </VibeButton>
+        </template>
+    </VibeModal>
+
+    <VibeModal v-model="showEditFeed" :title="`Edit “${editingFeed?.title}”`" centered>
+        <form @submit.prevent="submitEdit">
+            <VibeFormGroup label="Title" :error="editForm.errors.title">
+                <VibeFormInput v-model="editForm.title" required />
+            </VibeFormGroup>
+            <VibeFormGroup label="Folder" :error="editForm.errors.folder">
+                <VibeFormInput v-model="editForm.folder" />
+            </VibeFormGroup>
+            <VibeFormGroup label="Refresh interval (minutes)" :error="editForm.errors.refresh_interval_minutes">
+                <VibeFormInput v-model="editForm.refresh_interval_minutes" type="number" min="5" max="1440" />
+            </VibeFormGroup>
+            <VibeFormCheckbox v-model="editForm.enabled">Enabled</VibeFormCheckbox>
+        </form>
+        <template #footer>
+            <VibeButton variant="secondary" outline @click="showEditFeed = false">Cancel</VibeButton>
+            <VibeButton variant="primary" :disabled="editForm.processing" @click="submitEdit">Save</VibeButton>
+        </template>
+    </VibeModal>
+</template>
+
+<style scoped>
+.side-row {
+    color: var(--bs-body-color);
+}
+.side-row:hover {
+    background: rgba(99, 102, 241, 0.08);
+}
+.side-row.active {
+    background: rgba(99, 102, 241, 0.14);
+    color: var(--bs-primary);
+    font-weight: 500;
+}
+.rss-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.rss-detail {
+    background: var(--bs-body-bg);
+}
+.rss-excerpt {
+    line-height: 1.55;
+    color: var(--bs-body-color);
+}
+</style>

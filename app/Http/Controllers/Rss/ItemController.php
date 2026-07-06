@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Http\Controllers\Rss;
+
+use App\Automation\EventDispatcher;
+use App\Http\Controllers\Controller;
+use App\Models\RssItem;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+
+class ItemController extends Controller
+{
+    public function show(RssItem $item)
+    {
+        $this->authorize('view', $item);
+        $item->load('feed:id,title,folder,site_url');
+
+        return Inertia::render('Rss/Show', [
+            'item' => $this->shapeFull($item),
+            'related' => $this->shapeRelated($item),
+        ]);
+    }
+
+    public function markRead(RssItem $item, Request $request, EventDispatcher $events)
+    {
+        $this->authorize('update', $item);
+        if (! $item->is_read) {
+            $item->markRead();
+            $events->dispatch('rss.item.read', $item->user_id, [
+                'item_id' => $item->id,
+                'feed_id' => $item->feed_id,
+                'title' => $item->title,
+                'url' => $item->url,
+                'read_at' => $item->read_at?->toIso8601String(),
+            ], "rss.item.read@1:item:{$item->id}:".$item->read_at?->timestamp);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'is_read' => true]);
+        }
+
+        return back();
+    }
+
+    public function toggleStar(RssItem $item, EventDispatcher $events)
+    {
+        $this->authorize('update', $item);
+        $starred = $item->toggleStar();
+        $events->dispatch('rss.item.starred', $item->user_id, [
+            'item_id' => $item->id,
+            'feed_id' => $item->feed_id,
+            'title' => $item->title,
+            'url' => $item->url,
+            'starred' => $starred,
+            'starred_at' => $item->starred_at?->toIso8601String(),
+        ], "rss.item.starred@1:item:{$item->id}:".$item->starred_at?->timestamp);
+
+        return back();
+    }
+
+    public function markAllRead(Request $request, EventDispatcher $events)
+    {
+        $userId = auth()->id();
+        $feedId = $request->integer('feed');
+        $items = RssItem::ownedBy($userId)
+            ->unread()
+            ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
+            ->limit(500)
+            ->get();
+        $count = 0;
+        foreach ($items as $item) {
+            $item->markRead();
+            $count++;
+            $events->dispatch('rss.item.read', $item->user_id, [
+                'item_id' => $item->id,
+                'feed_id' => $item->feed_id,
+                'title' => $item->title,
+                'url' => $item->url,
+                'read_at' => $item->read_at?->toIso8601String(),
+                'phase' => 'bulk',
+            ], "rss.item.read@1:item:{$item->id}:".$item->read_at?->timestamp);
+        }
+
+        return back()->with('success', "Marked {$count} item(s) as read.");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function shapeFull(RssItem $item): array
+    {
+        return [
+            'id' => $item->id,
+            'feed_id' => $item->feed_id,
+            'feed_title' => $item->feed?->title,
+            'feed_site_url' => $item->feed?->site_url,
+            'guid' => $item->guid,
+            'title' => $item->title,
+            'content' => $item->content,
+            'excerpt' => $item->excerpt,
+            'author' => $item->author,
+            'url' => $item->url,
+            'published_at' => optional($item->published_at)->toIso8601String(),
+            'is_read' => (bool) $item->is_read,
+            'is_starred' => (bool) $item->is_starred,
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function shapeRelated(RssItem $item): array
+    {
+        return RssItem::ownedBy($item->user_id)
+            ->where('id', '!=', $item->id)
+            ->where('feed_id', $item->feed_id)
+            ->orderByDesc('published_at')
+            ->limit(10)
+            ->get()
+            ->map(fn (RssItem $i) => [
+                'id' => $i->id,
+                'title' => $i->title,
+                'published_at' => optional($i->published_at)->toIso8601String(),
+                'is_read' => (bool) $i->is_read,
+            ])
+            ->all();
+    }
+}

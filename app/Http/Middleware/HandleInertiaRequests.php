@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Notification;
+use App\Models\SavedSearch;
+use App\Services\QuotaService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -62,12 +65,22 @@ class HandleInertiaRequests extends Middleware
         // other endpoints that don't use AppLayout.
         if ($this->rendersSidebar($request)) {
             $base['storage'] = fn () => $request->user()
-                ? app(\App\Services\QuotaService::class)->summary($request->user()->id)
+                ? app(QuotaService::class)->summary($request->user()->id)
                 : null;
             $base['savedSearches'] = fn () => $request->user()
-                ? \App\Models\SavedSearch::where('owner_id', $request->user()->id)
+                ? SavedSearch::where('owner_id', $request->user()->id)
                     ->orderBy('name')->get(['id', 'name', 'params'])
                 : [];
+        }
+
+        if ($request->user()) {
+            $base['notifications'] = fn () => [
+                'unread_count' => Notification::ownedBy($request->user()->id)->unread()->count(),
+                'recent' => Notification::ownedBy($request->user()->id)
+                    ->orderByDesc('created_at')
+                    ->limit(5)
+                    ->get(['id', 'type', 'severity', 'title', 'url', 'read_at', 'created_at']),
+            ];
         }
 
         return $base;
@@ -84,8 +97,8 @@ class HandleInertiaRequests extends Middleware
             return false;
         }
         $sidebar = 'files.* photos.* bookmarks.* notes.* vault.* directory.* trash.* '
-            . 'shared.* admin.* profile.* storage.* break.*';
+            .'shared.* admin.* profile.* storage.* break.*';
+
         return $request->routeIs(...array_map('trim', explode(' ', $sidebar)));
     }
 }
-

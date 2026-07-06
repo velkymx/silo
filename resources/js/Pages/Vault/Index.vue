@@ -435,12 +435,12 @@ async function onImportFile(e) {
             <VibeFormGroup label="URL" :error="form.errors.url"><VibeFormInput v-model="form.url" placeholder="https://…" /></VibeFormGroup>
             <VibeFormGroup :label="editingId ? 'Secret (blank = keep current)' : 'Secret'" :error="form.errors.secret">
                 <div class="d-flex gap-2">
-                    <VibeFormInput v-model="form.secret" class="flex-grow-1" />
+                    <div class="flex-grow-1"><VibeFormInput v-model="form.secret" /></div>
                     <VibeButton variant="secondary" outline title="Generate" aria-label="Generate password" @click="generate"><VibeIcon icon="shuffle" /></VibeButton>
                 </div>
             </VibeFormGroup>
             <VibeFormGroup :label="editingId ? 'Notes (blank = keep current)' : 'Notes'" :error="form.errors.notes">
-                <VibeFormInput v-model="form.notes" type="textarea" rows="3" placeholder="Optional notes…" />
+                <VibeFormTextarea v-model="form.notes" :rows="3" placeholder="Optional notes…" />
             </VibeFormGroup>
             <VibeFormGroup label="Share with group" :error="form.errors.group_id">
                 <VibeFormSelect v-model="form.group_id">

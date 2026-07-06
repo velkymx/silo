@@ -30,5 +30,7 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->command?->info("Admin user ready: {$email}");
+
+        $this->call(WorkflowTemplateSeeder::class);
     }
 }

@@ -10,6 +10,7 @@ import ToastHost from '../Components/ToastHost.vue';
 import DialogHost from '../Components/DialogHost.vue';
 import CommandPalette from '../Components/CommandPalette.vue';
 import UserAvatar from '../Components/UserAvatar.vue';
+import NotificationBell from '../Components/NotificationBell.vue';
 import FourPane from '../Components/FourPane.vue';
 import GlobalRail from '../Components/GlobalRail.vue';
 
@@ -72,6 +73,7 @@ const props = withDefaults(
 // Shared storage meter, shown in the user menu (was the old sidebar footer).
 const storage = computed(() => (page.props.storage as { used: number; quota: number } | null) ?? null);
 const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => storage.value ?? { used: 0, quota: 0 }));
+const notifications = computed(() => (page.props.notifications as { unread_count: number; recent: Array<{ id: number; type: string; severity: string; title: string; url: string | null; read_at: string | null; created_at: string | null }> } | undefined) ?? { unread_count: 0, recent: [] });
 
 const userMenu = [
     { heading: 'Break Room' },
@@ -165,6 +167,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
             <VibeButton variant="light" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
                 <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
             </VibeButton>
+
+            <NotificationBell v-if="user" :notifications="notifications" />
 
             <VibeDropdown v-if="user" size="sm" variant="light" class="rounded-pill" menu-end :items="userMenu" @item-click="onUserMenu">
                 <template #button>
