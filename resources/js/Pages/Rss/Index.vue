@@ -209,7 +209,7 @@ function submitEdit(): void {
                             <span class="flex-grow-1 text-truncate" :title="feed.title">{{ feed.title }}</span>
                         </button>
                         <span v-if="feed.unread_count > 0" class="badge text-bg-light">{{ feed.unread_count }}</span>
-                        <VibeDropdown size="sm" variant="light" menu-end title="Feed actions" :items="feedMenu" @click.stop @item-click="onFeedMenu(feed, $event)">
+                        <VibeDropdown size="sm" variant="secondary" menu-end title="Feed actions" :items="feedMenu" @click.stop @item-click="onFeedMenu(feed, $event)">
                             <template #button><VibeIcon icon="three-dots" /><span class="visually-hidden">Feed actions</span></template>
                             <template #item="{ item }">
                                 <VibeIcon :icon="item.icon" class="me-2" :class="item.action === 'delete' ? 'text-danger' : ''" /><span :class="item.action === 'delete' ? 'text-danger' : ''">{{ item.text }}</span>
@@ -228,10 +228,10 @@ function submitEdit(): void {
                 </h1>
                 <VibeFormInput v-model="search" type="search" placeholder="Search articles…" class="ms-3 flex-grow-1" style="max-width: 320px" no-wrapper />
                 <div class="ms-auto d-flex align-items-center gap-2">
-                    <VibeButton variant="light" size="sm" :title="`${counts.unread} unread`" :disabled="counts.unread === 0" @click="markAllRead">
+                    <VibeButton variant="secondary" size="sm" :title="`${counts.unread} unread`" :disabled="counts.unread === 0" @click="markAllRead">
                         <VibeIcon icon="check2-all" class="me-1" />Mark all read
                     </VibeButton>
-                    <VibeButton variant="light" size="sm" title="Refresh all feeds" @click="refreshAll">
+                    <VibeButton variant="secondary" size="sm" title="Refresh all feeds" @click="refreshAll">
                         <VibeIcon icon="arrow-repeat" />
                     </VibeButton>
                     <VibeButton size="sm" variant="primary" @click="openAdd">

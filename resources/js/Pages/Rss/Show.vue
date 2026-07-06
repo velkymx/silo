@@ -41,14 +41,14 @@ import { ref } from 'vue';
     <ShellLayout v-model:active-pane="activePane" :detail-visible="false" :folders-visible="false">
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
-                <Link href="/rss" class="btn btn-light btn-sm">
+                <Link href="/rss" class="btn btn-secondary btn-sm">
                     <VibeIcon icon="chevron-left" class="me-1" />Back to inbox
                 </Link>
                 <div class="ms-auto d-flex align-items-center gap-2">
-                    <VibeButton size="sm" variant="light" @click="markRead" :disabled="item.is_read">
+                    <VibeButton size="sm" variant="secondary" @click="markRead" :disabled="item.is_read">
                         <VibeIcon icon="check2" class="me-1" />Mark read
                     </VibeButton>
-                    <VibeButton size="sm" variant="light" @click="toggleStar">
+                    <VibeButton size="sm" variant="secondary" @click="toggleStar">
                         <VibeIcon :icon="item.is_starred ? 'star-fill' : 'star'" :class="item.is_starred ? 'text-warning' : ''" class="me-1" />
                         {{ item.is_starred ? 'Starred' : 'Star' }}
                     </VibeButton>

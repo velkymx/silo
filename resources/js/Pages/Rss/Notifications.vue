@@ -42,7 +42,7 @@ function setFilter(f: string | null): void {
     <ShellLayout v-model:active-pane="activePane" :detail-visible="false" :folders-visible="false">
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
-                <Link href="/rss" class="btn btn-light btn-sm">
+                <Link href="/rss" class="btn btn-secondary btn-sm">
                     <VibeIcon icon="chevron-left" class="me-1" />Back
                 </Link>
                 <h1 class="h5 mb-0 ms-2 d-flex align-items-center gap-2">
@@ -58,7 +58,7 @@ function setFilter(f: string | null): void {
                     <VibeButton
                         v-if="unread"
                         size="sm"
-                        variant="light"
+                        variant="secondary"
                         @click="router.post('/rss/notifications/read-all', {}, { preserveScroll: true, preserveState: true })"
                     >
                         <VibeIcon icon="check2-all" class="me-1" />Mark all read
