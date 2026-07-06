@@ -47,18 +47,30 @@ class FaviconFetcher
         }
 
         $html = $this->tryFetchHtml($origin.'/');
+
+        // Try the discovered icon first (absolutized against the origin), then
+        // fall back to the well-known /favicon.ico if it is missing, unsafe,
+        // or fails to download.
+        $candidates = [];
         $discovered = $this->discover($html);
-        $iconUrl = $discovered !== null ? $this->absolutize($origin, $discovered) : null;
-        if ($iconUrl === null || ! $this->safeUrl->isSafe($iconUrl)) {
-            // Discovered icon missing/relative-unresolvable/unsafe — fall back
-            // to the well-known /favicon.ico on the origin.
-            $iconUrl = $origin.'/favicon.ico';
+        if ($discovered !== null && ($abs = $this->absolutize($origin, $discovered)) !== null) {
+            $candidates[] = $abs;
         }
-        if (! $this->safeUrl->isSafe($iconUrl)) {
-            return null;
+        $candidates[] = $origin.'/favicon.ico';
+
+        $bytes = null;
+        $iconUrl = null;
+        foreach (array_unique($candidates) as $candidate) {
+            if (! $this->safeUrl->isSafe($candidate)) {
+                continue;
+            }
+            $bytes = $this->download($candidate);
+            if ($bytes !== null) {
+                $iconUrl = $candidate;
+                break;
+            }
         }
-        $bytes = $this->download($iconUrl);
-        if ($bytes === null) {
+        if ($bytes === null || $iconUrl === null) {
             return null;
         }
 

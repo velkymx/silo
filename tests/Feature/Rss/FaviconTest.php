@@ -43,6 +43,33 @@ class FaviconTest extends TestCase
         $this->assertStringEndsWith('.ico', $path);
     }
 
+    public function test_fetcher_resolves_relative_discovered_href(): void
+    {
+        Http::fake([
+            'example.com/' => Http::response('<html><head><link rel="icon" href="/assets/icon.png"></head></html>', 200, ['Content-Type' => 'text/html']),
+            'example.com/assets/icon.png' => Http::response($this->pngBytes(), 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $path = (new \App\Services\Rss\FaviconFetcher)->fetch('https://example.com/blog');
+
+        $this->assertNotNull($path);
+        $this->assertStringEndsWith('.png', $path);
+    }
+
+    public function test_fetcher_falls_back_to_ico_when_discovered_icon_fails_to_download(): void
+    {
+        Http::fake([
+            'example.com/' => Http::response('<html><head><link rel="icon" href="/missing.png"></head></html>', 200, ['Content-Type' => 'text/html']),
+            'example.com/missing.png' => Http::response('', 404),
+            'example.com/favicon.ico' => Http::response("\x00\x00\x01\x00\x02\x00", 200, ['Content-Type' => 'image/x-icon']),
+        ]);
+
+        $path = (new \App\Services\Rss\FaviconFetcher)->fetch('https://example.com');
+
+        $this->assertNotNull($path, 'Should fall back to /favicon.ico when the discovered icon 404s');
+        $this->assertStringEndsWith('.ico', $path);
+    }
+
     public function test_fetcher_returns_null_on_non_http(): void
     {
         $this->assertNull((new \App\Services\Rss\FaviconFetcher)->fetch('not-a-url'));
