@@ -131,8 +131,12 @@ class RssFeed extends Model
             return false;
         }
         $this->muted_at = now();
+        $saved = $this->save();
+        if ($saved) {
+            $this->syncMutedItemsSearchable();
+        }
 
-        return $this->save();
+        return $saved;
     }
 
     public function unmute(): bool
@@ -141,7 +145,35 @@ class RssFeed extends Model
             return false;
         }
         $this->muted_at = null;
+        $saved = $this->save();
+        if ($saved) {
+            $this->syncMutedItemsSearchable();
+        }
 
-        return $this->save();
+        return $saved;
+    }
+
+    /**
+     * Re-sync the Scout search index for every item on this feed when
+     * the muted state changes. shouldBeSearchable() keys off
+     * feed->muted_at, but the Scout observer only fires on item save —
+     * so a feed muted long after the items were indexed keeps its
+     * items visible in /search until the next item save. chunkById keeps
+     * the in-flight index writes bounded for big feeds.
+     */
+    public function syncMutedItemsSearchable(): void
+    {
+        $this->items()->orderBy('id')->chunkById(200, function ($items) {
+            foreach ($items as $item) {
+                // Point the item at this in-memory feed so shouldBeSearchable()
+                // reads the just-saved muted state without an N+1 feed lookup.
+                $item->setRelation('feed', $this);
+                if ($item->shouldBeSearchable()) {
+                    $item->searchable();
+                } else {
+                    $item->unsearchable();
+                }
+            }
+        });
     }
 }
