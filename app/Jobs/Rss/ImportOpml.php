@@ -29,16 +29,41 @@ class ImportOpml implements ShouldQueue
 
     public int $timeout = 300;
 
+    /** Most feeds a single OPML import will create (fan-out guard). */
+    public const MAX_ENTRIES = 500;
+
+    /** Hard ceiling on how many feeds one user may accumulate. */
+    public const MAX_FEEDS_PER_USER = 2000;
+
     public function __construct(public int $userId, public string $opml) {}
 
     public function handle(OpmlParser $parser): void
     {
         $entries = $parser->parse($this->opml);
+        $parsedCount = count($entries);
+        if ($parsedCount > self::MAX_ENTRIES) {
+            $entries = array_slice($entries, 0, self::MAX_ENTRIES);
+            Log::warning('rss.opml.truncated', [
+                'user' => $this->userId,
+                'parsed' => $parsedCount,
+                'cap' => self::MAX_ENTRIES,
+            ]);
+        }
+
+        $feedCount = RssFeed::where('user_id', $this->userId)->count();
         $created = 0;
         $skipped = 0;
         $failed = 0;
 
         foreach ($entries as $entry) {
+            if ($feedCount >= self::MAX_FEEDS_PER_USER) {
+                Log::warning('rss.opml.user_feed_cap_reached', [
+                    'user' => $this->userId,
+                    'cap' => self::MAX_FEEDS_PER_USER,
+                ]);
+                break;
+            }
+
             $url = $entry['url'];
             if (! preg_match('#^https?://#i', $url)) {
                 $failed++;
@@ -66,6 +91,7 @@ class ImportOpml implements ShouldQueue
                 ]);
                 RefreshFeed::dispatch($feed->id);
                 $created++;
+                $feedCount++;
             } catch (Throwable $e) {
                 Log::warning('rss.opml.feed_create_failed', [
                     'user' => $this->userId,
@@ -78,7 +104,7 @@ class ImportOpml implements ShouldQueue
 
         Log::info('rss.opml.imported', [
             'user' => $this->userId,
-            'parsed' => count($entries),
+            'parsed' => $parsedCount,
             'created' => $created,
             'skipped' => $skipped,
             'failed' => $failed,

@@ -74,6 +74,22 @@ XML;
         $this->assertSame(1, RssFeed::where('user_id', $user->id)->count());
     }
 
+    public function test_import_caps_the_number_of_feeds_created(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $outlines = '';
+        for ($i = 0; $i < ImportOpml::MAX_ENTRIES + 25; $i++) {
+            $outlines .= '<outline type="rss" text="Feed '.$i.'" xmlUrl="https://example.com/feed'.$i.'.xml"/>';
+        }
+        $opml = '<?xml version="1.0"?><opml version="2.0"><body>'.$outlines.'</body></opml>';
+
+        (new ImportOpml($user->id, $opml))->handle(app(\App\Services\Rss\OpmlParser::class));
+
+        $this->assertSame(ImportOpml::MAX_ENTRIES, RssFeed::where('user_id', $user->id)->count());
+    }
+
     public function test_upload_requires_file(): void
     {
         $user = User::factory()->create();

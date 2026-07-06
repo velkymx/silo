@@ -17,7 +17,8 @@ class ImportOpmlRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'opml' => ['required', 'file', 'max:512', 'mimetypes:text/xml,application/xml,text/plain'],
+            // 5 MB, aligned with the OPML-by-URL cap in OpmlController.
+            'opml' => ['required', 'file', 'max:5120', 'mimetypes:text/xml,application/xml,text/plain'],
         ];
     }
 }
