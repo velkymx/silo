@@ -24,6 +24,12 @@ Schedule::command('files:reconcile')->everyTenMinutes();
 // never delays the next hour's sweep.
 Schedule::command('rss:refresh')->hourly();
 
+// Saved-search notifications: re-run every saved search every 15 min and
+// push a Notification row when the result count went up. First run after
+// saving is silent (it just snapshots the current count) so the user
+// doesn't get spammed the moment they save a query.
+Schedule::command('rss:dispatch-saved-searches')->everyFifteenMinutes();
+
 // Admin-configured automatic backups. The frequency lives in the settings table;
 // each cadence is registered and only fires when it matches the saved choice.
 // Cached so the per-minute scheduler tick doesn't hit the DB three times.
