@@ -33,7 +33,7 @@
         "@harbour-enterprises/superdoc": "^1.40.1",
         "@inertiajs/vue3": "^3.4.0",
         "@toast-ui/editor": "^3.2.2",
-        "@velkymx/vibeui": "^1.1.0",
+        "@velkymx/vibeui": "^1.1.1",
         "bootstrap-icons": "^1.13.1",
         "docx-preview": "^0.3.7",
         "dompurify": "^3.4.11",
