@@ -23,7 +23,19 @@ const form = useForm({
     location: props.user.location || '',
     bio: props.user.bio || '',
     start_date: props.user.start_date || '',
+    blocked_keywords: props.user.blocked_keywords ?? [],
 });
+
+const newKeyword = ref('');
+function addKeyword() {
+    const kw = newKeyword.value.trim();
+    if (!kw) return;
+    if (!form.blocked_keywords) form.blocked_keywords = [];
+    if (!form.blocked_keywords.includes(kw) && form.blocked_keywords.length < 50) {
+        form.blocked_keywords.push(kw);
+    }
+    newKeyword.value = '';
+}
 
 // Changing the email or password requires the current password.
 const needsCurrentPassword = computed(() => !!form.password || form.email !== props.user.email);
@@ -152,6 +164,21 @@ function applyCrop() {
 
                         <hr class="my-4">
                         <h2 class="h6 text-muted text-uppercase mb-3">Directory profile</h2>
+
+                        <VibeFormGroup label="Blocked keywords" help-text="Articles with these words in the title or excerpt are hidden from your RSS inbox. Comma or Enter to add.">
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <span v-for="(kw, i) in (form.blocked_keywords ?? [])" :key="kw + i" class="badge text-bg-secondary d-inline-flex align-items-center">
+                                    {{ kw }}
+                                    <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 0.5rem" :aria-label="`Remove ${kw}`" @click="form.blocked_keywords.splice(i, 1)"></button>
+                                </span>
+                            </div>
+                            <VibeFormInput
+                                v-model="newKeyword"
+                                placeholder="e.g. sponsored, crypto, clickbait"
+                                @keyup.enter="addKeyword"
+                            />
+                            <div class="small text-muted mt-1">Press Enter to add. Up to 50 keywords.</div>
+                        </VibeFormGroup>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <VibeFormGroup label="Job title"><VibeFormInput v-model="form.title" /></VibeFormGroup>

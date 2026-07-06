@@ -33,10 +33,10 @@ class FeedController extends Controller
         $search = trim((string) $request->string('search'));
         $feedId = $request->integer('feed');
         $showMuted = $request->boolean('show_muted');
+        $blocked = $request->user()?->blocked_keywords ?? [];
 
         $feedsQuery = RssFeed::ownedBy($userId)
-            ->when(! $showMuted, fn ($q) => $q->unmuted())
-            ->orderBy('folder')->orderBy('sort_order')->orderBy('title');
+            ->when(! $showMuted, fn ($q) => $q->unmuted());
 
         $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'favicon_path', 'refresh_interval_minutes', 'last_fetched_at', 'last_success_at', 'last_error', 'last_http_status', 'last_response_time_ms', 'consecutive_failures', 'etag', 'last_modified']);
 
@@ -73,6 +73,18 @@ class FeedController extends Controller
             ->inboxFilter($filter, $feedId, $search, $author, $exclude)
             ->when($filter === 'top_feeds' && $topFeedIds !== [], fn ($q) => $q->whereIn('feed_id', $topFeedIds))
             ->when($filter === 'top_feeds' && $topFeedIds === [], fn ($q) => $q->whereRaw('0 = 1'))
+            ->when($blocked !== [], function ($q) use ($blocked) {
+                $q->where(function ($w) use ($blocked) {
+                    foreach ($blocked as $kw) {
+                        $kw = trim((string) $kw);
+                        if ($kw === '') {
+                            continue;
+                        }
+                        $w->where('title', 'not like', "%{$kw}%")
+                            ->where('excerpt', 'not like', "%{$kw}%");
+                    }
+                });
+            })
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->cursorPaginate(50);

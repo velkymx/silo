@@ -24,7 +24,7 @@ class UserController extends Controller
 
         return Inertia::render('Profile/Edit', [
             'user' => array_merge(
-                $user->only('id', 'name', 'email', 'group_id', 'title', 'department', 'phone', 'location', 'bio'),
+                $user->only('id', 'name', 'email', 'group_id', 'title', 'department', 'phone', 'location', 'bio', 'blocked_keywords'),
                 [
                     'start_date' => $user->start_date?->format('Y-m-d'),
                     'avatar_url' => $user->avatar_path ? route('users.avatar', $user) : null,
@@ -89,7 +89,18 @@ class UserController extends Controller
             'location' => 'nullable|string|max:120',
             'bio' => 'nullable|string|max:2000',
             'start_date' => 'nullable|date',
+            'blocked_keywords' => 'nullable|array|max:50',
+            'blocked_keywords.*' => 'nullable|string|max:60',
         ]);
+
+        // Normalize the keyword list: trim, drop empties, dedupe, cap at 50.
+        $blockedKeywords = collect($request->input('blocked_keywords', []))
+            ->map(fn ($k) => trim((string) $k))
+            ->filter(fn ($k) => $k !== '')
+            ->unique()
+            ->take(50)
+            ->values()
+            ->all();
 
         // Update user details. Group membership is NOT self-assignable — only
         // admins set it (privilege escalation otherwise).
@@ -97,6 +108,7 @@ class UserController extends Controller
         $user->email = $request->email;
         $user->fill(collect($validated)
             ->only(['title', 'department', 'phone', 'location', 'bio', 'start_date'])->all());
+        $user->blocked_keywords = $blockedKeywords;
 
         // Update password if provided
         if ($request->filled('password')) {

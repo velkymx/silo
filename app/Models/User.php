@@ -29,6 +29,7 @@ class User extends Authenticatable
         'phone',
         'location',
         'bio',
+        'blocked_keywords',
         'start_date',
         'manager_id',
     ];
@@ -55,6 +56,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'start_date' => 'date',
+            'blocked_keywords' => 'array',
         ];
     }
 
