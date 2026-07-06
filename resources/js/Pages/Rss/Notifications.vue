@@ -2,6 +2,7 @@
 import { Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
+import { http } from '../../lib/http';
 
 interface Notification {
     id: number;
@@ -24,12 +25,24 @@ function severityBadge(s: string): string {
     return 'text-bg-primary';
 }
 
-function open(n: Notification): void {
+async function open(n: Notification): Promise<void> {
+    // When navigating away, mark read via fetch and await it first — a
+    // router.post here would be cancelled by the location change, leaving the
+    // notification unread.
+    if (n.url) {
+        if (!n.read_at) {
+            try {
+                await http.post(`/rss/notifications/${n.id}/read`);
+            } catch {
+                // non-fatal: proceed to the article regardless
+            }
+        }
+        window.location.href = n.url;
+        return;
+    }
+    // Staying on the page — use an Inertia visit so the unread count updates.
     if (!n.read_at) {
         router.post(`/rss/notifications/${n.id}/read`, {}, { preserveScroll: true, preserveState: true });
-    }
-    if (n.url) {
-        window.location.href = n.url;
     }
 }
 
