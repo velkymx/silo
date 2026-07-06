@@ -125,6 +125,8 @@ class FileController extends Controller
                     'title' => $i->title,
                     'excerpt' => $i->excerpt,
                     'author' => $i->author,
+                    'categories' => $i->categories ?? [],
+                    'image_url' => $i->image_url,
                     'url' => $i->url,
                     'published_at' => optional($i->published_at)->toIso8601String(),
                     'is_read' => (bool) $i->is_read,

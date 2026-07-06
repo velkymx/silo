@@ -111,6 +111,8 @@ class ItemController extends Controller
             'content' => $item->content,
             'excerpt' => $item->excerpt,
             'author' => $item->author,
+            'categories' => $item->categories ?? [],
+            'image_url' => $item->image_url,
             'url' => $item->url,
             'published_at' => optional($item->published_at)->toIso8601String(),
             'is_read' => (bool) $item->is_read,

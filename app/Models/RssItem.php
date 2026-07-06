@@ -27,6 +27,8 @@ class RssItem extends Model
         'content',
         'excerpt',
         'author',
+        'categories',
+        'image_url',
         'url',
         'published_at',
         'is_read',
@@ -43,6 +45,7 @@ class RssItem extends Model
             'published_at' => 'datetime',
             'read_at' => 'datetime',
             'starred_at' => 'datetime',
+            'categories' => 'array',
         ];
     }
 

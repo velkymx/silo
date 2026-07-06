@@ -128,6 +128,8 @@ class RefreshFeed implements ShouldQueue
                     'content' => $entry['content'] ?: null,
                     'excerpt' => $entry['excerpt'] ?: null,
                     'author' => $entry['author'],
+                    'categories' => $entry['categories'] ?? null,
+                    'image_url' => $entry['image_url'] ?? null,
                     'url' => $entry['url'] !== '' ? $entry['url'] : $feed->site_url,
                     'published_at' => $entry['published_at'],
                 ]);

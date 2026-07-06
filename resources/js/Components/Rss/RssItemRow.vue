@@ -9,6 +9,8 @@ interface Item {
     title: string;
     excerpt: string | null;
     author: string | null;
+    categories?: string[];
+    image_url?: string | null;
     url: string;
     published_at: string | null;
     is_read: boolean;
@@ -28,6 +30,8 @@ const when = computed(() => {
     if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
     return d.toLocaleDateString();
 });
+
+const cats = computed(() => (props.item.categories ?? []).filter((c) => c && c.trim() !== '').slice(0, 3));
 </script>
 
 <template>
@@ -38,12 +42,16 @@ const when = computed(() => {
         @click="emit('click')"
     >
         <div class="rss-row__dot mt-2 flex-shrink-0" :class="{ 'rss-row__dot--unread': !item.is_read }"></div>
+        <img v-if="item.image_url" :src="item.image_url" alt="" class="rss-row__thumb flex-shrink-0" loading="lazy" @error="($event.target as HTMLImageElement).style.display = 'none'">
         <div class="flex-grow-1 min-w-0">
             <div class="d-flex align-items-center gap-2">
                 <span class="fw-semibold text-truncate" :title="item.title">{{ item.title }}</span>
                 <VibeIcon v-if="item.is_starred" icon="star-fill" class="text-warning flex-shrink-0" />
             </div>
             <div v-if="item.excerpt" class="small text-muted text-truncate" :title="item.excerpt">{{ item.excerpt }}</div>
+            <div v-if="cats.length" class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                <span v-for="c in cats" :key="c" class="badge text-bg-light border">{{ c }}</span>
+            </div>
             <div class="small text-muted d-flex align-items-center gap-2 mt-1">
                 <span class="text-truncate" :title="item.feed_title ?? ''">
                     <VibeIcon icon="rss-fill" class="me-1 text-warning" />{{ item.feed_title }}
@@ -90,4 +98,12 @@ const when = computed(() => {
 .rss-row__dot--unread {
     background: var(--bs-primary);
 }
+.rss-row__thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--bs-tertiary-bg);
+}
 </style>
+
