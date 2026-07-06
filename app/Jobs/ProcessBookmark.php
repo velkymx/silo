@@ -2,11 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Rss\AdoptBookmarkFeed;
 use App\Models\Bookmark;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Browsershot\Browsershot;
 use Throwable;
 
 /**
@@ -56,6 +58,7 @@ class ProcessBookmark implements ShouldQueue
         }
         if ($feed = $this->detectFeed($bookmark->url, $response->body())) {
             $attributes['feed_url'] = $feed;
+            AdoptBookmarkFeed::dispatch($bookmark->id);
         }
         if ($shotPath = $this->screenshot($bookmark)) {
             $attributes['screenshot_path'] = $shotPath;
@@ -162,13 +165,13 @@ class ProcessBookmark implements ShouldQueue
      */
     private function screenshot(Bookmark $bookmark): ?string
     {
-        if (! config('bookmarks.screenshots.enabled') || ! class_exists(\Spatie\Browsershot\Browsershot::class)) {
+        if (! config('bookmarks.screenshots.enabled') || ! class_exists(Browsershot::class)) {
             return null;
         }
 
         $tmp = tempnam(sys_get_temp_dir(), 'bmshot_').'.png';
         try {
-            $shot = \Spatie\Browsershot\Browsershot::url($bookmark->url)
+            $shot = Browsershot::url($bookmark->url)
                 ->windowSize(config('bookmarks.screenshots.width', 1366), config('bookmarks.screenshots.height', 768))
                 ->setScreenshotType('png')
                 ->timeout(config('bookmarks.http_timeout', 8) + 12);

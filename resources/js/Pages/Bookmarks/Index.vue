@@ -176,6 +176,16 @@ function toggleStar(b) {
     router.post(`/bookmarks/${b.id}/star`, {}, { preserveScroll: true, preserveState: true });
 }
 
+const subscribing = ref(false);
+function subscribeFeed(b) {
+    subscribing.value = true;
+    router.post(`/bookmarks/${b.id}/subscribe`, {}, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`Subscribed to “${b.title}”`, { variant: 'success' }),
+        onFinish: () => { subscribing.value = false; },
+    });
+}
+
 const rowMenu = [
     { text: 'Edit', action: 'edit', icon: 'pencil' },
     { divider: true },
@@ -377,9 +387,15 @@ async function runMaintenance(action) {
                 <a :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="text-break d-block flex-shrink-0">
                     {{ selectedBookmark.url }}
                 </a>
-                <a v-if="selectedBookmark.feed_url" :href="selectedBookmark.feed_url" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mb-3 flex-shrink-0">
-                    <VibeIcon icon="rss-fill" class="text-warning me-1" />RSS feed
-                </a>
+                <div v-if="selectedBookmark.feed_url" class="d-flex align-items-center gap-2 mb-3 flex-shrink-0">
+                    <a :href="selectedBookmark.feed_url" target="_blank" rel="noopener" class="small text-decoration-none">
+                        <VibeIcon icon="rss-fill" class="text-warning me-1" />RSS feed
+                    </a>
+                    <VibeBadge v-if="selectedBookmark.feed_subscribed" variant="success" pill>Subscribed</VibeBadge>
+                    <VibeButton v-else variant="warning" size="sm" :disabled="subscribing" @click="subscribeFeed(selectedBookmark)">
+                        <VibeIcon icon="rss" class="me-1" />Subscribe
+                    </VibeButton>
+                </div>
                 <div v-else class="mb-3"></div>
                 <p v-if="selectedBookmark.description" class="text-body flex-shrink-0">{{ selectedBookmark.description }}</p>
 

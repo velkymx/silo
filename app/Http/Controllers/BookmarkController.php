@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBookmark;
+use App\Jobs\Rss\AdoptBookmarkFeed;
 use App\Models\Bookmark;
+use App\Models\RssFeed;
 use App\Services\Audit;
 use App\Services\BookmarkImporter;
 use App\Support\FileResponse;
@@ -34,8 +36,10 @@ class BookmarkController extends Controller
                 ->orderBy('sort_order')->orderBy('title')->get();
         }
 
+        $subscribedUrls = RssFeed::where('user_id', $userId)->pluck('url')->flip();
+
         return Inertia::render('Bookmarks/Index', [
-            'bookmarks' => $bookmarks->map(fn (Bookmark $b) => $this->shape($b, $userId))->values(),
+            'bookmarks' => $bookmarks->map(fn (Bookmark $b) => $this->shape($b, $userId, $subscribedUrls))->values(),
             'filters' => ['search' => $search ?: null],
             'screenshotsEnabled' => (bool) config('bookmarks.screenshots.enabled'),
         ]);
@@ -185,6 +189,23 @@ class BookmarkController extends Controller
         return back();
     }
 
+    /** Subscribe the current user's reader to the bookmark's detected feed. */
+    public function subscribeFeed(Bookmark $bookmark)
+    {
+        $this->authorize('view', $bookmark);
+
+        if (! $bookmark->feed_url) {
+            return back()->withErrors(['feed' => 'This bookmark has no detected RSS feed.']);
+        }
+
+        $userId = auth()->id();
+        $already = RssFeed::where('user_id', $userId)->where('url', $bookmark->feed_url)->exists();
+
+        AdoptBookmarkFeed::dispatchSync($bookmark->id, $userId);
+
+        return back()->with('success', $already ? 'Already subscribed to this feed.' : 'Subscribed. First fetch is running in the background…');
+    }
+
     /** Count a click and bounce to the target URL. */
     public function go(Bookmark $bookmark)
     {
@@ -256,7 +277,7 @@ class BookmarkController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function shape(Bookmark $bookmark, int $userId): array
+    private function shape(Bookmark $bookmark, int $userId, ?\Illuminate\Support\Collection $subscribedUrls = null): array
     {
         // A user-typed bootstrap icon name overrides imagery only when no blob exists.
         $iconName = $bookmark->icon && ! str_starts_with($bookmark->icon, 'http') ? $bookmark->icon : null;
@@ -273,6 +294,7 @@ class BookmarkController extends Controller
             'icon_url' => $iconUrl,
             'screenshot_url' => $this->screenshotUrl($bookmark),
             'feed_url' => $bookmark->feed_url,
+            'feed_subscribed' => $bookmark->feed_url && $subscribedUrls?->has($bookmark->feed_url) === true,
             'status' => $bookmark->status,
             'color' => $bookmark->color,
             'category' => $bookmark->category,
