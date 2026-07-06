@@ -166,7 +166,13 @@ class RefreshFeed implements ShouldBeUnique, ShouldQueue
         }
         $feed->update($attributes);
 
-        $existing = $feed->items()->pluck('guid')->all();
+        // Only look up guids present in this batch rather than the feed's
+        // entire item archive (which grows without bound). The unique
+        // (feed_id, guid) index is the backstop against a concurrent insert.
+        $parsedGuids = array_column($parsed['entries'], 'guid');
+        $existing = $parsedGuids === []
+            ? []
+            : $feed->items()->whereIn('guid', $parsedGuids)->pluck('guid')->all();
         $existingSet = array_flip($existing);
         $newCount = 0;
 
