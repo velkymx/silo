@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 interface Item {
     id: number;
@@ -26,6 +28,10 @@ interface Related {
 
 const props = defineProps<{ item: Item; related: Related[] }>();
 
+// Content is sanitized server-side on ingest; this is defense-in-depth so a
+// raw body can never reach the DOM even if an unsanitized row slips through.
+const safeContent = computed(() => (props.item.content ? sanitizeHtml(props.item.content) : ''));
+
 const activePane = ref('contents');
 function toggleStar(): void {
     router.post(`/rss/items/${props.item.id}/star`, {}, { preserveScroll: true, preserveState: true });
@@ -38,7 +44,6 @@ function markUnread(): void {
     if (!props.item.is_read) return;
     router.post(`/rss/items/${props.item.id}/unread`, {}, { preserveScroll: true, preserveState: true });
 }
-import { ref } from 'vue';
 </script>
 
 <template>
@@ -82,7 +87,7 @@ import { ref } from 'vue';
 
                 <div v-if="item.excerpt" class="lead text-muted mb-3">{{ item.excerpt }}</div>
 
-                <div v-if="item.content" class="rss-content" v-html="item.content"></div>
+                <div v-if="safeContent" class="rss-content" v-html="safeContent"></div>
                 <p v-else class="text-muted">No content provided by the feed.</p>
 
                 <hr class="my-4">

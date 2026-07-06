@@ -7,6 +7,7 @@ use App\Models\RssFeed;
 use App\Models\RssItem;
 use App\Services\Audit;
 use App\Services\Rss\FaviconFetcher;
+use App\Services\Rss\HtmlSanitizer;
 use App\Services\Rss\Parser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,7 +37,7 @@ class RefreshFeed implements ShouldQueue
 
     public function __construct(public int $feedId) {}
 
-    public function handle(Parser $parser, EventDispatcher $events, FaviconFetcher $favicons): void
+    public function handle(Parser $parser, EventDispatcher $events, FaviconFetcher $favicons, HtmlSanitizer $sanitizer): void
     {
         $feed = RssFeed::find($this->feedId);
         if (! $feed || ! $feed->enabled || $feed->isMuted()) {
@@ -159,7 +160,7 @@ class RefreshFeed implements ShouldQueue
                     'user_id' => $feed->user_id,
                     'guid' => $entry['guid'],
                     'title' => $entry['title'] !== '' ? $entry['title'] : '(untitled)',
-                    'content' => $entry['content'] ?: null,
+                    'content' => $sanitizer->clean($entry['content'] ?: null),
                     'excerpt' => $entry['excerpt'] ?: null,
                     'author' => $entry['author'],
                     'categories' => $entry['categories'] ?? null,
