@@ -95,6 +95,10 @@ class RefreshFeed implements ShouldBeUnique, ShouldQueue
                 ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
                 ->get($feed->url);
         } catch (ConnectionException $e) {
+            // Deliberately swallowed rather than rethrown: a connection failure
+            // (DNS/timeout/refused) means the host is down, so retrying 3× with
+            // backoff would just hammer a dead endpoint. The hourly scheduler is
+            // the retry mechanism — record the failure and wait for the next tick.
             $feed->increment('consecutive_failures', 1, [
                 'last_error' => 'connection: '.$e->getMessage(),
                 'last_http_status' => null,
