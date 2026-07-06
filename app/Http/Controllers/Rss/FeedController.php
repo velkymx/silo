@@ -14,6 +14,7 @@ use App\Models\RssItem;
 use App\Models\RssRefreshLog;
 use App\Models\Setting;
 use App\Services\Audit;
+use App\Services\Rss\BooleanSearchParser;
 use App\Services\Rss\FeedDiscovery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -73,7 +74,10 @@ class FeedController extends Controller
         $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->unmuted())
-            ->inboxFilter($filter, $feedId, $search, $author, $exclude)
+            ->inboxFilter($filter, $feedId, $author, $exclude)
+            ->when($search !== '', function ($q) use ($search) {
+                app(BooleanSearchParser::class)->apply($q, $search);
+            })
             ->when($feedIdsParam !== [], fn ($q) => $q->whereIn('feed_id', $feedIdsParam))
             ->when($filter === 'top_feeds' && $topFeedIds !== [], fn ($q) => $q->whereIn('feed_id', $topFeedIds))
             ->when($filter === 'top_feeds' && $topFeedIds === [], fn ($q) => $q->whereRaw('0 = 1'))
