@@ -27,6 +27,7 @@ const mainNav = computed<NavItem[]>(() => [
     { key: 'recent', text: 'Recent', href: '/recent', icon: 'clock-history', active: active((p) => p.startsWith('/recent')) },
     { key: 'starred', text: 'Starred', href: '/starred', icon: 'star-fill', active: active((p) => p.startsWith('/starred')) },
     { key: 'bookmarks', text: 'Bookmarks', href: '/bookmarks', icon: 'bookmark-fill', active: active((p) => p.startsWith('/bookmarks')) },
+    { key: 'rss', text: 'RSS', href: '/rss', icon: 'rss-fill', active: active((p) => p.startsWith('/rss')) },
     { key: 'notes', text: 'Notes', href: '/notes', icon: 'journal-text', active: active((p) => p.startsWith('/notes')) },
     { key: 'vault', text: 'Vault', href: '/vault', icon: 'lock-fill', active: active((p) => p.startsWith('/vault')) },
     { key: 'photos', text: 'Photos', href: '/photos', icon: 'images', active: active((p) => p.startsWith('/photos')) },
