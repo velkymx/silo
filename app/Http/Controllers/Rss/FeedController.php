@@ -38,7 +38,7 @@ class FeedController extends Controller
         $feedsQuery = RssFeed::ownedBy($userId)
             ->when(! $showMuted, fn ($q) => $q->unmuted());
 
-        $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'favicon_path', 'refresh_interval_minutes', 'last_fetched_at', 'last_success_at', 'last_error', 'last_http_status', 'last_response_time_ms', 'consecutive_failures', 'etag', 'last_modified']);
+        $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'favicon_path', 'refresh_interval_minutes', 'last_fetched_at', 'last_success_at', 'last_error', 'last_http_status', 'last_response_time_ms', 'consecutive_failures']);
 
         $unreadByFeed = RssItem::ownedBy($userId)
             ->unread()

@@ -37,8 +37,6 @@ class Feed extends JsonResource
             'last_http_status' => $feed->last_http_status,
             'last_response_time_ms' => $feed->last_response_time_ms,
             'consecutive_failures' => $feed->consecutive_failures,
-            'etag' => $feed->etag,
-            'last_modified' => $feed->last_modified,
         ];
     }
 }
