@@ -50,9 +50,11 @@ class Parser
 
         foreach ($channel->item as $item) {
             $content = $this->content($item->children('content', true)->encoded ?? null, $item->description ?? null);
+            $itemTitle = trim((string) ($item->title ?? ''));
+            $fingerprint = implode('|', [$itemTitle, trim((string) ($item->pubDate ?? '')), $content]);
             $entries[] = [
-                'guid' => $this->guid((string) ($item->guid ?? ''), (string) ($item->link ?? '')),
-                'title' => trim((string) ($item->title ?? '')),
+                'guid' => $this->guid((string) ($item->guid ?? ''), (string) ($item->link ?? ''), $fingerprint),
+                'title' => $itemTitle,
                 'url' => trim((string) ($item->link ?? '')),
                 'content' => $content,
                 'excerpt' => $this->excerpt($item->description ?? null),
@@ -101,27 +103,43 @@ class Parser
                 }
             }
             $content = $this->content($entry->content ?? null, $entry->summary ?? null);
+            $entryTitle = trim((string) ($entry->title ?? ''));
+            $published = (string) ($entry->published ?? $entry->updated ?? '');
+            $fingerprint = implode('|', [$entryTitle, $published, $content]);
             $entries[] = [
-                'guid' => $this->guid((string) ($entry->id ?? ''), $entryUrl),
-                'title' => trim((string) ($entry->title ?? '')),
+                'guid' => $this->guid((string) ($entry->id ?? ''), $entryUrl, $fingerprint),
+                'title' => $entryTitle,
                 'url' => $entryUrl,
                 'content' => $content,
                 'excerpt' => $this->excerpt($entry->summary ?? null),
                 'author' => isset($entry->author->name) ? trim((string) $entry->author->name) : null,
                 'categories' => $this->categoriesAtom($entry),
                 'image_url' => $this->imageAtom($entry, $content),
-                'published_at' => $this->parseDate((string) ($entry->published ?? $entry->updated ?? '')),
+                'published_at' => $this->parseDate($published),
             ];
         }
 
         return ['title' => $title ?: null, 'site_url' => $siteUrl ?: null, 'entries' => $entries];
     }
 
-    private function guid(string $guid, string $url): string
+    /**
+     * Stable identity for an entry. Prefer the feed's own <guid>/<id>, then
+     * the entry URL. When both are absent, derive a deterministic surrogate
+     * from the entry's content fingerprint — never a random value, or the
+     * (feed_id, guid) unique index can't dedupe and the entry re-inserts on
+     * every refresh.
+     */
+    private function guid(string $guid, string $url, string $fingerprint): string
     {
         $guid = trim($guid);
+        if ($guid !== '') {
+            return $guid;
+        }
+        if ($url !== '') {
+            return $url;
+        }
 
-        return $guid !== '' ? $guid : ($url !== '' ? $url : bin2hex(random_bytes(8)));
+        return 'sha1:'.sha1($fingerprint);
     }
 
     private function content(?SimpleXMLElement $primary, ?SimpleXMLElement $fallback): string

@@ -88,4 +88,20 @@ XML;
 
         $this->assertSame('https://x/y', $out['entries'][0]['guid']);
     }
+
+    public function test_guidless_and_linkless_entry_gets_deterministic_surrogate(): void
+    {
+        $xml = <<<'XML'
+<rss><channel>
+  <item><title>Orphan</title><description>Same body</description><pubDate>Mon, 06 Jul 2026 12:00:00 GMT</pubDate></item>
+</channel></rss>
+XML;
+
+        $parser = new Parser;
+        $first = $parser->parse($xml)['entries'][0]['guid'];
+        $second = $parser->parse($xml)['entries'][0]['guid'];
+
+        $this->assertStringStartsWith('sha1:', $first);
+        $this->assertSame($first, $second, 'Surrogate GUID must be stable across parses so dedupe works');
+    }
 }
