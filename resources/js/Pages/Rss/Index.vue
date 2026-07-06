@@ -14,6 +14,8 @@ interface Feed {
     title: string;
     folder: string | null;
     enabled: boolean;
+    muted: boolean;
+    muted_at: string | null;
     refresh_interval_minutes: number;
     last_fetched_at: string | null;
     last_error: string | null;
@@ -38,8 +40,8 @@ interface Item {
 const props = defineProps<{
     feeds: Feed[];
     items: Item[];
-    filters: { filter: string | null; feed: number | null; search: string | null };
-    counts: { unread: number; starred: number; feeds: number };
+    filters: { filter: string | null; feed: number | null; search: string | null; show_muted: boolean };
+    counts: { unread: number; starred: number; feeds: number; muted: number };
     automationEnabled: boolean;
 }>();
 
@@ -58,12 +60,19 @@ const search = ref(props.filters.search ?? '');
 const grouped = computed(() => {
     const map = new Map<string, Feed[]>();
     for (const f of props.feeds) {
+        if (f.muted) continue;
         const key = f.folder || 'Uncategorized';
         if (!map.has(key)) map.set(key, []);
         map.get(key)!.push(f);
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 });
+
+const mutedFeeds = computed(() => props.feeds.filter((f) => f.muted));
+
+function toggleShowMuted(): void {
+    router.get('/rss', { ...(props.filters.filter ? { filter: props.filters.filter } : {}), show_muted: props.filters.show_muted ? 0 : 1 }, { preserveState: true, replace: true });
+}
 
 const filteredItems = computed(() => {
     let list = props.items;
@@ -118,21 +127,32 @@ async function refreshAll(): Promise<void> {
     toast.push('Refreshing feeds in the background…', { variant: 'info' });
 }
 
-const feedMenu = [
+const feedMenu = (feed: Feed) => [
     { text: 'Refresh', action: 'refresh', icon: 'arrow-repeat' },
     { text: 'Edit', action: 'edit', icon: 'pencil' },
+    { text: feed.muted ? 'Unmute' : 'Mute', action: feed.muted ? 'unmute' : 'mute', icon: feed.muted ? 'bell-fill' : 'bell-slash' },
     { divider: true },
     { text: 'Delete', action: 'delete', icon: 'trash' },
 ];
 function onFeedMenu(feed: Feed, { item }: { item: { action?: string } }): void {
     if (item.action === 'refresh') refreshOne(feed);
     if (item.action === 'edit') openEdit(feed);
+    if (item.action === 'mute') muteFeed(feed);
+    if (item.action === 'unmute') unmuteFeed(feed);
     if (item.action === 'delete') deleteFeed(feed);
 }
 
 function refreshOne(feed: Feed): void {
     router.post(`/rss/feeds/${feed.id}/refresh`, {}, { preserveScroll: true });
     toast.push(`Refreshing “${feed.title}”…`, { variant: 'info' });
+}
+
+function muteFeed(feed: Feed): void {
+    router.post(`/rss/feeds/${feed.id}/mute`, {}, { preserveScroll: true });
+}
+
+function unmuteFeed(feed: Feed): void {
+    router.post(`/rss/feeds/${feed.id}/unmute`, {}, { preserveScroll: true });
 }
 
 async function deleteFeed(feed: Feed): Promise<void> {
@@ -209,7 +229,7 @@ function submitEdit(): void {
                             <span class="flex-grow-1 text-truncate" :title="feed.title">{{ feed.title }}</span>
                         </button>
                         <span v-if="feed.unread_count > 0" class="badge text-bg-light">{{ feed.unread_count }}</span>
-                        <VibeDropdown size="sm" variant="secondary" menu-end title="Feed actions" :items="feedMenu" @click.stop @item-click="onFeedMenu(feed, $event)">
+                        <VibeDropdown size="sm" variant="secondary" menu-end title="Feed actions" :items="feedMenu(feed)" @click.stop @item-click="onFeedMenu(feed, $event)">
                             <template #button><VibeIcon icon="three-dots" /><span class="visually-hidden">Feed actions</span></template>
                             <template #item="{ item }">
                                 <VibeIcon :icon="item.icon" class="me-2" :class="item.action === 'delete' ? 'text-danger' : ''" /><span :class="item.action === 'delete' ? 'text-danger' : ''">{{ item.text }}</span>
@@ -217,6 +237,44 @@ function submitEdit(): void {
                         </VibeDropdown>
                     </div>
                 </div>
+                <template v-if="mutedFeeds.length">
+                    <hr class="my-2">
+                    <div class="text-uppercase small text-muted px-2 mb-1 d-flex align-items-center">
+                        <VibeIcon icon="bell-slash" class="me-1" />Muted ({{ mutedFeeds.length }})
+                    </div>
+                    <div
+                        v-for="feed in mutedFeeds"
+                        :key="feed.id"
+                        class="side-row side-row--muted w-100 d-flex align-items-center gap-2 px-2 py-1 rounded"
+                    >
+                        <span class="flex-grow-1 d-flex align-items-center gap-2 text-truncate text-muted">
+                            <VibeIcon icon="bell-slash" />
+                            <span class="flex-grow-1 text-truncate" :title="feed.title">{{ feed.title }}</span>
+                        </span>
+                        <VibeDropdown size="sm" variant="secondary" menu-end title="Feed actions" :items="feedMenu(feed)" @item-click="onFeedMenu(feed, $event)">
+                            <template #button><VibeIcon icon="three-dots" /><span class="visually-hidden">Feed actions</span></template>
+                            <template #item="{ item }">
+                                <VibeIcon :icon="item.icon" class="me-2" :class="item.action === 'delete' ? 'text-danger' : ''" /><span :class="item.action === 'delete' ? 'text-danger' : ''">{{ item.text }}</span>
+                            </template>
+                        </VibeDropdown>
+                    </div>
+                </template>
+                <button
+                    v-if="counts.muted > 0 && !filters.show_muted"
+                    type="button"
+                    class="btn btn-link btn-sm text-decoration-none px-2 mt-1"
+                    @click="toggleShowMuted"
+                >
+                    <VibeIcon icon="bell-slash" class="me-1" />Show {{ counts.muted }} muted feed(s)
+                </button>
+                <button
+                    v-else-if="filters.show_muted"
+                    type="button"
+                    class="btn btn-link btn-sm text-decoration-none px-2 mt-1"
+                    @click="toggleShowMuted"
+                >
+                    <VibeIcon icon="bell-fill" class="me-1" />Hide muted
+                </button>
             </div>
         </template>
 
@@ -340,6 +398,9 @@ function submitEdit(): void {
     background: rgba(99, 102, 241, 0.14);
     color: var(--bs-primary);
     font-weight: 500;
+}
+.side-row--muted {
+    opacity: 0.7;
 }
 .rss-list {
     display: flex;

@@ -37,7 +37,7 @@ class RefreshFeed implements ShouldQueue
     public function handle(Parser $parser, EventDispatcher $events): void
     {
         $feed = RssFeed::find($this->feedId);
-        if (! $feed || ! $feed->enabled) {
+        if (! $feed || ! $feed->enabled || $feed->isMuted()) {
             return;
         }
 

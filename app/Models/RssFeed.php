@@ -33,6 +33,7 @@ class RssFeed extends Model
         'last_success_at',
         'last_error',
         'enabled',
+        'muted_at',
         'refresh_interval_minutes',
         'folder',
         'sort_order',
@@ -42,6 +43,7 @@ class RssFeed extends Model
     {
         return [
             'enabled' => 'boolean',
+            'muted_at' => 'datetime',
             'last_fetched_at' => 'datetime',
             'last_success_at' => 'datetime',
             'refresh_interval_minutes' => 'integer',
@@ -65,13 +67,51 @@ class RssFeed extends Model
         return $query->where('user_id', $userId);
     }
 
-    /** Feeds due for refresh: enabled and last_fetched_at older than the interval. */
+    /** Feeds due for refresh: enabled, unmuted, and last_fetched_at older than the interval. */
     public function scopeDueForRefresh(Builder $query): Builder
     {
         return $query->where('enabled', true)
+            ->whereNull('muted_at')
             ->where(function (Builder $q) {
                 $q->whereNull('last_fetched_at')
                     ->orWhereRaw('last_fetched_at <= DATE_SUB(NOW(), INTERVAL refresh_interval_minutes MINUTE)');
             });
+    }
+
+    /** Feeds that are currently muted. */
+    public function scopeMuted(Builder $query): Builder
+    {
+        return $query->whereNotNull('muted_at');
+    }
+
+    /** Feeds that are not muted. */
+    public function scopeUnmuted(Builder $query): Builder
+    {
+        return $query->whereNull('muted_at');
+    }
+
+    public function isMuted(): bool
+    {
+        return $this->muted_at !== null;
+    }
+
+    public function mute(): bool
+    {
+        if ($this->isMuted()) {
+            return false;
+        }
+        $this->muted_at = now();
+
+        return $this->save();
+    }
+
+    public function unmute(): bool
+    {
+        if (! $this->isMuted()) {
+            return false;
+        }
+        $this->muted_at = null;
+
+        return $this->save();
     }
 }

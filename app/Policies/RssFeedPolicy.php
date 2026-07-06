@@ -27,6 +27,11 @@ class RssFeedPolicy
         return $feed->user_id === $user->id;
     }
 
+    public function mute(User $user, RssFeed $feed): bool
+    {
+        return $feed->user_id === $user->id;
+    }
+
     public function delete(User $user, RssFeed $feed): bool
     {
         return $feed->user_id === $user->id;

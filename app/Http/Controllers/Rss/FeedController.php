@@ -24,12 +24,17 @@ class FeedController extends Controller
         $filter = $request->string('filter')->lower()->toString();
         $search = trim((string) $request->string('search'));
         $feedId = $request->integer('feed');
+        $showMuted = $request->boolean('show_muted');
 
-        $feeds = RssFeed::ownedBy($userId)
-            ->orderBy('folder')->orderBy('sort_order')->orderBy('title')
-            ->get(['id', 'title', 'folder', 'enabled', 'refresh_interval_minutes', 'last_fetched_at', 'last_error']);
+        $feedsQuery = RssFeed::ownedBy($userId)
+            ->when(! $showMuted, fn ($q) => $q->unmuted())
+            ->orderBy('folder')->orderBy('sort_order')->orderBy('title');
 
-        $unreadByFeed = RssItem::ownedBy($userId)->unread()
+        $feeds = $feedsQuery->get(['id', 'title', 'folder', 'enabled', 'muted_at', 'refresh_interval_minutes', 'last_fetched_at', 'last_error']);
+
+        $unreadByFeed = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId))
+            ->unread()
             ->selectRaw('feed_id, count(*) as c')
             ->groupBy('feed_id')
             ->pluck('c', 'feed_id');
@@ -40,6 +45,8 @@ class FeedController extends Controller
                 'title' => $feed->title,
                 'folder' => $feed->folder,
                 'enabled' => $feed->enabled,
+                'muted' => $feed->isMuted(),
+                'muted_at' => optional($feed->muted_at)->toIso8601String(),
                 'refresh_interval_minutes' => (int) $feed->refresh_interval_minutes,
                 'last_fetched_at' => optional($feed->last_fetched_at)->toIso8601String(),
                 'last_error' => $feed->last_error,
@@ -47,8 +54,9 @@ class FeedController extends Controller
             ];
         })->values();
 
-        $items = RssItem::with('feed:id,title,folder')
+        $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
             ->when($filter === 'starred', fn ($q) => $q->starred())
             ->when($filter === 'unread', fn ($q) => $q->unread())
             ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
@@ -65,8 +73,12 @@ class FeedController extends Controller
             ->map(fn (RssItem $i) => $this->shapeItem($i))
             ->values();
 
-        $unreadTotal = RssItem::ownedBy($userId)->unread()->count();
+        $unreadTotal = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->where('user_id', $userId)->unmuted())
+            ->unread()
+            ->count();
         $starredTotal = RssItem::ownedBy($userId)->starred()->count();
+        $mutedCount = RssFeed::ownedBy($userId)->muted()->count();
         $automationEnabled = (bool) Setting::get('rss.automation_enabled', true);
 
         return Inertia::render('Rss/Index', [
@@ -76,11 +88,13 @@ class FeedController extends Controller
                 'filter' => $filter ?: null,
                 'feed' => $feedId ?: null,
                 'search' => $search ?: null,
+                'show_muted' => $showMuted,
             ],
             'counts' => [
                 'unread' => $unreadTotal,
                 'starred' => $starredTotal,
                 'feeds' => $feeds->count(),
+                'muted' => $mutedCount,
             ],
             'automationEnabled' => $automationEnabled,
         ]);
@@ -116,6 +130,9 @@ class FeedController extends Controller
     public function refresh(RssFeed $feed)
     {
         $this->authorize('update', $feed);
+        if ($feed->isMuted()) {
+            return back()->with('error', 'Feed is muted; unmute it to refresh.');
+        }
         RefreshFeed::dispatch($feed->id);
 
         return back()->with('success', 'Refresh queued.');
@@ -123,11 +140,27 @@ class FeedController extends Controller
 
     public function refreshAll()
     {
-        $count = RssFeed::ownedBy(auth()->id())->where('enabled', true)->count();
-        RssFeed::ownedBy(auth()->id())->where('enabled', true)
-            ->orderBy('id')->each(fn (RssFeed $f) => RefreshFeed::dispatch($f->id));
+        $query = RssFeed::ownedBy(auth()->id())->where('enabled', true)->unmuted();
+        $count = (clone $query)->count();
+        $query->orderBy('id')->each(fn (RssFeed $f) => RefreshFeed::dispatch($f->id));
 
         return back()->with('success', "Queued {$count} feed(s) for refresh.");
+    }
+
+    public function mute(RssFeed $feed)
+    {
+        $this->authorize('mute', $feed);
+        $feed->mute();
+
+        return back()->with('success', "“{$feed->title}” muted. It is hidden from the inbox and skipped on refresh.");
+    }
+
+    public function unmute(RssFeed $feed)
+    {
+        $this->authorize('mute', $feed);
+        $feed->unmute();
+
+        return back()->with('success', "“{$feed->title}” unmuted.");
     }
 
     /**

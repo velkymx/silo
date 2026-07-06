@@ -206,6 +206,8 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/feeds/{feed}', [RssFeedController::class, 'destroy'])->name('feeds.destroy');
         Route::post('/feeds/{feed}/refresh', [RssFeedController::class, 'refresh'])->name('feeds.refresh');
         Route::post('/feeds/refresh-all', [RssFeedController::class, 'refreshAll'])->name('feeds.refreshAll');
+        Route::post('/feeds/{feed}/mute', [RssFeedController::class, 'mute'])->name('feeds.mute');
+        Route::post('/feeds/{feed}/unmute', [RssFeedController::class, 'unmute'])->name('feeds.unmute');
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
         Route::post('/items/{item}/read', [RssItemController::class, 'markRead'])->name('items.read');

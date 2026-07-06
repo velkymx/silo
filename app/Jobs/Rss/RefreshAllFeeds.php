@@ -28,6 +28,7 @@ class RefreshAllFeeds implements ShouldQueue
         $count = 0;
         RssFeed::query()
             ->where('enabled', true)
+            ->whereNull('muted_at')
             ->orderBy('id')
             ->chunkById(200, function ($feeds) use (&$count) {
                 foreach ($feeds as $feed) {
@@ -36,6 +37,6 @@ class RefreshAllFeeds implements ShouldQueue
                 }
             });
 
-        Log::info('rss.refresh_all.dispatched', ['count' => $count]);
+        Log::info('rss.refresh_all.dispatched', ['count' => $count, 'muted_skipped' => true]);
     }
 }
