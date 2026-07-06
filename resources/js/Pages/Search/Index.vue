@@ -24,6 +24,7 @@ interface SavedSearch {
     id: number;
     name: string;
     params: { q?: string; search?: string; [k: string]: unknown };
+    is_favorite: boolean;
 }
 
 const props = defineProps<{
@@ -46,7 +47,13 @@ function go(): void {
 
 const hasResults = computed(() => props.total > 0);
 
-const savedGlobalSearches = computed(() => (props.savedSearches ?? []).filter((s) => !!s.params.q));
+const savedGlobalSearches = computed(() => (props.savedSearches ?? [])
+    .filter((s) => !!s.params.q)
+    .sort((a, b) => {
+        if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1;
+        return a.name.localeCompare(b.name);
+    })
+);
 
 async function saveCurrentSearch(): Promise<void> {
     const q = query.value.trim();
@@ -60,6 +67,10 @@ async function saveCurrentSearch(): Promise<void> {
 async function deleteSavedSearch(s: SavedSearch): Promise<void> {
     if (!await confirm({ title: 'Remove saved search', message: `Remove “${s.name}”?`, confirmLabel: 'Remove', variant: 'danger' })) return;
     await router.delete(`/saved-searches/${s.id}`);
+}
+
+async function togglePin(s: SavedSearch): Promise<void> {
+    await router.post(`/saved-searches/${s.id}/favorite`);
 }
 
 function runSavedSearch(s: SavedSearch): void {
@@ -126,7 +137,15 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                                 class="btn btn-link btn-sm p-0 d-inline-flex align-items-center text-decoration-none me-2"
                                 @click="runSavedSearch(s)"
                             >
+                                <VibeIcon v-if="s.is_favorite" icon="pin-fill" class="me-1 text-warning" />
                                 <span>{{ s.name }}</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm p-0 ms-1 text-muted border-0 bg-transparent"
+                                    :aria-label="`Toggle pin for ${s.name}`"
+                                    :title="s.is_favorite ? 'Unpin' : 'Pin to top'"
+                                    @click.stop="togglePin(s)"
+                                ><VibeIcon :icon="s.is_favorite ? 'pin-angle-fill' : 'pin-angle'" /></button>
                                 <button
                                     type="button"
                                     class="btn btn-sm p-0 ms-1 text-muted border-0 bg-transparent"

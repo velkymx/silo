@@ -136,6 +136,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/files/batch/rename', [BatchController::class, 'rename'])->name('files.batch.rename');
 
     Route::post('/saved-searches', [SavedSearchController::class, 'store'])->name('saved-searches.store');
+    Route::post('/saved-searches/{savedSearch}/favorite', [SavedSearchController::class, 'toggleFavorite'])->name('saved-searches.favorite');
     Route::delete('/saved-searches/{savedSearch}', [SavedSearchController::class, 'destroy'])->name('saved-searches.destroy');
 
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.create');

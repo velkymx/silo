@@ -35,6 +35,7 @@ class SavedSearchController extends Controller
             'params.ftype' => 'nullable|string|max:30',
             'params.tag' => 'nullable|integer',
             'params.folder' => 'nullable|integer',
+            'is_favorite' => 'boolean',
         ]);
 
         $allowed = array_merge(self::FILE_KEYS, self::GLOBAL_KEYS);
@@ -47,9 +48,18 @@ class SavedSearchController extends Controller
             'owner_id' => auth()->id(),
             'name' => $data['name'],
             'params' => $params,
+            'is_favorite' => $data['is_favorite'] ?? false,
         ]);
 
         return back()->with('success', empty($params['q'] ?? null) ? 'Smart folder saved.' : 'Search saved.');
+    }
+
+    public function toggleFavorite(SavedSearch $savedSearch)
+    {
+        $this->authorize('update', $savedSearch);
+        $savedSearch->update(['is_favorite' => ! $savedSearch->is_favorite]);
+
+        return back()->with('success', $savedSearch->fresh()->is_favorite ? 'Pinned to sidebar.' : 'Unpinned from sidebar.');
     }
 
     public function destroy(SavedSearch $savedSearch)

@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SavedSearch extends Model
 {
-    protected $fillable = ['owner_id', 'name', 'params'];
+    protected $fillable = ['owner_id', 'name', 'params', 'is_favorite'];
 
-    protected $casts = ['params' => 'array'];
+    protected $casts = ['params' => 'array', 'is_favorite' => 'boolean'];
 
     public function owner(): BelongsTo
     {
