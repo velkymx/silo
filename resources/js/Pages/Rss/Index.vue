@@ -304,6 +304,9 @@ function submitEdit(): void {
                     <VibeButton variant="secondary" size="sm" title="Import an OPML subscription file" aria-label="Import OPML" @click="opmlInput?.click()">
                         <VibeIcon icon="upload" class="me-1" />Import
                     </VibeButton>
+                    <a href="/rss/opml/export" class="btn btn-secondary btn-sm" download title="Export all feeds as OPML" aria-label="Export OPML">
+                        <VibeIcon icon="download" class="me-1" />Export
+                    </a>
                     <input ref="opmlInput" type="file" accept=".opml,.xml,text/xml,application/xml" class="d-none" @change="onOpmlChosen">
                     <VibeButton size="sm" variant="primary" @click="openAdd">
                         <VibeIcon icon="plus-lg" class="me-1" />Add feed
