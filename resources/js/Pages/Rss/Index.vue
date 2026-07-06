@@ -370,7 +370,7 @@ function submitEdit(): void {
 </script>
 
 <template>
-    <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedItem" :folders-visible="true">
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="true" :folders-visible="true">
         <template #viewNav>
             <div class="px-2 py-2 d-flex flex-column gap-1">
                 <button
@@ -689,6 +689,9 @@ function submitEdit(): void {
                         <VibeIcon icon="arrows-fullscreen" class="me-1" />Full view
                     </Link>
                 </div>
+            </div>
+            <div v-else class="rss-detail h-100 d-none d-md-flex align-items-center justify-content-center text-muted p-4">
+                <EmptyState icon="rss" title="No article selected" hint="Pick an article from the list to read it here." />
             </div>
         </template>
     </ShellLayout>
