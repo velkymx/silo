@@ -164,6 +164,12 @@ const grouped = computed(() => {
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
 });
 
+function feedIconClass(feed: Feed): string {
+    if (!feed.enabled) return 'text-muted';
+    if (feed.unread_count === 0) return 'text-muted opacity-50';
+    return 'text-warning';
+}
+
 const mutedFeeds = computed(() => props.feeds.filter((f) => f.muted));
 
 function toggleShowMuted(): void {
@@ -385,14 +391,14 @@ function submitEdit(): void {
                         v-for="feed in feeds"
                         :key="feed.id"
                         class="side-row w-100 d-flex align-items-center gap-2 px-2 py-1 rounded"
-                        :class="{ active: selectedFeedId === feed.id }"
+                        :class="{ active: selectedFeedId === feed.id, 'side-row--idle': feed.enabled && feed.unread_count === 0 }"
                     >
                         <button
                             type="button"
                             class="flex-grow-1 d-flex align-items-center gap-2 text-start border-0 bg-transparent p-0 text-truncate"
                             @click="selectFeed(feed.id)"
                         >
-                            <VibeIcon :icon="feed.enabled ? 'rss-fill' : 'rss'" :class="feed.enabled ? 'text-warning' : 'text-muted'" />
+                            <VibeIcon :icon="feed.enabled ? 'rss-fill' : 'rss'" :class="feedIconClass(feed)" />
                             <span class="flex-grow-1 text-truncate" :title="feed.title">{{ feed.title }}</span>
                         </button>
                         <span v-if="feed.unread_count > 0" class="badge text-bg-light">{{ feed.unread_count }}</span>
@@ -648,6 +654,12 @@ function submitEdit(): void {
 }
 .side-row--muted {
     opacity: 0.7;
+}
+.side-row--idle {
+    opacity: 0.6;
+}
+.side-row--idle.active {
+    opacity: 1;
 }
 .rss-list {
     display: flex;
