@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\SanitizesFilename;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
+use App\Models\RssItem;
 use App\Models\Tag;
 use App\Services\Audit;
 use App\Services\QuotaService;
@@ -64,6 +65,11 @@ class FileController extends Controller
         if ($allFoldersCapped) $allFolders = $allFolders->take(200);
         $folderById = $allFolders->keyBy('id');
 
+        // Starred RSS items are only populated on the starred surface; the
+        // other branches leave it as an empty collection so the prop is
+        // always defined for the page.
+        $rssItems = collect();
+
         // The VibeUI DataTable paginates client-side; a safety cap keeps the
         // payload bounded on very large result sets.
         $cap = 1000;
@@ -100,6 +106,31 @@ class FileController extends Controller
             $files = File::query()->where('owner_id', $userId)->where('starred', true)->files()
                 ->with(['versions', 'tags'])->orderBy('name')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
+            // The /starred view is the user's "everything I care about" surface,
+            // so it has to span every content type. RSS items starred in the
+            // RSS reader show up here alongside starred files/folders, with the
+            // newest star at the top.
+            $rssItems = RssItem::ownedBy($userId)
+                ->whereHas('feed', fn ($q) => $q->where('user_id', $userId))
+                ->starred()
+                ->with('feed:id,title,folder')
+                ->orderByDesc('starred_at')
+                ->limit($cap)
+                ->get()
+                ->map(fn (RssItem $i) => [
+                    'id' => $i->id,
+                    'feed_id' => $i->feed_id,
+                    'feed_title' => $i->feed?->title,
+                    'feed_folder' => $i->feed?->folder,
+                    'title' => $i->title,
+                    'excerpt' => $i->excerpt,
+                    'author' => $i->author,
+                    'url' => $i->url,
+                    'published_at' => optional($i->published_at)->toIso8601String(),
+                    'is_read' => (bool) $i->is_read,
+                    'is_starred' => (bool) $i->is_starred,
+                ])
+                ->values();
         } elseif ($recentOnly) {
             // Most recently uploaded files across every folder.
             $folders = collect();
@@ -121,6 +152,7 @@ class FileController extends Controller
         return Inertia::render('Files/Index', [
             'folders' => $folders->values(),
             'files' => $files->values(),
+            'rssItems' => $rssItems ?? collect(),
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $useSearch,

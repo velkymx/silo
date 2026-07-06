@@ -22,6 +22,7 @@ import { useStorageMeter } from '../../composables/useStorageMeter';
 import EmptyState from '../../Components/EmptyState.vue';
 import FilterChips from '../../Components/FilterChips.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
+import RssItemRow from '../../Components/Rss/RssItemRow.vue';
 import { usePageLoading } from '../../composables/usePageLoading';
 import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
@@ -37,6 +38,7 @@ const officeEditTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 const props = defineProps({
     folders: { type: Array, default: () => [] },
     files: { type: Array, default: () => [] },
+    rssItems: { type: Array, default: () => [] },
     current: { type: Object, default: null },
     breadcrumbs: { type: Array, default: () => [] },
     allFolders: { type: Array, default: () => [] },
@@ -873,6 +875,24 @@ onBeforeUnmount(() => {
             <!-- Single compact chip bar for all active view filters. -->
             <FilterChips :chips="activeFilters" @clear-all="clearAllFilters" />
 
+            <!-- Starred RSS items: surfaced on /starred so the "everything I care
+                 about" view spans every content type. Click opens the article;
+                 the star button toggles starred state via the RSS endpoint. -->
+            <div v-if="starredOnly && rssItems.length" class="px-2 pt-2">
+                <div class="d-flex align-items-center gap-2 small text-muted text-uppercase fw-semibold mb-1">
+                    <VibeIcon icon="rss-fill" class="text-warning" />Starred articles ({{ rssItems.length }})
+                </div>
+                <RssItemRow
+                    v-for="item in rssItems"
+                    :key="`rss-${item.id}`"
+                    :item="item"
+                    :selected="false"
+                    @click="router.visit(`/rss/items/${item.id}`)"
+                    @toggle-star="router.post(`/rss/items/${item.id}/star`, {}, { preserveScroll: true, preserveState: true })"
+                />
+                <hr v-if="folders.length || files.length" class="my-3">
+            </div>
+
             <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
             <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
@@ -901,9 +921,9 @@ onBeforeUnmount(() => {
                 </VibeRow>
                 <EmptyState
                     v-else
-                    :icon="flat ? 'search' : 'folder2-open'"
-                    :title="flat ? 'No matching files' : 'This folder is empty'"
-                    :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                    :icon="starredOnly && !rssItems.length ? 'star' : (flat ? 'search' : 'folder2-open')"
+                    :title="starredOnly && !folders.length && !files.length && !rssItems.length ? 'Nothing starred yet' : (flat ? 'No matching files' : 'This folder is empty')"
+                    :hint="starredOnly ? 'Star a file, folder, or RSS article to see it here.' : (flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.')"
                 />
                 <div v-if="gridShown < items.length" class="text-center my-3">
                     <VibeButton variant="secondary" outline @click="gridShown += gridPageSize">
@@ -979,9 +999,9 @@ onBeforeUnmount(() => {
                 </VibeDataTable>
                 <EmptyState
                     v-else
-                    :icon="flat ? 'search' : 'folder2-open'"
-                    :title="flat ? 'No matching files' : 'This folder is empty'"
-                    :hint="flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.'"
+                    :icon="starredOnly && !rssItems.length ? 'star' : (flat ? 'search' : 'folder2-open')"
+                    :title="starredOnly && !folders.length && !files.length && !rssItems.length ? 'Nothing starred yet' : (flat ? 'No matching files' : 'This folder is empty')"
+                    :hint="starredOnly ? 'Star a file, folder, or RSS article to see it here.' : (flat ? 'Try a different search or filter.' : 'Upload files or create a folder to get started.')"
                 />
             </div>
         </template>
