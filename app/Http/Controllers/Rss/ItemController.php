@@ -75,24 +75,28 @@ class ItemController extends Controller
     public function markAllRead(Request $request, EventDispatcher $events)
     {
         $userId = auth()->id();
+        $filter = $request->string('filter')->lower()->toString();
         $feedId = $request->integer('feed');
-        $items = RssItem::ownedBy($userId)
+        $search = trim((string) $request->string('search'));
+
+        // Scope to exactly the visible set: unmuted feeds, the active smart
+        // folder / feed / search — same filters as the inbox listing.
+        $base = RssItem::ownedBy($userId)
+            ->whereHas('feed', fn ($q) => $q->unmuted())
             ->unread()
-            ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
-            ->limit(500)
-            ->get();
-        $count = 0;
-        foreach ($items as $item) {
-            $item->markRead();
-            $count++;
-            $events->dispatch('rss.item.read', $item->user_id, [
-                'item_id' => $item->id,
-                'feed_id' => $item->feed_id,
-                'title' => $item->title,
-                'url' => $item->url,
-                'read_at' => $item->read_at?->toIso8601String(),
+            ->inboxFilter($filter, $feedId, $search);
+
+        $now = now();
+        $count = (clone $base)->update(['is_read' => true, 'read_at' => $now]);
+
+        if ($count > 0) {
+            $events->dispatch('rss.item.read', $userId, [
                 'phase' => 'bulk',
-            ], "rss.item.read@1:item:{$item->id}:".$item->read_at?->timestamp);
+                'count' => $count,
+                'filter' => $filter ?: null,
+                'feed_id' => $feedId ?: null,
+                'read_at' => $now->toIso8601String(),
+            ], 'rss.item.read@1:bulk:'.$userId.':'.$now->timestamp);
         }
 
         return back()->with('success', "Marked {$count} item(s) as read.");

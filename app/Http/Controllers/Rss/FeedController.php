@@ -55,22 +55,7 @@ class FeedController extends Controller
         $items = RssItem::with('feed:id,title,folder,muted_at')
             ->ownedBy($userId)
             ->whereHas('feed', fn ($q) => $q->unmuted())
-            ->when($filter === 'starred', fn ($q) => $q->starred())
-            ->when($filter === 'unread', fn ($q) => $q->unread())
-            ->when($filter === 'today', fn ($q) => $q->where('published_at', '>=', now()->startOfDay()))
-            ->when($filter === 'yesterday', fn ($q) => $q->whereBetween('published_at', [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()]))
-            ->when($filter === 'week', fn ($q) => $q->where('published_at', '>=', now()->subDays(7)))
-            ->when($filter === 'month', fn ($q) => $q->where('published_at', '>=', now()->subDays(30)))
-            ->when($filter === 'recent', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))
-            ->when($filter === 'read', fn ($q) => $q->where('is_read', true)->where('read_at', '>=', now()->subDays(7)))
-            ->when($feedId > 0, fn ($q) => $q->forFeed($feedId))
-            ->when($search !== '', function ($q) use ($search) {
-                $q->where(function ($w) use ($search) {
-                    $w->where('title', 'like', "%{$search}%")
-                        ->orWhere('excerpt', 'like', "%{$search}%")
-                        ->orWhere('author', 'like', "%{$search}%");
-                });
-            })
+            ->inboxFilter($filter, $feedId, $search)
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->cursorPaginate(50);

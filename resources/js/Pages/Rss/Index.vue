@@ -234,8 +234,10 @@ function toggleStar(item: Item): void {
 
 async function markAllRead(): Promise<void> {
     if (!await confirm({ title: 'Mark all as read', message: 'Mark every visible item as read?', confirmLabel: 'Mark all' })) return;
-    const payload: Record<string, number> = {};
+    const payload: Record<string, string | number> = {};
     if (selectedFeedId.value) payload.feed = selectedFeedId.value;
+    if (props.filters.filter) payload.filter = props.filters.filter;
+    if (search.value.trim()) payload.search = search.value.trim();
     router.post('/rss/items/mark-all-read', payload, { preserveScroll: true });
     toast.push('Marked as read', { variant: 'success' });
 }
