@@ -138,13 +138,52 @@
     min-width: 0;
 }
 
-/* Page top-bar breadcrumbs. VibeBreadcrumb renders an inner <ol class="breadcrumb">
-   that keeps Bootstrap's default `margin-bottom: 1rem`; the `mb-0 pb-0` utilities
-   sit on the outer <nav>, so without this every page except Files rendered a
-   stray 1rem gap under the crumbs (misaligned). Flatten it globally so all
-   breadcrumbs align identically. */
+/* Page top-bar breadcrumbs. Two jobs:
+   1) Flatten Bootstrap's default `margin-bottom: 1rem` (it lives on the inner
+      <ol class="breadcrumb">, not the <nav> the mb-0 utility sits on), so every
+      page aligns identically.
+   2) Give the crumbs the same visual weight as the /rss h5 icon+title: the
+      whole trail reads at h5 size (1.25rem), the active/last crumb is bold and
+      body-colored, ancestors are muted, and the divider is a chevron. */
 .breadcrumb {
+    --bs-breadcrumb-divider: '›';
     margin-bottom: 0;
+    align-items: center;
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+.breadcrumb .breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    color: var(--bs-secondary-color);
+}
+.breadcrumb .breadcrumb-item.active {
+    color: var(--bs-body-color);
+    font-weight: 600;
+}
+.breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    color: var(--bs-secondary-color);
+}
+/* Ancestor crumbs render as <a> (when they have an href) or a bare <button>
+   (click-only, e.g. ShellPage parents like "Admin"). Strip the default button
+   chrome so both read as plain muted text, not a form control in the trail. */
+.breadcrumb .breadcrumb-item a,
+.breadcrumb .breadcrumb-item button {
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+.breadcrumb .breadcrumb-item a:hover,
+.breadcrumb .breadcrumb-item button:hover {
+    color: var(--bs-body-color);
+    text-decoration: underline;
 }
 .st-table-wrap thead th {
     position: sticky;
