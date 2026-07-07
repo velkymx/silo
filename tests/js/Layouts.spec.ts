@@ -39,25 +39,25 @@ describe('ShellLayout chrome (the app-wide layout)', () => {
         expect(wrapper.text()).toContain('5.0 MB of 10.0 MB');
     });
 
-    it('runs a global search on Enter', async () => {
+    it('runs a global cross-content search on Enter', async () => {
         const wrapper = mountShell();
         const input = wrapper.find('#global-search');
         await input.setValue('report');
         await input.trigger('keyup', { key: 'Enter' });
-        expect(s.get).toHaveBeenCalledWith('/', { search: 'report' });
+        // Navbar search routes to the cross-content SearchController (/search?q=).
+        expect(s.get).toHaveBeenCalledWith('/search', { q: 'report' });
     });
 
-    it('scopes the search to the current folder', async () => {
+    it('re-runs the search when the scope dropdown is used', async () => {
         const wrapper = mountShell();
         await wrapper.find('#global-search').setValue('report');
-        // The scope dropdown emits item-click; "This folder" sets scope + re-runs.
         const thisFolder = wrapper.findAll('button.dd-item').find((b) => b.text().includes('This folder'));
         await thisFolder!.trigger('click');
-        expect(s.get).toHaveBeenCalledWith('/', { search: 'report', scope: 'folder', folder: 12 });
+        expect(s.get).toHaveBeenCalledWith('/search', { q: 'report' });
     });
 
-    it('reads the active search + scope from the URL', () => {
-        const wrapper = mountShell({ url: '/?search=hello&scope=folder' });
+    it('reads the active query from the URL', () => {
+        const wrapper = mountShell({ url: '/search?q=hello' });
         expect((wrapper.find('#global-search').element as HTMLInputElement).value).toBe('hello');
     });
 

@@ -38,7 +38,9 @@ const scopeMenu = [
 ];
 function syncSearchFromUrl(): void {
     const q = new URLSearchParams(page.url.split('?')[1] || '');
-    searchValue.value = q.get('search') || '';
+    // The global search submits to /search?q=… (SearchController) — read the
+    // same param back so the box reflects the active query on the results page.
+    searchValue.value = q.get('q') || '';
     searchScope.value = q.get('scope') === 'folder' ? 'folder' : 'all';
 }
 syncSearchFromUrl();
