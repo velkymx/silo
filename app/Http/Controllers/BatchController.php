@@ -16,7 +16,7 @@ class BatchController extends Controller
     public function move(Request $request): \Illuminate\Http\RedirectResponse
     {
         $data = $request->validate([
-            'ids' => ['required', 'array'],
+            'ids' => ['required', 'array', 'max:500'],
             'ids.*' => ['integer'],
             'target_id' => ['nullable', 'integer', 'exists:files,id'],
         ]);
@@ -43,7 +43,7 @@ class BatchController extends Controller
     public function delete(Request $request): \Illuminate\Http\RedirectResponse
     {
         $data = $request->validate([
-            'ids' => ['required', 'array'],
+            'ids' => ['required', 'array', 'max:500'],
             'ids.*' => ['integer'],
         ]);
 
@@ -64,7 +64,7 @@ class BatchController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'ids' => ['required', 'array'],
+            'ids' => ['required', 'array', 'max:500'],
             'ids.*' => ['integer'],
             'parent_id' => ['nullable', 'integer', 'exists:files,id'],
         ]);
@@ -104,7 +104,7 @@ class BatchController extends Controller
     public function rename(Request $request): \Illuminate\Http\RedirectResponse
     {
         $data = $request->validate([
-            'renames' => ['required', 'array'],
+            'renames' => ['required', 'array', 'max:500'],
             'renames.*.id' => ['required', 'integer'],
             'renames.*.name' => ['required', 'string', 'max:255'],
         ]);
