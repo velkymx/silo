@@ -771,7 +771,9 @@ class FileController extends Controller
             'mime' => $source->mime,
             'size' => $source->size,
             'hash' => $source->hash,
-            'status' => $source->status,
+            // File copies re-process so they get their own thumbnail/metadata
+            // and never inherit a stuck PENDING/FAILED state from the source.
+            'status' => $source->is_dir ? $source->status : File::STATUS_PENDING,
             'metadata' => $source->metadata,
             'thumbnail_path' => null,
             'parent_id' => $parentId,
@@ -782,6 +784,8 @@ class FileController extends Controller
             foreach ($source->children as $child) {
                 $this->copyNode($child, $copy->id, $child->name, $ownerId);
             }
+        } else {
+            ProcessUploadedFile::dispatch($copy->id)->afterCommit();
         }
 
         return $copy;
