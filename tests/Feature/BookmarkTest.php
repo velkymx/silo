@@ -57,6 +57,17 @@ class BookmarkTest extends TestCase
             ->assertSessionHasErrors('url');
     }
 
+    public function test_validate_all_caps_the_dispatch_fan_out(): void
+    {
+        Bus::fake();
+        $user = User::factory()->create();
+        Bookmark::factory()->count(505)->create(['owner_id' => $user->id]);
+
+        $this->actingAs($user)->post(route('bookmarks.validate'))->assertRedirect();
+
+        Bus::assertDispatchedTimes(ProcessBookmark::class, 500);
+    }
+
     public function test_store_rejects_non_http_schemes(): void
     {
         $user = User::factory()->create();

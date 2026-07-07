@@ -22,6 +22,14 @@ use Inertia\Inertia;
  */
 class BookmarkController extends Controller
 {
+    /**
+     * Most bookmarks a single request will fan out `ProcessBookmark` jobs for.
+     * Each job makes outbound HTTP (+ optional headless Chrome), so an
+     * uncapped import/validate/hydrate would flood the queue and hammer the
+     * network from one request.
+     */
+    private const MAX_PROCESS_DISPATCH = 500;
+
     public function index(Request $request)
     {
         $userId = auth()->id();
@@ -104,6 +112,9 @@ class BookmarkController extends Controller
         $existingSet = $existingSet->flip();
 
         foreach ($links as $link) {
+            if ($count >= self::MAX_PROCESS_DISPATCH) {
+                break;
+            }
             if ($existingSet->has($link['url'])) {
                 continue;
             }
@@ -158,7 +169,8 @@ class BookmarkController extends Controller
     /** Re-check liveness + re-hydrate every bookmark the user owns. */
     public function validateAll()
     {
-        $ids = Bookmark::where('owner_id', auth()->id())->pluck('id');
+        $ids = Bookmark::where('owner_id', auth()->id())
+            ->orderBy('id')->limit(self::MAX_PROCESS_DISPATCH)->pluck('id');
         $ids->each(fn ($id) => ProcessBookmark::dispatch($id));
 
         return back()->with('success', "Re-checking {$ids->count()} bookmark(s) in the background…");
@@ -174,7 +186,7 @@ class BookmarkController extends Controller
                 ->whereNull('icon_path')
                 ->orWhere('status', Bookmark::STATUS_PENDING)
                 ->when($wantsShots, fn ($w) => $w->orWhereNull('screenshot_path')))
-            ->pluck('id');
+            ->orderBy('id')->limit(self::MAX_PROCESS_DISPATCH)->pluck('id');
         $ids->each(fn ($id) => ProcessBookmark::dispatch($id));
 
         return back()->with('success', "Hydrating {$ids->count()} bookmark(s) in the background…");
