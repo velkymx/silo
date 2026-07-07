@@ -20,9 +20,10 @@ return [
         // Needs spatie/browsershot + a headless Chromium (Puppeteer) on the host.
         'enabled' => (bool) env('BOOKMARK_SCREENSHOTS', false),
         // When no self-hosted screenshot exists, show an on-demand thumbnail from
-        // WordPress mShots. Works for PUBLIC sites only and sends the URL to a
-        // third party — set false on a private intranet, or enable self-hosting.
-        'fallback' => (bool) env('BOOKMARK_SCREENSHOT_FALLBACK', true),
+        // WordPress mShots. Works for PUBLIC sites only and sends the full
+        // bookmark URL to a third party, so it is OFF by default — opt in only
+        // when every bookmark is a public site (BOOKMARK_SCREENSHOT_FALLBACK=true).
+        'fallback' => (bool) env('BOOKMARK_SCREENSHOT_FALLBACK', false),
         'width' => (int) env('BOOKMARK_SCREENSHOT_WIDTH', 1366),
         'height' => (int) env('BOOKMARK_SCREENSHOT_HEIGHT', 768),
         // Optional explicit node/chromium paths for Browsershot.
