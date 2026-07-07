@@ -57,6 +57,15 @@ class BookmarkTest extends TestCase
             ->assertSessionHasErrors('url');
     }
 
+    public function test_store_rejects_non_http_schemes(): void
+    {
+        $user = User::factory()->create();
+        foreach (['javascript:alert(1)', 'file:///etc/passwd', 'ftp://example.com'] as $url) {
+            $this->actingAs($user)->post(route('bookmarks.store'), ['title' => 'Bad', 'url' => $url])
+                ->assertSessionHasErrors('url');
+        }
+    }
+
     public function test_import_creates_bookmarks_and_queues_processing(): void
     {
         Bus::fake();

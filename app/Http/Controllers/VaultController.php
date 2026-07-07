@@ -142,7 +142,7 @@ class VaultController extends Controller
         return $request->validate([
             'name' => 'required|string|max:120',
             'username' => 'nullable|string|max:255',
-            'url' => 'nullable|url|max:2048',
+            'url' => 'nullable|url:http,https|max:2048',
             'category' => 'nullable|string|max:60',
             'secret' => ($secretRequired ? 'required' : 'nullable').'|string|max:8192',
             'notes' => 'nullable|string|max:8192',

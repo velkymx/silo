@@ -244,7 +244,7 @@ class BookmarkController extends Controller
     {
         return $request->validate([
             'title' => 'required|string|max:120',
-            'url' => 'required|url|max:2048',
+            'url' => 'required|url:http,https|max:2048',
             'description' => 'nullable|string|max:255',
             'icon' => 'nullable|string|max:120',
             'color' => 'nullable|string|max:30',
