@@ -102,8 +102,22 @@ const breadcrumbItems = computed(() => [
     })),
 ]);
 
+// Folder navigation is a PARTIAL reload: only the folder-view props change, so
+// the sidebar tree (allFolders/allTags/quota) and the FolderAccordion instance
+// are preserved instead of being torn down and rebuilt on every click (which
+// read as a "reload then refresh" flicker). preserveState keeps the accordion's
+// expansion state; openIds still recomputes to auto-reveal the new path.
+const FOLDER_VIEW_PROPS = [
+    'folders', 'files', 'current', 'breadcrumbs', 'rssItems',
+    'searching', 'advanced', 'flat', 'activeTag', 'section',
+    'starredOnly', 'recentOnly', 'filters',
+];
 function visitFolder(id) {
-    router.get('/', id ? { folder: id } : {}, { preserveScroll: true });
+    router.get('/', id ? { folder: id } : {}, {
+        only: FOLDER_VIEW_PROPS,
+        preserveState: true,
+        preserveScroll: true,
+    });
 }
 
 // ----- FourPane shell: icon rail | folder tree | contents | detail -----
@@ -122,6 +136,12 @@ function onBreadcrumb({ item, event }) {
 
 // ----- Search -----
 const search = ref(props.filters.search);
+// Folder navigation is a preserveState partial reload, so the component isn't
+// remounted — keep the search box in sync with the server's filter (e.g. it
+// clears when you navigate into a folder from a search result).
+watch(() => props.filters.search, (v) => {
+    if ((v ?? '') !== (search.value ?? '')) search.value = v ?? '';
+});
 
 function runSearch() {
     router.get('/', { folder: currentId.value, search: search.value }, {

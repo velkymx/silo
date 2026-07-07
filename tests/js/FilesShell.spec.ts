@@ -46,7 +46,12 @@ describe('Files shell', () => {
         const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
         const wrapper = mount(FilesIndex, { props: { ...base, allFolders: [{ id: 5, name: 'Docs', parent_id: null }] } });
         await wrapper.get('[data-folder="5"]').trigger('click');
-        expect(spy).toHaveBeenCalledWith('/', { folder: 5 }, { preserveScroll: true });
+        // Partial, state-preserving reload so the sidebar tree isn't rebuilt.
+        expect(spy).toHaveBeenCalledWith('/', { folder: 5 }, expect.objectContaining({
+            preserveScroll: true,
+            preserveState: true,
+            only: expect.arrayContaining(['files', 'current', 'breadcrumbs']),
+        }));
         spy.mockRestore();
     });
 
@@ -152,7 +157,10 @@ describe('Files shell', () => {
             const spy = vi.spyOn(router, 'get').mockImplementation(() => {});
             const wrapper = mount(FilesIndex, { props: { ...base, section: 'all' } });
             wrapper.vm.selectContentItem({ id: 7, is_dir: true });
-            expect(spy).toHaveBeenCalledWith('/', { folder: 7 }, { preserveScroll: true });
+            expect(spy).toHaveBeenCalledWith('/', { folder: 7 }, expect.objectContaining({
+                preserveScroll: true,
+                preserveState: true,
+            }));
             spy.mockRestore();
         });
     });
