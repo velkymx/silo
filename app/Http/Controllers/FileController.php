@@ -689,13 +689,44 @@ class FileController extends Controller
             ]);
         }
 
+        // A copy duplicates every blob in the subtree onto the actor's quota.
+        if (app(QuotaService::class)->wouldExceed($actorId, $this->subtreeSize($file))) {
+            throw ValidationException::withMessages([
+                'target_id' => 'This copy would exceed your storage quota.',
+            ]);
+        }
+
         $this->withFolderLock($actorId, $target?->id, function () use ($file, $target, $actorId) {
             $name = $this->uniqueName($target?->id, $file->name, $actorId);
             DB::transaction(fn () => $this->copyNode($file, $target?->id, $name, $actorId));
         });
+        app(QuotaService::class)->invalidate($actorId);
 
         return redirect()->route('files.index', ['folder' => $target?->id])
             ->with('success', 'Copied successfully!');
+    }
+
+    // Total bytes of the file blobs in a subtree (folders hold no bytes),
+    // computed in one recursive CTE so a deep copy's quota check isn't N+1.
+    protected function subtreeSize(File $file): int
+    {
+        if (! $file->is_dir) {
+            return (int) $file->size;
+        }
+
+        $row = DB::selectOne('
+            WITH RECURSIVE sub(id) AS (
+                SELECT id FROM files WHERE id = :root
+                UNION ALL
+                SELECT f.id FROM files f INNER JOIN sub ON f.parent_id = sub.id
+                    WHERE f.deleted_at IS NULL
+            )
+            SELECT COALESCE(SUM(f.size), 0) AS total
+            FROM files f INNER JOIN sub ON f.id = sub.id
+            WHERE f.is_dir = 0 AND f.deleted_at IS NULL
+        ', ['root' => $file->id]);
+
+        return (int) ($row->total ?? 0);
     }
 
     // Replace a file's content, archiving its current blob as a version.

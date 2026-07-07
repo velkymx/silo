@@ -84,6 +84,27 @@ class FileOperationsTest extends TestCase
         Storage::disk('public')->assertExists($copy->path);
     }
 
+    public function test_copy_blocked_when_it_would_exceed_quota(): void
+    {
+        Storage::fake('public');
+        config(['filemanager.user_quota_mb' => 1]); // 1 MiB
+        $user = User::factory()->create();
+        Storage::disk('public')->put('uploads/'.$user->id.'/big.bin', 'data');
+        // Already at the quota ceiling; a copy would double it.
+        $file = File::factory()->for($user, 'owner')->create([
+            'name' => 'big.bin',
+            'path' => 'uploads/'.$user->id.'/big.bin',
+            'size' => 1024 * 1024,
+        ]);
+        $folder = File::factory()->for($user, 'owner')->folder()->create();
+
+        $this->actingAs($user)
+            ->post("/files/{$file->id}/copy", ['target_id' => $folder->id])
+            ->assertSessionHasErrors('target_id');
+
+        $this->assertSame(0, File::where('parent_id', $folder->id)->count());
+    }
+
     public function test_copy_into_same_folder_gets_unique_name(): void
     {
         Storage::fake('public');
