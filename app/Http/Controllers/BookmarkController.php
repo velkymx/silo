@@ -29,6 +29,9 @@ class BookmarkController extends Controller
      */
     private const MAX_PROCESS_DISPATCH = 500;
 
+    /** Hard ceiling on bookmarks per user (store + import). */
+    private const MAX_BOOKMARKS_PER_USER = 5000;
+
     /** Payload cap for the launchpad listing so the Inertia response stays bounded. */
     private const LIST_CAP = 500;
 
@@ -61,6 +64,10 @@ class BookmarkController extends Controller
     {
         $this->authorize('create', Bookmark::class);
         $data = $this->validateData($request);
+
+        if (Bookmark::where('owner_id', auth()->id())->count() >= self::MAX_BOOKMARKS_PER_USER) {
+            return back()->withErrors(['url' => 'You have reached the maximum number of bookmarks.']);
+        }
 
         $bookmark = Bookmark::create($data + ['owner_id' => auth()->id()]);
         ProcessBookmark::dispatch($bookmark->id);
@@ -114,9 +121,10 @@ class BookmarkController extends Controller
             );
         }
         $existingSet = $existingSet->flip();
+        $existingTotal = Bookmark::where('owner_id', $userId)->count();
 
         foreach ($links as $link) {
-            if ($count >= self::MAX_PROCESS_DISPATCH) {
+            if ($count >= self::MAX_PROCESS_DISPATCH || $existingTotal + $count >= self::MAX_BOOKMARKS_PER_USER) {
                 break;
             }
             if ($existingSet->has($link['url'])) {
@@ -142,17 +150,14 @@ class BookmarkController extends Controller
     public function dedup()
     {
         $userId = auth()->id();
-        $removed = 0;
 
-        Bookmark::where('owner_id', $userId)
-            ->orderBy('id')->get()
-            ->groupBy('url')
-            ->each(function ($group) use (&$removed) {
-                foreach ($group->slice(1) as $dupe) {
-                    $dupe->delete();
-                    $removed++;
-                }
-            });
+        // Keep the earliest row per URL; delete the rest in one query rather
+        // than loading every bookmark and deleting row-by-row.
+        $keepIds = Bookmark::where('owner_id', $userId)
+            ->selectRaw('MIN(id) as id')->groupBy('url')->pluck('id');
+
+        $removed = Bookmark::where('owner_id', $userId)
+            ->whereNotIn('id', $keepIds)->delete();
 
         Audit::log('bookmark.dedup', null, ['removed' => $removed]);
 
