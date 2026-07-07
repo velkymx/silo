@@ -47,7 +47,7 @@ const cats = computed(() => (props.item.categories ?? []).filter((c) => c && c.t
             </div>
             <div class="small text-muted d-flex align-items-center gap-2 mt-1">
                 <span class="text-truncate" :title="item.feed_title ?? ''">
-                    <VibeIcon icon="rss-fill" class="me-1 text-warning" />{{ item.feed_title }}
+                    <VibeIcon icon="rss-fill" class="me-1" />{{ item.feed_title }}
                 </span>
                 <span v-if="item.author" class="text-truncate" :title="item.author">· {{ item.author }}</span>
                 <span class="ms-auto flex-shrink-0">{{ when }}</span>

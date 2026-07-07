@@ -612,7 +612,7 @@ function submitEdit(): void {
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
                 <h1 class="h5 mb-0 d-flex align-items-center gap-2">
-                    <VibeIcon icon="rss-fill" class="text-warning" />
+                    <VibeIcon icon="rss-fill" />
                     <span>{{ selectedFeed ? selectedFeed.title : (filters.filter === 'starred' ? 'Starred' : 'Inbox') }}</span>
                 </h1>
                 <VibeFormInput v-model="search" type="search" placeholder="Search articles…" class="ms-3 flex-grow-1" style="max-width: 320px" no-wrapper />
@@ -690,7 +690,7 @@ function submitEdit(): void {
                     <div class="flex-grow-1 min-w-0">
                         <a :href="selectedItem.url" target="_blank" rel="noopener" class="h5 text-break d-block mb-1">{{ selectedItem.title }}</a>
                         <div class="small text-muted">
-                            <VibeIcon icon="rss-fill" class="me-1 text-warning" />{{ selectedItem.feed_title }}
+                            <VibeIcon icon="rss-fill" class="me-1" />{{ selectedItem.feed_title }}
                             <template v-if="selectedItem.author"> · {{ selectedItem.author }}</template>
                             <template v-if="selectedItem.published_at"> · {{ new Date(selectedItem.published_at).toLocaleString() }}</template>
                         </div>

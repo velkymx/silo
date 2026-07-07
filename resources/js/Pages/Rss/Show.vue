@@ -91,7 +91,7 @@ function markUnread(): void {
             <article class="rss-article mx-auto p-4" style="max-width: 760px">
                 <header class="mb-3">
                     <a :href="item.feed_site_url ?? '#'" target="_blank" rel="noopener" class="small text-muted text-decoration-none d-inline-flex align-items-center gap-1 mb-2">
-                        <VibeIcon icon="rss-fill" class="text-warning" />{{ item.feed_title }}
+                        <VibeIcon icon="rss-fill" />{{ item.feed_title }}
                     </a>
                     <h1 class="display-6 mb-2">{{ item.title }}</h1>
                     <div class="small text-muted">
