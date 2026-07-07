@@ -137,6 +137,15 @@
 .min-w-0 {
     min-width: 0;
 }
+
+/* Page top-bar breadcrumbs. VibeBreadcrumb renders an inner <ol class="breadcrumb">
+   that keeps Bootstrap's default `margin-bottom: 1rem`; the `mb-0 pb-0` utilities
+   sit on the outer <nav>, so without this every page except Files rendered a
+   stray 1rem gap under the crumbs (misaligned). Flatten it globally so all
+   breadcrumbs align identically. */
+.breadcrumb {
+    margin-bottom: 0;
+}
 .st-table-wrap thead th {
     position: sticky;
     top: 0;

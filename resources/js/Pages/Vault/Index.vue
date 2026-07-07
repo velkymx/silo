@@ -269,7 +269,7 @@ async function onImportFile(e) {
         <!-- Breadcrumb + actions on one top-bar line: Add secret is the single
              solid-primary CTA; Import is a quiet light ghost. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 p-1">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'lock-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>

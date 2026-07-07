@@ -821,7 +821,7 @@ onBeforeUnmount(() => {
              actions right. Button system: one solid-primary CTA per region
              (Upload); every icon-only utility is a quiet light ghost. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 p-1">
+            <div class="d-flex align-items-center gap-2 px-3 py-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? sectionRoot.icon : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
@@ -1223,18 +1223,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-ol.breadcrumb {
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
-}.min-h-0 {
+.min-h-0 {
     min-height: 0;
 }
-/* VibeBreadcrumb renders an inner <ol class="breadcrumb"> with a default
-   bottom margin; flatten it since it sits in the topBar. */
-:deep(.breadcrumb) {
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
+/* Breadcrumb flattening now lives globally in theme.css so every page matches. */
 /* Brief confirmation pulse when a tag is added. */
 .tag-flash {
     animation: tag-flash 0.6s ease-out;

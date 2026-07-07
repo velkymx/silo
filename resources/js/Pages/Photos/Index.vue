@@ -342,7 +342,7 @@ function saveEdit() {
              zoom slider, starred filter, camera filter, sort; Upload is the
              single solid-primary CTA. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 p-1 flex-wrap">
+            <div class="d-flex align-items-center gap-2 px-3 py-2 flex-wrap">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'images' : 'collection'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
