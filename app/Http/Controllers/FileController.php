@@ -204,38 +204,44 @@ class FileController extends Controller
             $name .= '.md';
         }
         $content = (string) $request->input('content');
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
-            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
-        }
 
-        $path = "uploads/{$userId}/".Str::random(40);
-        if ($ext = pathinfo($name, PATHINFO_EXTENSION)) {
-            $path .= ".{$ext}";
-        }
-        Storage::disk($disk)->put($path, $content);
+        // Serialize quota-affecting writes per user (same lock as upload) so a
+        // concurrent create/upload can't both pass the quota check.
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($userId, $parent, $disk, $name, $content) {
+            if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
+                throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
+            }
 
-        $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $content, $parent, $userId) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
+            $path = "uploads/{$userId}/".Str::random(40);
+            if ($ext = pathinfo($name, PATHINFO_EXTENSION)) {
+                $path .= ".{$ext}";
+            }
+            Storage::disk($disk)->put($path, $content);
 
-            return File::create([
-                'name' => $name,
-                'path' => $path,
-                'disk' => $disk,
-                'is_dir' => false,
-                'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
-                'size' => strlen($content),
-                'hash' => hash('sha256', $content),
-                'status' => File::STATUS_PENDING,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
+            $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $content, $parent, $userId) {
+                $this->assertNoCollision($parent?->id, $name, $userId);
+
+                return File::create([
+                    'name' => $name,
+                    'path' => $path,
+                    'disk' => $disk,
+                    'is_dir' => false,
+                    'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
+                    'size' => strlen($content),
+                    'hash' => hash('sha256', $content),
+                    'status' => File::STATUS_PENDING,
+                    'parent_id' => $parent?->id,
+                    'owner_id' => $userId,
+                ]);
+            });
+            app(QuotaService::class)->invalidate($userId);
+
+            ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.create', $file);
+
+            return redirect()->route('files.index', ['folder' => $parent?->id])
+                ->with('success', "Created “{$name}”.");
         });
-
-        ProcessUploadedFile::dispatch($file->id);
-        Audit::log('file.create', $file);
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Created “{$name}”.");
     }
 
     // Office document types that can be created blank and edited in the browser.
@@ -282,35 +288,39 @@ class FileController extends Controller
             $name .= '.'.$type;
         }
         $bytes = $request->file('file')->get();
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($bytes))) {
-            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
-        }
 
-        $path = "uploads/{$userId}/".Str::random(40).'.'.$type;
-        Storage::disk($disk)->put($path, $bytes);
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($userId, $parent, $disk, $type, $name, $bytes) {
+            if (app(QuotaService::class)->wouldExceed($userId, strlen($bytes))) {
+                throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
+            }
 
-        $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $type, $bytes, $parent, $userId) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
+            $path = "uploads/{$userId}/".Str::random(40).'.'.$type;
+            Storage::disk($disk)->put($path, $bytes);
 
-            return File::create([
-                'name' => $name,
-                'path' => $path,
-                'disk' => $disk,
-                'is_dir' => false,
-                'mime' => self::NEW_DOC_TYPES[$type],
-                'size' => strlen($bytes),
-                'hash' => hash('sha256', $bytes),
-                'status' => File::STATUS_PENDING,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
+            $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $type, $bytes, $parent, $userId) {
+                $this->assertNoCollision($parent?->id, $name, $userId);
+
+                return File::create([
+                    'name' => $name,
+                    'path' => $path,
+                    'disk' => $disk,
+                    'is_dir' => false,
+                    'mime' => self::NEW_DOC_TYPES[$type],
+                    'size' => strlen($bytes),
+                    'hash' => hash('sha256', $bytes),
+                    'status' => File::STATUS_PENDING,
+                    'parent_id' => $parent?->id,
+                    'owner_id' => $userId,
+                ]);
+            });
+            app(QuotaService::class)->invalidate($userId);
+
+            ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.create', $file);
+
+            return redirect()->route('files.index', ['folder' => $parent?->id])
+                ->with('success', "Created “{$name}”.");
         });
-
-        ProcessUploadedFile::dispatch($file->id);
-        Audit::log('file.create', $file);
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Created “{$name}”.");
     }
 
     // Open the full-screen editor page for an editable file (office docs, text).
@@ -356,35 +366,38 @@ class FileController extends Controller
         $userId = $file->owner_id;
         $disk = config('filemanager.disk');
 
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($content) - (int) $file->size)) {
-            throw ValidationException::withMessages(['file' => 'This would exceed your storage quota.']);
-        }
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($file, $userId, $disk, $content, $note) {
+            if (app(QuotaService::class)->wouldExceed($userId, strlen($content) - (int) $file->size)) {
+                throw ValidationException::withMessages(['file' => 'This would exceed your storage quota.']);
+            }
 
-        $newPath = "uploads/{$userId}/".Str::random(40);
-        if ($ext = pathinfo($file->name, PATHINFO_EXTENSION)) {
-            $newPath .= ".{$ext}";
-        }
-        Storage::disk($disk)->put($newPath, $content);
+            $newPath = "uploads/{$userId}/".Str::random(40);
+            if ($ext = pathinfo($file->name, PATHINFO_EXTENSION)) {
+                $newPath .= ".{$ext}";
+            }
+            Storage::disk($disk)->put($newPath, $content);
 
-        DB::transaction(function () use ($file, $newPath, $disk, $content, $note) {
-            $this->snapshotVersion($file, null, $note);
-            $file->update([
-                'path' => $newPath,
-                'disk' => $disk,
-                'size' => strlen($content),
-                'hash' => hash('sha256', $content),
-                'version' => $file->version + 1,
-                'status' => File::STATUS_PENDING,
-                'referenced' => false, // edited content is now app-owned
-                'content_edited_at' => now(),
-            ]);
+            DB::transaction(function () use ($file, $newPath, $disk, $content, $note) {
+                $this->snapshotVersion($file, null, $note);
+                $file->update([
+                    'path' => $newPath,
+                    'disk' => $disk,
+                    'size' => strlen($content),
+                    'hash' => hash('sha256', $content),
+                    'version' => $file->version + 1,
+                    'status' => File::STATUS_PENDING,
+                    'referenced' => false, // edited content is now app-owned
+                    'content_edited_at' => now(),
+                ]);
+            });
+            app(QuotaService::class)->invalidate($userId);
+
+            ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.edit', $file);
+
+            return redirect()->route('files.index', ['folder' => $file->parent_id])
+                ->with('success', 'Saved.');
         });
-
-        ProcessUploadedFile::dispatch($file->id);
-        Audit::log('file.edit', $file);
-
-        return redirect()->route('files.index', ['folder' => $file->parent_id])
-            ->with('success', 'Saved.');
     }
 
     // Toggle a file's or folder's starred (favorite) flag.
