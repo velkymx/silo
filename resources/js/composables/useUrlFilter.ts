@@ -20,10 +20,10 @@ export function useUrlFilter<T extends Record<string, unknown>>({
     );
 
     function push() {
-        const params: Record<string, unknown> = {};
+        const params: Record<string, string | number | boolean> = {};
         for (const [k, v] of Object.entries(filters.value)) {
             if (v !== '' && v !== null && v !== undefined) {
-                params[k] = v;
+                params[k] = v as string | number | boolean;
             }
         }
         isDirty.value = Object.keys(params).length > 0;

@@ -39,7 +39,7 @@ vi.mock('exceljs', () => {
             cb({ cellCount: 2, getCell: (c: number) => c === 1 ? { value: 1, text: '1' } : { value: { formula: 'A1+1' }, text: '2', formula: 'A1+1' } }, 1);
             cb({ cellCount: 1, getCell: () => ({ value: 'x', text: 'x' }) }, 2);
         },
-        getCell: vi.fn((_r: number, _c: number) => ({ value: null as unknown, set value(_v: unknown) {} })),
+        getCell: vi.fn((_r: number, _c: number) => ({ get value() { return null as unknown; }, set value(_v: unknown) {} })),
         addRow: vi.fn(),
     };
     return {

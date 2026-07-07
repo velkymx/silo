@@ -139,7 +139,7 @@ describe('Notes/Index', () => {
     it('ME-14: in-flight autosave does not mutate state after unmount', async () => {
         vi.useFakeTimers();
         let resolveAutosave!: () => void;
-        h.put.mockReturnValueOnce(new Promise<void>((res) => { resolveAutosave = res; }));
+        h.put.mockReturnValueOnce(new Promise<void>((res) => { resolveAutosave = res; }) as any);
 
         const namedStub = { name: 'MarkdownEditor', template: '<div class="md-stub" />', props: ['modelValue', 'enableLinks'], emits: ['update:modelValue'] };
         const wrapper = mount(NotesIndex, {
@@ -202,6 +202,7 @@ describe('Notes folder accordion', () => {
                 rootId: 5,
                 folders: [],
                 tags: [{ id: 1, name: 'work' }, { id: 2, name: 'work/projects' }],
+                activeTag: null,
             },
         });
         // Parent segment shown; nested child hidden until expanded.

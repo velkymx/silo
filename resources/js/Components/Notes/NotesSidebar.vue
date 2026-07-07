@@ -14,10 +14,11 @@ const expandedTags = ref(new Set<string>());
 
 // Build a nested tag tree by splitting each "#parent/child" tag on '/'.
 const tagTree = computed(() => {
-    const root: { children: Map<string, { label: string; path: string; id: number | null; color: string | null; children: Map<string, any> }> } = { children: new Map() };
+    type TreeNode = { label: string; path: string; id: number | null; color: string | null; children: Map<string, TreeNode> };
+    const root: TreeNode = { label: '', path: '', id: null, color: null, children: new Map() };
     for (const tag of props.tags) {
         const parts = tag.name.split('/');
-        let node = root;
+        let node: TreeNode = root;
         let path = '';
         parts.forEach((part, i) => {
             path = i === 0 ? part : `${path}/${part}`;

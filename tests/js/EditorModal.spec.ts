@@ -74,6 +74,6 @@ describe('EditorModal', () => {
         await flushPromises();
 
         // The textarea must NOT contain the stale file-5 content.
-        expect(wrapper.find('textarea.md').element.value).not.toContain('file-5-stale');
+        expect((wrapper.find('textarea.md').element as HTMLTextAreaElement).value).not.toContain('file-5-stale');
     });
 });

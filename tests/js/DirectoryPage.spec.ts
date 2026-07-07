@@ -63,11 +63,11 @@ describe('Directory/Index (explorer shell)', () => {
     it('stale profile response is dropped when a newer click fires first', async () => {
         // First click: slow fetch for person 2 (Alice) — use a unique email as sentinel.
         let resolveFirst!: (v: unknown) => void;
-        const first = new Promise((res) => { resolveFirst = res; });
+        const first = new Promise<any>((res) => { resolveFirst = res; });
         // Second click: fast fetch for person 1 (Bob).
         h.get
             .mockReturnValueOnce(first)
-            .mockResolvedValueOnce({ person: { id: 1, name: 'Bob Sales', email: 'bob@current.test' } });
+            .mockResolvedValueOnce({ person: { id: 1, name: 'Bob Sales', title: 'Sales', email: 'bob@current.test' } });
 
         const wrapper = mount(DirectoryIndex, { props: { people, departments: [] } });
         clickRow(wrapper, 2); // slow

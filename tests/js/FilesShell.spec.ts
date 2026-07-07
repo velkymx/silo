@@ -19,7 +19,10 @@ vi.mock('@inertiajs/vue3', async (importOriginal) => {
 
 import FilesIndex from '@/Pages/Files/Index.vue';
 
-const base = {
+// Loosely typed fixture: FilesIndex declares options-API props (`type: Object`)
+// so `current: null` and empty arrays don't line up with the inferred prop
+// types. This is test scaffolding, not production code.
+const base: Record<string, any> = {
     folders: [], files: [], current: null, breadcrumbs: [], allFolders: [],
     allTags: [], storage: { used: 0, quota: 0 }, filters: { search: '', sort: 'name', direction: 'asc' },
     section: 'all',
@@ -208,7 +211,7 @@ describe('Files shell', () => {
 
         it('Restore clears a stale selected-detail ghost on success', async () => {
             const postSpy = vi.spyOn(router, 'post').mockImplementation((_url, _data, opts) => {
-                opts?.onSuccess?.();
+                opts?.onSuccess?.({} as any);
             });
             const wrapper = mount(FilesIndex, {
                 props: { ...base, section: 'trash', files: [trashItem()] },

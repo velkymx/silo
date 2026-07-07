@@ -42,16 +42,18 @@ const files = [{ id: 21, name: 'memo.txt', is_dir: false, type: 'txt', size: 12,
 const allTags = [{ id: 3, name: 'work', color: '#abc' }];
 
 function mountIndex(extra = {}) {
-    return mount(FilesIndex, {
-        props: {
-            folders, files, current: null, allFolders: folders, allTags,
-            breadcrumbs: [],
-            filters: { search: '', sort: 'name', direction: 'asc' },
-            storage: { used: 0, quota: 0 }, maxUploadKb: 1024,
-            section: 'all',
-            ...extra,
-        },
-    });
+    // FilesIndex uses options-API props (`type: Object`), so `current: null`
+    // doesn't line up with the inferred prop type — loosen the fixture.
+    const props: Record<string, any> = {
+        folders, files, current: null, allFolders: folders, allTags,
+        breadcrumbs: [],
+        filters: { search: '', sort: 'name', direction: 'asc' },
+        storage: { used: 0, quota: 0 }, maxUploadKb: 1024,
+        section: 'all',
+        ...extra,
+    };
+
+    return mount(FilesIndex, { props });
 }
 
 beforeEach(() => { Object.values(s).forEach((f) => f.mockClear()); localStorage.clear(); });

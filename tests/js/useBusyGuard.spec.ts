@@ -5,7 +5,7 @@ describe('useBusyGuard', () => {
     it('runs the action and flips busy around it', () => {
         const seen: boolean[] = [];
         const { busy, run } = useBusyGuard();
-        run(() => seen.push(busy.value));
+        run(() => { seen.push(busy.value); });
         expect(seen).toEqual([true]);   // busy was true while running
         expect(busy.value).toBe(false); // released for a synchronous action
     });

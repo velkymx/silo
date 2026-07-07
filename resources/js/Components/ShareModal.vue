@@ -11,7 +11,7 @@ interface Option { value: number | string; text: string }
 
 const open = defineModel<boolean>({ required: true });
 const props = defineProps<{ item: FileLike | null }>();
-const { toast } = useToast();
+const toast = useToast();
 
 // VibeDataTable column definitions — declared inside <script setup> so the
 // `:items` array types line up with each column's `key`.
