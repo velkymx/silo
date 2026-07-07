@@ -57,6 +57,19 @@ class BookmarkTest extends TestCase
             ->assertSessionHasErrors('url');
     }
 
+    public function test_can_edit_reflects_ownership(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        Bookmark::factory()->create(['owner_id' => $user->id, 'title' => 'Mine']);
+        Bookmark::factory()->create(['owner_id' => $other->id, 'shared' => true, 'title' => 'Theirs']);
+
+        $this->actingAs($user)->get(route('bookmarks.index'))->assertInertia(fn ($page) => $page
+            ->component('Bookmarks/Index')
+            ->where('bookmarks', fn ($bookmarks) => collect($bookmarks)
+                ->every(fn ($b) => $b['can_edit'] === ($b['title'] === 'Mine'))));
+    }
+
     public function test_validate_all_caps_the_dispatch_fan_out(): void
     {
         Bus::fake();

@@ -10,7 +10,6 @@ use App\Services\Audit;
 use App\Services\BookmarkImporter;
 use App\Support\FileResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -30,24 +29,29 @@ class BookmarkController extends Controller
      */
     private const MAX_PROCESS_DISPATCH = 500;
 
+    /** Payload cap for the launchpad listing so the Inertia response stays bounded. */
+    private const LIST_CAP = 500;
+
     public function index(Request $request)
     {
         $userId = auth()->id();
+        $isAdmin = (bool) $request->user()->is_admin;
         $search = trim((string) $request->string('search'));
 
         if ($search !== '') {
             $bookmarks = Bookmark::search($search)
                 ->query(fn ($q) => $q->visibleTo($userId))
+                ->take(self::LIST_CAP)
                 ->get();
         } else {
             $bookmarks = Bookmark::visibleTo($userId)
-                ->orderBy('sort_order')->orderBy('title')->get();
+                ->orderBy('sort_order')->orderBy('title')->limit(self::LIST_CAP)->get();
         }
 
         $subscribedUrls = RssFeed::where('user_id', $userId)->pluck('url')->flip();
 
         return Inertia::render('Bookmarks/Index', [
-            'bookmarks' => $bookmarks->map(fn (Bookmark $b) => $this->shape($b, $userId, $subscribedUrls))->values(),
+            'bookmarks' => $bookmarks->map(fn (Bookmark $b) => $this->shape($b, $userId, $isAdmin, $subscribedUrls))->values(),
             'filters' => ['search' => $search ?: null],
             'screenshotsEnabled' => (bool) config('bookmarks.screenshots.enabled'),
         ]);
@@ -289,7 +293,7 @@ class BookmarkController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function shape(Bookmark $bookmark, int $userId, ?\Illuminate\Support\Collection $subscribedUrls = null): array
+    private function shape(Bookmark $bookmark, int $userId, bool $isAdmin, ?\Illuminate\Support\Collection $subscribedUrls = null): array
     {
         // A user-typed bootstrap icon name overrides imagery only when no blob exists.
         $iconName = $bookmark->icon && ! str_starts_with($bookmark->icon, 'http') ? $bookmark->icon : null;
@@ -313,7 +317,9 @@ class BookmarkController extends Controller
             'shared' => $bookmark->shared,
             'starred' => $bookmark->starred,
             'click_count' => $bookmark->click_count,
-            'can_edit' => Gate::check('update', $bookmark),
+            // Mirrors BookmarkPolicy::update — owner or admin — without a
+            // per-row Gate/DB round-trip while mapping the whole list.
+            'can_edit' => $bookmark->owner_id === $userId || $isAdmin,
         ];
     }
 }
