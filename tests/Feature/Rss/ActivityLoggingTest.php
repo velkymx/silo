@@ -95,7 +95,7 @@ class ActivityLoggingTest extends TestCase
             app(\App\Automation\EventDispatcher::class),
             app(\App\Services\Rss\FaviconFetcher::class),
             app(\App\Services\Rss\HtmlSanitizer::class),
-            app(\App\Services\Rss\SafeUrl::class),
+            app(\App\Services\Http\SafeUrl::class),
         );
 
         $this->assertSame(1, AuditLog::where('action', 'rss.item.create')->count());

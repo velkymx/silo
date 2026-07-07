@@ -18,7 +18,7 @@ class ProcessBookmarkTest extends TestCase
         Http::fake(['*' => Http::response('', 404)]);
         $bookmark = Bookmark::factory()->create(['url' => 'https://gone.example.com', 'status' => 'pending']);
 
-        (new ProcessBookmark($bookmark->id))->handle();
+        (new ProcessBookmark($bookmark->id))->handle(app(\App\Services\Http\SafeUrl::class));
 
         $this->assertSame('dead', $bookmark->fresh()->status);
         $this->assertNotNull($bookmark->fresh()->last_checked_at);
@@ -33,7 +33,7 @@ class ProcessBookmarkTest extends TestCase
         ]);
         $bookmark = Bookmark::factory()->create(['url' => 'https://ok.example.com', 'status' => 'pending']);
 
-        (new ProcessBookmark($bookmark->id))->handle();
+        (new ProcessBookmark($bookmark->id))->handle(app(\App\Services\Http\SafeUrl::class));
 
         $bookmark->refresh();
         $this->assertSame('alive', $bookmark->status);
@@ -51,7 +51,7 @@ class ProcessBookmarkTest extends TestCase
         ]);
         $bookmark = Bookmark::factory()->create(['url' => 'https://blog.example.com', 'status' => 'pending']);
 
-        (new ProcessBookmark($bookmark->id))->handle();
+        (new ProcessBookmark($bookmark->id))->handle(app(\App\Services\Http\SafeUrl::class));
 
         $this->assertSame('https://blog.example.com/feed.xml', $bookmark->fresh()->feed_url);
     }
@@ -67,7 +67,7 @@ class ProcessBookmarkTest extends TestCase
         ]);
         $bookmark = Bookmark::factory()->create(['url' => 'https://blog.example.com', 'status' => 'pending']);
 
-        (new ProcessBookmark($bookmark->id))->handle();
+        (new ProcessBookmark($bookmark->id))->handle(app(\App\Services\Http\SafeUrl::class));
 
         // feed_url is persisted, and the adopt job (which reads it from the DB)
         // was queued — proving dispatch happens after the write, not before.
@@ -82,8 +82,24 @@ class ProcessBookmarkTest extends TestCase
     {
         $bookmark = Bookmark::factory()->create(['url' => 'ftp://example.com', 'status' => 'pending']);
 
-        (new ProcessBookmark($bookmark->id))->handle();
+        (new ProcessBookmark($bookmark->id))->handle(app(\App\Services\Http\SafeUrl::class));
 
         $this->assertSame('dead', $bookmark->fresh()->status);
+    }
+
+    public function test_marks_private_address_dead_without_fetching(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake(); // any outbound call would throw as a stray request
+
+        $bookmark = Bookmark::factory()->create([
+            'url' => 'http://169.254.169.254/latest/meta-data/',
+            'status' => 'pending',
+        ]);
+
+        (new ProcessBookmark($bookmark->id))->handle(app(\App\Services\Http\SafeUrl::class));
+
+        $this->assertSame('dead', $bookmark->fresh()->status);
+        Http::assertNothingSent();
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Rss;
+namespace App\Services\Http;
 
 use RuntimeException;
 

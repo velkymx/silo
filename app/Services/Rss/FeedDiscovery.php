@@ -2,6 +2,7 @@
 
 namespace App\Services\Rss;
 
+use App\Services\Http\SafeUrl;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 

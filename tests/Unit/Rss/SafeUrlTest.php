@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\Rss;
 
-use App\Services\Rss\SafeUrl;
-use App\Services\Rss\UnsafeUrlException;
+use App\Services\Http\SafeUrl;
+use App\Services\Http\UnsafeUrlException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

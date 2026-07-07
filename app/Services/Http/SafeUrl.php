@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Services\Rss;
+namespace App\Services\Http;
 
 /**
- * SSRF guard for every server-side fetch the RSS module performs (feed
- * refresh, feed discovery, favicon download, OPML-by-URL import).
+ * SSRF guard for every server-side fetch the app performs against a user- or
+ * remote-content-supplied URL (RSS feeds/favicons/OPML, bookmark liveness
+ * checks, favicons, screenshots).
  *
- * User- and feed-supplied URLs must never let the app reach into the
- * private network or the cloud metadata endpoint. A URL is safe only when:
+ * A URL must never let the app reach into the private network or the cloud
+ * metadata endpoint. A URL is safe only when:
  *   - its scheme is http or https, and
  *   - every A/AAAA record its host resolves to is a public, non-reserved
  *     address (blocks 127/8, 10/8, 172.16/12, 192.168/16, 169.254/16,

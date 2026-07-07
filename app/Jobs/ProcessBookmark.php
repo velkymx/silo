@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Jobs\Rss\AdoptBookmarkFeed;
 use App\Models\Bookmark;
+use App\Services\Http\SafeUrl;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -14,7 +15,9 @@ use Throwable;
 /**
  * Health-checks and hydrates a bookmark: validates the URL responds (2xx/3xx,
  * else marked dead), downloads the site favicon, and — when enabled — captures
- * a page screenshot. SSRF surface is limited to http(s) with a capped timeout.
+ * a page screenshot. Every outbound fetch (page, favicon, screenshot) is
+ * SafeUrl-guarded so a bookmark URL can't be pointed at the private network
+ * or the cloud metadata endpoint.
  */
 class ProcessBookmark implements ShouldQueue
 {
@@ -22,15 +25,16 @@ class ProcessBookmark implements ShouldQueue
 
     public function __construct(public int $bookmarkId) {}
 
-    public function handle(): void
+    public function handle(SafeUrl $safeUrl): void
     {
         $bookmark = Bookmark::find($this->bookmarkId);
         if (! $bookmark) {
             return;
         }
 
-        // Only ever fetch http(s) URLs from the server.
-        if (! preg_match('#^https?://#i', $bookmark->url)) {
+        // Only ever fetch public http(s) URLs from the server — reject other
+        // schemes and any host that resolves into a private/reserved range.
+        if (! preg_match('#^https?://#i', $bookmark->url) || ! $safeUrl->isSafe($bookmark->url)) {
             $bookmark->update(['status' => Bookmark::STATUS_DEAD, 'last_checked_at' => now()]);
 
             return;
@@ -39,10 +43,10 @@ class ProcessBookmark implements ShouldQueue
         $response = null;
         try {
             $response = Http::timeout(config('bookmarks.http_timeout', 8))
-                ->withOptions(['allow_redirects' => ['max' => 5]])
+                ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
                 ->get($bookmark->url);
         } catch (Throwable) {
-            // network failure / DNS / timeout → dead
+            // network failure / DNS / timeout / blocked redirect → dead
         }
 
         if (! $response || ! ($response->successful() || $response->redirect())) {
@@ -53,7 +57,7 @@ class ProcessBookmark implements ShouldQueue
 
         $attributes = ['status' => Bookmark::STATUS_ALIVE, 'last_checked_at' => now()];
 
-        if ($iconPath = $this->fetchFavicon($bookmark, $response->body())) {
+        if ($iconPath = $this->fetchFavicon($bookmark, $response->body(), $safeUrl)) {
             $attributes['icon_path'] = $iconPath;
         }
         $adoptFeed = false;
@@ -61,7 +65,7 @@ class ProcessBookmark implements ShouldQueue
             $attributes['feed_url'] = $feed;
             $adoptFeed = true;
         }
-        if ($shotPath = $this->screenshot($bookmark)) {
+        if ($shotPath = $this->screenshot($bookmark, $safeUrl)) {
             $attributes['screenshot_path'] = $shotPath;
         }
 
@@ -76,15 +80,19 @@ class ProcessBookmark implements ShouldQueue
     }
 
     /** Download the site favicon and store it; returns the stored path or null. */
-    private function fetchFavicon(Bookmark $bookmark, string $html): ?string
+    private function fetchFavicon(Bookmark $bookmark, string $html, SafeUrl $safeUrl): ?string
     {
         $candidate = $this->faviconUrl($bookmark->url, $html);
-        if (! $candidate) {
+        // The candidate comes from the page's own <link> tag, so re-guard it —
+        // a page can point its favicon at an internal host.
+        if (! $candidate || ! $safeUrl->isSafe($candidate)) {
             return null;
         }
 
         try {
-            $res = Http::timeout(config('bookmarks.http_timeout', 8))->get($candidate);
+            $res = Http::timeout(config('bookmarks.http_timeout', 8))
+                ->withOptions(['allow_redirects' => $safeUrl->allowRedirects(5)])
+                ->get($candidate);
         } catch (Throwable) {
             return null;
         }
@@ -171,9 +179,15 @@ class ProcessBookmark implements ShouldQueue
      * Capture a screenshot via spatie/browsershot when enabled and installed.
      * Returns the stored path or null (feature off, package missing, or failure).
      */
-    private function screenshot(Bookmark $bookmark): ?string
+    private function screenshot(Bookmark $bookmark, SafeUrl $safeUrl): ?string
     {
         if (! config('bookmarks.screenshots.enabled') || ! class_exists(Browsershot::class)) {
+            return null;
+        }
+        // Headless Chrome follows its own redirects/JS navigations with no hook
+        // to guard each hop, so at minimum refuse a URL that already resolves
+        // into a private/reserved range before launching the browser.
+        if (! $safeUrl->isSafe($bookmark->url)) {
             return null;
         }
 

@@ -10,7 +10,7 @@ use App\Services\Audit;
 use App\Services\Rss\FaviconFetcher;
 use App\Services\Rss\HtmlSanitizer;
 use App\Services\Rss\Parser;
-use App\Services\Rss\SafeUrl;
+use App\Services\Http\SafeUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

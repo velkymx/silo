@@ -8,7 +8,7 @@ use App\Http\Requests\Rss\ImportOpmlRequest;
 use App\Jobs\Rss\ImportOpml;
 use App\Models\RssFeed;
 use App\Services\Rss\OpmlExporter;
-use App\Services\Rss\SafeUrl;
+use App\Services\Http\SafeUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\StreamedResponse;

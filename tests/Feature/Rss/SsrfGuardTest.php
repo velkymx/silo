@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\Rss\FaviconFetcher;
 use App\Services\Rss\HtmlSanitizer;
 use App\Services\Rss\Parser;
-use App\Services\Rss\SafeUrl;
+use App\Services\Http\SafeUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
