@@ -139,7 +139,7 @@ const pct = computed(() => (props.summary.quota > 0 ? Math.min(100, Math.round((
     <ShellLayout :folders-visible="false" :detail-visible="false">
         <!-- Breadcrumb + usage summary + hover readout on one top-bar line. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 px-3 py-2">
+            <div class="d-flex align-items-center gap-2 p-2">
                 <VibeBreadcrumb :items="[{ text: 'Storage', active: true }]" class="breadcrumb mb-0 pb-0 text-truncate min-w-0">
                     <template #item="{ item }">
                         <VibeIcon icon="hdd-fill" class="me-1" /><span>{{ item.text }}</span>

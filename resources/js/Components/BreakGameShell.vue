@@ -17,7 +17,7 @@ const breadcrumbItems = computed(() => [
     <ShellLayout :folders-visible="false" :detail-visible="false">
         <!-- Breadcrumb + per-game actions share the top-bar line. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 px-3 py-2">
+            <div class="d-flex align-items-center gap-2 p-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? 'joystick' : icon" class="me-1" /><span :title="item.text">{{ item.text }}</span>

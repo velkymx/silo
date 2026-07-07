@@ -821,7 +821,7 @@ onBeforeUnmount(() => {
              actions right. Button system: one solid-primary CTA per region
              (Upload); every icon-only utility is a quiet light ghost. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 px-3 py-2">
+            <div class="d-flex align-items-center gap-2 p-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
                         <VibeIcon :icon="index === 0 ? sectionRoot.icon : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>

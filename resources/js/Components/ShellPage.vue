@@ -33,7 +33,7 @@ const breadcrumbItems = computed(() => [
          detail columns. The workhorse for admin/profile/utility surfaces. -->
     <ShellLayout :folders-visible="false" :detail-visible="false">
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 px-3 py-2">
+            <div class="d-flex align-items-center gap-2 p-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon || icon" class="me-1" /><span :title="item.text">{{ item.text }}</span>
