@@ -675,6 +675,16 @@ class FileController extends Controller
             ]);
         }
 
+        // A file keeps its owner_id when reparented. Moving it into a folder
+        // owned by someone else would leave it owned by A but living under B's
+        // tree — invisible to A. Keep items inside their owner's tree; a
+        // write-grantee may reorganize within it but not relocate it out.
+        if ($target && $target->owner_id !== $file->owner_id) {
+            throw ValidationException::withMessages([
+                'target_id' => 'Cannot move an item into a folder owned by another user.',
+            ]);
+        }
+
         $this->withFolderLock($file->owner_id, $target?->id, function () use ($file, $target) {
             $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
             $file->update(['parent_id' => $target?->id]);
