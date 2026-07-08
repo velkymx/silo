@@ -22,7 +22,13 @@ export function useFileTree() {
         try {
             const q = id === null ? '' : `?parent=${id}`;
             const res = await http.get<Children>(`/files/tree${q}`);
-            childrenCache.value = new Map(childrenCache.value).set(id, res);
+            // Normalize so a malformed/empty response never breaks consumers.
+            const safe: Children = {
+                folders: Array.isArray(res?.folders) ? res.folders : [],
+                files: Array.isArray(res?.files) ? res.files : [],
+                capped: res?.capped ?? false,
+            };
+            childrenCache.value = new Map(childrenCache.value).set(id, safe);
         } finally {
             if (id !== null) {
                 const n = new Set(loading.value);

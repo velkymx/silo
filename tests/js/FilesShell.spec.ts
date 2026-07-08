@@ -64,6 +64,14 @@ describe('Files shell', () => {
         expect(contents.text()).toContain('a.md');
     });
 
+    it('renders the FileTree explorer in tree view mode', () => {
+        localStorage.setItem('fm-view', 'tree');
+        const wrapper = mount(FilesIndex, { props: { ...base } });
+        localStorage.removeItem('fm-view');
+        const contents = wrapper.get('[data-pane="contents"]');
+        expect(contents.findComponent({ name: 'FileTree' }).exists()).toBe(true);
+    });
+
     it('collapses the detail column until a file is selected', async () => {
         const wrapper = mount(FilesIndex, { props: { ...base, files: [{ id: 9, name: 'a.md', type: 'md', size: 10, created_at: '2026-01-01' }] } });
         expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);

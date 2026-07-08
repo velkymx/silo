@@ -104,10 +104,11 @@ describe('Files/Index page', () => {
         expect(s.get).toHaveBeenCalledWith('/', {}, expect.anything());
     });
 
-    it('switching to grid view persists the preference', async () => {
+    it('cycling the view toggle persists the preference', async () => {
         const wrapper = mountIndex();
-        const grid = wrapper.findAll('button').find((b) => b.attributes('title') === 'Thumbnail view');
-        await grid!.trigger('click');
+        const toggle = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Toggle view');
+        // Default is list; one cycle → grid.
+        await toggle!.trigger('click');
         expect(localStorage.getItem('fm-view')).toBe('grid');
     });
 
@@ -200,8 +201,8 @@ describe('Files/Index page', () => {
         });
         let wrapper: ReturnType<typeof mountIndex> | undefined;
         expect(() => { wrapper = mountIndex(); }).not.toThrow();
-        // grid-only template absent → defaulted to list view
-        expect(wrapper!.find('[data-view="grid"]').exists() || wrapper!.findAll('button').some((b) => b.attributes('title') === 'Thumbnail view')).toBe(true);
+        // Mounted without throwing and the view toggle is present (defaulted to list).
+        expect(wrapper!.findAll('button').some((b) => b.attributes('aria-label') === 'Toggle view')).toBe(true);
         vi.restoreAllMocks();
     });
 
@@ -210,7 +211,7 @@ describe('Files/Index page', () => {
             throw new DOMException('The operation is insecure.', 'SecurityError');
         });
         const wrapper = mountIndex();
-        const gridBtn = wrapper.findAll('button').find((b) => b.attributes('title') === 'Thumbnail view');
+        const gridBtn = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Toggle view');
         await expect(gridBtn!.trigger('click')).resolves.not.toThrow();
         vi.restoreAllMocks();
     });

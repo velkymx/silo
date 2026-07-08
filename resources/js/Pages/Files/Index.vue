@@ -14,6 +14,8 @@ import RenameModal from '../../Components/RenameModal.vue';
 import QuickLookModal from '../../Components/QuickLookModal.vue';
 import ContextMenu from '../../Components/ContextMenu.vue';
 import { useSelection } from '../../composables/useSelection';
+import FileTree from '../../Components/Files/FileTree.vue';
+import { useFileTree } from '../../composables/useFileTree';
 import BatchActions from '../../Components/BatchActions.vue';
 import { useJobPolling } from '../../composables/useJobPolling';
 import { useQuickLook } from '../../composables/useQuickLook';
@@ -308,13 +310,43 @@ function onNewMenu({ item }) {
     }
 }
 
+// ----- FileTree explorer (lazy folders + files) -----
+const { childrenCache, expanded, loading: treeLoading, toggle, ensureRoot, preloadPath } = useFileTree();
+
+// Selection source spans BOTH the current-folder rows (list/grid views) and the
+// files loaded anywhere in the tree (tree view), so BatchActions can resolve a
+// checked item whichever view produced it. Deduped by id.
+const selectableItems = computed(() => {
+    const byId = new Map();
+    for (const it of items.value) byId.set(it.id, it);
+    for (const bucket of childrenCache.value.values()) {
+        for (const f of (bucket?.files ?? [])) if (!byId.has(f.id)) byId.set(f.id, { ...f, is_dir: false });
+    }
+    return [...byId.values()];
+});
+
 // ----- Multi-select + batch operations (Drive-style) -----
 // A row click selects (file) or navigates (folder); the hover checkbox column
 // drives multi-select. The composable's click-modifier path is unused here.
 const {
     selectedIds, selectedItems,
     isSelected, toggleSel, clearSelection,
-} = useSelection(items, selectContentItem);
+} = useSelection(selectableItems, selectContentItem);
+
+// Folder toggle also sets the folder "current" (URL + breadcrumb) via the
+// existing partial reload — a caret-only toggle wouldn't deep-link.
+async function onTreeToggle(id) {
+    try {
+        await toggle(id);
+    } catch {
+        toast.push('Could not load that folder.', { variant: 'danger' });
+        return;
+    }
+    visitFolder(id);
+}
+function onTreeSelect(item) { selectContentItem(item); }
+function onTreeOpen(item) { if (!item.is_dir) openEditor(item); }
+function onTreeCheck(id) { toggleSel(id); }
 
 const { confirm } = useConfirm();
 const toast = useToast();
@@ -413,8 +445,14 @@ defineExpose({ selectContentItem });
 function safeLocalStorage(key, fallback = '') {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
 }
-const viewMode = ref(safeLocalStorage('fm-view') === 'grid' ? 'grid' : 'list');
+// list (VibeDataTable, default) | grid (thumbs) | tree (BFT-style lazy explorer).
+const VIEW_MODES = ['list', 'grid', 'tree'];
+const storedView = safeLocalStorage('fm-view');
+const viewMode = ref(VIEW_MODES.includes(storedView) ? storedView : 'list');
 watch(viewMode, (v) => { try { localStorage.setItem('fm-view', v); } catch { /* blocked */ } });
+const VIEW_NEXT = { list: 'grid', grid: 'tree', tree: 'list' };
+const VIEW_ICON = { list: 'list-ul', grid: 'grid-3x3-gap-fill', tree: 'diagram-3' };
+function cycleView() { viewMode.value = VIEW_NEXT[viewMode.value]; }
 
 // Thumbnail size (grid view only), remembered across visits. Each size maps
 // to responsive row-cols counts on the grid's VibeRow.
@@ -779,6 +817,13 @@ onMounted(() => {
     }
     startPolling();
     window.addEventListener('keydown', onKey);
+    // Load the tree root, then reveal the path to the current folder (deep link).
+    ensureRoot()
+        .then(() => {
+            const path = [...ancestorIds.value].filter((n) => n !== HOME_ID);
+            return path.length ? preloadPath(path) : undefined;
+        })
+        .catch(() => toast.push('Could not load the folder tree.', { variant: 'danger' }));
 });
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKey);
@@ -872,11 +917,11 @@ onBeforeUnmount(() => {
                     <VibeButton
                         size="sm"
                         variant="light"
-                        :title="viewMode === 'grid' ? 'List view' : 'Thumbnail view'"
+                        :title="`View: ${viewMode} (click for ${VIEW_NEXT[viewMode]})`"
                         aria-label="Toggle view"
-                        @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
+                        @click="cycleView"
                     >
-                        <VibeIcon :icon="viewMode === 'grid' ? 'list-ul' : 'grid-3x3-gap-fill'" />
+                        <VibeIcon :icon="VIEW_ICON[VIEW_NEXT[viewMode]]" />
                     </VibeButton>
                 </div>
             </div>
@@ -915,8 +960,24 @@ onBeforeUnmount(() => {
 
             <LoadingSkeleton v-if="loading" :rows="6" :cols="4" />
 
+            <!-- Tree view: BFT-style lazy folders+files explorer (default). -->
+            <div v-if="!loading && viewMode === 'tree'" class="ft-scroll overflow-auto flex-grow-1 p-2" @click.self="clearContentSelection">
+                <FileTree
+                    :node-id="null"
+                    :children-cache="childrenCache"
+                    :expanded="expanded"
+                    :loading="treeLoading"
+                    :selected-id="selectedDetail?.id ?? null"
+                    :selected-set="selectedIds"
+                    @toggle="onTreeToggle"
+                    @select="onTreeSelect"
+                    @open="onTreeOpen"
+                    @check="onTreeCheck"
+                />
+            </div>
+
             <!-- Thumbnail / grid view (windowed: render a slice, reveal more on demand) -->
-            <div v-if="!loading && viewMode === 'grid'" class="overflow-auto flex-grow-1" @click.self="clearContentSelection">
+            <div v-else-if="!loading && viewMode === 'grid'" class="overflow-auto flex-grow-1" @click.self="clearContentSelection">
                 <VibeRow
                     v-if="items.length"
                     class="g-2 p-2"
