@@ -104,6 +104,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/trash/{file}', [TrashController::class, 'destroy'])->withTrashed()->name('trash.destroy');
     Route::post('/upload', [FileController::class, 'upload'])
         ->middleware('throttle:60,1')->name('files.upload');
+    Route::get('/files/tree', [FileController::class, 'tree'])->name('files.tree');
     Route::post('/files/text', [FileController::class, 'createText'])
         ->middleware('throttle:30,1')->name('files.text');
     Route::get('/files/new/{type}', [FileController::class, 'newDocument'])->name('files.new');

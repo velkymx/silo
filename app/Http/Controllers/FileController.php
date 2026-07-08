@@ -186,6 +186,38 @@ class FileController extends Controller
         ]);
     }
 
+    // Lazy children for the FileTree: immediate subfolders + files of $parent
+    // (root when omitted), owner-scoped and policy-gated.
+    public function tree(\App\Http\Requests\FileTreeRequest $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = auth()->id();
+        $parentId = $request->integer('parent') ?: null;
+
+        if ($parentId) {
+            $parent = File::folders()->where('owner_id', $userId)->findOrFail($parentId);
+            $this->authorize('view', $parent);
+        }
+
+        $cap = 1000;
+        $base = File::query()->where('owner_id', $userId)->where('parent_id', $parentId);
+
+        $folders = (clone $base)->folders()->withCount('children')->with('tags')
+            ->orderBy('name')->limit($cap)->get()
+            ->map(fn (File $f) => $this->folderShape($f) + [
+                'has_children' => ($f->children_count ?? 0) > 0,
+            ]);
+
+        $files = (clone $base)->files()->with(['versions', 'tags'])
+            ->orderBy('name')->limit($cap)->get()
+            ->map(fn (File $f) => $this->transform($f));
+
+        return response()->json([
+            'folders' => $folders->values(),
+            'files' => $files->values(),
+            'capped' => $folders->count() >= $cap || $files->count() >= $cap,
+        ]);
+    }
+
     // Create a new text/markdown file from editor content.
     public function createText(Request $request)
     {
