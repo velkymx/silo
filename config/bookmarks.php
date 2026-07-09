@@ -26,6 +26,10 @@ return [
         'fallback' => (bool) env('BOOKMARK_SCREENSHOT_FALLBACK', false),
         'width' => (int) env('BOOKMARK_SCREENSHOT_WIDTH', 1366),
         'height' => (int) env('BOOKMARK_SCREENSHOT_HEIGHT', 768),
+        // Chromium refuses to launch as root or inside most containers without
+        // --no-sandbox; on by default since this runs server-side. Set false
+        // only if you run the worker as a non-root user with a real sandbox.
+        'no_sandbox' => (bool) env('BOOKMARK_CHROME_NO_SANDBOX', true),
         // Optional explicit node/chromium paths for Browsershot.
         'node_binary' => env('BOOKMARK_NODE_BINARY'),
         'chrome_path' => env('BOOKMARK_CHROME_PATH'),

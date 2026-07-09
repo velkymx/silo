@@ -198,6 +198,10 @@ class ProcessBookmark implements ShouldQueue
                 ->setScreenshotType('png')
                 ->timeout(config('bookmarks.http_timeout', 8) + 12);
 
+            // Chromium won't start as root / in a container without this.
+            if (config('bookmarks.screenshots.no_sandbox', true)) {
+                $shot->noSandbox();
+            }
             if ($node = config('bookmarks.screenshots.node_binary')) {
                 $shot->setNodeBinary($node);
             }
@@ -210,7 +214,14 @@ class ProcessBookmark implements ShouldQueue
             Storage::disk(config('filemanager.disk'))->put($path, file_get_contents($tmp));
 
             return $path;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            // Screenshots are best-effort, but a silent failure is undiagnosable
+            // (missing Chromium, sandbox, timeout) — log it so operators can fix.
+            \Illuminate\Support\Facades\Log::warning('bookmark.screenshot.failed', [
+                'bookmark' => $bookmark->id,
+                'reason' => $e->getMessage(),
+            ]);
+
             return null;
         } finally {
             if (is_file($tmp)) {
