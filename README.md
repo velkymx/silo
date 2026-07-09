@@ -2,7 +2,7 @@
 
 ![Silo](pitch.png)
 
-[![CI](https://github.com/velkymx/laravel-file-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/velkymx/laravel-file-manager/actions/workflows/ci.yml)
+[![CI](https://github.com/velkymx/silo/actions/workflows/ci.yml/badge.svg)](https://github.com/velkymx/silo/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](#quick-start-with-docker-recommended)
 [![Laravel 13](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
@@ -166,8 +166,8 @@ Silo's surfaces, **Files, Notes, Bookmarks, RSS, Vault, Photos**: are reached fr
 The fastest way to self-host. One image bundles nginx, PHP-FPM, and the queue worker; on first boot it migrates the database, creates your admin account, and starts serving, no manual steps.
 
 ```bash
-git clone https://github.com/velkymx/laravel-file-manager.git
-cd laravel-file-manager
+git clone https://github.com/velkymx/silo.git
+cd silo
 
 # Set your admin login, then start.
 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='change-me' docker compose up -d
