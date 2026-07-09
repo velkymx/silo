@@ -42,6 +42,20 @@ interface Item {
 
 const opmlInput = ref<HTMLInputElement | null>(null);
 const opmlUrlOpen = ref(false);
+const filtersOpen = ref(false);
+
+// OPML lives behind the maintenance menu, matching the Bookmarks pattern.
+const maintenanceItems = [
+    { action: 'import', icon: 'upload', text: 'Import OPML file' },
+    { action: 'import-url', icon: 'link-45deg', text: 'Import from URL' },
+    { action: 'export', icon: 'download', text: 'Export OPML' },
+];
+
+function runMaintenance(action: string): void {
+    if (action === 'import') opmlInput.value?.click();
+    else if (action === 'import-url') opmlUrlOpen.value = !opmlUrlOpen.value;
+    else if (action === 'export') window.location.href = '/rss/opml/export';
+}
 function onOpmlChosen(e: Event): void {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -454,35 +468,6 @@ function submitEdit(): void {
                     <span class="flex-grow-1">Last 30 days</span>
                     <span v-if="counts.month" class="badge text-bg-light">{{ counts.month }}</span>
                 </button>
-                <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: filters.filter === 'recent' }"
-                    @click="selectFilter('recent')"
-                >
-                    <VibeIcon icon="clock-history" class="text-primary" />
-                    <span class="flex-grow-1">Recently added</span>
-                    <span v-if="counts.recent" class="badge text-bg-light">{{ counts.recent }}</span>
-                </button>
-                <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: filters.filter === 'top_feeds' }"
-                    @click="selectFilter('top_feeds')"
-                >
-                    <VibeIcon icon="fire" class="text-primary" />
-                    <span class="flex-grow-1">Most active feeds</span>
-                </button>
-                <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: filters.filter === 'read' }"
-                    @click="selectFilter('read')"
-                >
-                    <VibeIcon icon="check2-circle" class="text-primary" />
-                    <span class="flex-grow-1">Recently read</span>
-                    <span v-if="counts.read_recent" class="badge text-bg-light">{{ counts.read_recent }}</span>
-                </button>
                 <hr class="my-2">
                 <div v-for="[folder, feeds] in grouped" :key="folder" class="mb-2">
                     <div class="text-uppercase small text-muted px-2 mb-1">{{ folder }}</div>
@@ -613,54 +598,52 @@ function submitEdit(): void {
             </div>
         </template>
 
+        <!-- Title + actions share the top-bar line, matching the house pattern
+             (Bookmarks/Vault): one solid-primary CTA (Add feed); icon-only
+             utilities are quiet light ghosts; OPML lives in a maintenance menu. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 p-2">
-                <h1 class="h5 mb-0 d-flex align-items-center gap-2">
-                    <VibeIcon icon="rss-fill" />
-                    <span>{{ selectedFeed ? selectedFeed.title : (filters.filter === 'starred' ? 'Starred' : 'Inbox') }}</span>
-                </h1>
-                <VibeFormInput
-                    v-model="authorFilter"
-                    type="text"
-                    placeholder="Author…"
-                    class="ms-3 flex-grow-0"
-                    style="width: 110px"
-                    no-wrapper
-                />
-                <VibeFormInput
-                    v-model="excludeFilter"
-                    type="text"
-                    placeholder="Exclude…"
-                    class="flex-grow-0"
-                    style="width: 110px"
-                    no-wrapper
-                />
-                <div class="ms-auto d-flex align-items-center gap-2">
-                    <VibeButton variant="secondary" size="sm" :title="`${counts.unread} unread`" :disabled="counts.unread === 0" @click="markAllRead">
-                        <VibeIcon icon="check2-all" class="me-1" />Mark all read
-                    </VibeButton>
-                    <VibeButton variant="secondary" size="sm" title="Refresh all feeds" @click="refreshAll">
-                        <VibeIcon icon="arrow-repeat" />
-                    </VibeButton>
-                    <VibeButton variant="secondary" size="sm" title="Import an OPML subscription file" aria-label="Import OPML" @click="opmlInput?.click()">
-                        <VibeIcon icon="upload" class="me-1" />Import
-                    </VibeButton>
-                    <VibeButton variant="secondary" size="sm" title="Import OPML from a URL (Feedly, Inoreader, NetNewsWire)" aria-label="Import OPML from URL" @click="opmlUrlOpen = !opmlUrlOpen">
-                        <VibeIcon icon="link-45deg" class="me-1" />From URL
-                    </VibeButton>
-                    <a href="/rss/opml/export" class="btn btn-secondary btn-sm" download title="Export all feeds as OPML" aria-label="Export OPML">
-                        <VibeIcon icon="download" class="me-1" />Export
-                    </a>
-                    <input ref="opmlInput" type="file" accept=".opml,.xml,text/xml,application/xml" class="d-none" @change="onOpmlChosen">
-                    <div v-if="opmlUrlOpen" class="d-flex gap-1 mt-1">
-                        <VibeFormInput v-model="opmlUrl" type="url" placeholder="https://feedly.com/export/opml" size="sm" no-wrapper class="flex-grow-1" />
-                        <VibeButton size="sm" variant="primary" :disabled="importingUrl || !opmlUrl.trim()" @click="importOpmlFromUrl">
-                            <VibeSpinner v-if="importingUrl" size="sm" />
-                            <VibeIcon v-else icon="cloud-download" />
+            <div class="d-flex flex-column p-2 gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <h1 class="h5 mb-0 d-flex align-items-center gap-2 text-truncate min-w-0">
+                        <VibeIcon icon="rss-fill" />
+                        <span class="text-truncate">{{ selectedFeed ? selectedFeed.title : (filters.filter === 'starred' ? 'Starred' : 'Inbox') }}</span>
+                    </h1>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                        <VibeButton size="sm" variant="primary" title="Add feed" aria-label="Add feed" @click="openAdd">
+                            <VibeIcon icon="plus-lg" />
                         </VibeButton>
+                        <VibeButton size="sm" variant="light" :title="`Mark all read (${counts.unread} unread)`" aria-label="Mark all read" :disabled="counts.unread === 0" @click="markAllRead">
+                            <VibeIcon icon="check2-all" />
+                        </VibeButton>
+                        <VibeButton size="sm" variant="light" title="Refresh all feeds" aria-label="Refresh all feeds" @click="refreshAll">
+                            <VibeIcon icon="arrow-repeat" />
+                        </VibeButton>
+                        <VibeButton
+                            size="sm"
+                            variant="light"
+                            title="Filter by author / exclude keywords"
+                            aria-label="Toggle filters"
+                            :class="{ active: filtersOpen || authorFilter !== '' || excludeFilter !== '' }"
+                            @click="filtersOpen = !filtersOpen"
+                        >
+                            <VibeIcon icon="funnel" />
+                        </VibeButton>
+                        <VibeDropdown size="sm" variant="light" menu-end title="OPML import / export" :items="maintenanceItems" @item-click="runMaintenance($event.item.action)">
+                            <template #button><VibeIcon icon="three-dots-vertical" /></template>
+                            <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                        </VibeDropdown>
+                        <input ref="opmlInput" type="file" accept=".opml,.xml,text/xml,application/xml" class="d-none" @change="onOpmlChosen">
                     </div>
-                    <VibeButton size="sm" variant="primary" @click="openAdd">
-                        <VibeIcon icon="plus-lg" class="me-1" />Add feed
+                </div>
+                <div v-if="filtersOpen" class="d-flex align-items-center gap-2">
+                    <VibeFormInput v-model="authorFilter" type="text" placeholder="Author…" size="sm" style="max-width: 180px" no-wrapper />
+                    <VibeFormInput v-model="excludeFilter" type="text" placeholder="Exclude keywords…" size="sm" style="max-width: 180px" no-wrapper />
+                </div>
+                <div v-if="opmlUrlOpen" class="d-flex align-items-center gap-1">
+                    <VibeFormInput v-model="opmlUrl" type="url" placeholder="https://feedly.com/export/opml" size="sm" no-wrapper style="max-width: 380px" />
+                    <VibeButton size="sm" variant="primary" :disabled="importingUrl || !opmlUrl.trim()" @click="importOpmlFromUrl">
+                        <VibeSpinner v-if="importingUrl" size="sm" />
+                        <VibeIcon v-else icon="cloud-download" />
                     </VibeButton>
                 </div>
             </div>
