@@ -251,4 +251,25 @@ class DashboardTest extends TestCase
 
         $this->assertSame(['red', 'yellow', 'blue'], $tiers);
     }
+
+    public function test_system_health_is_present_for_admins(): void
+    {
+        $this->asAdmin();
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('systemHealth')
+                ->has('systemHealth.attentionCount')
+                ->has('systemHealth.facts'));
+    }
+
+    public function test_system_health_is_hidden_from_non_admins(): void
+    {
+        $this->asUser();
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('systemHealth', null));
+    }
 }

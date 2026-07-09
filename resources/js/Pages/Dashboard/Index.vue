@@ -6,12 +6,14 @@ import QuickActions from '../../Components/Dashboard/QuickActions.vue';
 import ContinueCard, { type ContinueItem } from '../../Components/Dashboard/ContinueCard.vue';
 import WhatsNewCard, { type WhatsNew } from '../../Components/Dashboard/WhatsNewCard.vue';
 import AttentionCard, { type AttentionItem } from '../../Components/Dashboard/AttentionCard.vue';
+import HealthCard, { type SystemHealth } from '../../Components/Dashboard/HealthCard.vue';
 
 const props = defineProps<{
     jumpBackIn: JumpBackInItem | null;
     continueWorking: ContinueItem[];
     whatsNew: WhatsNew | null;
     needsAttention: AttentionItem[];
+    systemHealth: SystemHealth | null;
 }>();
 
 const activePane = ref('contents');
@@ -47,6 +49,7 @@ const continueItems = computed<ContinueItem[]>(() =>
                             <AttentionCard :items="needsAttention" />
                         </div>
                     </div>
+                    <HealthCard v-if="systemHealth" :system-health="systemHealth" />
                 </div>
             </div>
         </template>

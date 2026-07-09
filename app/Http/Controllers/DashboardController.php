@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Dashboard\DashboardService;
+use App\Services\Health\HealthService;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,7 +14,10 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
-    public function __construct(private readonly DashboardService $dashboard) {}
+    public function __construct(
+        private readonly DashboardService $dashboard,
+        private readonly HealthService $health,
+    ) {}
 
     public function index(): Response
     {
@@ -24,6 +28,8 @@ class DashboardController extends Controller
             'continueWorking' => $this->dashboard->continueWorking($user),
             'whatsNew' => $this->dashboard->whatsNew($user)?->toArray(),
             'needsAttention' => $this->dashboard->needsAttention($user),
+            // Operator-only: the System Health card is gated to admins.
+            'systemHealth' => $user->is_admin ? $this->health->cardSummary() : null,
         ]);
     }
 }
