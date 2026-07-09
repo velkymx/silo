@@ -9,6 +9,7 @@ use App\Models\RssItem;
 use App\Models\User;
 use App\Services\Dashboard\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -271,5 +272,27 @@ class DashboardTest extends TestCase
         $this->get('/dashboard')
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('systemHealth', null));
+    }
+
+    public function test_login_lands_on_the_dashboard(): void
+    {
+        $user = User::factory()->create();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertRedirect('/dashboard');
+    }
+
+    public function test_dashboard_cards_are_cached_per_user(): void
+    {
+        $user = $this->asUser();
+        $this->withFile($user, ['name' => 'First.txt', 'content_edited_at' => now()]);
+
+        $this->get('/dashboard');
+        $this->assertTrue(Cache::has("dashboard.{$user->id}"));
+
+        // A newer edit within the TTL is not reflected — the cached payload wins.
+        $this->withFile($user, ['name' => 'Second.txt', 'content_edited_at' => now()->addMinute()]);
+
+        $this->get('/dashboard')->assertInertia(fn ($page) => $page->where('jumpBackIn.title', 'First.txt'));
     }
 }

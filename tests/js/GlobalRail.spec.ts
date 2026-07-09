@@ -18,9 +18,15 @@ function mountRail(opts: { url?: string; isAdmin?: boolean } = {}) {
 describe('GlobalRail', () => {
     it('renders one entry per destination', () => {
         const wrapper = mountRail();
-        ['home', 'notes', 'bookmarks', 'photos', 'trash'].forEach((key) => {
+        ['dashboard', 'home', 'notes', 'bookmarks', 'photos', 'trash'].forEach((key) => {
             expect(wrapper.find(`[data-nav="${key}"]`).exists()).toBe(true);
         });
+    });
+
+    it('marks the Home (dashboard) entry active on /dashboard', () => {
+        const wrapper = mountRail({ url: '/dashboard' });
+        expect(wrapper.get('[data-nav="dashboard"]').attributes('aria-current')).toBe('page');
+        expect(wrapper.get('[data-nav="home"]').attributes('aria-current')).toBeUndefined();
     });
 
     it('marks the entry matching the current path as active', () => {

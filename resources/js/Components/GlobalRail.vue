@@ -23,6 +23,7 @@ function active(test: (p: string, q: string) => boolean): boolean {
 }
 
 const mainNav = computed<NavItem[]>(() => [
+    { key: 'dashboard', text: 'Home', href: '/dashboard', icon: 'house-fill', active: active((p) => p === '/dashboard') },
     { key: 'home', text: 'Files', href: '/', icon: 'device-hdd-fill', active: active((p, q) => p === '/' && !q.includes('starred') && !q.includes('recent')) },
     { key: 'recent', text: 'Recent', href: '/recent', icon: 'clock-history', active: active((p) => p.startsWith('/recent')) },
     { key: 'starred', text: 'Starred', href: '/starred', icon: 'star-fill', active: active((p) => p.startsWith('/starred')) },
@@ -49,7 +50,7 @@ const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
 </script>
 
 <template>
-    <nav class="global-rail d-flex flex-column align-items-center gap-1 px-2 py-2 h-100 w-100" aria-label="Main navigation">
+    <nav class="global-rail d-flex flex-column align-items-center gap-1 p-3 h-100 w-100" aria-label="Main navigation">
         <Link
             v-for="item in mainNav"
             :key="item.key"
@@ -61,7 +62,7 @@ const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
             :aria-current="item.active ? 'page' : undefined"
             :aria-label="item.text"
         >
-            <VibeIcon :icon="item.icon" class="fs-5" />
+            <VibeIcon :icon="item.icon" class="fs-4" />
             <span class="visually-hidden">{{ item.text }}</span>
         </Link>
 
