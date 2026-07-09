@@ -285,12 +285,62 @@ class BackupService
             throw new \RuntimeException('A restore is already in progress. Try again shortly.');
         }
 
+        // Atomic-ish restore: snapshot the CURRENT live state first, so any
+        // failure part-way through (disk full, bad dump, crash) rolls back to
+        // where we started instead of leaving a half-restored, clobbered
+        // install. The snapshot is a normal archive built from live data.
+        $safety = sys_get_temp_dir().'/prerestore_'.Str::random(12).'.zip';
+        $keepSafety = false;
+
+        try {
+            $this->buildArchive($safety);
+
+            try {
+                return ['disks' => $this->applyArchive($archive)];
+            } catch (\Throwable $restoreError) {
+                try {
+                    $this->applyArchive($safety);
+                } catch (\Throwable $rollbackError) {
+                    // Rollback itself failed — the install may be inconsistent.
+                    // Preserve the pre-restore snapshot so an operator can
+                    // recover manually, and surface both failures.
+                    $keepSafety = true;
+                    throw new \RuntimeException(
+                        "Restore failed and automatic rollback also failed. The pre-restore snapshot has been preserved at {$safety}. Original error: {$restoreError->getMessage()}",
+                        0,
+                        $rollbackError,
+                    );
+                }
+
+                throw new \RuntimeException(
+                    'Restore failed; the system was rolled back to its pre-restore state. '.$restoreError->getMessage(),
+                    0,
+                    $restoreError,
+                );
+            }
+        } finally {
+            if (! $keepSafety) {
+                @unlink($safety);
+            }
+            $lock->release();
+        }
+    }
+
+    /**
+     * Extract a backup archive into a scratch directory and apply it (database
+     * then blobs). Used for both the real restore and the rollback from the
+     * pre-restore safety snapshot. Returns per-disk blob counts.
+     *
+     * @return array<string, int>
+     */
+    private function applyArchive(string $archivePath): array
+    {
         $work = sys_get_temp_dir().'/restore_'.Str::random(12);
         mkdir($work, 0775, true);
 
         try {
             $zip = new ZipArchive();
-            if ($zip->open($archive) !== true) {
+            if ($zip->open($archivePath) !== true) {
                 throw new \RuntimeException('Could not open the backup archive.');
             }
             $this->assertSafeZipEntries($zip);
@@ -298,12 +348,10 @@ class BackupService
             $zip->close();
 
             $this->restoreDatabase($work);
-            $disks = $this->restoreBlobs($work);
 
-            return ['disks' => $disks];
+            return $this->restoreBlobs($work);
         } finally {
             $this->rmrf($work);
-            $lock->release();
         }
     }
 
@@ -415,7 +463,7 @@ class BackupService
     }
 
     /** Restore blob files into their disks. Returns per-disk counts. */
-    private function restoreBlobs(string $work): array
+    protected function restoreBlobs(string $work): array
     {
         $base = $work.'/blobs';
         $counts = [];
