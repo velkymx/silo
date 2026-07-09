@@ -82,7 +82,8 @@ function setFilter(f: string | null): void {
         </template>
 
         <template #contents>
-            <div class="px-3 pt-2">
+            <div class="overflow-auto flex-grow-1">
+                <div class="notif-list px-3 py-2">
                 <div v-if="!notifications.length" class="text-center text-muted py-5">
                     <VibeIcon icon="bell-slash" class="display-6 mb-2 d-block" />
                     <p class="mb-0">No notifications.</p>
@@ -105,6 +106,7 @@ function setFilter(f: string | null): void {
                         </div>
                         <div v-if="n.body" class="small text-muted text-truncate">{{ n.body }}</div>
                     </div>
+                </div>
                 </div>
             </div>
         </template>
