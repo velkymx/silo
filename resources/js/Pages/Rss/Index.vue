@@ -777,13 +777,18 @@ function submitEdit(): void {
     color: var(--bs-primary);
     font-weight: 500;
 }
-.side-row--muted {
+/* Fade the row CONTENT, never the row: row-level opacity creates a
+   stacking context and makes the open feed-actions dropdown transparent
+   and paint underneath the following rows. */
+.side-row--muted > span:first-child {
     opacity: 0.7;
 }
-.side-row--idle {
+.side-row--idle > button,
+.side-row--idle > .badge {
     opacity: 0.6;
 }
-.side-row--idle.active {
+.side-row--idle.active > button,
+.side-row--idle.active > .badge {
     opacity: 1;
 }
 .rss-list {
