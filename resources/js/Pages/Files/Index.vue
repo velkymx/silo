@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
-import { router, useForm, usePage } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import FileItem from '../../Components/FileItem.vue';
@@ -46,6 +46,7 @@ const props = defineProps({
     allFolders: { type: Array, default: () => [] },
     allFoldersCapped: { type: Boolean, default: false },
     allTags: { type: Array, default: () => [] },
+    sectionCounts: { type: Object, default: () => ({ all: 0, recent: 0, starred: 0, trash: 0 }) },
     searching: { type: Boolean, default: false },
     advanced: { type: Boolean, default: false },
     starredOnly: { type: Boolean, default: false },
@@ -130,6 +131,19 @@ const activeSection = ref(props.section);
 const activePane = ref('contents');
 const openIds = computed(() => ancestorIds.value);
 function selectAccordionFolder(id) { visitFolder(id === HOME_ID ? null : id); activePane.value = 'contents'; }
+
+// RSS-style labeled section nav in the Files sidebar. Rows link to the section
+// routes; counts come from the server. `all` is active only on the plain home
+// listing (no folder drilled in, no search/tag filter).
+const filesNav = computed(() => [
+    { key: 'all', text: 'All files', icon: 'files', href: '/', count: props.sectionCounts.all, active: activeSection.value === 'all' && !props.current && !props.searching && !props.activeTag },
+    { key: 'recent', text: 'Recent', icon: 'clock-history', href: '/recent', count: props.sectionCounts.recent, active: activeSection.value === 'recent' },
+    { key: 'starred', text: 'Starred', icon: 'star-fill', href: '/starred', count: props.sectionCounts.starred, active: activeSection.value === 'starred' },
+    { key: 'trash', text: 'Trash', icon: 'trash-fill', href: '/trash', count: props.sectionCounts.trash, active: activeSection.value === 'trash' },
+]);
+// The Files sidebar shows for every Files section so the nav is always reachable
+// (folder tree still only under `all`). Shared is its own cross-owner surface.
+const filesSidebarVisible = computed(() => ['all', 'recent', 'starred', 'trash'].includes(activeSection.value));
 
 function onBreadcrumb({ item, event }) {
     event?.preventDefault?.();
@@ -831,8 +845,24 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <ShellLayout v-model:active-pane="activePane" :detail-visible="detailVisible" :folders-visible="activeSection === 'all'">
+    <ShellLayout v-model:active-pane="activePane" :detail-visible="detailVisible" :folders-visible="filesSidebarVisible">
         <template #viewNav>
+            <div class="px-1 pt-1">
+                <div class="side-heading"><VibeIcon icon="hdd-fill" />Files</div>
+                <Link
+                    v-for="item in filesNav"
+                    :key="item.key"
+                    :href="item.href"
+                    class="side-row w-100 d-flex align-items-center gap-2 px-2 py-1 rounded text-decoration-none"
+                    :class="{ active: item.active }"
+                    :data-files-nav="item.key"
+                >
+                    <VibeIcon :icon="item.icon" :class="item.key === 'starred' ? 'text-warning' : 'text-primary'" />
+                    <span class="flex-grow-1">{{ item.text }}</span>
+                    <span v-if="item.count" class="badge text-bg-light">{{ item.count }}</span>
+                </Link>
+            </div>
+
             <FolderAccordion
                 v-if="activeSection === 'all'"
                 :folders="accordionFolders"

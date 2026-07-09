@@ -103,6 +103,16 @@ describe('Files shell', () => {
         expect(detailPane.text()).toContain('Read-only');
     });
 
+    it('renders the Files section nav with count badges', () => {
+        const wrapper = mount(FilesIndex, {
+            props: { ...base, section: 'all', sectionCounts: { all: 128, recent: 9, starred: 6, trash: 4 } },
+        });
+        const nav = wrapper.get('[data-pane="folders"]');
+        expect(nav.find('[data-files-nav="all"]').exists()).toBe(true);
+        expect(nav.find('[data-files-nav="starred"]').text()).toContain('6');
+        expect(nav.find('[data-files-nav="trash"]').text()).toContain('4');
+    });
+
     it('shows the folder accordion only for the "all" section', () => {
         const wrapper = mount(FilesIndex, {
             props: { ...base, section: 'all', allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
@@ -110,14 +120,24 @@ describe('Files shell', () => {
         expect(wrapper.get('[data-pane="folders"]').find('[data-folder]').exists()).toBe(true);
     });
 
-    it.each(['recent', 'starred', 'shared', 'trash'])(
-        'drops the folders column entirely for the folder-less %s section', (section) => {
+    it.each(['recent', 'starred', 'trash'])(
+        'keeps the sidebar (Files nav, no folder tree) for the folder-less %s section', (section) => {
             const wrapper = mount(FilesIndex, {
                 props: { ...base, section, allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
             });
-            expect(wrapper.find('[data-pane="folders"]').exists()).toBe(false);
+            const folders = wrapper.get('[data-pane="folders"]');
+            // Section nav present, folder tree absent.
+            expect(folders.find('[data-files-nav]').exists()).toBe(true);
+            expect(folders.find('[data-folder]').exists()).toBe(false);
         },
     );
+
+    it('drops the folders column entirely for the shared section', () => {
+        const wrapper = mount(FilesIndex, {
+            props: { ...base, section: 'shared', allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
+        });
+        expect(wrapper.find('[data-pane="folders"]').exists()).toBe(false);
+    });
 
     it('shows an empty state in the contents pane when a section has no items', () => {
         localStorage.setItem('fm-view', 'grid');

@@ -168,6 +168,7 @@ class FileController extends Controller
             'allFolders' => $allFolders,
             'allFoldersCapped' => $allFoldersCapped,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
+            'sectionCounts' => $this->sectionCounts($userId),
             // 'storage' is shared globally by HandleInertiaRequests — not duplicated here.
             'maxUploadKb' => Uploads::maxKb(),
             'filters' => [
@@ -216,6 +217,23 @@ class FileController extends Controller
             'files' => $files->values(),
             'capped' => $folders->count() >= $cap || $files->count() >= $cap,
         ]);
+    }
+
+    // Badge counts for the Files sidebar section nav (All / Recent / Starred /
+    // Trash). Cached briefly per user so it isn't 4 queries on every load.
+    /** @return array{all:int, recent:int, starred:int, trash:int} */
+    protected function sectionCounts(int $userId): array
+    {
+        return Cache::remember("files.section-counts.{$userId}", 15, function () use ($userId) {
+            $owned = fn () => File::query()->where('owner_id', $userId);
+
+            return [
+                'all' => (int) (clone $owned())->files()->count(),
+                'recent' => (int) (clone $owned())->files()->where('created_at', '>=', now()->subDays(7))->count(),
+                'starred' => (int) (clone $owned())->where('starred', true)->count(),
+                'trash' => (int) File::onlyTrashed()->where('owner_id', $userId)->count(),
+            ];
+        });
     }
 
     // Create a new text/markdown file from editor content.
