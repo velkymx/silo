@@ -103,16 +103,6 @@ describe('Files shell', () => {
         expect(detailPane.text()).toContain('Read-only');
     });
 
-    it('renders the Files section nav with count badges', () => {
-        const wrapper = mount(FilesIndex, {
-            props: { ...base, section: 'all', sectionCounts: { all: 128, recent: 9, starred: 6, trash: 4 } },
-        });
-        const nav = wrapper.get('[data-pane="folders"]');
-        expect(nav.find('[data-files-nav="all"]').exists()).toBe(true);
-        expect(nav.find('[data-files-nav="starred"]').text()).toContain('6');
-        expect(nav.find('[data-files-nav="trash"]').text()).toContain('4');
-    });
-
     it('shows the folder accordion only for the "all" section', () => {
         const wrapper = mount(FilesIndex, {
             props: { ...base, section: 'all', allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
@@ -121,14 +111,11 @@ describe('Files shell', () => {
     });
 
     it.each(['recent', 'starred', 'trash'])(
-        'keeps the sidebar (Files nav, no folder tree) for the folder-less %s section', (section) => {
+        'drops the folders column for the global %s state (rail is the way in)', (section) => {
             const wrapper = mount(FilesIndex, {
                 props: { ...base, section, allFolders: [{ id: 5, name: 'Docs', parent_id: null }] },
             });
-            const folders = wrapper.get('[data-pane="folders"]');
-            // Section nav present, folder tree absent.
-            expect(folders.find('[data-files-nav]').exists()).toBe(true);
-            expect(folders.find('[data-folder]').exists()).toBe(false);
+            expect(wrapper.find('[data-pane="folders"]').exists()).toBe(false);
         },
     );
 
