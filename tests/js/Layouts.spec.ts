@@ -61,9 +61,9 @@ describe('ShellLayout chrome (the app-wide layout)', () => {
         expect((wrapper.find('#global-search').element as HTMLInputElement).value).toBe('hello');
     });
 
-    it('toggles the color mode', async () => {
+    it('toggles the color mode from the user menu', async () => {
         const wrapper = mountShell();
-        const theme = wrapper.findAll('button').find((b) => b.attributes('title')?.startsWith('Theme:'));
+        const theme = wrapper.findAll('button.dd-item').find((b) => b.text().includes('Theme:'));
         await theme!.trigger('click');
         expect(s.toggleColorMode).toHaveBeenCalled();
     });

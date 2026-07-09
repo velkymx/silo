@@ -72,7 +72,7 @@ const storage = computed(() => (page.props.storage as { used: number; quota: num
 const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => storage.value ?? { used: 0, quota: 0 }));
 const notifications = computed(() => (page.props.notifications as { unread_count: number; recent: Array<{ id: number; type: string; severity: string; title: string; url: string | null; read_at: string | null; created_at: string | null }> } | undefined) ?? { unread_count: 0, recent: [] });
 
-const userMenu = [
+const userMenu = computed(() => [
     { heading: 'Break Room' },
     { text: 'Crush', action: 'crush', icon: 'joystick' },
     { text: 'Word', action: 'word', icon: 'type' },
@@ -82,15 +82,17 @@ const userMenu = [
     { type: 'storage' },
     { text: 'Manage storage', action: 'storage', icon: 'hdd-stack' },
     { divider: true },
+    { text: `Theme: ${colorMode.value.charAt(0).toUpperCase() + colorMode.value.slice(1)}`, action: 'theme', icon: themeIcon.value },
     { text: 'Profile', action: 'profile', icon: 'person' },
     { text: 'Logout', action: 'logout', icon: 'box-arrow-right' },
-];
+]);
 const routeFor: Record<string, string> = {
     crush: '/break/crush', word: '/break/dwg', sodoku: '/break/sodoku',
     trash: '/trash', storage: '/usage', profile: '/profile',
 };
 function onUserMenu({ item }: { item: { action?: string } }): void {
     if (!item.action) return;
+    if (item.action === 'theme') { toggleColorMode(); return; }
     if (item.action === 'logout') { router.post('/logout'); return; }
     if (routeFor[item.action]) router.visit(routeFor[item.action]);
 }
@@ -160,10 +162,6 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
                     </template>
                 </VibeInputGroup>
             </div>
-
-            <VibeButton variant="secondary" size="sm" class="rounded-pill px-3" :title="`Theme: ${colorMode}`" @click="toggleColorMode">
-                <VibeIcon :icon="themeIcon" class="me-1" />{{ colorMode.charAt(0).toUpperCase() + colorMode.slice(1) }}
-            </VibeButton>
 
             <NotificationBell v-if="user" :notifications="notifications" />
 

@@ -848,7 +848,7 @@ onBeforeUnmount(() => {
     <ShellLayout v-model:active-pane="activePane" :detail-visible="detailVisible" :folders-visible="filesSidebarVisible">
         <template #viewNav>
             <div class="px-1 pt-1">
-                <div class="side-heading"><VibeIcon icon="hdd-fill" />Files</div>
+                <div class="side-heading"><VibeIcon icon="device-hdd-fill" />Files</div>
                 <Link
                     v-for="item in filesNav"
                     :key="item.key"
