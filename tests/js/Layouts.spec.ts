@@ -42,6 +42,11 @@ describe('ShellLayout chrome (the app-wide layout)', () => {
         expect(wrapper.text()).toContain('5.0 MB of 10.0 MB');
     });
 
+    it('links to the About page from the footer', () => {
+        const wrapper = mountShell();
+        expect(wrapper.find('[data-testid="about-link"]').exists()).toBe(true);
+    });
+
     it('opens the command palette when the search trigger is clicked', async () => {
         const wrapper = mountShell();
         await wrapper.find('#global-search').trigger('click');
