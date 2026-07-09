@@ -130,4 +130,32 @@ class DashboardService
             ->values()
             ->all();
     }
+
+    /**
+     * The "What's New" card: the unread RSS count plus the newest $limit unread
+     * articles (title + feed). Returns null when nothing is unread — the card is
+     * hidden rather than shown empty (silence communicates confidence).
+     */
+    public function whatsNew(User $user, int $limit = 5): ?WhatsNew
+    {
+        $unread = RssItem::query()->where('user_id', $user->id)->where('is_read', false);
+
+        $unreadCount = (clone $unread)->count();
+        if ($unreadCount === 0) {
+            return null;
+        }
+
+        $articles = $unread
+            ->orderByDesc('published_at')->limit($limit)
+            ->get(['id', 'title', 'feed_title'])
+            ->map(fn (RssItem $item) => [
+                'id' => $item->id,
+                'title' => $item->title,
+                'feed' => $item->feed_title,
+                'url' => route('rss.items.show', ['item' => $item->id]),
+            ])
+            ->all();
+
+        return new WhatsNew($unreadCount, $articles, route('rss.index'));
+    }
 }

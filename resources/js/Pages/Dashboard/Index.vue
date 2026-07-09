@@ -4,8 +4,13 @@ import ShellLayout from '../../Layouts/ShellLayout.vue';
 import JumpBackIn, { type JumpBackInItem } from '../../Components/Dashboard/JumpBackIn.vue';
 import QuickActions from '../../Components/Dashboard/QuickActions.vue';
 import ContinueCard, { type ContinueItem } from '../../Components/Dashboard/ContinueCard.vue';
+import WhatsNewCard, { type WhatsNew } from '../../Components/Dashboard/WhatsNewCard.vue';
 
-const props = defineProps<{ jumpBackIn: JumpBackInItem | null; continueWorking: ContinueItem[] }>();
+const props = defineProps<{
+    jumpBackIn: JumpBackInItem | null;
+    continueWorking: ContinueItem[];
+    whatsNew: WhatsNew | null;
+}>();
 
 const activePane = ref('contents');
 
@@ -31,6 +36,7 @@ const continueItems = computed<ContinueItem[]>(() =>
                 <JumpBackIn :item="jumpBackIn" />
                 <QuickActions />
                 <ContinueCard :items="continueItems" />
+                <WhatsNewCard :whats-new="whatsNew" />
             </div>
         </template>
     </ShellLayout>

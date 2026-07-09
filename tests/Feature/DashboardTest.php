@@ -140,4 +140,52 @@ class DashboardTest extends TestCase
         $this->assertFalse($titles->contains('UnreadMine'));
         $this->assertFalse($titles->contains('ReadTheirs'));
     }
+
+    public function test_dashboard_exposes_a_whats_new_prop(): void
+    {
+        $this->asUser();
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('whatsNew'));
+    }
+
+    public function test_whats_new_is_null_when_nothing_is_unread(): void
+    {
+        $user = User::factory()->create();
+        $feed = RssFeed::factory()->create(['user_id' => $user->id]);
+        RssItem::factory()->create(['user_id' => $user->id, 'feed_id' => $feed->id, 'is_read' => true, 'read_at' => now()]);
+
+        $this->assertNull($this->service()->whatsNew($user));
+    }
+
+    public function test_whats_new_reports_unread_count_and_newest_articles(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $feed = RssFeed::factory()->create(['user_id' => $user->id, 'title' => 'Laravel News']);
+        $otherFeed = RssFeed::factory()->create(['user_id' => $other->id]);
+
+        foreach (range(1, 7) as $i) {
+            RssItem::factory()->create([
+                'user_id' => $user->id, 'feed_id' => $feed->id,
+                'title' => "Article {$i}", 'is_read' => false, 'read_at' => null,
+                'published_at' => now()->subMinutes($i),
+            ]);
+        }
+        // Read + other-user items must not count.
+        RssItem::factory()->create(['user_id' => $user->id, 'feed_id' => $feed->id, 'is_read' => true, 'read_at' => now()]);
+        RssItem::factory()->create(['user_id' => $other->id, 'feed_id' => $otherFeed->id, 'is_read' => false, 'read_at' => null]);
+
+        $whatsNew = $this->service()->whatsNew($user);
+
+        $this->assertNotNull($whatsNew);
+        $data = $whatsNew->toArray();
+        $this->assertSame(7, $data['unreadCount']);
+        $this->assertCount(5, $data['articles']);
+        $this->assertSame('Article 1', $data['articles'][0]['title']);
+        $this->assertSame('Laravel News', $data['articles'][0]['feed']);
+        $this->assertSame(route('rss.items.show', ['item' => $data['articles'][0]['id']]), $data['articles'][0]['url']);
+        $this->assertSame(route('rss.index'), $data['inboxUrl']);
+    }
 }
