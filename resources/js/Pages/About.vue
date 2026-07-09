@@ -43,23 +43,44 @@ const activePane = ref('contents');
                     <section>
                         <h2 class="h5">Built by {{ developer.name }}</h2>
                         <p class="text-muted small mb-2">{{ developer.title }}</p>
+                        <p>
+                            Silo started the way most good tools do: with mild annoyance. I wanted a
+                            file manager on my own server that did not treat me as the product. Then
+                            the files wanted notes, the notes wanted links, the links wanted feeds,
+                            and somewhere along the way an encrypted vault and a photo gallery moved
+                            in. What you are using now is the result: one login, one permission
+                            model, one search, on hardware you control.
+                        </p>
                         <p class="mb-0">
-                            Silo started as a simple file manager and grew into the workspace you are
-                            using now: one login, one permission model, one search across everything
-                            you store. It was designed and built end to end by one developer who has
-                            spent two decades shipping and leading engineering for platforms like
-                            ProcessMaker, Grand Canyon Education, and Xsolla, and who believes
-                            software you rely on should live on hardware you control.
+                            I have spent two decades building software for other people. I was VP of
+                            Engineering at ProcessMaker, where we scaled the team from 1 to more than
+                            60 through a 45 million dollar Series A. I led an Agile transformation at
+                            Grand Canyon Education that took sprint commitment success from 40 to 90
+                            percent. I built Xsolla's US engineering team from zero. Silo is what I
+                            built when nobody was writing the requirements but me.
                         </p>
                     </section>
 
                     <section>
-                        <h2 class="h5">Support and customizations</h2>
+                        <h2 class="h5">Work with me</h2>
                         <p>
-                            Need help deploying Silo, want a feature built for your team, or have a
-                            Laravel, Vue, or AI project of your own? I am available for hire for
-                            support contracts, customizations, and consulting. Remote, with prepaid
-                            hourly blocks, and I respond within one business day.
+                            <strong>What you get:</strong> the person who wrote every line of this
+                            app, on your problem. Support contracts and custom features for Silo,
+                            integrations with your stack, or your own Laravel, Vue, Node, or AI
+                            project. If it made this page load, I can build with it.
+                        </p>
+                        <p>
+                            <strong>How it works:</strong> remote engagements in prepaid blocks of 5,
+                            10, or 20 hours, with 10 to 15 hours a week of availability. You get
+                            senior architecture and working code, not a slide deck. I respond within
+                            one business day.
+                        </p>
+                        <p>
+                            <strong>Why believe me:</strong> you are looking at the portfolio.
+                            Everything on this server, the versioned files, the SSRF-guarded feeds,
+                            the checksummed backups that refuse to restore corruption, was designed,
+                            built, and tested by one person. That is the level of care your project
+                            gets.
                         </p>
                         <div class="d-flex flex-wrap gap-2">
                             <a :href="developer.hire_url" target="_blank" rel="noopener" class="btn btn-primary" data-testid="hire-link">
