@@ -21,6 +21,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard/Index', [
             'jumpBackIn' => $this->dashboard->jumpBackIn($user)?->toArray(),
+            'continueWorking' => $this->dashboard->continueWorking($user),
         ]);
     }
 }

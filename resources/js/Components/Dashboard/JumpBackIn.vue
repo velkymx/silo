@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { timeAgo } from '../../lib/relativeTime';
 
 export interface JumpBackInItem {
     id: number;
@@ -12,20 +13,7 @@ export interface JumpBackInItem {
 
 const props = defineProps<{ item: JumpBackInItem | null }>();
 
-// Relative "edited N ago" phrasing. Kept local: the home screen is the only
-// surface that needs it, and it avoids pulling in a date library for one line.
-const editedAgo = computed<string>(() => {
-    if (!props.item) return '';
-    const then = new Date(props.item.editedAt).getTime();
-    const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
-    if (secs < 60) return 'just now';
-    const mins = Math.round(secs / 60);
-    if (mins < 60) return `${mins} min ago`;
-    const hours = Math.round(mins / 60);
-    if (hours < 24) return `${hours} hr ago`;
-    const days = Math.round(hours / 24);
-    return days === 1 ? 'yesterday' : `${days} days ago`;
-});
+const editedAgo = computed<string>(() => (props.item ? timeAgo(props.item.editedAt) : ''));
 
 const icon = computed<string>(() => (props.item?.type === 'note' ? 'journal-text' : 'file-earmark'));
 </script>
