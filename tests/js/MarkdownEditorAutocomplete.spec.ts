@@ -49,9 +49,11 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('MarkdownEditor autocomplete', () => {
-    it('opens the editor in markdown mode when links are enabled', () => {
+    it('opens the editor in rich text even when links are enabled', () => {
+        // Notes default to WYSIWYG; the toolbar markdown toggle opens the
+        // source view where autocomplete operates.
         mount(MarkdownEditor, { props: { modelValue: '', enableLinks: true } });
-        expect(h.editorCtor).toHaveBeenCalledWith(expect.objectContaining({ initialEditType: 'markdown' }));
+        expect(h.editorCtor).toHaveBeenCalledWith(expect.objectContaining({ initialEditType: 'wysiwyg' }));
     });
 
     it('shows wikilink suggestions and inserts the chosen title', async () => {

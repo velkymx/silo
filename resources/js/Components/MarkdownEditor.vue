@@ -66,7 +66,9 @@ function build() {
     editor = new Editor({
         el: el.value,
         initialValue: props.modelValue,
-        initialEditType: props.enableLinks ? 'markdown' : 'wysiwyg',
+        // Everyone starts in rich text; the toolbar markdown toggle opens the
+        // source view (where [[ ]] / @ autocomplete operates) on demand.
+        initialEditType: 'wysiwyg',
         // 'vertical' = live side-by-side preview in markdown mode. Never 'tab':
         // no Write/Preview tab strip above the editor.
         previewStyle: 'vertical',
