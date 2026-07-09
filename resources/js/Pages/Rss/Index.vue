@@ -407,6 +407,16 @@ function submitEdit(): void {
                 <button
                     type="button"
                     class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
+                    :class="{ active: filters.filter === 'unread' }"
+                    @click="selectFilter('unread')"
+                >
+                    <VibeIcon icon="envelope" class="text-primary" />
+                    <span class="flex-grow-1">Unread</span>
+                    <span v-if="counts.unread" class="badge text-bg-light">{{ counts.unread }}</span>
+                </button>
+                <button
+                    type="button"
+                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
                     :class="{ active: filters.filter === 'today' }"
                     @click="selectFilter('today')"
                 >
