@@ -28,7 +28,7 @@ const user = computed(() => (page.props.auth as { user?: { name: string; avatar_
 const appName = import.meta.env.VITE_APP_NAME || 'Silo';
 const tagline = 'Your Files Ready to Launch';
 const year = new Date().getFullYear();
-const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
+const repoUrl = 'https://github.com/velkymx/silo';
 // Passthrough model: pages that drive mobile pane-advance (e.g. Files moving
 // `contents` -> `detail` on row select) bind their own `activePane` ref.
 const activePane = defineModel<string>('activePane', { default: 'contents' });
