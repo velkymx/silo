@@ -135,6 +135,14 @@ async function bulkDeleteBms() {
 }
 
 // ----- Favicon fallback -----
+function prettyHost(url) {
+    try {
+        return new URL(url).host.replace(/^www\./, '');
+    } catch {
+        return url;
+    }
+}
+
 const failedIcons = ref(new Set());
 function onIconError(id) {
     const next = new Set(failedIcons.value);
@@ -402,6 +410,14 @@ async function runMaintenance(action) {
                 <a v-if="selectedBookmark.screenshot_url" :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="d-block bm-shot-wrap flex-grow-1 min-h-0 mb-3">
                     <img :src="selectedBookmark.screenshot_url" alt="Site preview" class="bm-shot rounded border">
                 </a>
+                <!-- No self-hosted screenshot: show an intentional placeholder
+                     (favicon + host) instead of a blank gap. -->
+                <a v-else :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" class="d-flex flex-column align-items-center justify-content-center bm-shot-empty flex-grow-1 min-h-0 mb-3 rounded border text-muted">
+                    <img v-if="selectedBookmark.icon_url && !failedIcons.has(selectedBookmark.id)" :src="selectedBookmark.icon_url" alt="" width="40" height="40" class="mb-2" @error="onIconError(selectedBookmark.id)">
+                    <VibeIcon v-else icon="globe2" class="display-6 mb-2" />
+                    <span class="small text-truncate px-3" style="max-width: 100%">{{ prettyHost(selectedBookmark.url) }}</span>
+                    <span class="small">No preview</span>
+                </a>
 
                 <div class="d-flex gap-2 mt-auto flex-shrink-0">
                     <VibeButton :href="`/bookmarks/${selectedBookmark.id}/go`" target="_blank" rel="noopener" variant="primary">
@@ -474,5 +490,15 @@ async function runMaintenance(action) {
     height: 100%;
     object-fit: cover;
     object-position: top;
+}
+.bm-shot-empty {
+    min-height: 8rem;
+    background: var(--bs-tertiary-bg);
+    text-decoration: none;
+    transition: background 0.1s;
+}
+.bm-shot-empty:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
 }
 </style>
