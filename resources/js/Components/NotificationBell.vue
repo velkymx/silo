@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { notificationIcon } from '../lib/notificationIcon';
 
 interface RecentItem {
     id: number;
@@ -31,6 +32,7 @@ const items = computed(() => {
         ...recent.value.map((n) => ({
             key: String(n.id),
             id: n.id,
+            type: n.type,
             severity: n.severity,
             title: n.title,
             url: n.url,
@@ -47,11 +49,6 @@ const severityClass = (severity: string): string => {
     return 'text-primary';
 };
 
-const severityIcon = (severity: string): string => {
-    if (severity === 'high') return 'exclamation-triangle-fill';
-    if (severity === 'low') return 'info-circle';
-    return 'bell-fill';
-};
 
 const formatTime = (iso: string | null): string => {
     if (!iso) return '';
@@ -63,7 +60,7 @@ const formatTime = (iso: string | null): string => {
     return d.toLocaleDateString();
 };
 
-interface Payload { item: { key?: string; id?: number; url?: string | null; read_at?: string | null; created_at?: string | null; severity?: string; title?: string; text?: string } }
+interface Payload { item: { key?: string; id?: number; type?: string; url?: string | null; read_at?: string | null; created_at?: string | null; severity?: string; title?: string; text?: string } }
 
 function onItemClick({ item }: Payload): void {
     if (item.key === 'view-all' || !item.id) return;
@@ -105,7 +102,7 @@ function markAll(e: Event): void {
                 </div>
                 <div v-else-if="item.key === 'view-all'" class="text-center small text-primary py-1">View all</div>
                 <div v-else class="d-flex align-items-start gap-2 py-2" :class="{ 'fw-semibold': !item.read_at }">
-                    <VibeIcon :icon="severityIcon(item.severity ?? 'normal')" :class="severityClass(item.severity ?? 'normal')" class="mt-1 flex-shrink-0" />
+                    <VibeIcon :icon="notificationIcon(item.type)" :class="severityClass(item.severity ?? 'normal')" class="mt-1 flex-shrink-0" />
                     <div class="flex-grow-1 min-w-0">
                         <div class="text-truncate">{{ item.title }}</div>
                         <div class="small text-muted">{{ formatTime(item.created_at ?? null) }}</div>

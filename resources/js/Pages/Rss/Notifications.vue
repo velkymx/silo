@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import { http } from '../../lib/http';
+import { notificationIcon } from '../../lib/notificationIcon';
 
 interface Notification {
     id: number;
@@ -94,7 +95,9 @@ function setFilter(f: string | null): void {
                     role="button"
                     @click="open(n)"
                 >
-                    <span class="badge flex-shrink-0" :class="severityBadge(n.severity)">{{ n.severity }}</span>
+                    <span class="badge flex-shrink-0 d-inline-flex align-items-center" :class="severityBadge(n.severity)" :title="n.severity">
+                        <VibeIcon :icon="notificationIcon(n.type)" />
+                    </span>
                     <div class="flex-grow-1 min-w-0">
                         <div class="d-flex align-items-center gap-2">
                             <span class="fw-semibold text-truncate">{{ n.title }}</span>
