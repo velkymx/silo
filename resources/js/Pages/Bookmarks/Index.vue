@@ -43,7 +43,6 @@ const counts = computed(() => {
     return map;
 });
 
-const feedCount = computed(() => props.bookmarks.filter((b) => b.feed_url).length);
 
 // Categories are flat strings; useCategoryFolders adapts them to
 // FolderAccordion rows rooted at the "Bookmarks" node.
@@ -72,7 +71,6 @@ function pickFolder(f) {
 
 const listed = computed(() => {
     if (selectedFolder.value === null) return props.bookmarks;
-    if (selectedFolder.value === '__feeds__') return props.bookmarks.filter((b) => b.feed_url);
     return props.bookmarks.filter((b) => (b.category || 'General') === selectedFolder.value);
 });
 
@@ -93,7 +91,7 @@ const listPage = ref(1);
 const breadcrumbItems = computed(() => [
     { text: 'Bookmarks', folder: null, href: '/bookmarks', active: selectedFolder.value === null },
     ...(selectedFolder.value !== null ? [{
-        text: selectedFolder.value === '__feeds__' ? 'Feeds' : selectedFolder.value,
+        text: selectedFolder.value,
         folder: selectedFolder.value,
         href: '/bookmarks',
         active: true,
@@ -155,7 +153,7 @@ const bmModal = ref(null);
 const form = useForm({ title: '', url: '', description: '', icon: '', category: '', shared: false });
 
 function openAdd() {
-    const prefill = selectedFolder.value && !['__feeds__', 'General'].includes(selectedFolder.value)
+    const prefill = selectedFolder.value && selectedFolder.value !== 'General'
         ? { category: selectedFolder.value }
         : {};
     bmModal.value?.openAdd(prefill);
@@ -243,18 +241,6 @@ async function runMaintenance(action) {
 <template>
     <ShellLayout v-model:active-pane="activePane" :detail-visible="!!selectedBookmark">
         <template #viewNav>
-            <div v-if="feedCount" class="px-1 pt-1">
-                <button
-                    type="button"
-                    class="side-row w-100 text-start d-flex align-items-center gap-2 px-2 py-1 rounded border-0 bg-transparent"
-                    :class="{ active: selectedFolder === '__feeds__' }"
-                    @click="pickFolder('__feeds__')"
-                >
-                    <VibeIcon icon="rss-fill" class="text-warning" />
-                    <span class="flex-grow-1">Feeds</span>
-                    <span class="badge text-bg-light">{{ feedCount }}</span>
-                </button>
-            </div>
             <FolderAccordion
                 :folders="accordionFolders"
                 :selected-id="selectedFolderId"
@@ -271,7 +257,7 @@ async function runMaintenance(action) {
             <div class="d-flex align-items-center gap-2 p-2">
                 <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
                     <template #item="{ item, index }">
-                        <VibeIcon :icon="index === 0 ? 'bookmark-fill' : (item.folder === '__feeds__' ? 'rss-fill' : 'folder2')" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                        <VibeIcon :icon="index === 0 ? 'bookmark-fill' : 'folder2'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
                 </VibeBreadcrumb>
                 <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
