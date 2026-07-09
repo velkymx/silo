@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title inertia>{{ config('app.name', 'Silo') }}</title>
 
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
     @vite('resources/js/app.js')
     @inertiaHead
