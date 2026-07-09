@@ -239,4 +239,13 @@ defineExpose({ jumpToLine });
     height: 100%;
     min-height: 0;
 }
+
+/* Vite chunk order puts the base Toast UI css after the shared dark-theme
+   css, and the base Write/Preview tab-strip rule ties the dark rule at
+   (0,2,0) specificity, so the light strip wins in dark mode. A 3-class
+   override restores the dark strip regardless of chunk load order. */
+.toastui-editor-defaultUI.toastui-editor-dark .toastui-editor-md-tab-container {
+    background: #232428;
+    border-bottom-color: #303238;
+}
 </style>
