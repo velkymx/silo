@@ -52,7 +52,8 @@ const activePane = ref('contents');
                             model, one search, on hardware you control.
                         </p>
                         <p class="mb-0">
-                            I have spent two decades building software for other people. I was VP of
+                            I have been building for the web for 30 years, most of it shipping
+                            software for other people. I was VP of
                             Engineering at ProcessMaker, where we scaled the team from 1 to more than
                             60 through a 45 million dollar Series A. I led an Agile transformation at
                             Grand Canyon Education that took sprint commitment success from 40 to 90
