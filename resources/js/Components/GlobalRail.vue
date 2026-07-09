@@ -54,11 +54,12 @@ const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
             v-for="item in mainNav"
             :key="item.key"
             :href="item.href"
+            v-vibe-tooltip="{ text: item.text, placement: 'right' }"
             class="rail-link d-flex flex-column align-items-center justify-content-center rounded w-100 text-decoration-none"
             :class="{ active: item.active }"
             :data-nav="item.key"
             :aria-current="item.active ? 'page' : undefined"
-            :title="item.text"
+            :aria-label="item.text"
         >
             <VibeIcon :icon="item.icon" class="fs-5" />
             <span class="visually-hidden">{{ item.text }}</span>
@@ -70,11 +71,12 @@ const adminNav = computed<NavItem[]>(() => (user.value?.is_admin ? [
                 v-for="item in adminNav"
                 :key="item.key"
                 :href="item.href"
+                v-vibe-tooltip="{ text: item.text, placement: 'right' }"
                 class="rail-link d-flex flex-column align-items-center justify-content-center rounded w-100 text-decoration-none"
                 :class="{ active: item.active }"
                 :data-nav="item.key"
                 :aria-current="item.active ? 'page' : undefined"
-                :title="item.text"
+                :aria-label="item.text"
             >
                 <VibeIcon :icon="item.icon" class="fs-5" />
                 <span class="visually-hidden">{{ item.text }}</span>
