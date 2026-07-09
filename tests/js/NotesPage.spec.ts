@@ -79,6 +79,22 @@ describe('Notes/Index', () => {
         expect(h.getText).toHaveBeenCalledWith('/raw/2');
     });
 
+    it('toggles distraction-free fullscreen editing and exits on Escape', async () => {
+        const wrapper = mountPage();
+        selectRow(wrapper, 2);
+        await flushPromises();
+
+        expect(wrapper.find('.notes-fullscreen').exists()).toBe(false);
+        await wrapper.get('[data-testid="notes-fullscreen"]').trigger('click');
+        expect(wrapper.find('.notes-fullscreen').exists()).toBe(true);
+        // Backlinks hidden for focus.
+        expect(wrapper.findComponent(BacklinksPanel).exists()).toBe(false);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('.notes-fullscreen').exists()).toBe(false);
+    });
+
     it('shows a heading outline for the open note', async () => {
         h.getText.mockResolvedValue('# Alpha\n\nbody\n\n## Beta');
         const wrapper = mountPage();

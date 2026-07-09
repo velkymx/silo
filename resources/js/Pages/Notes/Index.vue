@@ -192,7 +192,18 @@ onBeforeUnmount(() => {
     unmounted = true;
     if (saveTimer) clearTimeout(saveTimer);
     if (suppressTimer) clearTimeout(suppressTimer);
+    document.removeEventListener('keydown', onFullscreenKey);
 });
+
+// Distraction-free editing: lift the note title bar + editor over the shell.
+const isFullscreen = ref(false);
+function onFullscreenKey(e) {
+    if (e.key === 'Escape' && isFullscreen.value) {
+        e.preventDefault();
+        isFullscreen.value = false;
+    }
+}
+onMounted(() => document.addEventListener('keydown', onFullscreenKey));
 
 function selectNote(id) {
     selectedId.value = id;
@@ -352,7 +363,7 @@ onMounted(() => {
         </template>
 
         <template #detail>
-            <template v-if="selectedNote">
+            <div v-if="selectedNote" class="d-flex flex-column h-100" :class="{ 'notes-fullscreen': isFullscreen }">
                 <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom flex-shrink-0">
                     <VibeButton
                         variant="link"
@@ -386,13 +397,23 @@ onMounted(() => {
                         <VibeButton size="sm" variant="light" title="Save a version" @click="saveVersion">
                             <VibeIcon icon="bookmark-plus" class="me-1" />Save version
                         </VibeButton>
+                        <VibeButton
+                            size="sm"
+                            variant="light"
+                            :title="isFullscreen ? 'Exit full screen (Esc)' : 'Full screen'"
+                            :aria-label="isFullscreen ? 'Exit full screen' : 'Full screen'"
+                            data-testid="notes-fullscreen"
+                            @click="isFullscreen = !isFullscreen"
+                        >
+                            <VibeIcon :icon="isFullscreen ? 'fullscreen-exit' : 'arrows-fullscreen'" />
+                        </VibeButton>
                     </div>
                 </div>
                 <div class="notes-editor-body">
-                    <MarkdownEditor ref="editorRef" v-model="content" enable-links />
+                    <MarkdownEditor ref="editorRef" v-model="content" enable-links :fill="isFullscreen" />
                 </div>
-                <BacklinksPanel :note-id="selectedId" @open="selectNote" />
-            </template>
+                <BacklinksPanel v-if="!isFullscreen" :note-id="selectedId" @open="selectNote" />
+            </div>
         </template>
     </ShellLayout>
 </template>
@@ -402,6 +423,13 @@ onMounted(() => {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+}
+/* Distraction-free mode: lift the editor over the whole shell. */
+.notes-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: var(--bs-body-bg);
 }
 /* Outline item indentation by heading level (1-6). */
 .outline-h-1 { padding-left: 0; }
