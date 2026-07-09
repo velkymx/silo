@@ -40,6 +40,12 @@ async function remove(b) {
     }
 }
 
+function verify(b) {
+    // Non-destructive test restore: verifies checksum, DB import and blob
+    // counts in a scratch dir. Result comes back as a flash message.
+    router.post(`/backups/${b.id}/verify`, {}, { preserveScroll: true });
+}
+
 async function restore(b) {
     if (!await confirm({ title: 'Restore backup', message: `Restore ${b.filename}? This OVERWRITES all current data (database + files).`, confirmLabel: 'Restore', variant: 'danger' })) return;
     if (!await confirm({ title: 'Are you absolutely sure?', message: 'This cannot be undone.', confirmLabel: 'Yes, restore', variant: 'danger' })) return;
@@ -161,6 +167,17 @@ onBeforeUnmount(() => clearInterval(poll));
                                     :aria-label="`Download backup ${item.filename}`"
                                 >
                                     <VibeIcon icon="download" />
+                                </VibeButton>
+                                <VibeButton
+                                    v-if="item.status === 'ready'"
+                                    variant="secondary"
+                                    size="sm"
+                                    outline
+                                    title="Test restore (verify without touching live data)"
+                                    :aria-label="`Test restore of backup ${item.filename}`"
+                                    @click="verify(item)"
+                                >
+                                    <VibeIcon icon="clipboard-check" />
                                 </VibeButton>
                                 <VibeButton
                                     v-if="item.status === 'ready'"

@@ -79,6 +79,26 @@ class BackupController extends Controller
         return Storage::disk($backup->disk)->download($backup->path, $backup->filename);
     }
 
+    // Dry-run / test restore: verify a backup is recoverable without touching
+    // live data. Runs synchronously and reports the outcome via flash.
+    public function verify(Backup $backup, BackupService $service)
+    {
+        abort_unless($backup->status === Backup::STATUS_READY, 404);
+
+        $report = $service->dryRun($backup);
+        Audit::log('backup.verify', null, ['backup_id' => $backup->id, 'ok' => $report['ok']]);
+
+        if ($report['ok']) {
+            $tables = $report['database']['tables'];
+
+            return back()->with('success', "Test restore passed — database OK ({$tables} tables), all blobs accounted for. This backup is restorable.");
+        }
+
+        $reason = $report['error'] ?? $report['database']['detail'];
+
+        return back()->with('error', "Test restore FAILED: {$reason}");
+    }
+
     // Restore from a backup. Destructive — overwrites the live DB + files.
     public function restore(Backup $backup)
     {

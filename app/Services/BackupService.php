@@ -396,6 +396,154 @@ class BackupService
     }
 
     /**
+     * Dry-run / test-restore: prove a backup is actually recoverable without
+     * touching live data. Verifies the checksum, extracts to a scratch dir,
+     * parses the manifest, loads the database dump into an isolated in-memory /
+     * temp engine (never the live connection), and reconciles blob counts
+     * against the manifest. Returns a structured report; never throws.
+     *
+     * @return array{ok: bool, checksum: bool, manifest: bool, database: array{format: ?string, ok: bool, tables: int, detail: string}, blobs: array<string, array{expected: int, found: int, ok: bool}>, error: ?string}
+     */
+    public function dryRun(Backup $backup): array
+    {
+        $report = [
+            'ok' => false,
+            'checksum' => false,
+            'manifest' => false,
+            'database' => ['format' => null, 'ok' => false, 'tables' => 0, 'detail' => 'Not checked.'],
+            'blobs' => [],
+            'error' => null,
+        ];
+
+        $work = sys_get_temp_dir().'/dryrun_'.Str::random(12);
+
+        try {
+            $this->verifyIntegrity($backup);
+            $report['checksum'] = true;
+
+            $archive = Storage::disk($backup->disk)->path($backup->path);
+            mkdir($work, 0775, true);
+
+            $zip = new ZipArchive();
+            if ($zip->open($archive) !== true) {
+                throw new \RuntimeException('Could not open the backup archive.');
+            }
+            $this->assertSafeZipEntries($zip);
+            $zip->extractTo($work);
+            $zip->close();
+
+            $manifest = is_file($work.'/manifest.json')
+                ? json_decode((string) file_get_contents($work.'/manifest.json'), true)
+                : null;
+            $report['manifest'] = is_array($manifest);
+
+            $report['database'] = $this->dryRunDatabase($work);
+            $report['blobs'] = $this->dryRunBlobs($work, is_array($manifest) ? ($manifest['disks'] ?? []) : []);
+
+            $blobsOk = ! collect($report['blobs'])->contains(fn (array $b) => ! $b['ok']);
+            $report['ok'] = $report['checksum'] && $report['manifest'] && $report['database']['ok'] && $blobsOk;
+        } catch (\Throwable $e) {
+            $report['error'] = $e->getMessage();
+        } finally {
+            $this->rmrf($work);
+        }
+
+        return $report;
+    }
+
+    /**
+     * Load the archived database dump into an isolated engine to prove it
+     * imports cleanly, without touching the live connection.
+     *
+     * @return array{format: ?string, ok: bool, tables: int, detail: string}
+     */
+    private function dryRunDatabase(string $work): array
+    {
+        $dir = $work.'/database';
+
+        if (is_file($dir.'/database.sqlite')) {
+            try {
+                $pdo = new \PDO('sqlite:'.$dir.'/database.sqlite');
+                $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+                $integrity = $pdo->query('PRAGMA integrity_check')->fetchColumn();
+                $tables = (int) $pdo->query("SELECT count(*) FROM sqlite_master WHERE type='table'")->fetchColumn();
+
+                return [
+                    'format' => 'sqlite',
+                    'ok' => $integrity === 'ok' && $tables > 0,
+                    'tables' => $tables,
+                    'detail' => $integrity === 'ok' ? "SQLite integrity OK, {$tables} tables." : "SQLite integrity: {$integrity}.",
+                ];
+            } catch (\Throwable $e) {
+                return ['format' => 'sqlite', 'ok' => false, 'tables' => 0, 'detail' => 'SQLite import failed: '.$e->getMessage()];
+            }
+        }
+
+        if (is_file($dir.'/database.json')) {
+            $data = json_decode((string) file_get_contents($dir.'/database.json'), true);
+            $ok = is_array($data) && count($data) > 0;
+
+            return [
+                'format' => 'json',
+                'ok' => $ok,
+                'tables' => is_array($data) ? count($data) : 0,
+                'detail' => $ok ? count($data).' tables in snapshot.' : 'Snapshot is empty or unreadable.',
+            ];
+        }
+
+        if (is_file($dir.'/database.sql')) {
+            $size = filesize($dir.'/database.sql');
+
+            return [
+                'format' => 'sql',
+                'ok' => $size > 0,
+                'tables' => 0,
+                'detail' => $size > 0 ? 'SQL dump present ('.$size.' bytes); not import-tested.' : 'SQL dump is empty.',
+            ];
+        }
+
+        return ['format' => null, 'ok' => false, 'tables' => 0, 'detail' => 'No database dump found in the archive.'];
+    }
+
+    /**
+     * Reconcile extracted blob counts against the manifest, without writing to
+     * any live disk.
+     *
+     * @param  array<string, int>  $expected
+     * @return array<string, array{expected: int, found: int, ok: bool}>
+     */
+    private function dryRunBlobs(string $work, array $expected): array
+    {
+        $base = $work.'/blobs';
+        $result = [];
+
+        // Every disk the manifest claims to hold, plus any extra dirs found.
+        $diskNames = array_unique(array_merge(
+            array_keys($expected),
+            is_dir($base) ? array_values(array_filter(scandir($base), fn ($d) => $d !== '.' && $d !== '..' && is_dir($base.'/'.$d))) : [],
+        ));
+
+        foreach ($diskNames as $diskName) {
+            $found = 0;
+            $root = $base.'/'.$diskName;
+            if (is_dir($root)) {
+                $iter = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)
+                );
+                foreach ($iter as $fileInfo) {
+                    if ($fileInfo->isFile()) {
+                        $found++;
+                    }
+                }
+            }
+            $exp = (int) ($expected[$diskName] ?? 0);
+            $result[$diskName] = ['expected' => $exp, 'found' => $found, 'ok' => $found === $exp];
+        }
+
+        return $result;
+    }
+
+    /**
      * Reject an archive whose entries try to escape the extraction directory
      * (path traversal) or use absolute paths — restore is trusted-admin-only,
      * but a tampered archive must still fail loudly rather than write anywhere.

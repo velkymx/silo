@@ -44,6 +44,13 @@ describe('Admin/Backups', () => {
         expect(wrapper.text()).toContain('Unverifiable');
     });
 
+    it('"Test restore" posts to the verify endpoint', async () => {
+        const wrapper = mount(Backups, { props });
+        const btn = wrapper.findAll('button').find((b) => b.attributes('title')?.includes('Test restore'));
+        await btn!.trigger('click');
+        expect(routerPost).toHaveBeenCalledWith('/backups/1/verify', {}, expect.anything());
+    });
+
     it('"Back up now" posts to /backups', async () => {
         const wrapper = mount(Backups, { props });
         const btn = wrapper.findAll('button').find((b) => b.text().includes('Back up now'));

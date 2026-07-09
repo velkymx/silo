@@ -65,6 +65,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/backups', [BackupController::class, 'run'])->name('admin.backups.run');
         Route::put('/backups/schedule', [BackupController::class, 'updateSchedule'])->name('admin.backups.schedule');
         Route::get('/backups/{backup}/download', [BackupController::class, 'download'])->name('admin.backups.download');
+        Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('admin.backups.verify');
         Route::post('/backups/{backup}/restore', [BackupController::class, 'restore'])->name('admin.backups.restore');
         Route::delete('/backups/{backup}', [BackupController::class, 'destroy'])->name('admin.backups.destroy');
     });
