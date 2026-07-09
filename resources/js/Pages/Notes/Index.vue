@@ -318,7 +318,7 @@ onMounted(() => {
                     hover
                     small
                     clickable
-                    search-placeholder="Search notes…"
+                    :searchable="false"
                     :show-per-page="false"
                     :per-page="50"
                     v-model:current-page="listPage"

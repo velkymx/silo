@@ -151,24 +151,10 @@ function onBreadcrumb({ item, event }) {
 }
 
 // ----- Search -----
-const search = ref(props.filters.search);
-// Folder navigation is a preserveState partial reload, so the component isn't
-// remounted — keep the search box in sync with the server's filter (e.g. it
-// clears when you navigate into a folder from a search result).
-watch(() => props.filters.search, (v) => {
-    if ((v ?? '') !== (search.value ?? '')) search.value = v ?? '';
-});
-
-function runSearch() {
-    router.get('/', { folder: currentId.value, search: search.value }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-    });
-}
-
+// Plain-text file search now lives in the command palette. Files still renders
+// a "Search: …" active-filter chip when a query arrives via URL (e.g. the
+// palette's "See all results" page), and clearing it drops the param.
 function clearSearch() {
-    search.value = '';
     router.get('/', currentId.value ? { folder: currentId.value } : {}, { preserveScroll: true });
 }
 
@@ -628,13 +614,7 @@ const quickNext = computed(() => {
 });
 
 function onKey(e) {
-    // Cmd/Ctrl-K focuses the search box from anywhere.
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        document.getElementById('global-search')?.focus();
-        return;
-    }
-
+    // Cmd/Ctrl-K (command palette) is handled globally by ShellLayout.
     const tag = (e.target?.tagName || '').toLowerCase();
     const inField = ['input', 'textarea', 'select'].includes(tag) || !!e.target?.isContentEditable;
 

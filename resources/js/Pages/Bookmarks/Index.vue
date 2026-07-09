@@ -304,7 +304,7 @@ async function runMaintenance(action) {
                     hover
                     small
                     clickable
-                    search-placeholder="Search bookmarks…"
+                    :searchable="false"
                     :show-per-page="false"
                     :per-page="50"
                     v-model:current-page="listPage"

@@ -132,7 +132,6 @@ async function loadMore(): Promise<void> {
         const params: Record<string, string | number> = { cursor: currentCursor.value };
         if (props.filters.filter) params.filter = props.filters.filter;
         if (props.filters.feed) params.feed = props.filters.feed;
-        if (props.filters.search) params.search = props.filters.search;
         if (props.filters.show_muted) params.show_muted = 1;
         applyAdvancedFilters(params);
         await router.get('/rss', params, {
@@ -154,7 +153,6 @@ async function loadMore(): Promise<void> {
 const showAddFeed = ref(false);
 const showEditFeed = ref(false);
 const editingFeed = ref<Feed | null>(null);
-const search = ref(props.filters.search ?? '');
 const authorFilter = ref('');
 const excludeFilter = ref('');
 
@@ -168,7 +166,6 @@ watch([authorFilter, excludeFilter], () => {
     const params: Record<string, string | number> = {};
     if (props.filters.filter) params.filter = props.filters.filter;
     if (props.filters.feed) params.feed = props.filters.feed;
-    if (props.filters.search) params.search = props.filters.search;
     if (props.filters.show_muted) params.show_muted = 1;
     applyAdvancedFilters(params);
     router.get('/rss', params, { preserveState: true, replace: true });
@@ -206,10 +203,6 @@ const filteredItems = computed(() => {
         list = list.filter((i) => i.is_starred);
     } else if (props.filters.filter === 'unread') {
         list = list.filter((i) => !i.is_read);
-    }
-    if (search.value.trim()) {
-        const q = search.value.trim().toLowerCase();
-        list = list.filter((i) => (i.title + ' ' + (i.excerpt ?? '')).toLowerCase().includes(q));
     }
     return list;
 });
@@ -283,7 +276,6 @@ async function markAllRead(): Promise<void> {
     const payload: Record<string, string | number> = {};
     if (selectedFeedId.value) payload.feed = selectedFeedId.value;
     if (props.filters.filter) payload.filter = props.filters.filter;
-    if (search.value.trim()) payload.search = search.value.trim();
     // Include the advanced filters so the server marks exactly the visible set.
     applyAdvancedFilters(payload);
     router.post('/rss/items/mark-all-read', payload, { preserveScroll: true });
@@ -499,6 +491,8 @@ function submitEdit(): void {
                                 v-if="feed.favicon_url"
                                 :src="feed.favicon_url"
                                 alt=""
+                                width="16"
+                                height="16"
                                 class="rss-row__favicon flex-shrink-0"
                                 loading="lazy"
                                 @error="($event.target as HTMLImageElement).style.display = 'none'"
@@ -615,12 +609,11 @@ function submitEdit(): void {
                     <VibeIcon icon="rss-fill" />
                     <span>{{ selectedFeed ? selectedFeed.title : (filters.filter === 'starred' ? 'Starred' : 'Inbox') }}</span>
                 </h1>
-                <VibeFormInput v-model="search" type="search" placeholder="Search articles…" class="ms-3 flex-grow-1" style="max-width: 320px" no-wrapper />
                 <VibeFormInput
                     v-model="authorFilter"
                     type="text"
                     placeholder="Author…"
-                    class="flex-grow-0"
+                    class="ms-3 flex-grow-0"
                     style="width: 110px"
                     no-wrapper
                 />
@@ -797,6 +790,11 @@ function submitEdit(): void {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+}
+.rss-row__favicon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
 }
 .rss-detail {
     background: var(--bs-body-bg);
