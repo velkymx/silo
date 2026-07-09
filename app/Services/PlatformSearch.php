@@ -57,7 +57,7 @@ class PlatformSearch
                 'snippet' => $i->excerpt,
                 'url' => "/rss/items/{$i->id}",
                 'meta' => [
-                    'feed_title' => $i->feed?->title,
+                    'feed_title' => $i->feed_title,
                     'author' => $i->author,
                     'published_at' => optional($i->published_at)->toIso8601String(),
                 ],

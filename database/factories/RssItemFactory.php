@@ -32,6 +32,17 @@ class RssItemFactory extends Factory
         ];
     }
 
+    public function configure(): static
+    {
+        // Denormalized feed_title mirrors the ingest path: default it to the
+        // owning feed's title unless the test set one explicitly.
+        return $this->afterMaking(function (RssItem $item) {
+            if ($item->feed_title === null && $item->feed) {
+                $item->feed_title = $item->feed->title;
+            }
+        });
+    }
+
     public function read(): static
     {
         return $this->state(fn () => ['is_read' => true, 'read_at' => now()]);

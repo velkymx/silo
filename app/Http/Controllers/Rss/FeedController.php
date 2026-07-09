@@ -155,7 +155,16 @@ class FeedController extends Controller
             ];
         }
 
+        $titleChanged = array_key_exists('title', $data) && $data['title'] !== $feed->title;
+
         $feed->update($data);
+
+        // Keep the denormalized feed_title on this feed's items in sync so
+        // search reflects the rename.
+        if ($titleChanged) {
+            $feed->syncItemsFeedTitle();
+        }
+
         Audit::log('rss.feed.update', null, ['feed_id' => $feed->id], subjectName: $feed->title);
 
         return back()->with('success', 'Feed updated.');

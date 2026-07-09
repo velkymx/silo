@@ -21,6 +21,7 @@ class RssItem extends Model
 
     protected $fillable = [
         'feed_id',
+        'feed_title',
         'user_id',
         'guid',
         'title',
@@ -63,7 +64,9 @@ class RssItem extends Model
             'title' => $this->title,
             'excerpt' => $this->excerpt,
             'author' => $this->author,
-            'feed_title' => $this->feed?->title,
+            // Denormalized column (not the relation) — the database Scout driver
+            // LIKEs each key as a real column, so this must resolve to one.
+            'feed_title' => $this->feed_title,
             'url' => $this->url,
         ];
     }

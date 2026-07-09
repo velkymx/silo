@@ -187,6 +187,7 @@ class RefreshFeed implements ShouldBeUnique, ShouldQueue
             try {
                 $item = new RssItem([
                     'feed_id' => $feed->id,
+                    'feed_title' => $feed->title, // denormalized for search
                     'user_id' => $feed->user_id,
                     'guid' => $entry['guid'],
                     // Column is string(255); truncate so an oversize title/author

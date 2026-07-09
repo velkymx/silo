@@ -185,4 +185,22 @@ class RssFeed extends Model
             }
         });
     }
+
+    /**
+     * Propagate a feed title change to the denormalized feed_title on its
+     * items (used by search) and re-index them so search reflects the rename.
+     */
+    public function syncItemsFeedTitle(): void
+    {
+        $this->items()->update(['feed_title' => $this->title]);
+
+        $this->items()->orderBy('id')->chunkById(200, function ($items) {
+            foreach ($items as $item) {
+                $item->setRelation('feed', $this);
+                if ($item->shouldBeSearchable()) {
+                    $item->searchable();
+                }
+            }
+        });
+    }
 }
