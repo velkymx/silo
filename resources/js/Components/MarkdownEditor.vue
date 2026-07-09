@@ -37,21 +37,47 @@ function isDark() {
     return document.documentElement.getAttribute('data-bs-theme') === 'dark';
 }
 
+// Toolbar mode toggle: replaces Toast UI's bottom mode-switch tabs. Shows the
+// mode you would switch TO (in markdown: "Rich text"; in WYSIWYG: "Markdown").
+function makeModeToggle() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toastui-editor-toolbar-icons md-mode-toggle';
+    btn.setAttribute('aria-label', 'Switch editing mode');
+
+    const label = () => {
+        btn.textContent = editor?.isMarkdownMode() ? 'Rich text' : 'Markdown';
+    };
+    btn.addEventListener('click', () => {
+        editor.changeMode(editor.isMarkdownMode() ? 'wysiwyg' : 'markdown', true);
+        label();
+    });
+    // Set the initial label after the editor exists.
+    queueMicrotask(label);
+
+    return btn;
+}
+
 function build() {
     editor = new Editor({
         el: el.value,
         initialValue: props.modelValue,
         initialEditType: props.enableLinks ? 'markdown' : 'wysiwyg',
-        previewStyle: 'tab',
+        // 'vertical' = live side-by-side preview in markdown mode. Never 'tab':
+        // no Write/Preview tab strip above the editor.
+        previewStyle: 'vertical',
         height: '100%',
         usageStatistics: false,
         theme: isDark() ? 'dark' : 'light',
+        // No bottom Markdown/WYSIWYG tabs — the toolbar toggle replaces them.
+        hideModeSwitch: true,
         toolbarItems: [
             ['heading', 'bold', 'italic', 'strike'],
             ['hr', 'quote'],
             ['ul', 'ol', 'task', 'indent', 'outdent'],
             ['table', 'image', 'link'],
             ['code', 'codeblock'],
+            [{ el: makeModeToggle(), name: 'modeToggle', tooltip: 'Switch between Markdown and rich text' }],
         ],
     });
     editor.on('change', () => {
@@ -240,12 +266,16 @@ defineExpose({ jumpToLine });
     min-height: 0;
 }
 
-/* Vite chunk order puts the base Toast UI css after the shared dark-theme
-   css, and the base Write/Preview tab-strip rule ties the dark rule at
-   (0,2,0) specificity, so the light strip wins in dark mode. A 3-class
-   override restores the dark strip regardless of chunk load order. */
-.toastui-editor-defaultUI.toastui-editor-dark .toastui-editor-md-tab-container {
-    background: #232428;
-    border-bottom-color: #303238;
+/* Toolbar mode toggle (replaces the bottom Markdown/WYSIWYG tab strip). */
+.md-mode-toggle {
+    width: auto !important;
+    padding: 0 8px !important;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    background-image: none !important;
+}
+.toastui-editor-dark .md-mode-toggle {
+    color: #eee;
 }
 </style>
