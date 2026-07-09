@@ -25,17 +25,25 @@ describe('MarkdownEditor chrome', () => {
         wrapper.unmount();
     });
 
-    it('offers a toolbar mode toggle that switches markdown and rich text', async () => {
+    it('offers a markdown-icon toolbar toggle, pressed while in source mode', async () => {
         const wrapper = await mountEditor({ enableLinks: true });
         const toggle = wrapper.element.querySelector('.md-mode-toggle') as HTMLButtonElement;
         expect(toggle).not.toBeNull();
-        // Opens in markdown mode (enableLinks), so the toggle offers rich text.
-        expect(toggle.textContent).toBe('Rich text');
+        expect(toggle.querySelector('i.bi-markdown')).not.toBeNull();
+        // Opens in markdown mode (enableLinks), so the toggle starts pressed.
+        expect(toggle.classList.contains('active')).toBe(true);
+        expect(toggle.getAttribute('aria-pressed')).toBe('true');
 
         toggle.click();
         await new Promise((r) => setTimeout(r, 10));
-        expect(toggle.textContent).toBe('Markdown');
-        expect(wrapper.element.querySelector('.toastui-editor-ww-container')).not.toBeNull();
+        expect(toggle.classList.contains('active')).toBe(false);
+        const main = wrapper.element.querySelector('.toastui-editor-main') as HTMLElement;
+        expect(main.classList.contains('toastui-editor-ww-mode')).toBe(true);
+
+        toggle.click();
+        await new Promise((r) => setTimeout(r, 10));
+        expect(toggle.classList.contains('active')).toBe(true);
+        expect(main.classList.contains('toastui-editor-md-mode')).toBe(true);
         wrapper.unmount();
     });
 });

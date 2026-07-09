@@ -37,23 +37,27 @@ function isDark() {
     return document.documentElement.getAttribute('data-bs-theme') === 'dark';
 }
 
-// Toolbar mode toggle: replaces Toast UI's bottom mode-switch tabs. Shows the
-// mode you would switch TO (in markdown: "Rich text"; in WYSIWYG: "Markdown").
+// Toolbar markdown toggle: replaces Toast UI's bottom mode-switch tabs. A
+// "view markdown source" button — pressed (active) while in markdown mode,
+// click to flip between markdown source and rich text.
 function makeModeToggle() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'toastui-editor-toolbar-icons md-mode-toggle';
-    btn.setAttribute('aria-label', 'Switch editing mode');
+    btn.setAttribute('aria-label', 'Toggle markdown source');
+    btn.innerHTML = '<i class="bi bi-markdown"></i>';
 
-    const label = () => {
-        btn.textContent = editor?.isMarkdownMode() ? 'Rich text' : 'Markdown';
+    const sync = () => {
+        const md = !!editor?.isMarkdownMode();
+        btn.classList.toggle('active', md);
+        btn.setAttribute('aria-pressed', String(md));
     };
     btn.addEventListener('click', () => {
         editor.changeMode(editor.isMarkdownMode() ? 'wysiwyg' : 'markdown', true);
-        label();
+        sync();
     });
-    // Set the initial label after the editor exists.
-    queueMicrotask(label);
+    // Set the initial state after the editor exists.
+    queueMicrotask(sync);
 
     return btn;
 }
@@ -77,7 +81,7 @@ function build() {
             ['ul', 'ol', 'task', 'indent', 'outdent'],
             ['table', 'image', 'link'],
             ['code', 'codeblock'],
-            [{ el: makeModeToggle(), name: 'modeToggle', tooltip: 'Switch between Markdown and rich text' }],
+            [{ el: makeModeToggle(), name: 'modeToggle', tooltip: 'Markdown source' }],
         ],
     });
     editor.on('change', () => {
@@ -266,16 +270,32 @@ defineExpose({ jumpToLine });
     min-height: 0;
 }
 
-/* Toolbar mode toggle (replaces the bottom Markdown/WYSIWYG tab strip). */
+/* Toolbar markdown toggle (replaces the bottom Markdown/WYSIWYG tab strip). */
 .md-mode-toggle {
-    width: auto !important;
-    padding: 0 8px !important;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 18px;
+    line-height: 1;
     color: #555;
     background-image: none !important;
 }
+.md-mode-toggle.active {
+    color: var(--bs-primary, #6366f1);
+    background-color: rgba(99, 102, 241, 0.12);
+    border-radius: 4px;
+}
 .toastui-editor-dark .md-mode-toggle {
     color: #eee;
+}
+.toastui-editor-dark .md-mode-toggle.active {
+    color: var(--bs-primary, #8b8dff);
+}
+
+/* Markdown mode is a full-width SOURCE view — no split preview pane. The
+   rich-text mode one click away replaces it, and hiding the pane removes
+   the both-visible flash while Toast UI swaps modes. */
+.toastui-editor-md-vertical-style .toastui-editor-md-preview {
+    display: none !important;
+}
+.toastui-editor-main .toastui-editor-md-vertical-style .toastui-editor {
+    width: 100%;
 }
 </style>
