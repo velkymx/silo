@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 
-const s = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn(), visit: vi.fn(), toggleColorMode: vi.fn() }));
+const s = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn(), visit: vi.fn(), toggleColorMode: vi.fn(), paletteOpen: vi.fn() }));
+vi.mock('@/composables/useCommandPalette', () => ({
+    useCommandPalette: () => ({ state: { open: false }, open: s.paletteOpen, close: vi.fn(), toggle: vi.fn() }),
+}));
 const page = { url: '/', props: {} as Record<string, unknown> };
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: s.get, post: s.post, delete: s.del, visit: s.visit },
@@ -39,26 +42,12 @@ describe('ShellLayout chrome (the app-wide layout)', () => {
         expect(wrapper.text()).toContain('5.0 MB of 10.0 MB');
     });
 
-    it('runs a global cross-content search on Enter', async () => {
+    it('opens the command palette when the search trigger is clicked', async () => {
         const wrapper = mountShell();
-        const input = wrapper.find('#global-search');
-        await input.setValue('report');
-        await input.trigger('keyup', { key: 'Enter' });
-        // Navbar search routes to the cross-content SearchController (/search?q=).
-        expect(s.get).toHaveBeenCalledWith('/search', { q: 'report' });
-    });
-
-    it('re-runs the search when the scope dropdown is used', async () => {
-        const wrapper = mountShell();
-        await wrapper.find('#global-search').setValue('report');
-        const thisFolder = wrapper.findAll('button.dd-item').find((b) => b.text().includes('This folder'));
-        await thisFolder!.trigger('click');
-        expect(s.get).toHaveBeenCalledWith('/search', { q: 'report' });
-    });
-
-    it('reads the active query from the URL', () => {
-        const wrapper = mountShell({ url: '/search?q=hello' });
-        expect((wrapper.find('#global-search').element as HTMLInputElement).value).toBe('hello');
+        await wrapper.find('#global-search').trigger('click');
+        // The navbar search is a trigger — it opens the palette, never navigates.
+        expect(s.paletteOpen).toHaveBeenCalled();
+        expect(s.get).not.toHaveBeenCalled();
     });
 
     it('toggles the color mode from the user menu', async () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@velkymx/vibeui';
 import { useCommandPalette } from '../composables/useCommandPalette';
@@ -17,7 +17,7 @@ import GlobalRail from '../Components/GlobalRail.vue';
 // Universal shell: every route mounts this layout. It owns the app-wide
 // chrome (top navbar, toasts, command palette, skip-link) plus the FourPane
 // frame with GlobalRail fixed in column 1.
-const { toggle: togglePalette } = useCommandPalette();
+const { toggle: togglePalette, open: openPalette } = useCommandPalette();
 const toast = useToast();
 const { colorMode, toggleColorMode } = useColorMode();
 const themeIcon = computed(() => ({ light: 'sun-fill', dark: 'moon-stars-fill' }[colorMode.value] ?? 'circle-half'));
@@ -29,33 +29,6 @@ const appName = import.meta.env.VITE_APP_NAME || 'Silo';
 const tagline = 'Your Files Ready to Launch';
 const year = new Date().getFullYear();
 const repoUrl = 'https://github.com/velkymx/laravel-file-manager';
-const searchValue = ref('');
-const searchScope = ref<'all' | 'folder'>('all');
-const currentFolder = computed(() => (page.props.currentFolder as { id: number } | null) ?? null);
-const scopeMenu = [
-    { text: 'All folders', value: 'all', icon: 'collection' },
-    { text: 'This folder', value: 'folder', icon: 'folder2' },
-];
-function syncSearchFromUrl(): void {
-    const q = new URLSearchParams(page.url.split('?')[1] || '');
-    // The global search submits to /search?q=… (SearchController) — read the
-    // same param back so the box reflects the active query on the results page.
-    searchValue.value = q.get('q') || '';
-    searchScope.value = q.get('scope') === 'folder' ? 'folder' : 'all';
-}
-syncSearchFromUrl();
-watch(() => page.url, syncSearchFromUrl);
-function runGlobalSearch(): void {
-    const v = searchValue.value.trim();
-    if (!v) { router.get('/'); return; }
-    router.get('/search', { q: v });
-}
-function clearGlobalSearch(): void {
-    searchValue.value = '';
-    router.get('/');
-}
-const isSearching = computed(() => searchValue.value.length > 0);
-
 // Passthrough model: pages that drive mobile pane-advance (e.g. Files moving
 // `contents` -> `detail` on row select) bind their own `activePane` ref.
 const activePane = defineModel<string>('activePane', { default: 'contents' });
@@ -125,42 +98,20 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
             </Link>
 
             <div class="flex-grow-1 min-w-0">
-                <VibeInputGroup class="mx-auto" style="max-width: 620px">
-                    <template #prepend>
-                        <span class="input-group-text bg-body border-end-0"><VibeIcon icon="search" class="text-muted" /></span>
-                    </template>
-                    <VibeFormInput
-                        id="global-search"
-                        v-model="searchValue"
-                        type="search"
-                        class="border-start-0"
-                        placeholder="Search files, folders, tags…"
-                        aria-label="Search files, folders, and tags"
-                        no-wrapper
-                        @keyup.enter="runGlobalSearch"
-                    />
-                    <template #append>
-                        <VibeDropdown
-                            variant="secondary"
-                            menu-end
-                            :items="scopeMenu"
-                            :title="searchScope === 'folder' ? 'Scope: this folder' : 'Scope: all folders'"
-                            @item-click="searchScope = $event.item.value; runGlobalSearch()"
-                        >
-                            <template #button>
-                                <VibeIcon :icon="searchScope === 'folder' ? 'folder2' : 'collection'" class="me-1" />
-                                {{ searchScope === 'folder' ? 'This folder' : 'All' }}
-                            </template>
-                            <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                        </VibeDropdown>
-                        <VibeButton v-if="isSearching" variant="secondary" outline aria-label="Clear search" @click="clearGlobalSearch">
-                            <VibeIcon icon="x-lg" />
-                        </VibeButton>
-                        <button v-else type="button" class="input-group-text bg-body text-muted border-0" title="Command palette" @click="togglePalette">
-                            <kbd class="bg-body-secondary text-body-secondary border" style="font-size: 0.7rem">⌘K</kbd>
-                        </button>
-                    </template>
-                </VibeInputGroup>
+                <!-- The navbar search is a trigger: it opens the command palette
+                     (focused) rather than owning its own query state. -->
+                <button
+                    id="global-search"
+                    type="button"
+                    class="search-trigger btn d-flex align-items-center gap-2 mx-auto w-100 text-start"
+                    style="max-width: 620px"
+                    aria-label="Search Silo"
+                    @click="openPalette"
+                >
+                    <VibeIcon icon="search" class="text-muted" />
+                    <span class="text-muted flex-grow-1 text-truncate">Search files, notes, articles, bookmarks…</span>
+                    <kbd class="bg-body-secondary text-body-secondary border flex-shrink-0" style="font-size: 0.7rem">⌘K</kbd>
+                </button>
             </div>
 
             <NotificationBell v-if="user" :notifications="notifications" />
@@ -234,5 +185,14 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 <style scoped>
 .min-h-0 {
     min-height: 0;
+}
+.search-trigger {
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.75rem;
+}
+.search-trigger:hover {
+    border-color: var(--bs-primary);
 }
 </style>
