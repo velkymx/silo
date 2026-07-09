@@ -2,6 +2,8 @@
 
 namespace App\Services\Health;
 
+use App\Models\Backup;
+use App\Services\BackupService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -146,7 +148,61 @@ class HealthService
                 $queued > self::QUEUE_BACKLOG
                     ? "{$queued} jobs are waiting to run."
                     : 'Running.'),
+            $this->lastBackupCheck(),
+            $this->backupDestinationCheck(),
         ];
+    }
+
+    /** Warn when there is no successful backup, or the latest is stale. */
+    private function lastBackupCheck(): HealthItem
+    {
+        $latest = Backup::query()->where('status', Backup::STATUS_READY)->latest('created_at')->first();
+
+        if ($latest === null) {
+            return new HealthItem('maintenance', 'Last backup', HealthItem::WARN,
+                'No successful backup has been taken yet.');
+        }
+
+        $maxAge = (int) config('backup.max_age_days', 7);
+        $ageDays = $latest->created_at->diffInDays(now());
+
+        if ($ageDays > $maxAge) {
+            return new HealthItem('maintenance', 'Last backup', HealthItem::WARN,
+                "The most recent backup is {$ageDays} days old (older than {$maxAge}).");
+        }
+
+        return new HealthItem('maintenance', 'Last backup', HealthItem::OK,
+            'Taken '.$latest->created_at->diffForHumans().'.');
+    }
+
+    /**
+     * A backup on the same volume as the data is not a backup. Warn when the
+     * backup disk equals the data disk, and recommend offsite while it stays on
+     * this server.
+     */
+    private function backupDestinationCheck(): HealthItem
+    {
+        $backupDisk = BackupService::disk();
+        $dataDisk = config('filemanager.disk', 'local');
+
+        if ($backupDisk === $dataDisk) {
+            return new HealthItem('maintenance', 'Backup destination', HealthItem::WARN,
+                "Backups share the data disk ('{$backupDisk}'); one disk failure loses both. Set BACKUP_DISK to a separate, offsite disk.");
+        }
+
+        $sameRoot = config("filesystems.disks.{$backupDisk}.root") === config("filesystems.disks.{$dataDisk}.root");
+        if ($sameRoot) {
+            return new HealthItem('maintenance', 'Backup destination', HealthItem::WARN,
+                "Backups ('{$backupDisk}') and data ('{$dataDisk}') resolve to the same location; one disk failure loses both.");
+        }
+
+        if (config("filesystems.disks.{$backupDisk}.driver") === 'local') {
+            return new HealthItem('maintenance', 'Backup destination', HealthItem::INFO,
+                "Backups go to the local disk '{$backupDisk}'. For durability, mount it on an offsite volume.");
+        }
+
+        return new HealthItem('maintenance', 'Backup destination', HealthItem::OK,
+            "Backups go to the offsite disk '{$backupDisk}'.");
     }
 
     /**

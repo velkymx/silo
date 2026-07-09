@@ -14,10 +14,17 @@ use ZipArchive;
 
 class BackupService
 {
-    /** Disk the archives live on (kept private — never the public web root). */
-    public const DISK = 'local';
-
     public const DIR = 'backups';
+
+    /**
+     * Disk the archives live on (config/backup.php). Defaults to 'local' but
+     * should point offsite in production — a backup on the same volume as the
+     * data is not a backup.
+     */
+    public static function disk(): string
+    {
+        return config('backup.disk', 'local');
+    }
 
     /**
      * Build a compressed archive of the database + all stored file blobs and
@@ -27,19 +34,30 @@ class BackupService
     {
         $filename = 'backup-'.now()->format('Ymd-His').'.zip';
         $backup = Backup::create([
-            'disk' => self::DISK,
+            'disk' => self::disk(),
             'filename' => $filename,
             'status' => Backup::STATUS_PENDING,
             'created_by' => $userId,
         ]);
 
-        $absDir = Storage::disk(self::DISK)->path(self::DIR);
-        if (! is_dir($absDir)) {
-            mkdir($absDir, 0775, true);
-        }
-        $absPath = $absDir.DIRECTORY_SEPARATOR.$filename;
+        $absPath = null;
 
         try {
+            // The archive is streamed to and restored from a local path, so the
+            // destination must be a local-driver disk. For offsite durability,
+            // point BACKUP_DISK at a local disk whose root is a mounted offsite
+            // volume (NFS, rclone/s3fs mount) rather than an object-store driver.
+            $driver = config('filesystems.disks.'.self::disk().'.driver');
+            if ($driver !== 'local') {
+                throw new \RuntimeException("Backup disk '".self::disk()."' uses the '{$driver}' driver; only local-driver disks are supported. Point BACKUP_DISK at a local disk mounted on your offsite volume.");
+            }
+
+            $absDir = Storage::disk(self::disk())->path(self::DIR);
+            if (! is_dir($absDir)) {
+                mkdir($absDir, 0775, true);
+            }
+            $absPath = $absDir.DIRECTORY_SEPARATOR.$filename;
+
             $compression = $this->buildArchive($absPath);
 
             $backup->update([
@@ -51,7 +69,9 @@ class BackupService
                 'note' => 'Database + file blobs.',
             ]);
         } catch (\Throwable $e) {
-            @unlink($absPath);
+            if ($absPath) {
+                @unlink($absPath);
+            }
             $backup->update([
                 'status' => Backup::STATUS_FAILED,
                 'note' => $e->getMessage(),

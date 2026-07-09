@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Backup;
 use App\Services\Health\HealthItem;
 use App\Services\Health\HealthService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,6 +24,14 @@ class HealthServiceTest extends TestCase
             'app.url' => 'https://silo.test',
             'vault.key' => 'base64:'.base64_encode(str_repeat('k', 32)),
             'silo.update_check.enabled' => false,
+            // Backups go to a separate offsite-style disk with a recent run.
+            'backup.disk' => 'local',
+            'filemanager.disk' => 'public',
+        ]);
+
+        Backup::create([
+            'disk' => 'local', 'filename' => 'b.zip', 'path' => 'backups/b.zip',
+            'status' => Backup::STATUS_READY, 'checksum' => str_repeat('a', 64),
         ]);
     }
 
@@ -113,5 +122,40 @@ class HealthServiceTest extends TestCase
         Http::fake(['api.github.com/*' => Http::response(['tag_name' => 'v2.3.0'])]);
 
         $this->assertNull($this->service()->updateCheck());
+    }
+
+    public function test_missing_backup_is_flagged(): void
+    {
+        $this->healthy();
+        Backup::query()->delete();
+
+        $attention = collect($this->service()->cardSummary()['attention']);
+
+        $this->assertNotNull($attention->firstWhere('label', 'Last backup'));
+    }
+
+    public function test_stale_backup_is_flagged(): void
+    {
+        $this->healthy();
+        config(['backup.max_age_days' => 7]);
+        Backup::query()->update(['created_at' => now()->subDays(30)]);
+
+        $attention = collect($this->service()->cardSummary()['attention']);
+        $stale = $attention->firstWhere('label', 'Last backup');
+
+        $this->assertNotNull($stale);
+        $this->assertSame(HealthItem::WARN, $stale['status']);
+    }
+
+    public function test_backups_on_the_data_disk_are_flagged(): void
+    {
+        $this->healthy();
+        config(['backup.disk' => 'public', 'filemanager.disk' => 'public']);
+
+        $attention = collect($this->service()->cardSummary()['attention']);
+        $dest = $attention->firstWhere('label', 'Backup destination');
+
+        $this->assertNotNull($dest);
+        $this->assertSame(HealthItem::WARN, $dest['status']);
     }
 }
