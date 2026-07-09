@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { BookmarkStatus } from '../../lib/constants';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
@@ -158,6 +158,11 @@ function openAdd() {
         : {};
     bmModal.value?.openAdd(prefill);
 }
+
+// Quick Actions "Save Bookmark" deep-links here with ?new=1.
+onMounted(() => {
+    if (new URLSearchParams(window.location.search).get('new')) openAdd();
+});
 
 function openEdit(b) {
     Object.assign(form, {

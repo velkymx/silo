@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import JumpBackIn, { type JumpBackInItem } from '../../Components/Dashboard/JumpBackIn.vue';
+import QuickActions from '../../Components/Dashboard/QuickActions.vue';
 
 defineProps<{ jumpBackIn: JumpBackInItem | null }>();
 
@@ -19,8 +20,9 @@ const activePane = ref('contents');
         </template>
 
         <template #contents>
-            <div class="dashboard-home mx-auto px-3 py-3">
+            <div class="dashboard-home mx-auto px-3 py-3 d-flex flex-column gap-3">
                 <JumpBackIn :item="jumpBackIn" />
+                <QuickActions />
             </div>
         </template>
     </ShellLayout>

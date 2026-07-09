@@ -818,6 +818,8 @@ const { start: startPolling } = useJobPolling(filesRef, () =>
 );
 
 onMounted(() => {
+    // Quick Actions "Upload File" deep-links here with ?upload=1.
+    if (new URLSearchParams(window.location.search).get('upload')) uploadOpen.value = true;
     // Open a file/folder directly when navigated from the sidebar tree (?open=id).
     const openId = new URLSearchParams(window.location.search).get('open');
     if (openId) {

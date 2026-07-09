@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
@@ -189,6 +189,11 @@ function openAdd() {
     if (selectedFolder.value && selectedFolder.value !== 'General') form.category = selectedFolder.value;
     vaultModal.value?.openAdd();
 }
+
+// Quick Actions "Add Secret" deep-links here with ?new=1.
+onMounted(() => {
+    if (new URLSearchParams(window.location.search).get('new')) openAdd();
+});
 
 // A vault "folder" is a category string; it exists once a secret uses it, so
 // creating one opens the add-secret form with the category prefilled.
