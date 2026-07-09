@@ -45,8 +45,8 @@ const continueItems = computed<ContinueItem[]>(() =>
                             <ContinueCard :items="continueItems" />
                         </div>
                         <div class="col-12 col-lg-5 d-flex flex-column gap-4">
-                            <WhatsNewCard :whats-new="whatsNew" />
                             <AttentionCard :items="needsAttention" />
+                            <WhatsNewCard :whats-new="whatsNew" />
                         </div>
                     </div>
                     <HealthCard v-if="systemHealth" :system-health="systemHealth" />

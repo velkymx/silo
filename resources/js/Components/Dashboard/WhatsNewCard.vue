@@ -14,29 +14,38 @@ export interface WhatsNew {
     inboxUrl: string;
 }
 
+// Deliberately compact: the home screen is about the user's work, not a feed.
+// One line: unread count, the newest headline for scent, and the inbox link.
 defineProps<{ whatsNew: WhatsNew | null }>();
 </script>
 
 <template>
     <section v-if="whatsNew" class="whats-new" aria-label="What's new">
         <h2 class="h6 text-muted text-uppercase fw-semibold mb-2 whats-new__heading">What's New</h2>
-        <div class="card">
-            <div class="card-body">
-                <p class="fw-semibold mb-2">
+        <Link
+            :href="whatsNew.inboxUrl"
+            class="card text-decoration-none whats-new__strip"
+            data-testid="whats-new-strip"
+        >
+            <div class="card-body py-2 d-flex align-items-center gap-2">
+                <VibeIcon icon="rss" class="text-secondary flex-shrink-0" />
+                <span class="fw-semibold flex-shrink-0">
                     {{ whatsNew.unreadCount }} unread {{ whatsNew.unreadCount === 1 ? 'article' : 'articles' }}
-                </p>
-                <ul class="list-unstyled mb-3">
-                    <li v-for="article in whatsNew.articles" :key="article.id" class="mb-2">
-                        <Link :href="article.url" class="text-decoration-none d-block" :data-article="article.id">
-                            <span class="d-block text-truncate">{{ article.title }}</span>
-                            <span v-if="article.feed" class="d-block small text-muted">{{ article.feed }}</span>
-                        </Link>
-                    </li>
-                </ul>
-                <Link :href="whatsNew.inboxUrl" class="text-decoration-none fw-semibold">
-                    View Inbox <VibeIcon icon="arrow-right" />
-                </Link>
+                </span>
+                <span v-if="whatsNew.articles.length" class="text-muted text-truncate min-w-0 d-none d-sm-inline">
+                    &middot; {{ whatsNew.articles[0].title }}
+                </span>
+                <span class="ms-auto flex-shrink-0 fw-semibold">View Inbox <VibeIcon icon="arrow-right" /></span>
             </div>
-        </div>
+        </Link>
     </section>
 </template>
+
+<style scoped>
+.whats-new__strip {
+    color: var(--bs-body-color);
+}
+.whats-new__strip:hover {
+    border-color: var(--bs-primary);
+}
+</style>

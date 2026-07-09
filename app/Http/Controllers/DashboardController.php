@@ -31,7 +31,9 @@ class DashboardController extends Controller
         $cards = Cache::remember("dashboard.{$user->id}", 45, fn () => [
             'jumpBackIn' => $this->dashboard->jumpBackIn($user)?->toArray(),
             'continueWorking' => $this->dashboard->continueWorking($user),
-            'whatsNew' => $this->dashboard->whatsNew($user)?->toArray(),
+            // Compact on the home screen: the card shows the count plus the
+            // newest headline only, so one article is all it needs.
+            'whatsNew' => $this->dashboard->whatsNew($user, 1)?->toArray(),
             'needsAttention' => $this->dashboard->needsAttention($user),
         ]);
 
