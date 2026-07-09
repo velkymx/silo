@@ -35,7 +35,7 @@ const continueItems = computed<ContinueItem[]>(() =>
 
         <template #contents>
             <div class="overflow-auto flex-grow-1">
-                <div class="dashboard-home mx-auto px-3 py-3 d-flex flex-column gap-4">
+                <div class="dashboard-home px-4 py-3 d-flex flex-column gap-4">
                     <JumpBackIn :item="jumpBackIn" />
                     <QuickActions />
                     <div class="row g-4">
@@ -55,7 +55,6 @@ const continueItems = computed<ContinueItem[]>(() =>
 
 <style scoped>
 .dashboard-home {
-    max-width: 72rem;
     width: 100%;
 }
 </style>
