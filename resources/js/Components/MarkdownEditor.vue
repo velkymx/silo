@@ -270,12 +270,23 @@ defineExpose({ jumpToLine });
     min-height: 0;
 }
 
-/* Toolbar markdown toggle (replaces the bottom Markdown/WYSIWYG tab strip). */
+/* Toolbar markdown toggle (replaces the bottom Markdown/WYSIWYG tab strip).
+   Toast UI toolbar buttons are 32x32 sprite boxes; this one holds a font
+   glyph instead, so flex-center it inside the same box. */
 .md-mode-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
     font-size: 18px;
     line-height: 1;
     color: #555;
     background-image: none !important;
+}
+.md-mode-toggle i {
+    line-height: 1;
+    display: block;
 }
 .md-mode-toggle.active {
     color: var(--bs-primary, #6366f1);
