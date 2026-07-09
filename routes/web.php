@@ -9,6 +9,7 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BatchController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\DailyWordGameController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DirectoryController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilePermissionController;
@@ -73,6 +74,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/avatar', [UserController::class, 'updateAvatar'])->name('profile.avatar');
     Route::get('/avatars/{user}', [UserController::class, 'avatar'])->name('users.avatar');
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
     Route::get('/photos', [PhotoController::class, 'index'])->name('photos.index');
     Route::post('/photos/upload', [PhotoController::class, 'upload'])
