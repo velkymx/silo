@@ -1,8 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { useColorMode } from '@velkymx/vibeui';
 import { useCommandPalette } from '../composables/useCommandPalette';
+
+interface Entry {
+    icon: string;
+    text: string;
+    sub?: string;
+    run: () => void;
+}
+
+interface Section {
+    label: string;
+    entries: Entry[];
+}
+
+interface QuickResult {
+    id: number;
+    title: string;
+    snippet: string | null;
+    url: string;
+    meta?: Record<string, unknown>;
+}
 
 const { state: palette, close: paletteClose } = useCommandPalette();
 const { toggleColorMode } = useColorMode();
@@ -10,14 +30,87 @@ const page = usePage();
 
 const q = ref('');
 const cursor = ref(0);
-const listEl = ref(null);
-const inputEl = ref(null);
+const listEl = ref<HTMLElement | null>(null);
 
-const allGroups = computed(() => {
-    const folder = (page.props.currentFolder ?? null);
-    const goTo = (path) => () => { close(); router.get(path); };
+const results = ref<Record<string, QuickResult[]>>({});
+const loading = ref(false);
+const fetchError = ref(false);
 
-    const navigation = [
+// --- Scope: default to the surface the user is on, toggle to "All of Silo".
+const GROUP_META: Record<string, { label: string; icon: string }> = {
+    files: { label: 'Files', icon: 'folder' },
+    notes: { label: 'Notes', icon: 'journal-text' },
+    rss: { label: 'Articles', icon: 'rss' },
+    bookmarks: { label: 'Bookmarks', icon: 'bookmark' },
+};
+
+function surfaceFor(url: string): string | null {
+    const p = url.split('?')[0];
+    if (p.startsWith('/rss')) return 'rss';
+    if (p.startsWith('/notes')) return 'notes';
+    if (p.startsWith('/bookmarks')) return 'bookmarks';
+    if (['/', '/recent', '/starred', '/trash', '/shared'].includes(p)) return 'files';
+    return null;
+}
+
+const areaScope = computed<string | null>(() => surfaceFor(page.url));
+const areaLabel = computed<string>(() => (areaScope.value ? GROUP_META[areaScope.value].label : ''));
+const scope = ref<string>('all');
+
+function setScope(next: string): void {
+    scope.value = next;
+}
+
+// --- Live fetch (debounced + abortable).
+let controller: AbortController | null = null;
+let debounceId: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleFetch(): void {
+    clearTimeout(debounceId);
+    if (!q.value.trim()) {
+        controller?.abort();
+        results.value = {};
+        loading.value = false;
+        fetchError.value = false;
+        return;
+    }
+    debounceId = setTimeout(runFetch, 200);
+}
+
+async function runFetch(): Promise<void> {
+    controller?.abort();
+    controller = new AbortController();
+    const signal = controller.signal;
+    loading.value = true;
+    fetchError.value = false;
+    try {
+        const url = `/search/quick?q=${encodeURIComponent(q.value.trim())}&scope=${scope.value}`;
+        const res = await fetch(url, {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (signal.aborted) return;
+        results.value = data.results ?? {};
+    } catch (e) {
+        if ((e as { name?: string }).name === 'AbortError') return;
+        fetchError.value = true;
+        results.value = {};
+    } finally {
+        if (!signal.aborted) loading.value = false;
+    }
+}
+
+watch([q, scope], scheduleFetch);
+
+// --- Commands (navigation + actions), filtered by the term.
+const commandSections = computed<Section[]>(() => {
+    const term = q.value.trim().toLowerCase();
+    const matches = (text: string) => !term || text.toLowerCase().includes(term);
+    const goTo = (path: string) => () => { close(); router.get(path); };
+
+    const navigation: Entry[] = [
         { text: 'Go to Files', icon: 'folder', run: goTo('/') },
         { text: 'Go to Photos', icon: 'image', run: goTo('/photos') },
         { text: 'Go to Bookmarks', icon: 'bookmark', run: goTo('/bookmarks') },
@@ -25,81 +118,86 @@ const allGroups = computed(() => {
         { text: 'Go to Vault', icon: 'shield-lock', run: goTo('/vault') },
     ];
 
-    const actions = [
+    const actions: Entry[] = [
         { text: 'New folder', icon: 'folder-plus', run: () => { close(); router.visit('/?new=folder'); } },
-        { text: 'Empty trash', icon: 'trash', run: () => { close(); router.delete('/trash/empty', { preserveScroll: true }); } },
         { text: 'Switch theme', icon: 'circle-half', run: () => { toggleColorMode(); close(); } },
     ];
 
-    if (folder && folder.id) {
-        actions.push({
-            text: 'New folder in this folder',
-            icon: 'folder-plus',
-            run: () => { close(); router.visit(`/?new=folder&parent=${folder.id}`); },
+    return [
+        { label: 'Navigation', entries: navigation.filter((e) => matches(e.text)) },
+        { label: 'Actions', entries: actions.filter((e) => matches(e.text)) },
+    ].filter((s) => s.entries.length);
+});
+
+// --- Result sections built from the live fetch.
+const resultSections = computed<Section[]>(() => {
+    const term = q.value.trim();
+    if (!term) return [];
+
+    const sections: Section[] = [];
+    for (const key of ['files', 'notes', 'rss', 'bookmarks']) {
+        const rows = results.value[key] ?? [];
+        if (!rows.length) continue;
+        sections.push({
+            label: GROUP_META[key].label,
+            entries: rows.map((r) => ({
+                icon: GROUP_META[key].icon,
+                text: r.title,
+                sub: r.snippet ?? undefined,
+                run: () => navigate(r.url),
+            })),
         });
     }
 
-    return [
-        { group: 'Navigation', entries: navigation },
-        { group: 'Actions', entries: actions },
-    ];
-});
-
-const filteredGroups = computed(() => {
-    const term = q.value.trim().toLowerCase();
-    const matches = (text) => !term || text.toLowerCase().includes(term);
-    const groups = allGroups.value
-        .map(g => ({ group: g.group, entries: g.entries.filter(e => matches(e.text)) }))
-        .filter(g => g.entries.length);
-
-    if (term) {
-        groups.unshift({
-            group: 'Search files',
+    if (sections.length) {
+        sections.push({
+            label: '',
             entries: [{
-                text: `Search files for "${term}"`,
                 icon: 'search',
-                run: () => {
-                    close();
-                    const params = { search: term };
-                    if (page.props.currentFolder) {
-                        params.scope = 'folder';
-                        params.folder = String(page.props.currentFolder.id);
-                    }
-                    router.get('/', params);
-                },
+                text: `See all results for "${term}"`,
+                run: () => { close(); router.get('/search', { q: term }); },
             }],
         });
     }
 
-    return groups;
+    return sections;
 });
 
-const flatItems = computed(() =>
-    filteredGroups.value.flatMap(g => g.entries)
+const sections = computed<Section[]>(() => [...resultSections.value, ...commandSections.value]);
+const flatItems = computed<Entry[]>(() => sections.value.flatMap((s) => s.entries));
+
+const showEmpty = computed<boolean>(() =>
+    q.value.trim().length > 0 && !loading.value && !fetchError.value && !flatItems.value.length,
 );
+
+function navigate(url: string): void {
+    close();
+    if (/^https?:\/\//i.test(url)) {
+        window.location.href = url;
+    } else {
+        router.get(url);
+    }
+}
 
 watch(() => palette.open, async (open) => {
     if (open) {
         q.value = '';
         cursor.value = 0;
+        results.value = {};
+        scope.value = areaScope.value ?? 'all';
         await nextTick();
-        const input = listEl.value?.querySelector('input');
-        input?.focus();
+        listEl.value?.querySelector('input')?.focus();
     }
 });
 
-watch(filteredGroups, () => { cursor.value = 0; });
+watch(sections, () => { cursor.value = 0; });
 
-function close() {
+function close(): void {
     q.value = '';
     paletteClose();
 }
 
-function runItem(item) {
-    item.run();
-}
-
-function onKey(e) {
+function onKey(e: KeyboardEvent): void {
     if (!palette.open) return;
     const max = flatItems.value.length - 1;
     if (e.key === 'ArrowDown') {
@@ -114,7 +212,7 @@ function onKey(e) {
         const item = flatItems.value[cursor.value];
         if (item) {
             e.preventDefault();
-            runItem(item);
+            item.run();
         }
     } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -122,10 +220,9 @@ function onKey(e) {
     }
 }
 
-function scrollToCursor() {
+function scrollToCursor(): void {
     nextTick(() => {
-        const el = listEl.value?.querySelector(`[data-cursor="${cursor.value}"]`);
-        el?.scrollIntoView({ block: 'nearest' });
+        listEl.value?.querySelector(`[data-cursor="${cursor.value}"]`)?.scrollIntoView({ block: 'nearest' });
     });
 }
 
@@ -144,41 +241,70 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
         teleport="body"
     >
         <div class="command-palette" ref="listEl">
-            <div class="px-3 pt-3">
+            <div class="px-3 pt-3 d-flex align-items-center gap-2">
+                <div class="btn-group btn-group-sm flex-shrink-0" role="group" aria-label="Search scope">
+                    <button
+                        v-if="areaScope"
+                        type="button"
+                        class="btn"
+                        :class="scope === areaScope ? 'btn-primary' : 'btn-outline-secondary'"
+                        data-scope="area"
+                        @click="setScope(areaScope)"
+                    >
+                        {{ areaLabel }}
+                    </button>
+                    <button
+                        type="button"
+                        class="btn"
+                        :class="scope === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                        data-scope="all"
+                        @click="setScope('all')"
+                    >
+                        All of Silo
+                    </button>
+                </div>
                 <VibeFormInput
                     v-model="q"
                     type="search"
-                    placeholder="Type a command or search…"
-                    :autocomplete="'off'"
-                    ref="inputEl"
+                    class="flex-grow-1"
+                    placeholder="Search or type a command…"
+                    autocomplete="off"
+                    no-wrapper
                 />
             </div>
             <div class="command-list">
-                <template v-for="group in filteredGroups" :key="group.group">
-                    <div class="command-group-label text-uppercase text-muted small px-3 pt-2">
-                        {{ group.group }}
+                <div v-if="loading" class="px-3 py-2 text-muted small d-flex align-items-center gap-2">
+                    <VibeSpinner size="sm" /> Searching…
+                </div>
+                <div v-if="fetchError" class="px-3 py-2 text-danger small">Search failed, try again.</div>
+
+                <template v-for="(section, si) in sections" :key="si + '-' + section.label">
+                    <div v-if="section.label" class="command-group-label text-uppercase text-muted small px-3 pt-2">
+                        {{ section.label }}
                     </div>
                     <ul class="list-group list-group-flush">
                         <li
-                            v-for="(entry, gi) in group.entries"
-                            :key="group.group + '-' + gi"
+                            v-for="entry in section.entries"
+                            :key="flatItems.indexOf(entry)"
                             class="list-group-item list-group-item-action d-flex align-items-center gap-2 command-item"
                             :class="{ active: flatItems.indexOf(entry) === cursor }"
                             :data-cursor="flatItems.indexOf(entry)"
                             role="button"
                             tabindex="0"
-                            @click="runItem(entry)"
+                            @click="entry.run()"
                             @mouseenter="cursor = flatItems.indexOf(entry)"
-                            @keydown.enter.prevent="runItem(entry)"
+                            @keydown.enter.prevent="entry.run()"
                         >
                             <VibeIcon :icon="entry.icon" />
-                            <span class="flex-grow-1">{{ entry.text }}</span>
+                            <span class="flex-grow-1 min-w-0">
+                                <span class="d-block text-truncate">{{ entry.text }}</span>
+                                <span v-if="entry.sub" class="d-block small text-muted text-truncate">{{ entry.sub }}</span>
+                            </span>
                         </li>
                     </ul>
                 </template>
-                <div v-if="!flatItems.length" class="px-3 py-4 text-center text-muted">
-                    No commands match.
-                </div>
+
+                <div v-if="showEmpty" class="px-3 py-4 text-center text-muted">No results.</div>
             </div>
         </div>
     </VibeModal>
