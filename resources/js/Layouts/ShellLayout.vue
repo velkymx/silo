@@ -164,7 +164,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
             </span>
             <span class="ms-auto d-inline-flex align-items-center gap-2">
                 <Link href="/about" class="text-decoration-none" data-testid="about-link">
-                    <VibeIcon icon="info-circle" class="me-1" />About
+                    <VibeIcon icon="tools" class="me-1" />Customize Silo
                 </Link>
                 <a :href="repoUrl" target="_blank" rel="noopener" class="text-decoration-none">
                     <VibeIcon icon="github" class="me-1" />Source on GitHub

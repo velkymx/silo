@@ -19,7 +19,7 @@ const activePane = ref('contents');
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
                 <h1 class="h5 mb-0 ms-2 d-flex align-items-center gap-2">
-                    <VibeIcon icon="info-circle-fill" class="text-primary" />About
+                    <VibeIcon icon="tools" class="text-primary" />Customize Silo
                 </h1>
             </div>
         </template>
@@ -28,42 +28,7 @@ const activePane = ref('contents');
             <div class="overflow-auto flex-grow-1">
                 <div class="about-page mx-auto px-3 py-4 d-flex flex-column gap-4">
                     <section>
-                        <h2 class="h4 d-flex align-items-center gap-2">
-                            <VibeIcon icon="rocket-takeoff-fill" class="text-primary" />
-                            Silo
-                            <span class="badge text-bg-secondary fw-normal" data-testid="version">v{{ version }}</span>
-                        </h2>
-                        <p class="mb-0">
-                            One private workspace for your files, notes, links, feeds, and secrets.
-                            Self-hosted, on your server, in your database. Nothing leaves your
-                            infrastructure. Released under the MIT License.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 class="h5">Built by {{ developer.name }}</h2>
-                        <p class="text-muted small mb-2">{{ developer.title }}</p>
-                        <p>
-                            Silo started the way most good tools do: with mild annoyance. I wanted a
-                            file manager on my own server that did not treat me as the product. Then
-                            the files wanted notes, the notes wanted links, the links wanted feeds,
-                            and somewhere along the way an encrypted vault and a photo gallery moved
-                            in. What you are using now is the result: one login, one permission
-                            model, one search, on hardware you control.
-                        </p>
-                        <p class="mb-0">
-                            I have been building for the web for 30 years, most of it shipping
-                            software for other people. I was VP of
-                            Engineering at ProcessMaker, where we scaled the team from 1 to more than
-                            60 through a 45 million dollar Series A. I led an Agile transformation at
-                            Grand Canyon Education that took sprint commitment success from 40 to 90
-                            percent. I built Xsolla's US engineering team from zero. Silo is what I
-                            built when nobody was writing the requirements but me.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 class="h5">Work with me</h2>
+                        <h2 class="h4">Want Silo to do more?</h2>
                         <p>
                             <strong>What you get:</strong> the person who wrote every line of this
                             app, on your problem. Support contracts and custom features for Silo,
@@ -91,6 +56,41 @@ const activePane = ref('contents');
                                 <VibeIcon icon="linkedin" class="me-1" />LinkedIn
                             </a>
                         </div>
+                    </section>
+
+                    <section>
+                        <h2 class="h5">Built by {{ developer.name }}</h2>
+                        <p class="text-muted small mb-2">{{ developer.title }}</p>
+                        <p>
+                            Silo started the way most good tools do: with mild annoyance. I wanted a
+                            file manager on my own server that did not treat me as the product. Then
+                            the files wanted notes, the notes wanted links, the links wanted feeds,
+                            and somewhere along the way an encrypted vault and a photo gallery moved
+                            in. What you are using now is the result: one login, one permission
+                            model, one search, on hardware you control.
+                        </p>
+                        <p class="mb-0">
+                            I have been building for the web for 30 years, most of it shipping
+                            software for other people. I was VP of
+                            Engineering at ProcessMaker, where we scaled the team from 1 to more than
+                            60 through a 45 million dollar Series A. I led an Agile transformation at
+                            Grand Canyon Education that took sprint commitment success from 40 to 90
+                            percent. I built Xsolla's US engineering team from zero. Silo is what I
+                            built when nobody was writing the requirements but me.
+                        </p>
+                    </section>
+
+                    <section>
+                        <h2 class="h6 text-muted d-flex align-items-center gap-2">
+                            <VibeIcon icon="rocket-takeoff-fill" />
+                            Silo
+                            <span class="badge text-bg-secondary fw-normal" data-testid="version">v{{ version }}</span>
+                        </h2>
+                        <p class="small text-muted mb-0">
+                            One private workspace for your files, notes, links, feeds, and secrets.
+                            Self-hosted, on your server, in your database. Nothing leaves your
+                            infrastructure. Released under the MIT License.
+                        </p>
                     </section>
                 </div>
             </div>
