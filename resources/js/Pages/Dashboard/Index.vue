@@ -5,11 +5,13 @@ import JumpBackIn, { type JumpBackInItem } from '../../Components/Dashboard/Jump
 import QuickActions from '../../Components/Dashboard/QuickActions.vue';
 import ContinueCard, { type ContinueItem } from '../../Components/Dashboard/ContinueCard.vue';
 import WhatsNewCard, { type WhatsNew } from '../../Components/Dashboard/WhatsNewCard.vue';
+import AttentionCard, { type AttentionItem } from '../../Components/Dashboard/AttentionCard.vue';
 
 const props = defineProps<{
     jumpBackIn: JumpBackInItem | null;
     continueWorking: ContinueItem[];
     whatsNew: WhatsNew | null;
+    needsAttention: AttentionItem[];
 }>();
 
 const activePane = ref('contents');
@@ -37,6 +39,7 @@ const continueItems = computed<ContinueItem[]>(() =>
                 <QuickActions />
                 <ContinueCard :items="continueItems" />
                 <WhatsNewCard :whats-new="whatsNew" />
+                <AttentionCard :items="needsAttention" />
             </div>
         </template>
     </ShellLayout>

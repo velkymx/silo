@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Bookmark;
+use App\Models\File;
 use App\Models\RssFeed;
 use App\Models\RssItem;
 use App\Models\User;
@@ -187,5 +188,67 @@ class DashboardTest extends TestCase
         $this->assertSame('Laravel News', $data['articles'][0]['feed']);
         $this->assertSame(route('rss.items.show', ['item' => $data['articles'][0]['id']]), $data['articles'][0]['url']);
         $this->assertSame(route('rss.index'), $data['inboxUrl']);
+    }
+
+    public function test_dashboard_exposes_a_needs_attention_prop(): void
+    {
+        $this->asUser();
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('needsAttention'));
+    }
+
+    public function test_needs_attention_is_empty_when_all_is_well(): void
+    {
+        $user = User::factory()->create();
+        $this->withFile($user, ['status' => File::STATUS_READY]);
+
+        $this->assertSame([], $this->service()->needsAttention($user));
+    }
+
+    public function test_needs_attention_flags_infected_files_as_red(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $this->withFile($user, ['status' => File::STATUS_INFECTED]);
+        $this->withFile($other, ['status' => File::STATUS_INFECTED]);
+
+        $items = $this->service()->needsAttention($user);
+
+        $this->assertCount(1, $items);
+        $this->assertSame('red', $items[0]['tier']);
+        $this->assertStringContainsStringIgnoringCase('virus', $items[0]['title']);
+        $this->assertSame(route('files.index'), $items[0]['url']);
+    }
+
+    public function test_needs_attention_flags_high_storage_as_yellow(): void
+    {
+        config(['filemanager.user_quota_mb' => 1]);
+        $user = User::factory()->create();
+        $this->withFile($user, ['size' => (int) (0.9 * 1024 * 1024)]);
+
+        $items = $this->service()->needsAttention($user);
+
+        $this->assertCount(1, $items);
+        $this->assertSame('yellow', $items[0]['tier']);
+        $this->assertStringContainsStringIgnoringCase('storage', $items[0]['title']);
+    }
+
+    public function test_needs_attention_orders_red_then_yellow_then_blue(): void
+    {
+        $user = User::factory()->create();
+        $feed = RssFeed::factory()->create(['user_id' => $user->id]);
+
+        // Red: a failing feed.
+        RssFeed::factory()->create(['user_id' => $user->id, 'consecutive_failures' => 5]);
+        // Yellow: a dead bookmark.
+        Bookmark::factory()->create(['owner_id' => $user->id, 'status' => Bookmark::STATUS_DEAD]);
+        // Blue: a healthy but stale feed.
+        $feed->update(['consecutive_failures' => 0, 'last_success_at' => now()->subDays(10), 'last_fetched_at' => now()->subDays(10)]);
+
+        $tiers = collect($this->service()->needsAttention($user))->pluck('tier')->all();
+
+        $this->assertSame(['red', 'yellow', 'blue'], $tiers);
     }
 }

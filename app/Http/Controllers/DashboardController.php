@@ -23,6 +23,7 @@ class DashboardController extends Controller
             'jumpBackIn' => $this->dashboard->jumpBackIn($user)?->toArray(),
             'continueWorking' => $this->dashboard->continueWorking($user),
             'whatsNew' => $this->dashboard->whatsNew($user)?->toArray(),
+            'needsAttention' => $this->dashboard->needsAttention($user),
         ]);
     }
 }

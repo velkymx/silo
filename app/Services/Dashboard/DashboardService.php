@@ -4,10 +4,14 @@ namespace App\Services\Dashboard;
 
 use App\Models\Bookmark;
 use App\Models\File;
+use App\Models\RssFeed;
 use App\Models\RssItem;
+use App\Models\ShareLink;
 use App\Models\User;
+use App\Services\QuotaService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Assembles the home-screen payload. Each public method answers one of the
@@ -20,6 +24,20 @@ use Illuminate\Support\Collection;
  */
 class DashboardService
 {
+    /** Consecutive fetch failures before a feed is "failing" (red). */
+    private const FEED_FAILURE_THRESHOLD = 3;
+
+    /** A healthy feed with no success in this many days is "stale" (blue). */
+    private const FEED_STALE_DAYS = 7;
+
+    /** Storage at or above this percent of quota needs a decision (yellow). */
+    private const STORAGE_WARN_PERCENT = 85;
+
+    /** A share expiring within this many hours needs a decision (yellow). */
+    private const SHARE_EXPIRY_HOURS = 48;
+
+    public function __construct(private readonly QuotaService $quota) {}
+
     /**
      * The user's most recently *content-edited* file or note — the top
      * "Jump Back In" CTA. Returns null when the user has never edited
@@ -157,5 +175,113 @@ class DashboardService
             ->all();
 
         return new WhatsNew($unreadCount, $articles, route('rss.index'));
+    }
+
+    /**
+     * The "Needs Attention" card: only abnormalities in the user's own data,
+     * split into red -> yellow -> blue tiers. Returns [] when nothing is wrong
+     * (the frontend shows a quiet "All clear", never a wall of green ticks).
+     *
+     * @return array<int, array{tier: string, title: string, url: string}>
+     */
+    public function needsAttention(User $user): array
+    {
+        /** @var Collection<int, AttentionItem> $items */
+        $items = collect();
+
+        $this->collectRed($user, $items);
+        $this->collectYellow($user, $items);
+        $this->collectBlue($user, $items);
+
+        return $items->map->toArray()->all();
+    }
+
+    /** Red: something is broken. */
+    private function collectRed(User $user, Collection $items): void
+    {
+        $infected = File::query()->where('owner_id', $user->id)->files()
+            ->where('status', File::STATUS_INFECTED)->count();
+        if ($infected > 0) {
+            $items->push(new AttentionItem(
+                AttentionItem::TIER_RED,
+                "{$infected} ".Str::plural('file', $infected).' failed a virus scan',
+                route('files.index'),
+            ));
+        }
+
+        $failed = File::query()->where('owner_id', $user->id)->files()
+            ->where('status', File::STATUS_FAILED)->count();
+        if ($failed > 0) {
+            $items->push(new AttentionItem(
+                AttentionItem::TIER_RED,
+                "{$failed} ".Str::plural('file', $failed).' failed to process',
+                route('files.index'),
+            ));
+        }
+
+        $failingFeeds = RssFeed::query()->where('user_id', $user->id)
+            ->where('consecutive_failures', '>=', self::FEED_FAILURE_THRESHOLD)->count();
+        if ($failingFeeds > 0) {
+            $items->push(new AttentionItem(
+                AttentionItem::TIER_RED,
+                "{$failingFeeds} ".Str::plural('feed', $failingFeeds).' failing to update',
+                route('rss.index'),
+            ));
+        }
+    }
+
+    /** Yellow: needs a decision soon. */
+    private function collectYellow(User $user, Collection $items): void
+    {
+        ['used' => $used, 'quota' => $quota] = $this->quota->summary($user->id);
+        if ($quota > 0) {
+            $percent = (int) floor($used / $quota * 100);
+            if ($percent >= self::STORAGE_WARN_PERCENT) {
+                $items->push(new AttentionItem(
+                    AttentionItem::TIER_YELLOW,
+                    "Storage is {$percent}% full",
+                    route('storage.index'),
+                ));
+            }
+        }
+
+        $expiring = ShareLink::query()->where('created_by', $user->id)
+            ->whereNotNull('expires_at')
+            ->whereBetween('expires_at', [now(), now()->addHours(self::SHARE_EXPIRY_HOURS)])
+            ->count();
+        if ($expiring > 0) {
+            $items->push(new AttentionItem(
+                AttentionItem::TIER_YELLOW,
+                "{$expiring} share ".Str::plural('link', $expiring).' '.($expiring === 1 ? 'expires' : 'expire').' soon',
+                route('files.index'),
+            ));
+        }
+
+        $dead = Bookmark::query()->where('owner_id', $user->id)
+            ->where('status', Bookmark::STATUS_DEAD)->count();
+        if ($dead > 0) {
+            $items->push(new AttentionItem(
+                AttentionItem::TIER_YELLOW,
+                "{$dead} dead ".Str::plural('bookmark', $dead),
+                route('bookmarks.index'),
+            ));
+        }
+    }
+
+    /** Blue: worth a glance. */
+    private function collectBlue(User $user, Collection $items): void
+    {
+        $stale = RssFeed::query()->where('user_id', $user->id)
+            ->where('consecutive_failures', 0)
+            ->whereNotNull('last_success_at')
+            ->where('last_success_at', '<', now()->subDays(self::FEED_STALE_DAYS))
+            ->count();
+        if ($stale > 0) {
+            $items->push(new AttentionItem(
+                AttentionItem::TIER_BLUE,
+                "{$stale} ".Str::plural('feed', $stale).' '.($stale === 1 ? 'has' : 'have')." not updated in over a week",
+                route('rss.index'),
+            ));
+        }
     }
 }
