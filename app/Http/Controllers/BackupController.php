@@ -28,6 +28,9 @@ class BackupController extends Controller
                 'status' => $b->status,
                 'compression' => $b->compression,
                 'note' => $b->note,
+                // Integrity: a backup without a checksum cannot be verified and
+                // will be refused at restore time.
+                'verified' => $b->checksum !== null,
                 'created_by' => $b->creator?->name,
                 'created_at' => $b->created_at->format('Y-m-d H:i'),
             ]);

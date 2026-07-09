@@ -45,6 +45,7 @@ class BackupService
             $backup->update([
                 'path' => self::DIR.'/'.$filename,
                 'size' => is_file($absPath) ? filesize($absPath) : 0,
+                'checksum' => is_file($absPath) ? hash_file('sha256', $absPath) : null,
                 'status' => Backup::STATUS_READY,
                 'compression' => $compression,
                 'note' => 'Database + file blobs.',
@@ -272,6 +273,10 @@ class BackupService
             throw new \RuntimeException('Backup archive is missing.');
         }
 
+        // Integrity gate: a corrupt or truncated archive must fail loudly here,
+        // before restore() rewrites the live database and blobs — never after.
+        $this->verifyIntegrity($backup, $archive);
+
         // Single-process guard: a restore rewrites the whole database and all
         // blobs, so two running at once (or concurrent writes) would corrupt
         // live data. Reject if another restore already holds the lock.
@@ -299,6 +304,26 @@ class BackupService
         } finally {
             $this->rmrf($work);
             $lock->release();
+        }
+    }
+
+    /**
+     * Verify the archive matches the sha256 recorded when it was created. A
+     * mismatch means bit-rot, a truncated upload, or tampering — refuse to
+     * restore. Backups predating checksums (null) cannot be verified; those are
+     * rejected too, since restore is destructive and an unverifiable archive is
+     * not a safe source of truth.
+     */
+    public function verifyIntegrity(Backup $backup, ?string $archive = null): void
+    {
+        $archive ??= Storage::disk($backup->disk)->path($backup->path);
+
+        if ($backup->checksum === null) {
+            throw new \RuntimeException('This backup has no integrity checksum and cannot be verified for restore.');
+        }
+
+        if (! hash_equals($backup->checksum, hash_file('sha256', $archive))) {
+            throw new \RuntimeException('Backup integrity check failed: the archive does not match its recorded checksum.');
         }
     }
 

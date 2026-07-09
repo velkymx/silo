@@ -31,6 +31,19 @@ describe('Admin/Backups', () => {
         expect(wrapper.text()).toContain('pending');
     });
 
+    it('flags a backup with no checksum as Unverifiable', () => {
+        const wrapper = mount(Backups, {
+            props: {
+                ...props,
+                backups: [
+                    { id: 1, filename: 'ok.zip', size: 2048, status: 'ready', compression: 'bzip2', note: null, verified: true, created_by: 'T', created_at: '2026-06-14 10:00' },
+                    { id: 2, filename: 'old.zip', size: 2048, status: 'ready', compression: 'bzip2', note: null, verified: false, created_by: 'T', created_at: '2026-06-14 10:05' },
+                ],
+            },
+        });
+        expect(wrapper.text()).toContain('Unverifiable');
+    });
+
     it('"Back up now" posts to /backups', async () => {
         const wrapper = mount(Backups, { props });
         const btn = wrapper.findAll('button').find((b) => b.text().includes('Back up now'));

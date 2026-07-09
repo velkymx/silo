@@ -122,6 +122,20 @@ onBeforeUnmount(() => clearInterval(poll));
                     >
                         <template #cell(filename)="{ item }">
                             <VibeIcon icon="file-earmark-zip" class="me-1 text-warning" />{{ item.filename }}
+                            <VibeIcon
+                                v-if="item.verified"
+                                icon="shield-check"
+                                class="ms-1 text-success"
+                                title="Integrity verified (sha256)"
+                            />
+                            <VibeBadge
+                                v-else
+                                variant="warning"
+                                class="ms-2"
+                                title="No checksum — cannot be verified and will be refused on restore"
+                            >
+                                Unverifiable
+                            </VibeBadge>
                         </template>
                         <template #cell(compression)="{ item }">
                             <VibeBadge v-if="item.compression === 'bzip2'" variant="primary">Ultra</VibeBadge>
