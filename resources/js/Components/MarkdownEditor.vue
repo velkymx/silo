@@ -291,8 +291,10 @@ defineExpose({ jumpToLine });
 
 /* Markdown mode is a full-width SOURCE view — no split preview pane. The
    rich-text mode one click away replaces it, and hiding the pane removes
-   the both-visible flash while Toast UI swaps modes. */
-.toastui-editor-md-vertical-style .toastui-editor-md-preview {
+   the both-visible flash while Toast UI swaps modes. The splitter is the
+   1px divider vertical style force-shows between the panes. */
+.toastui-editor-md-vertical-style .toastui-editor-md-preview,
+.toastui-editor-main .toastui-editor-md-vertical-style .toastui-editor-md-splitter {
     display: none !important;
 }
 .toastui-editor-main .toastui-editor-md-vertical-style .toastui-editor {
