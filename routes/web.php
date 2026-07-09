@@ -74,6 +74,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/avatar', [UserController::class, 'updateAvatar'])->name('profile.avatar');
     Route::get('/avatars/{user}', [UserController::class, 'avatar'])->name('users.avatar');
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+    Route::get('/search/quick', [SearchController::class, 'quick'])
+        ->middleware('throttle:60,1')->name('search.quick');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/', [FileController::class, 'index'])->name('files.index');
     Route::get('/photos', [PhotoController::class, 'index'])->name('photos.index');

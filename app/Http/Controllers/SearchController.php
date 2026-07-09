@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PlatformSearch;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,6 +27,22 @@ class SearchController extends Controller
             'q' => $query,
             'results' => $results,
             'total' => $total,
+        ]);
+    }
+
+    /**
+     * Live grouped results for the command palette. One call per keystroke
+     * (debounced client-side), scoped to the acting user, capped per group.
+     */
+    public function quick(Request $request, PlatformSearch $search): JsonResponse
+    {
+        $query = (string) $request->string('q')->toString();
+        $scope = $request->string('scope')->toString();
+        $scope = in_array($scope, ['all', 'files', 'notes', 'rss', 'bookmarks'], true) ? $scope : 'all';
+
+        return response()->json([
+            'scope' => $scope,
+            'results' => $search->quick($request->user()->id, $query, $scope),
         ]);
     }
 }

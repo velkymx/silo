@@ -32,22 +32,106 @@ class PlatformSearch
             return ['files' => [], 'rss' => [], 'bookmarks' => []];
         }
 
-        $files = File::search($query)
+        // The full results page keeps notes inside the files group (a note is a
+        // File), so it uses filesAll() rather than the notes-split files().
+        return [
+            'files' => $this->filesAll($userId, $query, $perType),
+            'rss' => $this->rss($userId, $query, $perType),
+            'bookmarks' => $this->bookmarks($userId, $query, $perType),
+        ];
+    }
+
+    /**
+     * Grouped results for the quick-search palette. `scope` picks which groups
+     * to run: a single surface, or `all`. Notes are split out of files here so
+     * the palette can group them separately.
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public function quick(int $userId, string $query, string $scope = 'all', int $perType = 5): array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return [];
+        }
+
+        $groups = match ($scope) {
+            'files' => ['files'],
+            'notes' => ['notes'],
+            'rss' => ['rss'],
+            'bookmarks' => ['bookmarks'],
+            default => ['files', 'notes', 'rss', 'bookmarks'],
+        };
+
+        $results = [];
+        foreach ($groups as $group) {
+            $results[$group] = $this->{$group}($userId, $query, $perType);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Files excluding notes (markdown) — the palette's "files" group.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function files(int $userId, string $query, int $perType = self::PER_TYPE): array
+    {
+        return File::search($query)
+            ->where('owner_id', $userId)
+            ->take($perType)
+            ->get()
+            ->filter(fn (File $f) => ! $f->trashed() && ! $f->is_dir && $f->mime !== 'text/markdown')
+            ->map(fn (File $f) => $this->mapFile($f))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Notes (markdown files) — the palette's "notes" group; opens on /notes.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function notes(int $userId, string $query, int $perType = self::PER_TYPE): array
+    {
+        return File::search($query)
+            ->where('owner_id', $userId)
+            ->take($perType)
+            ->get()
+            ->filter(fn (File $f) => ! $f->trashed() && ! $f->is_dir && $f->mime === 'text/markdown')
+            ->map(fn (File $f) => [
+                'id' => $f->id,
+                'title' => $f->name,
+                'snippet' => null,
+                'url' => route('notes.index', ['open' => $f->id]),
+                'meta' => ['folder' => $f->parent_id],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * All files including notes — the full results page's "files" group.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function filesAll(int $userId, string $query, int $perType): array
+    {
+        return File::search($query)
             ->where('owner_id', $userId)
             ->take($perType)
             ->get()
             ->filter(fn (File $f) => ! $f->trashed() && ! $f->is_dir)
-            ->map(fn (File $f) => [
-                'id' => $f->id,
-                'title' => $f->name,
-                'snippet' => $f->description ?? null,
-                'url' => "/?folder={$f->parent_id}&selected={$f->id}",
-                'meta' => ['size' => $f->size, 'folder' => $f->parent_id],
-            ])
+            ->map(fn (File $f) => $this->mapFile($f))
             ->values()
             ->all();
+    }
 
-        $rss = RssItem::search($query)
+    /** @return array<int, array<string, mixed>> */
+    public function rss(int $userId, string $query, int $perType = self::PER_TYPE): array
+    {
+        return RssItem::search($query)
             ->where('user_id', $userId)
             ->take($perType)
             ->get()
@@ -64,8 +148,12 @@ class PlatformSearch
             ])
             ->values()
             ->all();
+    }
 
-        $bookmarks = Bookmark::search($query)
+    /** @return array<int, array<string, mixed>> */
+    public function bookmarks(int $userId, string $query, int $perType = self::PER_TYPE): array
+    {
+        return Bookmark::search($query)
             ->where('owner_id', $userId)
             ->take($perType)
             ->get()
@@ -78,11 +166,17 @@ class PlatformSearch
             ])
             ->values()
             ->all();
+    }
 
+    /** @return array<string, mixed> */
+    private function mapFile(File $f): array
+    {
         return [
-            'files' => $files,
-            'rss' => $rss,
-            'bookmarks' => $bookmarks,
+            'id' => $f->id,
+            'title' => $f->name,
+            'snippet' => $f->description ?? null,
+            'url' => "/?folder={$f->parent_id}&selected={$f->id}",
+            'meta' => ['size' => $f->size, 'folder' => $f->parent_id],
         ];
     }
 }
