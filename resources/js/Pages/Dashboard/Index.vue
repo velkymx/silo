@@ -34,12 +34,20 @@ const continueItems = computed<ContinueItem[]>(() =>
         </template>
 
         <template #contents>
-            <div class="dashboard-home mx-auto px-3 py-3 d-flex flex-column gap-3">
-                <JumpBackIn :item="jumpBackIn" />
-                <QuickActions />
-                <ContinueCard :items="continueItems" />
-                <WhatsNewCard :whats-new="whatsNew" />
-                <AttentionCard :items="needsAttention" />
+            <div class="overflow-auto flex-grow-1">
+                <div class="dashboard-home mx-auto px-3 py-3 d-flex flex-column gap-4">
+                    <JumpBackIn :item="jumpBackIn" />
+                    <QuickActions />
+                    <div class="row g-4">
+                        <div class="col-12 col-lg-7">
+                            <ContinueCard :items="continueItems" />
+                        </div>
+                        <div class="col-12 col-lg-5 d-flex flex-column gap-4">
+                            <WhatsNewCard :whats-new="whatsNew" />
+                            <AttentionCard :items="needsAttention" />
+                        </div>
+                    </div>
+                </div>
             </div>
         </template>
     </ShellLayout>
@@ -47,6 +55,7 @@ const continueItems = computed<ContinueItem[]>(() =>
 
 <style scoped>
 .dashboard-home {
-    max-width: 52rem;
+    max-width: 72rem;
+    width: 100%;
 }
 </style>
