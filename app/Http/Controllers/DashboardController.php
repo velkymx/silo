@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Dashboard\DashboardService;
 use App\Services\Health\HealthService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,7 +21,7 @@ class DashboardController extends Controller
         private readonly HealthService $health,
     ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $user = auth()->user();
 
@@ -40,6 +41,13 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard/Index', $cards + [
             // Operator-only: the System Health card is gated to admins.
             'systemHealth' => $user->is_admin ? $this->health->cardSummary() : null,
+            // Session state, never cached: true while today's Daily Word game
+            // is unfinished ("Daily Word is waiting for you").
+            'dailyWord' => ! (bool) data_get(
+                $request->session()->get('dwg.'.now()->format('Y-m-d')),
+                'gameOver',
+                false,
+            ),
         ]);
     }
 }

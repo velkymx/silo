@@ -274,6 +274,18 @@ class DashboardTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('systemHealth', null));
     }
 
+    public function test_daily_word_is_waiting_until_todays_game_is_over(): void
+    {
+        $this->asUser();
+
+        $this->get('/dashboard')
+            ->assertInertia(fn ($page) => $page->where('dailyWord', true));
+
+        $this->withSession(['dwg.'.now()->format('Y-m-d') => ['guesses' => [], 'statuses' => [], 'gameOver' => true, 'won' => true]])
+            ->get('/dashboard')
+            ->assertInertia(fn ($page) => $page->where('dailyWord', false));
+    }
+
     public function test_login_lands_on_the_dashboard(): void
     {
         $user = User::factory()->create();
