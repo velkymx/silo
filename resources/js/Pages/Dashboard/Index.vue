@@ -47,13 +47,13 @@ const continueItems = computed<ContinueItem[]>(() =>
                     <QuickActions />
                     <div class="row g-4">
                         <div class="col-12 col-lg-7">
-                            <ContinueCard :items="continueItems" />
+                            <Wall :posts="wall" />
                         </div>
                         <div class="col-12 col-lg-5 d-flex flex-column gap-4">
                             <AttentionCard :items="needsAttention" />
                             <WhatsNewCard :whats-new="whatsNew" />
                             <DailyWordCard :waiting="dailyWord" />
-                            <Wall :posts="wall" />
+                            <ContinueCard :items="continueItems" />
                         </div>
                     </div>
                     <HealthCard v-if="systemHealth" :system-health="systemHealth" />

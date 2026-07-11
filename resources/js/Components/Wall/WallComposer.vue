@@ -23,10 +23,21 @@ function post(): void {
 <template>
     <div class="wall-composer">
         <VibeFormWysiwyg v-model="body" placeholder="Write on the wall…" />
-        <div class="d-flex justify-content-end mt-2">
+        <div class="d-flex justify-content-end mt-1">
             <VibeButton size="sm" variant="primary" :disabled="empty || posting" data-testid="wall-post-btn" @click="post">
                 <VibeSpinner v-if="posting" size="sm" class="me-1" />Post
             </VibeButton>
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Quill defaults to a shallow strip; give the wall composer real room. */
+.wall-composer :deep(.ql-editor) {
+    min-height: 120px;
+}
+.wall-composer :deep(.ql-container) {
+    border-bottom-left-radius: var(--bs-border-radius);
+    border-bottom-right-radius: var(--bs-border-radius);
+}
+</style>
