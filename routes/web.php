@@ -31,6 +31,7 @@ use App\Http\Controllers\SodokuController;
 use App\Http\Controllers\StorageController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WallController;
 use App\Http\Controllers\VaultController;
 use App\Http\Controllers\VersionController;
 use Illuminate\Support\Facades\Route;
@@ -174,6 +175,15 @@ Route::middleware(['auth'])->group(function () {
     // Staff directory.
     Route::get('/directory', [DirectoryController::class, 'index'])->name('directory.index');
     Route::get('/directory/{user}', [DirectoryController::class, 'show'])->whereNumber('user')->name('directory.show');
+    Route::get('/directory/{user}/card', [DirectoryController::class, 'card'])->whereNumber('user')->name('directory.card');
+
+    // The Wall: public message boards (dashboard-wide + per profile).
+    Route::get('/wall', [WallController::class, 'index'])->name('wall.index');
+    Route::post('/wall', [WallController::class, 'store'])
+        ->middleware('throttle:30,1')->name('wall.store');
+    Route::delete('/wall/{post}', [WallController::class, 'destroy'])->name('wall.destroy');
+    Route::post('/wall/{post}/react', [WallController::class, 'react'])
+        ->middleware('throttle:60,1')->name('wall.react');
 
     // Bookmarks — the internal-links launchpad.
     Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');

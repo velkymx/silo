@@ -25,7 +25,7 @@ class DirectoryController extends Controller
             ->when($department !== '', fn ($q) => $q->where('department', $department))
             ->orderBy('name')
             ->get()
-            ->map(fn (User $u) => $this->card($u));
+            ->map(fn (User $u) => $this->summary($u));
 
         return Inertia::render('Directory/Index', [
             'people' => $people->values(),
@@ -35,24 +35,44 @@ class DirectoryController extends Controller
         ]);
     }
 
-    public function show(User $user)
+    // Full profile page: the person's real profile data + headshot + their wall.
+    public function show(Request $request, User $user)
     {
         $user->load('manager:id,name', 'group:id,name');
 
-        return response()->json(['person' => $this->card($user) + [
+        return Inertia::render('Directory/Profile', [
+            'person' => $this->person($user),
+            'wall' => WallController::latest($user->id, $request->user()),
+        ]);
+    }
+
+    // JSON detail for the directory's quick-view pane.
+    public function card(User $user)
+    {
+        $user->load('manager:id,name', 'group:id,name');
+
+        return response()->json(['person' => $this->person($user)]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function person(User $user): array
+    {
+        return $this->summary($user) + [
             'email' => $user->email,
             'bio' => $user->bio,
             'location' => $user->location,
             'start_date' => $user->start_date?->format('Y-m-d'),
             'group' => $user->group?->name,
             'manager' => $user->manager ? ['id' => $user->manager->id, 'name' => $user->manager->name] : null,
-        ]]);
+        ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function card(User $user): array
+    private function summary(User $user): array
     {
         return [
             'id' => $user->id,

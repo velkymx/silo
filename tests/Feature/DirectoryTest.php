@@ -40,7 +40,7 @@ class DirectoryTest extends TestCase
             ->assertInertia(fn ($page) => $page->has('people', 1)->where('people.0.name', 'Eng Person'));
     }
 
-    public function test_show_returns_a_profile(): void
+    public function test_show_renders_the_profile_page(): void
     {
         $user = User::factory()->create();
         $manager = User::factory()->create(['name' => 'Boss']);
@@ -49,11 +49,24 @@ class DirectoryTest extends TestCase
             'bio' => 'Builds things', 'manager_id' => $manager->id,
         ]);
 
-        $this->actingAs($user)->getJson(route('directory.show', $person))
+        $this->actingAs($user)->get(route('directory.show', $person))
             ->assertOk()
-            ->assertJsonPath('person.title', 'Engineer')
-            ->assertJsonPath('person.bio', 'Builds things')
-            ->assertJsonPath('person.manager.name', 'Boss');
+            ->assertInertia(fn ($page) => $page
+                ->component('Directory/Profile')
+                ->where('person.title', 'Engineer')
+                ->where('person.bio', 'Builds things')
+                ->where('person.manager.name', 'Boss')
+                ->has('wall'));
+    }
+
+    public function test_card_returns_the_pane_json(): void
+    {
+        $user = User::factory()->create();
+        $person = User::factory()->create(['name' => 'Pane', 'title' => 'Engineer']);
+
+        $this->actingAs($user)->getJson(route('directory.card', $person))
+            ->assertOk()
+            ->assertJsonPath('person.title', 'Engineer');
     }
 
     public function test_user_can_self_edit_profile_fields(): void

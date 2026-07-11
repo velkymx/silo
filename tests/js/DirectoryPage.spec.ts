@@ -56,7 +56,7 @@ describe('Directory/Index (explorer shell)', () => {
         expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);
         clickRow(wrapper, 2);
         await flushPromises();
-        expect(h.get).toHaveBeenCalledWith('/directory/2');
+        expect(h.get).toHaveBeenCalledWith('/directory/2/card');
         expect(wrapper.get('[data-pane="detail"]').text()).toContain('Alice');
     });
 

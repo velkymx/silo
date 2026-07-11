@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import FolderAccordion from '../../Components/FolderAccordion.vue';
 import { useCategoryFolders } from '../../composables/useCategoryFolders';
@@ -102,7 +103,7 @@ async function open(person) {
     profileError.value = '';
     profile.value = null;
     try {
-        const data = await http.get(`/directory/${id}`);
+        const data = await http.get(`/directory/${id}/card`);
         if (requestedId === id) profile.value = data?.person ?? null;
     } catch {
         if (requestedId === id) profileError.value = 'Could not load profile. Please try again.';
@@ -192,6 +193,9 @@ useEscapeToClear(clearContentSelection);
                             <div class="h5 mb-0 text-break">{{ profile.name }}</div>
                             <div class="text-muted">{{ profile.title }}<span v-if="profile.department"> · {{ profile.department }}</span></div>
                         </div>
+                        <Link :href="`/directory/${profile.id}`" class="btn btn-sm btn-primary ms-auto flex-shrink-0" data-testid="view-profile">
+                            View profile
+                        </Link>
                     </div>
                     <dl class="row mb-0 small">
                         <template v-if="profile.email"><dt class="col-4 text-muted">Email</dt><dd class="col-8 text-break"><a :href="`mailto:${profile.email}`">{{ profile.email }}</a></dd></template>

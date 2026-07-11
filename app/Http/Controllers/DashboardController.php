@@ -48,6 +48,9 @@ class DashboardController extends Controller
                 'gameOver',
                 false,
             ),
+            // The shared dashboard wall — outside the card cache so a new post
+            // shows up the moment it is made.
+            'wall' => WallController::latest(null, $user),
         ]);
     }
 }

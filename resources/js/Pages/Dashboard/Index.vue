@@ -8,6 +8,8 @@ import WhatsNewCard, { type WhatsNew } from '../../Components/Dashboard/WhatsNew
 import AttentionCard, { type AttentionItem } from '../../Components/Dashboard/AttentionCard.vue';
 import HealthCard, { type SystemHealth } from '../../Components/Dashboard/HealthCard.vue';
 import DailyWordCard from '../../Components/Dashboard/DailyWordCard.vue';
+import Wall from '../../Components/Wall/Wall.vue';
+import type { WallPostShape } from '../../Components/Wall/WallPostCard.vue';
 
 const props = defineProps<{
     jumpBackIn: JumpBackInItem | null;
@@ -16,6 +18,7 @@ const props = defineProps<{
     needsAttention: AttentionItem[];
     systemHealth: SystemHealth | null;
     dailyWord: boolean;
+    wall: WallPostShape[];
 }>();
 
 const activePane = ref('contents');
@@ -50,6 +53,7 @@ const continueItems = computed<ContinueItem[]>(() =>
                             <AttentionCard :items="needsAttention" />
                             <WhatsNewCard :whats-new="whatsNew" />
                             <DailyWordCard :waiting="dailyWord" />
+                            <Wall :posts="wall" />
                         </div>
                     </div>
                     <HealthCard v-if="systemHealth" :system-health="systemHealth" />
