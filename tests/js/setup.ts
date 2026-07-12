@@ -109,6 +109,9 @@ const components: Record<string, any> = {
         },
     },
 
+    VibeChartLine: { name: 'VibeChartLine', props: ['data', 'legend', 'height', 'showAxes', 'showGrid'], template: '<canvas data-stub="VibeChartLine" />' },
+    VibeChartBar: { name: 'VibeChartBar', props: ['data', 'legend', 'height', 'showAxes', 'showGrid', 'stacked'], template: '<canvas data-stub="VibeChartBar" />' },
+    VibeChartPie: { name: 'VibeChartPie', props: ['data', 'legend', 'height'], template: '<canvas data-stub="VibeChartPie" />' },
     VibeCard: passthrough('VibeCard'),
     VibeContainer: passthrough('VibeContainer'),
     // Row/Col forward fallthrough attrs (class, data-pane, …) like the real

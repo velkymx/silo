@@ -60,10 +60,21 @@ class MetadataExtractor
 
         try {
             $meta = [];
+            $photo = [];
+            $parser = app(PhotoMetadata::class);
 
-            if (($info = @getimagesize($local)) !== false) {
+            // getimagesize's $info side-channel also carries the APP13 (IPTC)
+            // segment, so one call yields dimensions + descriptive metadata.
+            $info13 = [];
+            if (($info = @getimagesize($local, $info13)) !== false) {
                 $meta['width'] = $info[0];
                 $meta['height'] = $info[1];
+            }
+            if (isset($info13['APP13']) && ($iptc = @iptcparse($info13['APP13'])) !== false && is_array($iptc)) {
+                $iptcMeta = $parser->fromIptc($iptc);
+                if ($iptcMeta !== []) {
+                    $photo['iptc'] = $iptcMeta;
+                }
             }
 
             if (extension_loaded('exif')) {
@@ -75,7 +86,20 @@ class MetadataExtractor
                         'taken_at' => $exif['DateTimeOriginal'] ?? null,
                         'orientation' => $exif['Orientation'] ?? null,
                     ], fn ($v) => $v !== null && $v !== ''));
+
+                    $photo = array_merge($photo, $parser->fromExif($exif));
                 }
+            }
+
+            // XMP lives as an XML packet near the head of the file.
+            $head = (string) @file_get_contents($local, false, null, 0, 256 * 1024);
+            $xmp = $parser->fromXmp($head);
+            if ($xmp !== []) {
+                $photo['xmp'] = $xmp;
+            }
+
+            if ($photo !== []) {
+                $meta['photo'] = $photo;
             }
 
             return $meta;

@@ -231,6 +231,9 @@ class PhotoController extends Controller
             'camera' => $camera !== '' ? $camera : null,
             'width' => isset($meta['width']) ? (int) $meta['width'] : null,
             'height' => isset($meta['height']) ? (int) $meta['height'] : null,
+            // Structured EXIF/IPTC/XMP/GPS block for the lightbox info panel
+            // (null until enrichment has run for this file).
+            'photo_meta' => $meta['photo'] ?? null,
         ];
     }
 }

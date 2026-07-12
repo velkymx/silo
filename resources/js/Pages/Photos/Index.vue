@@ -10,6 +10,7 @@ import { useConfirm } from '../../composables/useConfirm';
 import { useToast } from '../../composables/useToast';
 import { useQuickLook } from '../../composables/useQuickLook';
 import QuickLookModal from '../../Components/QuickLookModal.vue';
+import PhotoInfoPanel from '../../Components/Photos/PhotoInfoPanel.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
 import EmptyState from '../../Components/EmptyState.vue';
 import FilterChips from '../../Components/FilterChips.vue';
@@ -148,9 +149,11 @@ const { quickOpen, quickIndex, quickFile, step, close: qlClose } = useQuickLook(
 
 const prevPhoto = computed(() => visiblePhotos.value[quickIndex.value - 1] ?? null);
 const nextPhoto = computed(() => visiblePhotos.value[quickIndex.value + 1] ?? null);
+const infoOpen = ref(false);
 const lightboxMenu = computed(() => {
     if (!quickFile.value) return [];
     return [
+        { text: infoOpen.value ? 'Hide info' : 'Info', action: 'info', icon: 'info-circle' },
         { text: isStarred(quickFile.value) ? 'Unstar' : 'Star', action: 'star', icon: isStarred(quickFile.value) ? 'star-fill' : 'star' },
         { text: 'Edit', action: 'edit', icon: 'pencil' },
         { text: 'Delete', action: 'delete', icon: 'trash' },
@@ -159,6 +162,7 @@ const lightboxMenu = computed(() => {
 function onLightboxAction({ item }) {
     const p = quickFile.value;
     if (!p) return;
+    if (item.action === 'info') { infoOpen.value = !infoOpen.value; return; }
     if (item.action === 'star') { star(p); return; }
     // Close the lightbox before opening the action's own modal (editor /
     // confirm dialog): two stacked Bootstrap modals share a z-index and the
@@ -526,6 +530,7 @@ function saveEdit() {
         @action="onLightboxAction($event)"
     >
         <template #below>
+            <PhotoInfoPanel v-if="infoOpen && quickFile" :photo="quickFile" />
             <!-- Thumbnail filmstrip (drag to reorder) -->
             <VibeSortable
                 ref="filmstripEl"
