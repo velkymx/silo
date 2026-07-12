@@ -212,3 +212,58 @@
 .st-table-wrap.st-has-selection .st-select-check {
     opacity: 1;
 }
+
+/* ---------------------------------------------------------------------------
+   Quill (VibeFormWysiwyg) dark mode. Quill's snow theme hardcodes light
+   chrome (#ccc borders, #444 icon strokes, white pickers); it never reacts
+   to Bootstrap color modes. Re-skin it with theme tokens under dark mode so
+   the wall composer and HTML editor follow the app theme. */
+[data-bs-theme='dark'] .ql-toolbar.ql-snow,
+[data-bs-theme='dark'] .ql-container.ql-snow {
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme='dark'] .ql-toolbar.ql-snow {
+    background: var(--bs-tertiary-bg);
+}
+[data-bs-theme='dark'] .ql-container.ql-snow {
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-editor.ql-blank::before {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-stroke,
+[data-bs-theme='dark'] .ql-snow .ql-stroke-miter {
+    stroke: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-fill,
+[data-bs-theme='dark'] .ql-snow .ql-stroke.ql-fill {
+    fill: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-picker {
+    color: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-picker-options {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color) !important;
+}
+[data-bs-theme='dark'] .ql-snow .ql-tooltip {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+    box-shadow: none;
+}
+[data-bs-theme='dark'] .ql-snow .ql-tooltip input[type='text'] {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+/* Hover/active keep Quill's primary-blue accent but on themed strokes. */
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button:hover .ql-stroke,
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+    stroke: var(--bs-primary);
+}
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button:hover .ql-fill,
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button.ql-active .ql-fill {
+    fill: var(--bs-primary);
+}
