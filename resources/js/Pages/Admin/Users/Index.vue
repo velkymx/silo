@@ -15,6 +15,8 @@ const columns = [
     { key: 'email', label: 'Email' },
     { key: 'group', label: 'Group', formatter: (v) => v ?? '—' },
     { key: 'is_admin', label: 'Admin' },
+    { key: 'status', label: 'Status', sortable: false, searchable: false },
+    { key: 'quota_mb', label: 'Quota', formatter: (v) => (v === null || v === undefined ? 'Default' : (v === 0 ? 'Unlimited' : `${v} MB`)) },
     { key: 'actions', label: '', sortable: false, searchable: false },
 ];
 
@@ -30,6 +32,11 @@ function edit(id) {
             <template #cell(is_admin)="{ item }">
                 <VibeBadge :variant="item.is_admin ? 'success' : 'secondary'">
                     {{ item.is_admin ? 'Admin' : 'User' }}
+                </VibeBadge>
+            </template>
+            <template #cell(status)="{ item }">
+                <VibeBadge :variant="item.disabled ? 'danger' : 'success'">
+                    {{ item.disabled ? 'Disabled' : 'Active' }}
                 </VibeBadge>
             </template>
             <template #cell(actions)="{ item }">

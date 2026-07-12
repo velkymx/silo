@@ -32,6 +32,8 @@ class User extends Authenticatable
         'blocked_keywords',
         'start_date',
         'manager_id',
+        'disabled_at',
+        'quota_mb',
     ];
 
     /**
@@ -57,7 +59,15 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'start_date' => 'date',
             'blocked_keywords' => 'array',
+            'disabled_at' => 'datetime',
+            'quota_mb' => 'integer',
         ];
+    }
+
+    /** Disabled accounts cannot log in; live sessions end on the next request. */
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
     }
 
     // Relationships

@@ -19,6 +19,8 @@ const form = useForm({
     email: props.user.email,
     group_id: props.user.group_id,
     is_admin: Boolean(props.user.is_admin),
+    disabled: Boolean(props.user.disabled),
+    quota_mb: props.user.quota_mb ?? null,
     password: '',
     password_confirmation: '',
 });
@@ -74,6 +76,25 @@ async function submit() {
                         <div v-if="isSelf && !form.is_admin" class="alert alert-warning mt-2 py-2 small" role="alert">
                             Warning: removing your own admin access will lock you out of this area.
                         </div>
+
+                        <VibeFormSwitch v-model="form.disabled" label="Disabled" class="mt-3" :disabled="isSelf" />
+                        <div v-if="form.errors.disabled" class="text-danger small mt-1">{{ form.errors.disabled }}</div>
+                        <div v-if="form.disabled" class="alert alert-warning mt-2 py-2 small" role="alert">
+                            A disabled account cannot log in, and any live session ends on its next request.
+                        </div>
+
+                        <VibeFormGroup
+                            label="Storage quota (MB)"
+                            class="mt-3"
+                            :error="form.errors.quota_mb"
+                        >
+                            <VibeFormInput
+                                v-model.number="form.quota_mb"
+                                type="number"
+                                min="0"
+                                help-text="Blank = the server default. 0 = unlimited."
+                            />
+                        </VibeFormGroup>
 
                         <VibeFormGroup
                             label="New Password"
