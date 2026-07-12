@@ -1,13 +1,14 @@
 <script setup>
 import { ref } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import ShellPage from '../../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
-import { useConfirm } from '../../../composables/useConfirm';
+import { useConfirm, usePrompt } from '../../../composables/useConfirm';
 import { useToast } from '../../../composables/useToast';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
 const { confirm } = useConfirm();
+const { prompt } = usePrompt();
 const toast = useToast();
 const { loading } = usePageLoading();
 
@@ -15,10 +16,7 @@ defineProps({
     groups: { type: Array, default: () => [] },
 });
 
-const createForm = useForm({ name: '' });
-const editingId = ref(null);
-const editForm = useForm({ name: '' });
-const deletingId = ref(null);
+const busy = ref(false);
 
 const columns = [
     { key: 'name', label: 'Name' },
@@ -26,51 +24,50 @@ const columns = [
     { key: 'actions', label: '', sortable: false, searchable: false },
 ];
 
-function create() {
-    createForm.post('/groups', { preserveScroll: true, onSuccess: () => createForm.reset() });
-}
-
-function startEdit(group) {
-    editingId.value = group.id;
-    editForm.clearErrors();
-    editForm.name = group.name;
-}
-
-function saveEdit() {
-    editForm.patch(`/groups/${editingId.value}`, {
+// House pattern for single-field resources (Files/Notes folders): a topbar
+// CTA opening a prompt dialog — no always-visible inline form, no inline
+// row-edit state.
+async function create() {
+    const name = await prompt({ title: 'New group', message: 'Group name:', confirmLabel: 'Create' });
+    if (!name || !name.trim()) return;
+    busy.value = true;
+    router.post('/groups', { name: name.trim() }, {
         preserveScroll: true,
-        onSuccess: () => (editingId.value = null),
+        onSuccess: () => toast.push(`Group "${name.trim()}" created`, { variant: 'success' }),
+        onError: (errors) => toast.push(errors.name ?? 'Could not create the group.', { variant: 'danger' }),
+        onFinish: () => { busy.value = false; },
+    });
+}
+
+async function rename(group) {
+    const name = await prompt({ title: 'Rename group', message: 'Group name:', value: group.name, confirmLabel: 'Rename' });
+    if (!name || !name.trim() || name.trim() === group.name) return;
+    router.patch(`/groups/${group.id}`, { name: name.trim() }, {
+        preserveScroll: true,
+        onSuccess: () => toast.push(`Group renamed to "${name.trim()}"`, { variant: 'success' }),
+        onError: (errors) => toast.push(errors.name ?? 'Could not rename the group.', { variant: 'danger' }),
     });
 }
 
 async function destroy(group) {
-    if (deletingId.value !== null) return;
+    if (busy.value) return;
     if (!await confirm({ title: 'Delete group', message: `Delete group "${group.name}"? Members will be unassigned.`, confirmLabel: 'Delete', variant: 'danger' })) return;
-    deletingId.value = group.id;
+    busy.value = true;
     router.delete(`/groups/${group.id}`, {
         preserveScroll: true,
         onSuccess: () => toast.push(`Group "${group.name}" deleted`, { variant: 'danger' }),
-        onFinish: () => { deletingId.value = null; },
+        onFinish: () => { busy.value = false; },
     });
 }
 </script>
 
 <template>
     <ShellPage title="Groups" icon="people" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
-
-        <VibeRow class="g-2 align-items-end mb-4">
-            <VibeCol :md="6">
-                <VibeFormGroup
-                    label="New group name"
-                    :error="createForm.errors.name"
-                >
-                    <VibeFormInput v-model="createForm.name" @keyup.enter="create" />
-                </VibeFormGroup>
-            </VibeCol>
-            <VibeCol :md="2">
-                <VibeButton variant="primary" :disabled="createForm.processing" @click="create"><VibeSpinner v-if="createForm.processing" size="sm" class="me-1" />{{ createForm.processing ? 'Adding…' : 'Add group' }}</VibeButton>
-            </VibeCol>
-        </VibeRow>
+        <template #actions>
+            <VibeButton variant="primary" size="sm" :disabled="busy" data-testid="new-group" @click="create">
+                <VibeIcon icon="plus-lg" class="me-1" />New group
+            </VibeButton>
+        </template>
 
         <LoadingSkeleton v-if="loading" :rows="5" :cols="3" />
         <VibeDataTable
@@ -83,22 +80,12 @@ async function destroy(group) {
             :per-page="25"
             empty-text="No groups yet."
         >
-            <template #cell(name)="{ item }">
-                <template v-if="editingId === item.id">
-                    <div class="d-flex gap-2">
-                        <VibeFormInput v-model="editForm.name" no-wrapper @keyup.enter="saveEdit" />
-                        <VibeButton variant="success" size="sm" :disabled="editForm.processing" @click="saveEdit"><VibeSpinner v-if="editForm.processing" size="sm" class="me-1" />{{ editForm.processing ? 'Saving…' : 'Save' }}</VibeButton>
-                        <VibeButton variant="secondary" size="sm" outline @click="editingId = null">Cancel</VibeButton>
-                    </div>
-                </template>
-                <template v-else>{{ item.name }}</template>
-            </template>
             <template #cell(actions)="{ item }">
                 <div class="d-flex justify-content-end gap-1">
-                    <VibeButton variant="primary" size="sm" outline :aria-label="`Edit ${item.name}`" @click="startEdit(item)">
+                    <VibeButton variant="primary" size="sm" outline :aria-label="`Rename ${item.name}`" @click="rename(item)">
                         <VibeIcon icon="pencil" />
                     </VibeButton>
-                    <VibeButton variant="danger" size="sm" outline :disabled="deletingId === item.id" :aria-label="`Delete ${item.name}`" @click="destroy(item)">
+                    <VibeButton variant="danger" size="sm" outline :disabled="busy" :aria-label="`Delete ${item.name}`" @click="destroy(item)">
                         <VibeIcon icon="trash" />
                     </VibeButton>
                 </div>

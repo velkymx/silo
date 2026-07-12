@@ -42,7 +42,7 @@ async function submit() {
 </script>
 
 <template>
-    <ShellPage title="Edit User" icon="person-gear" :parents="[{ text: 'Admin', icon: 'shield-lock' }, { text: 'Users', icon: 'people' }]">
+    <ShellPage title="Edit User" icon="person-gear" :parents="[{ text: 'Admin', icon: 'shield-lock' }, { text: 'Users', icon: 'people', href: '/users' }]">
         <VibeRow class="justify-content-center">
             <VibeCol :md="8" :lg="6">
                 <VibeCard :header="`Edit User: ${user.name}`">

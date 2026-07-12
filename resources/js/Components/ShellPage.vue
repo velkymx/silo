@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { router } from '@inertiajs/vue3';
 import ShellLayout from '../Layouts/ShellLayout.vue';
 
 interface Crumb {
     text: string;
     icon?: string;
     active?: boolean;
+    /** When set, clicking the crumb navigates there. */
+    href?: string;
 }
 
 const props = withDefaults(defineProps<{
@@ -26,6 +29,11 @@ const breadcrumbItems = computed(() => [
     ...props.parents.map((c) => ({ ...c, active: false })),
     { text: props.title, icon: props.icon, active: true },
 ]);
+
+function onCrumb({ item, event }: { item: Crumb; event?: Event }): void {
+    event?.preventDefault?.();
+    if (!item.active && item.href) router.visit(item.href);
+}
 </script>
 
 <template>
@@ -34,7 +42,7 @@ const breadcrumbItems = computed(() => [
     <ShellLayout :folders-visible="false" :detail-visible="false">
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
-                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0">
+                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onCrumb">
                     <template #item="{ item }">
                         <VibeIcon :icon="item.icon || icon" class="me-1" /><span :title="item.text">{{ item.text }}</span>
                     </template>
