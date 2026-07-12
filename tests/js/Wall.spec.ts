@@ -50,6 +50,12 @@ describe('WallPostCard', () => {
         expect(wrapper.find('.wall-post__body').html()).not.toContain('<script');
     });
 
+    it('upsizes a post into a note', async () => {
+        const wrapper = mount(WallPostCard, { props: { post } });
+        await wrapper.get('[data-testid="wall-upsize"]').trigger('click');
+        expect(s.post).toHaveBeenCalledWith('/wall/7/upsize');
+    });
+
     it('deletes after confirm when allowed', async () => {
         const wrapper = mount(WallPostCard, { props: { post: { ...post, can_delete: true } } });
         await wrapper.get('[data-testid="wall-delete"]').trigger('click');

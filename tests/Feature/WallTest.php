@@ -162,6 +162,31 @@ class WallTest extends TestCase
         $this->assertFalse($second['hasMore']);
     }
 
+    public function test_a_wall_post_upsizes_into_a_note(): void
+    {
+        $user = $this->asUser();
+        $author = User::factory()->create(['name' => 'Original Author']);
+        $post = WallPost::factory()->create([
+            'author_id' => $author->id,
+            'body' => '<p>Great <strong>idea</strong> worth keeping</p>',
+        ]);
+
+        $response = $this->post("/wall/{$post->id}/upsize");
+
+        $note = \App\Models\File::where('owner_id', $user->id)->where('mime', 'text/markdown')->first();
+        $this->assertNotNull($note);
+        $this->assertStringContainsString('Great idea worth keeping', $note->name);
+        $response->assertRedirect(route('notes.index', ['open' => $note->id]));
+
+        // Body converted to markdown + attribution; note owned by the actor.
+        $content = \Illuminate\Support\Facades\Storage::disk($note->disk)->get($note->path);
+        $this->assertStringContainsString('**idea**', $content);
+        $this->assertStringContainsString('Original Author', $content);
+
+        // The wall post is untouched.
+        $this->assertDatabaseHas('wall_posts', ['id' => $post->id]);
+    }
+
     public function test_body_length_is_capped(): void
     {
         $this->asUser();

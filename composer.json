@@ -14,6 +14,7 @@
         "laravel/scout": "^11.2",
         "laravel/tinker": "^3.0",
         "laravel/ui": "^4.6",
+        "league/html-to-markdown": "^5.1",
         "spatie/browsershot": "^5.4",
         "symfony/html-sanitizer": "^8.1"
     },

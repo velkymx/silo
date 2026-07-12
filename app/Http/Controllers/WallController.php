@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\WallPost;
 use App\Models\WallReaction;
+use App\Services\NoteCreator;
 use App\Services\Rss\HtmlSanitizer;
+use League\HTMLToMarkdown\HtmlConverter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -77,6 +80,30 @@ class WallController extends Controller
         $post->delete();
 
         return back();
+    }
+
+    /**
+     * Upsize a wall post into a note: converts the sanitized HTML body to
+     * markdown and creates a note (owned by the ACTOR, in their Notes root) so
+     * chatter can graduate into the knowledge base with one click. The wall
+     * post stays where it is.
+     */
+    public function upsize(Request $request, WallPost $post, NoteCreator $notes)
+    {
+        $markdown = (new HtmlConverter(['strip_tags' => true]))->convert($post->body);
+
+        $title = Str::limit(trim(strip_tags($post->body)), 60, '') ?: 'Wall post';
+        $post->loadMissing('author:id,name');
+        $content = $markdown."\n\n---\n*From a wall post by {$post->author->name}.*\n";
+
+        $file = $notes->create(
+            $request->user()->id,
+            $notes->rootFor($request->user()->id),
+            $title.'.md',
+            $content,
+        );
+
+        return redirect()->route('notes.index', ['open' => $file->id]);
     }
 
     /** Slack-style toggle: same (post, user, icon) again removes the reaction. */

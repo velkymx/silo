@@ -184,6 +184,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/wall/{post}', [WallController::class, 'destroy'])->name('wall.destroy');
     Route::post('/wall/{post}/react', [WallController::class, 'react'])
         ->middleware('throttle:60,1')->name('wall.react');
+    Route::post('/wall/{post}/upsize', [WallController::class, 'upsize'])
+        ->middleware('throttle:30,1')->name('wall.upsize');
 
     // Bookmarks — the internal-links launchpad.
     Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');

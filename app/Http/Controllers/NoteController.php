@@ -82,31 +82,7 @@ class NoteController extends Controller
             return redirect()->route('notes.index', ['open' => $existing->id]);
         }
 
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
-            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
-        }
-
-        $name = $this->uniqueName($parent->id, $name, $userId);
-        $path = "uploads/{$userId}/".Str::random(40).'.md';
-        Storage::disk($disk)->put($path, $content);
-
-        $file = File::create([
-            'name' => $name,
-            'path' => $path,
-            'disk' => $disk,
-            'is_dir' => false,
-            'mime' => 'text/markdown',
-            'size' => strlen($content),
-            'hash' => hash('sha256', $content),
-            'status' => File::STATUS_PENDING,
-            'content_edited_at' => now(),
-            'parent_id' => $parent->id,
-            'owner_id' => $userId,
-        ]);
-
-        ProcessUploadedFile::dispatch($file->id);
-        SyncNoteLinks::dispatch($file->id);
-        Audit::log('note.create', $file);
+        $file = app(\App\Services\NoteCreator::class)->create($userId, $parent, $name, $content);
 
         return redirect()->route('notes.index', ['open' => $file->id]);
     }
@@ -359,12 +335,7 @@ class NoteController extends Controller
     // Lazily create (and return) the user's root Notes folder.
     private function notesRoot(int $userId): File
     {
-        $name = config('filemanager.notes.root_folder', 'Notes');
-
-        return File::firstOrCreate(
-            ['owner_id' => $userId, 'parent_id' => null, 'name' => $name, 'is_dir' => true],
-            ['path' => $name, 'disk' => config('filemanager.disk')],
-        );
+        return app(\App\Services\NoteCreator::class)->rootFor($userId);
     }
 
     /**
@@ -393,20 +364,6 @@ class NoteController extends Controller
     // Append "(copy)" / "(copy N)" until the name is free under the folder.
     private function uniqueName(int $parentId, string $name, int $ownerId): string
     {
-        $base = $name;
-        $ext = '';
-        if (($dot = strrpos($name, '.')) !== false && $dot > 0) {
-            $base = substr($name, 0, $dot);
-            $ext = substr($name, $dot);
-        }
-
-        $candidate = $name;
-        $n = 0;
-        while (File::where('owner_id', $ownerId)->where('parent_id', $parentId)->where('name', $candidate)->exists()) {
-            $n++;
-            $candidate = $base.($n === 1 ? ' (copy)' : " (copy {$n})").$ext;
-        }
-
-        return $candidate;
+        return app(\App\Services\NoteCreator::class)->uniqueName($parentId, $name, $ownerId);
     }
 }

@@ -28,6 +28,11 @@ async function remove(): Promise<void> {
     if (!await confirm({ title: 'Delete post', message: 'Remove this post from the wall?', confirmLabel: 'Delete', variant: 'danger' })) return;
     router.delete(`/wall/${props.post.id}`, { preserveScroll: true });
 }
+
+// Graduate the post into a note in YOUR notebook (post stays on the wall).
+function upsize(): void {
+    router.post(`/wall/${props.post.id}/upsize`);
+}
 </script>
 
 <template>
@@ -40,9 +45,19 @@ async function remove(): Promise<void> {
                 </Link>
                 <span class="small text-muted">{{ timeAgo(post.created_at) }}</span>
                 <button
+                    type="button"
+                    class="btn btn-sm btn-link text-secondary ms-auto p-0"
+                    title="Save as note"
+                    aria-label="Save as note"
+                    data-testid="wall-upsize"
+                    @click="upsize"
+                >
+                    <VibeIcon icon="journal-plus" />
+                </button>
+                <button
                     v-if="post.can_delete"
                     type="button"
-                    class="btn btn-sm btn-link text-danger ms-auto p-0"
+                    class="btn btn-sm btn-link text-danger p-0"
                     aria-label="Delete post"
                     data-testid="wall-delete"
                     @click="remove"
