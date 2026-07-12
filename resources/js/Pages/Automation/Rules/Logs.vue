@@ -84,6 +84,7 @@ function conditionValue(c: unknown): string {
         </template>
 
         <template #contents>
+            <div class="overflow-auto flex-grow-1">
             <div class="px-3 pt-2">
                 <div v-if="!executions.length" class="text-center text-muted py-5">
                     <VibeIcon icon="journal-text" class="display-6 mb-2 d-block" />
@@ -138,6 +139,7 @@ function conditionValue(c: unknown): string {
                     </div>
                 </div>
             </div>
+        </div>
         </template>
     </ShellLayout>
 </template>

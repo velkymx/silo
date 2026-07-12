@@ -104,8 +104,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                 <VibeButton
                     v-if="query.trim()"
                     size="sm"
-                    variant="secondary"
-                    outline
+                    variant="light"
                     title="Save this search"
                     aria-label="Save search"
                     @click="saveCurrentSearch"
@@ -116,6 +115,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
         </template>
 
         <template #contents>
+            <div class="overflow-auto flex-grow-1">
             <div class="container py-3" style="max-width: 920px">
                 <div v-if="!q" class="text-center text-muted py-5">
                     <VibeIcon icon="search" class="display-6 mb-2 d-block" />
@@ -196,6 +196,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                         </template>
                     </section>
                 </template>
+            </div>
             </div>
         </template>
     </ShellLayout>

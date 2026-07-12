@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import ShellLayout from '../../Layouts/ShellLayout.vue';
 import { http } from '../../lib/http';
 import { notificationIcon } from '../../lib/notificationIcon';
+import EmptyState from '../../Components/EmptyState.vue';
 
 interface Notification {
     id: number;
@@ -56,7 +57,7 @@ function setFilter(f: string | null): void {
     <ShellLayout v-model:active-pane="activePane" :detail-visible="false" :folders-visible="false">
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
-                <Link href="/rss" class="btn btn-secondary btn-sm">
+                <Link href="/rss" class="btn btn-light btn-sm">
                     <VibeIcon icon="chevron-left" class="me-1" />Back
                 </Link>
                 <h1 class="h5 mb-0 ms-2 d-flex align-items-center gap-2">
@@ -72,7 +73,7 @@ function setFilter(f: string | null): void {
                     <VibeButton
                         v-if="unread"
                         size="sm"
-                        variant="secondary"
+                        variant="light"
                         @click="router.post('/rss/notifications/read-all', {}, { preserveScroll: true, preserveState: true })"
                     >
                         <VibeIcon icon="check2-all" class="me-1" />Mark all read
@@ -84,10 +85,7 @@ function setFilter(f: string | null): void {
         <template #contents>
             <div class="overflow-auto flex-grow-1">
                 <div class="notif-list px-3 py-2">
-                <div v-if="!notifications.length" class="text-center text-muted py-5">
-                    <VibeIcon icon="bell-slash" class="display-6 mb-2 d-block" />
-                    <p class="mb-0">No notifications.</p>
-                </div>
+                <EmptyState v-if="!notifications.length" icon="bell-slash" title="No notifications" hint="New-article and system alerts land here." />
                 <div
                     v-for="n in notifications"
                     :key="n.id"

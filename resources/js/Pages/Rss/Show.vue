@@ -66,28 +66,28 @@ function markUnread(): void {
     <ShellLayout v-model:active-pane="activePane" :detail-visible="false" :folders-visible="false">
         <template #topBar>
             <div class="d-flex align-items-center gap-2 p-2">
-                <Link href="/rss" class="btn btn-secondary btn-sm">
+                <Link href="/rss" class="btn btn-light btn-sm">
                     <VibeIcon icon="chevron-left" class="me-1" />Back to inbox
                 </Link>
                 <div class="ms-auto d-flex align-items-center gap-2">
-                    <VibeButton size="sm" variant="secondary" @click="markRead" :disabled="isRead">
-                        <VibeIcon icon="check2" class="me-1" />Mark read
-                    </VibeButton>
-                    <VibeButton size="sm" variant="secondary" @click="markUnread" :disabled="!isRead">
-                        <VibeIcon icon="circle" class="me-1" />Mark unread
-                    </VibeButton>
-                    <VibeButton size="sm" variant="secondary" @click="toggleStar">
-                        <VibeIcon :icon="item.is_starred ? 'star-fill' : 'star'" :class="item.is_starred ? 'text-warning' : ''" class="me-1" />
-                        {{ item.is_starred ? 'Starred' : 'Star' }}
-                    </VibeButton>
                     <VibeButton size="sm" variant="primary" :href="item.url" target="_blank" rel="noopener">
                         <VibeIcon icon="box-arrow-up-right" class="me-1" />Open original
+                    </VibeButton>
+                    <VibeButton size="sm" variant="light" title="Mark read" aria-label="Mark read" @click="markRead" :disabled="isRead">
+                        <VibeIcon icon="check2" />
+                    </VibeButton>
+                    <VibeButton size="sm" variant="light" title="Mark unread" aria-label="Mark unread" @click="markUnread" :disabled="!isRead">
+                        <VibeIcon icon="circle" />
+                    </VibeButton>
+                    <VibeButton size="sm" variant="light" :title="item.is_starred ? 'Unstar' : 'Star'" :aria-label="item.is_starred ? 'Unstar' : 'Star'" @click="toggleStar">
+                        <VibeIcon :icon="item.is_starred ? 'star-fill' : 'star'" :class="item.is_starred ? 'text-warning' : ''" />
                     </VibeButton>
                 </div>
             </div>
         </template>
 
         <template #contents>
+            <div class="overflow-auto flex-grow-1">
             <article class="rss-article mx-auto p-4" style="max-width: 760px">
                 <header class="mb-3">
                     <a :href="item.feed_site_url ?? '#'" target="_blank" rel="noopener" class="small text-muted text-decoration-none d-inline-flex align-items-center gap-1 mb-2">
@@ -118,6 +118,7 @@ function markUnread(): void {
                     </li>
                 </ul>
             </article>
+        </div>
         </template>
     </ShellLayout>
 </template>

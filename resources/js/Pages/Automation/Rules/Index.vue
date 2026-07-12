@@ -120,6 +120,7 @@ const actionLabels: Record<string, string> = {
         </template>
 
         <template #contents>
+            <div class="overflow-auto flex-grow-1">
             <div class="px-3 pt-2">
                 <div v-if="!rules.length" class="text-center text-muted py-5">
                     <VibeIcon icon="lightning-charge" class="display-6 mb-2 d-block" />
@@ -155,6 +156,7 @@ const actionLabels: Record<string, string> = {
                     </div>
                 </div>
             </div>
+        </div>
         </template>
     </ShellLayout>
 

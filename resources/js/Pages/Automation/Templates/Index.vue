@@ -46,6 +46,7 @@ async function apply(t: Template): Promise<void> {
         </template>
 
         <template #contents>
+            <div class="overflow-auto flex-grow-1">
             <div class="px-3 pt-3">
                 <p class="text-muted small mb-3">Clone a template to create a rule in one click. You can edit conditions and actions afterwards.</p>
                 <div class="row g-3">
@@ -73,6 +74,7 @@ async function apply(t: Template): Promise<void> {
                     <p class="mb-0">No templates available.</p>
                 </div>
             </div>
+        </div>
         </template>
     </ShellLayout>
 </template>
