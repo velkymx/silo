@@ -63,6 +63,29 @@ class QuickSearchTest extends TestCase
             ->assertJsonPath('results.notes.0.url', route('notes.index', ['open' => $note->id]));
     }
 
+    public function test_people_scope_searches_the_directory(): void
+    {
+        $user = User::factory()->create();
+        User::factory()->create(['name' => 'Axolotl Jones', 'title' => 'Engineer']);
+        User::factory()->create(['name' => 'Someone Else', 'department' => 'Axolotl Care']);
+
+        $response = $this->actingAs($user)->getJson('/search/quick?q=axolotl&scope=people')->assertOk();
+
+        $response->assertJsonPath('scope', 'people')->assertJsonCount(2, 'results.people');
+        $this->assertStringStartsWith('/directory/', $response->json('results.people.0.url'));
+        $this->assertArrayNotHasKey('files', $response->json('results'));
+    }
+
+    public function test_all_scope_includes_people(): void
+    {
+        $user = User::factory()->create();
+        User::factory()->create(['name' => 'Quagga Smith']);
+
+        $this->actingAs($user)->getJson('/search/quick?q=quagga&scope=all')
+            ->assertOk()
+            ->assertJsonCount(1, 'results.people');
+    }
+
     public function test_results_are_scoped_to_the_acting_user(): void
     {
         $user = User::factory()->create();

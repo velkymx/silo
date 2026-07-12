@@ -97,7 +97,7 @@ function safeMeta(meta, indent) {
             hover
             striped
             small
-            searchable
+            :searchable="false"
             :per-page="25"
             empty-text="No audit events yet."
         >

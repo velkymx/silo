@@ -19,7 +19,7 @@ class SearchController extends Controller
     public function index(Request $request, PlatformSearch $search): Response
     {
         $query = (string) $request->string('q')->toString();
-        $results = $query === '' ? ['files' => [], 'rss' => [], 'bookmarks' => []] : $search->search($request->user()->id, $query);
+        $results = $query === '' ? ['files' => [], 'rss' => [], 'bookmarks' => [], 'people' => []] : $search->search($request->user()->id, $query);
 
         $total = array_sum(array_map('count', $results));
 
@@ -38,7 +38,7 @@ class SearchController extends Controller
     {
         $query = (string) $request->string('q')->toString();
         $scope = $request->string('scope')->toString();
-        $scope = in_array($scope, ['all', 'files', 'notes', 'rss', 'bookmarks'], true) ? $scope : 'all';
+        $scope = in_array($scope, ['all', 'files', 'notes', 'rss', 'bookmarks', 'people'], true) ? $scope : 'all';
 
         return response()->json([
             'scope' => $scope,

@@ -316,6 +316,7 @@ async function onImportFile(e) {
                     :items="tableItems"
                     :columns="tableColumns"
                     row-key="id"
+                    :searchable="false"
                     hover
                     small
                     clickable

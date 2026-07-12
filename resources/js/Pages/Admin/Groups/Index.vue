@@ -77,6 +77,7 @@ async function destroy(group) {
             row-key="id"
             hover
             striped
+            :searchable="false"
             :per-page="25"
             empty-text="No groups yet."
         >

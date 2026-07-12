@@ -121,6 +121,7 @@ onBeforeUnmount(() => clearInterval(poll));
                         :items="backups"
                         :columns="columns"
                         row-key="id"
+                        :searchable="false"
                         hover
                         striped
                         :per-page="10"

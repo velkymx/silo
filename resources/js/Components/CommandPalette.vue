@@ -42,6 +42,7 @@ const GROUP_META: Record<string, { label: string; icon: string }> = {
     notes: { label: 'Notes', icon: 'journal-text' },
     rss: { label: 'Articles', icon: 'rss' },
     bookmarks: { label: 'Bookmarks', icon: 'bookmark' },
+    people: { label: 'People', icon: 'person-rolodex' },
 };
 
 function surfaceFor(url: string): string | null {
@@ -49,6 +50,7 @@ function surfaceFor(url: string): string | null {
     if (p.startsWith('/rss')) return 'rss';
     if (p.startsWith('/notes')) return 'notes';
     if (p.startsWith('/bookmarks')) return 'bookmarks';
+    if (p.startsWith('/directory') || p.startsWith('/users')) return 'people';
     if (['/', '/recent', '/starred', '/trash', '/shared'].includes(p)) return 'files';
     return null;
 }
@@ -135,7 +137,7 @@ const resultSections = computed<Section[]>(() => {
     if (!term) return [];
 
     const sections: Section[] = [];
-    for (const key of ['files', 'notes', 'rss', 'bookmarks']) {
+    for (const key of ['files', 'notes', 'rss', 'bookmarks', 'people']) {
         const rows = results.value[key] ?? [];
         if (!rows.length) continue;
         sections.push({

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Bookmark;
 use App\Models\File;
 use App\Models\RssItem;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,7 +30,7 @@ class PlatformSearch
     {
         $query = trim($query);
         if ($query === '') {
-            return ['files' => [], 'rss' => [], 'bookmarks' => []];
+            return ['files' => [], 'rss' => [], 'bookmarks' => [], 'people' => []];
         }
 
         // The full results page keeps notes inside the files group (a note is a
@@ -38,6 +39,7 @@ class PlatformSearch
             'files' => $this->filesAll($userId, $query, $perType),
             'rss' => $this->rss($userId, $query, $perType),
             'bookmarks' => $this->bookmarks($userId, $query, $perType),
+            'people' => $this->people($userId, $query, $perType),
         ];
     }
 
@@ -60,7 +62,8 @@ class PlatformSearch
             'notes' => ['notes'],
             'rss' => ['rss'],
             'bookmarks' => ['bookmarks'],
-            default => ['files', 'notes', 'rss', 'bookmarks'],
+            'people' => ['people'],
+            default => ['files', 'notes', 'rss', 'bookmarks', 'people'],
         };
 
         $results = [];
@@ -163,6 +166,35 @@ class PlatformSearch
                 'snippet' => $b->description,
                 'url' => $b->url,
                 'meta' => ['site' => $b->site_name],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * People from the staff directory. Not owner-scoped: the directory is
+     * visible to every authenticated user. $userId is accepted only so the
+     * quick() group dispatch stays uniform.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function people(int $userId, string $query, int $perType = self::PER_TYPE): array
+    {
+        return User::query()
+            ->where(fn ($q) => $q
+                ->where('name', 'like', "%{$query}%")
+                ->orWhere('email', 'like', "%{$query}%")
+                ->orWhere('title', 'like', "%{$query}%")
+                ->orWhere('department', 'like', "%{$query}%"))
+            ->orderBy('name')
+            ->limit($perType)
+            ->get(['id', 'name', 'title', 'department'])
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'title' => $u->name,
+                'snippet' => trim(($u->title ?? '').($u->department ? ' · '.$u->department : '')) ?: null,
+                'url' => "/directory/{$u->id}",
+                'meta' => [],
             ])
             ->values()
             ->all();

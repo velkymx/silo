@@ -28,7 +28,7 @@ function edit(id) {
 <template>
     <ShellPage title="Users" icon="people" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
         <LoadingSkeleton v-if="loading" :rows="6" :cols="5" />
-        <VibeDataTable v-else :items="users" :columns="columns" row-key="id" hover striped empty-text="No users.">
+        <VibeDataTable v-else :items="users" :columns="columns" row-key="id" hover striped :searchable="false" empty-text="No users.">
             <template #cell(is_admin)="{ item }">
                 <VibeBadge :variant="item.is_admin ? 'success' : 'secondary'">
                     {{ item.is_admin ? 'Admin' : 'User' }}

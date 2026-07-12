@@ -18,6 +18,7 @@ interface Results {
     files: ResultItem[];
     rss: ResultItem[];
     bookmarks: ResultItem[];
+    people: ResultItem[];
 }
 
 interface SavedSearch {
@@ -82,6 +83,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
         files: { title: 'Files', icon: 'file-earmark-text' },
         rss: { title: 'Articles', icon: 'rss' },
         bookmarks: { title: 'Bookmarks', icon: 'bookmark' },
+        people: { title: 'People', icon: 'person-rolodex' },
     };
     return { ...map[key], count: props.results[key].length };
 }
@@ -157,7 +159,7 @@ function sectionMeta(key: keyof Results): { title: string; icon: string; count: 
                         </div>
                     </template>
 
-                    <section v-for="key in (['rss', 'files', 'bookmarks'] as Array<keyof Results>)" :key="key" class="mb-4">
+                    <section v-for="key in (['rss', 'files', 'bookmarks', 'people'] as Array<keyof Results>)" :key="key" class="mb-4">
                         <template v-if="results[key].length">
                             <h2 class="h6 text-uppercase text-muted d-flex align-items-center gap-2 mb-2">
                                 <VibeIcon :icon="sectionMeta(key).icon" /> {{ sectionMeta(key).title }} ({{ sectionMeta(key).count }})

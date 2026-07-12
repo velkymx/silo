@@ -58,6 +58,18 @@ describe('CommandPalette', () => {
         expect(area.classes()).toContain('btn-primary');
     });
 
+    it('maps directory and admin-users routes to the People scope', async () => {
+        page.url = '/directory';
+        mockFetch({}, 'people');
+        const wrapper = await openPalette();
+        expect(wrapper.get('[data-scope="area"]').text()).toBe('People');
+        wrapper.unmount();
+
+        page.url = '/users';
+        const wrapper2 = await openPalette();
+        expect(wrapper2.get('[data-scope="area"]').text()).toBe('People');
+    });
+
     it('debounces a fetch and renders grouped results', async () => {
         vi.useFakeTimers();
         const fetchFn = mockFetch({ files: [{ id: 1, title: 'Budget.xlsx', snippet: null, url: '/?folder=2&selected=1' }] });

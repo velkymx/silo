@@ -23,7 +23,7 @@ class PlatformSearchTest extends TestCase
                 ->component('Search/Index')
                 ->where('q', '')
                 ->where('total', 0)
-                ->where('results', ['files' => [], 'rss' => [], 'bookmarks' => []])
+                ->where('results', ['files' => [], 'rss' => [], 'bookmarks' => [], 'people' => []])
             );
     }
 

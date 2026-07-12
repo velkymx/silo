@@ -157,7 +157,7 @@ useEscapeToClear(clearContentSelection);
                     hover
                     small
                     clickable
-                    search-placeholder="Search people, titles…"
+                    :searchable="false"
                     :show-per-page="false"
                     :per-page="50"
                     v-model:current-page="listPage"
@@ -178,7 +178,7 @@ useEscapeToClear(clearContentSelection);
                         <span class="text-muted small text-nowrap">{{ item.department }}</span>
                     </template>
                 </VibeDataTable>
-                <EmptyState v-else icon="person-rolodex" title="No people found" hint="Try another department or search." />
+                <EmptyState v-else icon="person-rolodex" title="No people found" hint="Try another department, or search people from the palette (Cmd+K)." />
             </div>
         </template>
 
