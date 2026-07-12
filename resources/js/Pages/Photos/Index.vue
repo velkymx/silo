@@ -41,6 +41,7 @@ const activeTag = computed(() => props.tags.find((t) => t.id === props.filters.t
 
 // ----- Client filters (camera / starred) -----
 const cameraFilter = ref(null);
+const filtersOpen = ref(false);
 const starredOnly = ref(false);
 const cameras = computed(() =>
     [...new Set(props.photos.map((p) => p.camera).filter(Boolean))].sort());
@@ -341,36 +342,64 @@ function saveEdit() {
         <!-- Breadcrumb + Picasa-style browse controls on one top-bar line:
              zoom slider, starred filter, camera filter, sort; Upload is the
              single solid-primary CTA. -->
+        <!-- Title + actions share the top-bar line, matching the house pattern:
+             one solid-primary CTA (Upload), quiet light ghosts, filters behind
+             the funnel toggle, zoom at the end with real zoom icons. -->
         <template #topBar>
-            <div class="d-flex align-items-center gap-2 p-2 flex-wrap">
-                <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
-                    <template #item="{ item, index }">
-                        <VibeIcon :icon="index === 0 ? 'images' : 'collection'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
-                    </template>
-                </VibeBreadcrumb>
-                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
-                    <div class="d-flex align-items-center gap-1 me-1" title="Thumbnail size">
-                        <VibeIcon icon="grid-3x3-gap" class="text-muted small" />
-                        <VibeSlider v-model="rowHeight" :min="120" :max="320" :step="20" class="ph-zoom" aria-label="Thumbnail size" />
-                        <VibeIcon icon="image" class="text-muted" />
+            <div class="d-flex flex-column p-2 gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <VibeBreadcrumb :items="breadcrumbItems" class="breadcrumb mb-0 pb-0 text-truncate min-w-0" @item-click="onBreadcrumb">
+                        <template #item="{ item, index }">
+                            <VibeIcon :icon="index === 0 ? 'images' : 'collection'" class="me-1" /><span :title="item.text">{{ item.text }}</span>
+                        </template>
+                    </VibeBreadcrumb>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                        <VibeButton size="sm" variant="primary" title="Upload photos" aria-label="Upload photos" @click="uploadOpen = true">
+                            <VibeIcon icon="upload" />
+                        </VibeButton>
+                        <VibeButton size="sm" variant="light" title="New album" aria-label="New album" @click="openNewAlbum">
+                            <VibeIcon icon="collection" />
+                        </VibeButton>
+                        <VibeButton
+                            size="sm"
+                            :variant="starredOnly ? 'primary' : 'light'"
+                            title="Starred only"
+                            :aria-pressed="starredOnly"
+                            aria-label="Show starred only"
+                            @click="starredOnly = !starredOnly"
+                        >
+                            <VibeIcon :icon="starredOnly ? 'star-fill' : 'star'" />
+                        </VibeButton>
+                        <VibeDropdown size="sm" variant="light" menu-end title="Sort photos" :items="sortOptions" @item-click="sortOrder = $event.item.value">
+                            <template #button><VibeIcon icon="sort-down" /></template>
+                            <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
+                        </VibeDropdown>
+                        <VibeButton
+                            v-if="cameras.length || tags.length"
+                            size="sm"
+                            variant="light"
+                            title="Filter by camera / tag"
+                            aria-label="Toggle filters"
+                            :class="{ active: filtersOpen || cameraFilter || filters.tag }"
+                            @click="filtersOpen = !filtersOpen"
+                        >
+                            <VibeIcon icon="funnel" />
+                        </VibeButton>
+                        <div class="d-flex align-items-center gap-1 ms-1" title="Thumbnail size">
+                            <VibeIcon icon="zoom-out" class="text-muted" />
+                            <VibeSlider v-model="rowHeight" :min="120" :max="320" :step="20" class="ph-zoom" aria-label="Thumbnail size" />
+                            <VibeIcon icon="zoom-in" class="text-muted" />
+                        </div>
                     </div>
-                    <VibeButton
-                        size="sm"
-                        :variant="starredOnly ? 'primary' : 'light'"
-                        title="Starred only"
-                        :aria-pressed="starredOnly"
-                        aria-label="Show starred only"
-                        @click="starredOnly = !starredOnly"
-                    >
-                        <VibeIcon :icon="starredOnly ? 'star-fill' : 'star'" />
-                    </VibeButton>
+                </div>
+                <div v-if="filtersOpen" class="d-flex align-items-center gap-2">
                     <VibeFormSelect
                         v-if="cameras.length"
                         :model-value="cameraFilter || ''"
                         :options="cameraOptions"
                         no-wrapper
                         size="sm"
-                        style="max-width: 180px"
+                        style="max-width: 220px"
                         aria-label="Filter by camera"
                         @update:model-value="cameraFilter = $event || null"
                     />
@@ -380,20 +409,10 @@ function saveEdit() {
                         :options="[{ value: '', text: 'All tags' }, ...tags.map((t) => ({ value: t.id, text: t.name }))]"
                         no-wrapper
                         size="sm"
-                        style="max-width: 150px"
+                        style="max-width: 180px"
                         aria-label="Filter by tag"
                         @update:model-value="applyFilter({ tag: $event || null })"
                     />
-                    <VibeDropdown size="sm" variant="light" menu-end title="Sort photos" :items="sortOptions" @item-click="sortOrder = $event.item.value">
-                        <template #button><VibeIcon icon="sort-down" /></template>
-                        <template #item="{ item }"><VibeIcon :icon="item.icon" class="me-2" />{{ item.text }}</template>
-                    </VibeDropdown>
-                    <VibeButton size="sm" variant="light" title="New album" aria-label="New album" @click="openNewAlbum">
-                        <VibeIcon icon="collection" />
-                    </VibeButton>
-                    <VibeButton size="sm" variant="primary" title="Upload photos" aria-label="Upload photos" @click="uploadOpen = true">
-                        <VibeIcon icon="upload" />
-                    </VibeButton>
                 </div>
             </div>
         </template>

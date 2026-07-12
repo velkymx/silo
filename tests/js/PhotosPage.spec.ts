@@ -48,6 +48,8 @@ describe('Photos/Index page', () => {
 
     it('camera filter narrows the grid client-side', async () => {
         const wrapper = mount(Photos, { props: { photos, albums: [], tags: [] } });
+        // Filters live behind the funnel toggle now.
+        await wrapper.get('button[aria-label="Toggle filters"]').trigger('click');
         const select = wrapper.find('[data-stub="VibeFormSelect"]');
         await select.setValue('Canon EOS R5');
         expect(wrapper.findAll('.photo-thumb img').length).toBe(1);
