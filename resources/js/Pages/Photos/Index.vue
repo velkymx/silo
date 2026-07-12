@@ -529,8 +529,10 @@ function saveEdit() {
         @step="step($event)"
         @action="onLightboxAction($event)"
     >
+        <template v-if="infoOpen && quickFile" #side>
+            <PhotoInfoPanel :photo="quickFile" />
+        </template>
         <template #below>
-            <PhotoInfoPanel v-if="infoOpen && quickFile" :photo="quickFile" />
             <!-- Thumbnail filmstrip (drag to reorder) -->
             <VibeSortable
                 ref="filmstripEl"

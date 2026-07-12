@@ -94,8 +94,8 @@ const takenLabel = computed(() => new Date(props.photo.taken_at * 1000).toLocale
 
 <template>
     <div class="photo-info p-3" data-testid="photo-info">
-        <div class="row g-3">
-            <div class="col-12 col-md-6 col-lg-3">
+        <div class="d-flex flex-column gap-3">
+            <div>
                 <h3 class="h6 text-muted text-uppercase fw-semibold">Details</h3>
                 <dl class="row small mb-0">
                     <dt class="col-5 text-muted">Taken</dt><dd class="col-7">{{ takenLabel }}</dd>
@@ -108,7 +108,7 @@ const takenLabel = computed(() => new Date(props.photo.taken_at * 1000).toLocale
                 </dl>
             </div>
 
-            <div v-if="hasCamera" class="col-12 col-md-6 col-lg-3" data-testid="photo-info-camera">
+            <div v-if="hasCamera" data-testid="photo-info-camera">
                 <h3 class="h6 text-muted text-uppercase fw-semibold">Camera</h3>
                 <dl class="row small mb-0">
                     <template v-if="photo.camera"><dt class="col-5 text-muted">Camera</dt><dd class="col-7">{{ photo.camera }}</dd></template>
@@ -120,7 +120,7 @@ const takenLabel = computed(() => new Date(props.photo.taken_at * 1000).toLocale
                 </dl>
             </div>
 
-            <div v-if="hasDescription || osmUrl" class="col-12 col-md-6 col-lg-3" data-testid="photo-info-description">
+            <div v-if="hasDescription || osmUrl" data-testid="photo-info-description">
                 <h3 class="h6 text-muted text-uppercase fw-semibold">Description</h3>
                 <dl class="row small mb-2">
                     <template v-if="description.title"><dt class="col-5 text-muted">Title</dt><dd class="col-7">{{ description.title }}</dd></template>
@@ -140,7 +140,7 @@ const takenLabel = computed(() => new Date(props.photo.taken_at * 1000).toLocale
                 <span v-for="kw in description.keywords" :key="kw" class="badge text-bg-light me-1 mb-1">{{ kw }}</span>
             </div>
 
-            <div class="col-12 col-md-6 col-lg-3">
+            <div>
                 <h3 class="h6 text-muted text-uppercase fw-semibold">Histogram</h3>
                 <VibeChartLine
                     v-if="chartData"
@@ -160,6 +160,6 @@ const takenLabel = computed(() => new Date(props.photo.taken_at * 1000).toLocale
 <style scoped>
 .photo-info {
     background: var(--bs-tertiary-bg);
-    border-top: 1px solid var(--bs-border-color);
+    height: 100%;
 }
 </style>

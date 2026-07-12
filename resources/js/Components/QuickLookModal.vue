@@ -104,7 +104,8 @@ function safeUrl(url: string | undefined): string {
             </div>
         </template>
 
-        <div v-if="file" class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center" style="height: calc(100vh - 130px)">
+        <div v-if="file" class="d-flex align-items-stretch" style="height: calc(100vh - 130px)">
+        <div class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center flex-grow-1 min-w-0 h-100">
             <VibeSpinner v-if="loading" class="mb-2" />
             <div v-if="loadError" class="alert alert-danger">{{ loadError }}</div>
             <img
@@ -157,11 +158,19 @@ function safeUrl(url: string | undefined): string {
                 <div class="small mt-2">{{ file.mime || 'unknown type' }} · {{ fmtBytes(file.size ?? 0) }}</div>
             </div>
         </div>
+        <aside v-if="$slots.side" class="quicklook-side border-start overflow-auto flex-shrink-0 h-100 text-start">
+            <slot name="side" />
+        </aside>
+        </div>
         <slot name="below" />
     </VibeModal>
 </template>
 
 <style>
+.quicklook-side {
+    width: 320px;
+}
+
 /* VibeModal wraps the header slot in a content-sized .modal-title h5,
    teleports to <body> (out of scoped-CSS reach), and drops fallthrough
    attrs — so key on our own slot content: grow the wrapping title to the
