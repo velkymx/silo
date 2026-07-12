@@ -1,5 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import '@velkymx/vibeui/dist/style.css'; // VibeUI component styles (slider, etc.)
 import 'material-icons/iconfont/material-icons.css'; // jspreadsheet toolbar glyphs (bundled, no CDN)
 import '../css/theme.css';
 import './bootstrap';
