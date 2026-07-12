@@ -104,7 +104,10 @@ function safeUrl(url: string | undefined): string {
             </div>
         </template>
 
-        <div v-if="file" class="d-flex align-items-stretch" style="height: calc(100vh - 130px)">
+        <!-- One viewport-capped column: the preview row flexes, the below
+             slot (filmstrip) keeps its natural height inside the budget. -->
+        <div v-if="file" class="d-flex flex-column" style="height: calc(100vh - 140px)">
+        <div class="d-flex align-items-stretch flex-grow-1" style="min-height: 0">
         <div class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center flex-grow-1 min-w-0 h-100">
             <VibeSpinner v-if="loading" class="mb-2" />
             <div v-if="loadError" class="alert alert-danger">{{ loadError }}</div>
@@ -163,6 +166,7 @@ function safeUrl(url: string | undefined): string {
         </aside>
         </div>
         <slot name="below" />
+        </div>
     </VibeModal>
 </template>
 
