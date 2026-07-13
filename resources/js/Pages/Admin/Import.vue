@@ -31,6 +31,12 @@ function rescan() {
 
 <template>
     <ShellPage title="Import Folder" icon="folder-symlink" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
+        <template #actions>
+            <VibeButton variant="primary" size="sm" :disabled="scanning" @click="rescan">
+                <VibeSpinner v-if="scanning" size="sm" class="me-1" />
+                <VibeIcon v-else icon="arrow-repeat" class="me-1" />{{ scanning ? 'Scanning…' : 'Re-scan now' }}
+            </VibeButton>
+        </template>
 
         <VibeRow class="justify-content-center">
             <VibeCol :lg="8">
@@ -48,18 +54,15 @@ function rescan() {
                         <dd class="col-sm-9">
                             <span v-if="fileCount === null" class="text-muted">Folder not mounted / empty.</span>
                             <VibeBadge v-else variant="secondary">{{ fileCount }}{{ fileCountCapped ? '+' : '' }}</VibeBadge>
-                            <VibeButton variant="link" size="sm" class="p-0 ms-2 text-decoration-none" @click="refreshCount">Refresh</VibeButton>
+                            <VibeButton variant="light" size="sm" class="ms-2" title="Refresh count" aria-label="Refresh file count" @click="refreshCount">
+                                <VibeIcon icon="arrow-clockwise" />
+                            </VibeButton>
                         </dd>
                     </dl>
 
                     <VibeFormGroup label="Top-level folder name">
                         <VibeFormInput v-model="name" placeholder="Imported" />
                     </VibeFormGroup>
-
-                    <VibeButton variant="primary" class="mt-3" :disabled="scanning" @click="rescan">
-                        <VibeSpinner v-if="scanning" size="sm" class="me-1" />
-                        <VibeIcon v-else icon="arrow-repeat" class="me-1" />Re-scan now
-                    </VibeButton>
 
                     <VibeAlert variant="info" class="mt-3 mb-0 small">
                         The scan runs in the background (queue worker required). Large folders take a
