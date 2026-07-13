@@ -53,7 +53,6 @@ const userMenu = computed(() => [
     { divider: true },
     { type: 'storage' },
     { text: 'Manage storage', action: 'storage', icon: 'hdd-stack' },
-    { text: 'Trash', action: 'trash', icon: 'trash' },
     { divider: true },
     { heading: 'Break Room' },
     { text: 'Crush', action: 'crush', icon: 'joystick' },
@@ -66,7 +65,7 @@ const userMenu = computed(() => [
 ]);
 const routeFor: Record<string, string> = {
     crush: '/break/crush', word: '/break/dwg', sodoku: '/break/sodoku',
-    trash: '/trash', storage: '/usage', profile: '/profile',
+    storage: '/usage', profile: '/profile',
 };
 function onUserMenu({ item }: { item: { action?: string } }): void {
     if (!item.action) return;
