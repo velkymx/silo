@@ -22,7 +22,7 @@ const toast = useToast();
 const { colorMode, toggleColorMode } = useColorMode();
 const themeIcon = computed(() => ({ light: 'sun-fill', dark: 'moon-stars-fill' }[colorMode.value] ?? 'circle-half'));
 const page = usePage();
-const user = computed(() => (page.props.auth as { user?: { name: string; avatar_url?: string | null } } | undefined)?.user);
+const user = computed(() => (page.props.auth as { user?: { id: number; name: string; avatar_url?: string | null } } | undefined)?.user);
 
 // Brand + global file search.
 const appName = import.meta.env.VITE_APP_NAME || 'Silo';
@@ -45,18 +45,23 @@ const storage = computed(() => (page.props.storage as { used: number; quota: num
 const { pct: storagePct, bars: storageBars } = useStorageMeter(computed(() => storage.value ?? { used: 0, quota: 0 }));
 const notifications = computed(() => (page.props.notifications as { unread_count: number; recent: Array<{ id: number; type: string; severity: string; title: string; url: string | null; read_at: string | null; created_at: string | null }> } | undefined) ?? { unread_count: 0, recent: [] });
 
+// Identity first, then storage, then diversions, then preferences; Logout
+// stands alone at the bottom. Standard user-menu IA instead of games-first.
 const userMenu = computed(() => [
+    { text: 'Settings', action: 'profile', icon: 'gear' },
+    { text: 'My wall', action: 'wall', icon: 'postcard' },
+    { divider: true },
+    { type: 'storage' },
+    { text: 'Manage storage', action: 'storage', icon: 'hdd-stack' },
+    { text: 'Trash', action: 'trash', icon: 'trash' },
+    { divider: true },
     { heading: 'Break Room' },
     { text: 'Crush', action: 'crush', icon: 'joystick' },
     { text: 'Word', action: 'word', icon: 'type' },
     { text: 'Sodoku', action: 'sodoku', icon: 'grid-3x3' },
     { divider: true },
-    { text: 'Trash', action: 'trash', icon: 'trash' },
-    { type: 'storage' },
-    { text: 'Manage storage', action: 'storage', icon: 'hdd-stack' },
-    { divider: true },
     { text: `Theme: ${colorMode.value.charAt(0).toUpperCase() + colorMode.value.slice(1)}`, action: 'theme', icon: themeIcon.value },
-    { text: 'Profile', action: 'profile', icon: 'person' },
+    { divider: true },
     { text: 'Logout', action: 'logout', icon: 'box-arrow-right' },
 ]);
 const routeFor: Record<string, string> = {
@@ -67,6 +72,7 @@ function onUserMenu({ item }: { item: { action?: string } }): void {
     if (!item.action) return;
     if (item.action === 'theme') { toggleColorMode(); return; }
     if (item.action === 'logout') { router.post('/logout'); return; }
+    if (item.action === 'wall') { router.visit(`/directory/${user.value?.id}`); return; }
     if (routeFor[item.action]) router.visit(routeFor[item.action]);
 }
 

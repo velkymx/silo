@@ -62,6 +62,17 @@ describe('ShellLayout chrome (the app-wide layout)', () => {
         expect(s.toggleColorMode).toHaveBeenCalled();
     });
 
+    it('opens my wall and settings from the user menu', async () => {
+        const wrapper = mountShell();
+        const wall = wrapper.findAll('button.dd-item').find((b) => b.text().includes('My wall'));
+        await wall!.trigger('click');
+        expect(s.visit).toHaveBeenCalledWith('/directory/1');
+
+        const settings = wrapper.findAll('button.dd-item').find((b) => b.text().includes('Settings'));
+        await settings!.trigger('click');
+        expect(s.visit).toHaveBeenCalledWith('/profile');
+    });
+
     it('logs out from the user menu', async () => {
         const wrapper = mountShell();
         const logout = wrapper.findAll('button.dd-item').find((b) => b.text().includes('Logout'));
