@@ -38,20 +38,20 @@ function rescan() {
             </VibeButton>
         </template>
 
-        <VibeRow class="justify-content-center">
-            <VibeCol :lg="8">
-                <VibeCard header="Index a mounted server folder">
+        <VibeRow class="g-3">
+            <VibeCol :lg="7">
+                <VibeCard header="Source">
                     <p class="text-muted">
                         Files in the import folder are indexed <strong>in place</strong> — they are
                         referenced, never copied or deleted. Re-scanning is safe to repeat; new files
                         are picked up and existing ones are not duplicated.
                     </p>
 
-                    <dl class="row mb-3 small">
+                    <dl class="row mb-0 small">
                         <dt class="col-sm-3 text-muted">Source path</dt>
                         <dd class="col-sm-9"><code>{{ root || '—' }}</code></dd>
                         <dt class="col-sm-3 text-muted">Files found</dt>
-                        <dd class="col-sm-9">
+                        <dd class="col-sm-9 mb-0">
                             <span v-if="fileCount === null" class="text-muted">Folder not mounted / empty.</span>
                             <VibeBadge v-else variant="secondary">{{ fileCount }}{{ fileCountCapped ? '+' : '' }}</VibeBadge>
                             <VibeButton variant="light" size="sm" class="ms-2" title="Refresh count" aria-label="Refresh file count" @click="refreshCount">
@@ -59,7 +59,11 @@ function rescan() {
                             </VibeButton>
                         </dd>
                     </dl>
+                </VibeCard>
+            </VibeCol>
 
+            <VibeCol :lg="5">
+                <VibeCard header="Scan settings">
                     <VibeFormGroup label="Top-level folder name">
                         <VibeFormInput v-model="name" placeholder="Imported" />
                     </VibeFormGroup>
