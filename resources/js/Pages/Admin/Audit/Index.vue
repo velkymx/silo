@@ -1,7 +1,6 @@
 <script setup>
-import AppLayout from '../../../Layouts/AppLayout.vue';
+import ShellPage from '../../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
-import PageError from '../../../Components/PageError.vue';
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { usePageLoading } from '../../../composables/usePageLoading';
@@ -52,12 +51,18 @@ const variant = (action) => {
     if (action.includes('download')) return 'info';
     return 'secondary';
 };
+
+function safeMeta(meta, indent) {
+    try {
+        return JSON.stringify(meta, null, indent);
+    } catch {
+        return '[unserializable]';
+    }
+}
 </script>
 
 <template>
-    <AppLayout>
-        <PageError />
-        <h4 class="mb-3"><VibeIcon icon="clipboard-check" class="me-2" />Audit Log</h4>
+    <ShellPage title="Audit Log" icon="clipboard-check" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
 
         <form class="row g-2 align-items-end mb-3" @submit.prevent="applyFilters">
             <div class="col-sm-4">
@@ -92,7 +97,7 @@ const variant = (action) => {
             hover
             striped
             small
-            searchable
+            :searchable="false"
             :per-page="25"
             empty-text="No audit events yet."
         >
@@ -103,9 +108,8 @@ const variant = (action) => {
                 <template v-if="item.meta">
                     <code
                         class="small d-inline-block align-top"
-                        :class="expanded.has(item.id) ? 'text-break' : 'text-truncate'"
-                        :style="expanded.has(item.id) ? 'white-space: pre-wrap; max-width: 360px' : 'max-width: 220px'"
-                    >{{ JSON.stringify(item.meta, null, expanded.has(item.id) ? 2 : 0) }}</code>
+                        :class="expanded.has(item.id) ? 'audit-meta audit-meta--expanded' : 'audit-meta text-truncate'"
+                    >{{ safeMeta(item.meta, expanded.has(item.id) ? 2 : 0) }}</code>
                     <VibeButton
                         variant="link"
                         size="sm"
@@ -116,5 +120,10 @@ const variant = (action) => {
                 </template>
             </template>
         </VibeDataTable>
-    </AppLayout>
+    </ShellPage>
 </template>
+
+<style scoped>
+.audit-meta { max-width: 220px; }
+.audit-meta--expanded { white-space: pre-wrap; max-width: 360px; }
+</style>

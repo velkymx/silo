@@ -28,7 +28,7 @@ class BackupTest extends TestCase
 
         $this->assertSame(Backup::STATUS_READY, $backup->status);
         $this->assertContains($backup->compression, ['bzip2', 'deflate']);
-        $this->assertTrue(Storage::disk(BackupService::DISK)->exists($backup->path));
+        $this->assertTrue(Storage::disk(BackupService::disk())->exists($backup->path));
         $this->assertGreaterThan(0, $backup->size);
     }
 

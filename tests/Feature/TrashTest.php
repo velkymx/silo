@@ -33,7 +33,8 @@ class TrashTest extends TestCase
 
         Storage::disk('public')->assertExists($file->path);
         $this->actingAs($user)->get('/trash')->assertInertia(
-            fn (Assert $p) => $p->component('Trash/Index')->has('items', 1)->where('items.0.id', $file->id)
+            fn (Assert $p) => $p->component('Files/Index')->where('section', 'trash')
+                ->has('files', 1)->where('files.0.id', $file->id)
         );
     }
 
@@ -48,7 +49,8 @@ class TrashTest extends TestCase
 
         // The child is trashed too, but only the folder shows as a root.
         $this->actingAs($user)->get('/trash')->assertInertia(
-            fn (Assert $p) => $p->has('items', 1)->where('items.0.id', $folder->id)
+            fn (Assert $p) => $p->component('Files/Index')->where('section', 'trash')
+                ->has('folders', 1)->where('folders.0.id', $folder->id)
         );
     }
 

@@ -27,7 +27,7 @@ class MetadataExtractor
             str_starts_with($mime, 'image/') => $this->image($disk, $file->path),
             str_starts_with($mime, 'audio/'),
             str_starts_with($mime, 'video/') => $this->media($disk, $file->path),
-            str_starts_with($mime, 'text/') => $this->text($disk->get($file->path)),
+            str_starts_with($mime, 'text/') => $this->text($this->readHead($disk, $file->path, 500)),
             default => [],
         };
     }
@@ -60,10 +60,21 @@ class MetadataExtractor
 
         try {
             $meta = [];
+            $photo = [];
+            $parser = app(PhotoMetadata::class);
 
-            if (($info = @getimagesize($local)) !== false) {
+            // getimagesize's $info side-channel also carries the APP13 (IPTC)
+            // segment, so one call yields dimensions + descriptive metadata.
+            $info13 = [];
+            if (($info = @getimagesize($local, $info13)) !== false) {
                 $meta['width'] = $info[0];
                 $meta['height'] = $info[1];
+            }
+            if (isset($info13['APP13']) && ($iptc = @iptcparse($info13['APP13'])) !== false && is_array($iptc)) {
+                $iptcMeta = $parser->fromIptc($iptc);
+                if ($iptcMeta !== []) {
+                    $photo['iptc'] = $iptcMeta;
+                }
             }
 
             if (extension_loaded('exif')) {
@@ -75,7 +86,20 @@ class MetadataExtractor
                         'taken_at' => $exif['DateTimeOriginal'] ?? null,
                         'orientation' => $exif['Orientation'] ?? null,
                     ], fn ($v) => $v !== null && $v !== ''));
+
+                    $photo = array_merge($photo, $parser->fromExif($exif));
                 }
+            }
+
+            // XMP lives as an XML packet near the head of the file.
+            $head = (string) @file_get_contents($local, false, null, 0, 256 * 1024);
+            $xmp = $parser->fromXmp($head);
+            if ($xmp !== []) {
+                $photo['xmp'] = $xmp;
+            }
+
+            if ($photo !== []) {
+                $meta['photo'] = $photo;
             }
 
             return $meta;
@@ -116,6 +140,22 @@ class MetadataExtractor
         return [$tmp, true];
     }
 
+    /** Read at most $bytes bytes from a file without loading the entire file into memory. */
+    private function readHead($disk, string $rel, int $bytes): string
+    {
+        try {
+            $stream = $disk->readStream($rel);
+            if ($stream === null) {
+                return '';
+            }
+            $data = (string) fread($stream, $bytes);
+            fclose($stream);
+            return $data;
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
     /**
      * Audio/video tags and playback info via getID3.
      *
@@ -124,14 +164,18 @@ class MetadataExtractor
      */
     protected function media($disk, string $path): array
     {
-        // getID3 needs a real local path; stage remote/disk contents in a temp file.
-        $tmp = tempnam(sys_get_temp_dir(), 'meta');
-        file_put_contents($tmp, $disk->get($path));
+        // getID3 needs a real local path; use localPath() to avoid loading into memory.
+        [$local, $temp] = $this->localPath($disk, $path);
+        if ($local === null) {
+            return [];
+        }
 
         try {
-            $data = (new getID3)->analyze($tmp);
+            $data = (new getID3)->analyze($local);
         } finally {
-            @unlink($tmp);
+            if ($temp) {
+                @unlink($local);
+            }
         }
 
         $tags = $data['tags']['id3v2'] ?? $data['tags']['id3v1'] ?? $data['tags']['vorbiscomment'] ?? [];

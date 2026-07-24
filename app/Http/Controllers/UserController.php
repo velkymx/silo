@@ -24,8 +24,11 @@ class UserController extends Controller
 
         return Inertia::render('Profile/Edit', [
             'user' => array_merge(
-                $user->only('id', 'name', 'email', 'group_id'),
-                ['avatar_url' => $user->avatar_path ? route('users.avatar', $user) : null],
+                $user->only('id', 'name', 'email', 'group_id', 'title', 'department', 'phone', 'location', 'bio', 'blocked_keywords'),
+                [
+                    'start_date' => $user->start_date?->format('Y-m-d'),
+                    'avatar_url' => $user->avatar_path ? route('users.avatar', $user) : null,
+                ],
             ),
             'groups' => \App\Models\Group::all(['id', 'name']),
         ]);
@@ -39,8 +42,10 @@ class UserController extends Controller
         $user = Auth::user();
         $disk = Storage::disk(ThumbnailGenerator::disk());
 
-        // Normalize to a 256px square JPEG.
-        $image = (new ImageManager(Driver::class))->decodeBinary($request->file('avatar')->get());
+        // Normalize to a 256px square JPEG. GD holds the decoded image in
+        // memory; capped at 5 MB by the request validation above so peak
+        // memory is bounded (~10 MB transient: decode + cover + encode).
+        $image = (new ImageManager(Driver::class))->decodePath($request->file('avatar')->getRealPath());
         $image->cover(256, 256);
         $path = 'avatars/'.$user->id.'/'.Str::random(24).'.jpg';
         $disk->put($path, (string) $image->encode(new JpegEncoder(quality: 85)));
@@ -72,17 +77,38 @@ class UserController extends Controller
         // password (Laravel's `current_password` rule verifies it).
         $sensitiveChange = $request->filled('password') || $request->input('email') !== $user->email;
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed', // Password confirmation required if provided
             'current_password' => [\Illuminate\Validation\Rule::requiredIf($sensitiveChange), 'current_password'],
+            // Directory profile fields (all optional, self-editable).
+            'title' => 'nullable|string|max:120',
+            'department' => 'nullable|string|max:120',
+            'phone' => 'nullable|string|max:40',
+            'location' => 'nullable|string|max:120',
+            'bio' => 'nullable|string|max:2000',
+            'start_date' => 'nullable|date',
+            'blocked_keywords' => 'nullable|array|max:50',
+            'blocked_keywords.*' => 'nullable|string|max:60',
         ]);
+
+        // Normalize the keyword list: trim, drop empties, dedupe, cap at 50.
+        $blockedKeywords = collect($request->input('blocked_keywords', []))
+            ->map(fn ($k) => trim((string) $k))
+            ->filter(fn ($k) => $k !== '')
+            ->unique()
+            ->take(50)
+            ->values()
+            ->all();
 
         // Update user details. Group membership is NOT self-assignable — only
         // admins set it (privilege escalation otherwise).
         $user->name = $request->name;
         $user->email = $request->email;
+        $user->fill(collect($validated)
+            ->only(['title', 'department', 'phone', 'location', 'bio', 'start_date'])->all());
+        $user->blocked_keywords = $blockedKeywords;
 
         // Update password if provided
         if ($request->filled('password')) {

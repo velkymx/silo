@@ -13,12 +13,11 @@ function submit() {
     <GuestLayout title="Confirm password">
         <p class="text-muted small">Please confirm your password before continuing.</p>
         <form @submit.prevent="submit">
-            <VibeFormGroup
+<VibeFormGroup
                 label="Password"
-                :validation-state="form.errors.password ? 'invalid' : null"
-                :validation-message="form.errors.password"
-            >
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" />
+                :error="form.errors.password"
+             required>
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="current-password" show-toggle />
             </VibeFormGroup>
 
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">

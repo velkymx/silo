@@ -28,6 +28,9 @@ class BackupController extends Controller
                 'status' => $b->status,
                 'compression' => $b->compression,
                 'note' => $b->note,
+                // Integrity: a backup without a checksum cannot be verified and
+                // will be refused at restore time.
+                'verified' => $b->checksum !== null,
                 'created_by' => $b->creator?->name,
                 'created_at' => $b->created_at->format('Y-m-d H:i'),
             ]);
@@ -74,6 +77,26 @@ class BackupController extends Controller
         Audit::log('backup.download', null, ['backup_id' => $backup->id]);
 
         return Storage::disk($backup->disk)->download($backup->path, $backup->filename);
+    }
+
+    // Dry-run / test restore: verify a backup is recoverable without touching
+    // live data. Runs synchronously and reports the outcome via flash.
+    public function verify(Backup $backup, BackupService $service)
+    {
+        abort_unless($backup->status === Backup::STATUS_READY, 404);
+
+        $report = $service->dryRun($backup);
+        Audit::log('backup.verify', null, ['backup_id' => $backup->id, 'ok' => $report['ok']]);
+
+        if ($report['ok']) {
+            $tables = $report['database']['tables'];
+
+            return back()->with('success', "Test restore passed — database OK ({$tables} tables), all blobs accounted for. This backup is restorable.");
+        }
+
+        $reason = $report['error'] ?? $report['database']['detail'];
+
+        return back()->with('error', "Test restore FAILED: {$reason}");
     }
 
     // Restore from a backup. Destructive — overwrites the live DB + files.

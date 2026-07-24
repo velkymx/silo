@@ -27,8 +27,16 @@ interface PromptOptions extends ConfirmOptions {
     placeholder?: string;
 }
 
+type DialogValue = boolean | string | null;
+
+interface QueueItem {
+    mode: DialogMode;
+    options: ConfirmOptions | PromptOptions;
+    resolve: (value: DialogValue) => void;
+}
+
 // Module-level singleton: every component that calls confirm()/prompt() drives
-// the same state, and a single <VibeModal> host (mounted in AppLayout) renders
+// the same state, and a single <VibeModal> host (the shared DialogHost component) renders
 // it. Replaces the unstyleable native window.confirm/window.prompt.
 const state = reactive<DialogState>({
     open: false,
@@ -42,43 +50,51 @@ const state = reactive<DialogState>({
     placeholder: '',
 });
 
-let resolver: ((value: boolean | string | null) => void) | null = null;
+// FIFO queue + the resolver for the dialog currently on screen. A second
+// confirm()/prompt() raised before the first settles is queued instead of
+// clobbering the in-flight resolver (which would hang the first caller forever).
+const queue: QueueItem[] = [];
+let currentResolver: ((value: DialogValue) => void) | null = null;
 
-function settle(value: boolean | string | null): void {
-    const fn = resolver;
-    resolver = null;
+function openNext(): void {
+    if (state.open || queue.length === 0) {
+        return;
+    }
+    const next = queue.shift()!;
+    currentResolver = next.resolve;
+    state.mode = next.mode;
+    state.title = next.options.title ?? (next.mode === 'prompt' ? 'Enter a value' : 'Please confirm');
+    state.message = next.options.message;
+    state.confirmLabel = next.options.confirmLabel ?? (next.mode === 'prompt' ? 'OK' : 'Confirm');
+    state.cancelLabel = next.options.cancelLabel ?? 'Cancel';
+    state.variant = next.options.variant ?? 'primary';
+    state.inputValue = next.mode === 'prompt' ? ((next.options as PromptOptions).value ?? '') : '';
+    state.placeholder = next.mode === 'prompt' ? ((next.options as PromptOptions).placeholder ?? '') : '';
+    state.open = true;
+}
+
+function enqueue(mode: DialogMode, options: ConfirmOptions | PromptOptions): Promise<DialogValue> {
+    return new Promise<DialogValue>((resolve) => {
+        queue.push({ mode, options, resolve });
+        openNext();
+    });
+}
+
+function settle(value: DialogValue): void {
+    const fn = currentResolver;
+    currentResolver = null;
     state.open = false;
     fn?.(value);
+    // Let the modal close transition begin before showing the next dialog.
+    setTimeout(openNext, 0);
 }
 
 function confirm(options: ConfirmOptions): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-        resolver = resolve as (value: boolean | string | null) => void;
-        state.mode = 'confirm';
-        state.title = options.title ?? 'Please confirm';
-        state.message = options.message;
-        state.confirmLabel = options.confirmLabel ?? 'Confirm';
-        state.cancelLabel = options.cancelLabel ?? 'Cancel';
-        state.variant = options.variant ?? 'primary';
-        state.inputValue = '';
-        state.placeholder = '';
-        state.open = true;
-    });
+    return enqueue('confirm', options) as Promise<boolean>;
 }
 
 function prompt(options: PromptOptions): Promise<string | null> {
-    return new Promise<string | null>((resolve) => {
-        resolver = resolve as (value: boolean | string | null) => void;
-        state.mode = 'prompt';
-        state.title = options.title ?? 'Enter a value';
-        state.message = options.message;
-        state.confirmLabel = options.confirmLabel ?? 'OK';
-        state.cancelLabel = options.cancelLabel ?? 'Cancel';
-        state.variant = options.variant ?? 'primary';
-        state.inputValue = options.value ?? '';
-        state.placeholder = options.placeholder ?? '';
-        state.open = true;
-    });
+    return enqueue('prompt', options) as Promise<string | null>;
 }
 
 function accept(): void {

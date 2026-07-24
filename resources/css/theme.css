@@ -7,6 +7,16 @@
     --bs-link-color: #6366f1;
     --bs-link-color-rgb: 99, 102, 241;
     --bs-link-hover-color: #4f46e5;
+    /* Spacing scale (1 unit = 0.25rem ≈ 4px). Components reach for these
+       instead of hard-coded `mb-N`/`mt-N` to keep the design coherent. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    /* Border-radius scale. */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
 }
 
 .btn-primary {
@@ -27,21 +37,6 @@
     --bs-btn-hover-border-color: #6366f1;
     --bs-btn-active-bg: #6366f1;
     --bs-btn-active-border-color: #6366f1;
-}
-
-/* Make "light" buttons follow the color mode (Bootstrap's btn-light is a fixed
-   color and stays white in dark mode). Used for the theme pill, user menu,
-   and row kebabs. */
-.btn-light {
-    --bs-btn-color: var(--bs-body-color);
-    --bs-btn-bg: var(--bs-tertiary-bg);
-    --bs-btn-border-color: var(--bs-border-color);
-    --bs-btn-hover-color: var(--bs-body-color);
-    --bs-btn-hover-bg: var(--bs-secondary-bg);
-    --bs-btn-hover-border-color: var(--bs-border-color);
-    --bs-btn-active-color: var(--bs-body-color);
-    --bs-btn-active-bg: var(--bs-secondary-bg);
-    --bs-btn-active-border-color: var(--bs-border-color);
 }
 
 /* Soft, app-like active nav (tinted instead of solid fill) */
@@ -113,26 +108,162 @@
     font-size: 0.85rem;
 }
 
-/* FE-P4-2/P4-8: subtle motion polish. Respects reduced-motion. */
-.modal.fade .modal-dialog {
-    transform: scale(0.97) translateY(-6px);
-    transition: transform 0.18s ease-out;
-}
-.modal.show .modal-dialog {
-    /* `none` (not scale(1)) so no stacking context lingers to interfere with
-       absolutely-positioned descendants like the lightbox carousel slides. */
-    transform: none;
-}
+/* Library handles disabled-button contrast, placeholder contrast,
+   icon-only 44×44 touch targets, modal motion polish, prefers-reduced-motion.
+   No shim overrides here. */
+
+/* Per-component transition for sidebar/list rows. The library does not
+   provide this. Local app-level design token. */
 .app-sidebar .side-row,
+.side-row,
 .list-row,
 .photo-cell {
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-    .modal.fade .modal-dialog,
     .app-sidebar .side-row,
+    .side-row,
     .list-row,
     .photo-cell {
         transition: none;
     }
+}
+
+/* ---------------------------------------------------------------------------
+   Shell explorer-table chrome, shared by every ShellLayout table surface
+   (Files, Bookmarks, Vault, Notes, Directory). Pages opt in with
+   .st-table-wrap on the scroll container and st-* column classes.
+--------------------------------------------------------------------------- */
+.min-w-0 {
+    min-width: 0;
+}
+
+/* Page top-bar breadcrumbs. Two jobs:
+   1) Flatten Bootstrap's default `margin-bottom: 1rem` (it lives on the inner
+      <ol class="breadcrumb">, not the <nav> the mb-0 utility sits on), so every
+      page aligns identically.
+   2) Give the crumbs the same visual weight as the /rss h5 icon+title: the
+      whole trail reads at h5 size (1.25rem), the active/last crumb is bold and
+      body-colored, ancestors are muted, and the divider is a chevron. */
+.breadcrumb {
+    --bs-breadcrumb-divider: '›';
+    margin-bottom: 0;
+    align-items: center;
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+.breadcrumb .breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    color: var(--bs-secondary-color);
+}
+.breadcrumb .breadcrumb-item.active {
+    color: var(--bs-body-color);
+    font-weight: 600;
+}
+.breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    color: var(--bs-secondary-color);
+}
+/* Ancestor crumbs render as <a> (when they have an href) or a bare <button>
+   (click-only, e.g. ShellPage parents like "Admin"). Strip the default button
+   chrome so both read as plain muted text, not a form control in the trail. */
+.breadcrumb .breadcrumb-item a,
+.breadcrumb .breadcrumb-item button {
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+.breadcrumb .breadcrumb-item a:hover,
+.breadcrumb .breadcrumb-item button:hover {
+    color: var(--bs-body-color);
+    text-decoration: underline;
+}
+.st-table-wrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg);
+}
+.st-table-wrap td {
+    vertical-align: middle;
+}
+.st-table-wrap .st-col-select,
+.st-table-wrap .st-col-actions,
+.st-table-wrap .st-col-meta {
+    width: 1%;
+    white-space: nowrap;
+}
+/* The row checkbox stays hidden until its row is hovered/focused or any
+   selection exists, so it doesn't compete with the row's identity cell. */
+.st-table-wrap .st-select-check {
+    opacity: 0;
+    transition: opacity 0.15s;
+    cursor: pointer;
+}
+.st-table-wrap tr:hover .st-select-check,
+.st-table-wrap tr:focus-within .st-select-check,
+.st-table-wrap.st-has-selection .st-select-check {
+    opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Quill (VibeFormWysiwyg) dark mode. Quill's snow theme hardcodes light
+   chrome (#ccc borders, #444 icon strokes, white pickers); it never reacts
+   to Bootstrap color modes. Re-skin it with theme tokens under dark mode so
+   the wall composer and HTML editor follow the app theme. */
+[data-bs-theme='dark'] .ql-toolbar.ql-snow,
+[data-bs-theme='dark'] .ql-container.ql-snow {
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme='dark'] .ql-toolbar.ql-snow {
+    background: var(--bs-tertiary-bg);
+}
+[data-bs-theme='dark'] .ql-container.ql-snow {
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-editor.ql-blank::before {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-stroke,
+[data-bs-theme='dark'] .ql-snow .ql-stroke-miter {
+    stroke: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-fill,
+[data-bs-theme='dark'] .ql-snow .ql-stroke.ql-fill {
+    fill: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-picker {
+    color: var(--bs-body-color);
+}
+[data-bs-theme='dark'] .ql-snow .ql-picker-options {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color) !important;
+}
+[data-bs-theme='dark'] .ql-snow .ql-tooltip {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+    box-shadow: none;
+}
+[data-bs-theme='dark'] .ql-snow .ql-tooltip input[type='text'] {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+/* Hover/active keep Quill's primary-blue accent but on themed strokes. */
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button:hover .ql-stroke,
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+    stroke: var(--bs-primary);
+}
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button:hover .ql-fill,
+[data-bs-theme='dark'] .ql-snow.ql-toolbar button.ql-active .ql-fill {
+    fill: var(--bs-primary);
 }

@@ -12,7 +12,7 @@ interface BusyGuardOptions {
 
 interface BusyGuard {
     busy: Ref<boolean>;
-    run: (action: () => void) => void;
+    run: (action: () => void | Promise<void>) => void | Promise<void>;
     release: () => void;
 }
 
@@ -29,14 +29,20 @@ export function useBusyGuard(options: BusyGuardOptions = {}): BusyGuard {
         busy.value = false;
     }
 
-    function run(action: () => void): void {
+    function run(action: () => void | Promise<void>): void | Promise<void> {
         if (busy.value) return;
         busy.value = true;
+        let result: void | Promise<void>;
         try {
-            action();
-        } finally {
+            result = action();
+        } catch {
             if (autoRelease) release();
+            return;
         }
+        if (result instanceof Promise) {
+            return result.finally(() => { if (autoRelease) release(); });
+        }
+        if (autoRelease) release();
     }
 
     return { busy, run, release };

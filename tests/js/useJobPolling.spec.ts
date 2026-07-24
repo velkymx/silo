@@ -26,8 +26,9 @@ describe('useJobPolling', () => {
         const wrapper = harness(files, onTick);
         wrapper.vm.api.start();
 
+        // immediate tick on start + interval ticks at 1000ms and 2000ms = 3 total in 2500ms
         vi.advanceTimersByTime(2500);
-        expect(onTick).toHaveBeenCalledTimes(2);
+        expect(onTick).toHaveBeenCalledTimes(3);
 
         files.value = [{ status: 'ready' }];
         vi.advanceTimersByTime(1000); // next tick sees no pending → stops
@@ -60,9 +61,10 @@ describe('useJobPolling', () => {
         const files = ref<Processable[]>([{ status: 'pending' }]);
         const onTick = vi.fn();
         const wrapper = harness(files, onTick);
-        wrapper.vm.api.start();
+        wrapper.vm.api.start(); // triggers one immediate tick
+        const callsBeforeUnmount = onTick.mock.calls.length;
         wrapper.unmount();
         vi.advanceTimersByTime(5000);
-        expect(onTick).not.toHaveBeenCalled();
+        expect(onTick.mock.calls.length).toBe(callsBeforeUnmount); // no further ticks after unmount
     });
 });

@@ -13,10 +13,10 @@ export interface QuickLookItem {
  * subsequent spacebar stay on the same item — fixing the row-click / Quick
  * Look desync (H10).
  */
-export function useQuickLook<T extends QuickLookItem>(files: Ref<T[]>) {
+export function useQuickLook<T extends QuickLookItem>(files: Ref<T[]>, initialIndex = 0) {
     const quickOpen = ref(false);
-    const quickIndex = ref(0);
-    const selectedIndex = ref(0);
+    const quickIndex = ref(Math.min(Math.max(initialIndex, 0), Math.max(files.value.length - 1, 0)));
+    const selectedIndex = ref(quickIndex.value);
 
     const quickFile = computed<T | null>(() => files.value[quickIndex.value] ?? null);
 

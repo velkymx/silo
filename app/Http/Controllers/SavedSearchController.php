@@ -7,13 +7,26 @@ use Illuminate\Http\Request;
 
 class SavedSearchController extends Controller
 {
-    private const KEYS = ['search', 'date_from', 'date_to', 'size_min', 'size_max', 'ftype', 'tag'];
+    /**
+     * The two scopes share a table. The `kind` column (computed from the
+     * params) distinguishes a file smart folder (has `search` or other
+     * file-side keys) from a global saved search (has `q`).
+     *
+     * @var array<int, string>
+     */
+    private const FILE_KEYS = ['search', 'date_from', 'date_to', 'size_min', 'size_max', 'ftype', 'tag', 'folder'];
+
+    /**
+     * @var array<int, string>
+     */
+    private const GLOBAL_KEYS = ['q'];
 
     public function store(Request $request)
     {
         $data = $request->validate([
             'name' => 'required|string|max:120',
             'params' => 'required|array',
+            'params.q' => 'nullable|string|max:255',
             'params.search' => 'nullable|string|max:255',
             'params.date_from' => 'nullable|date',
             'params.date_to' => 'nullable|date',
@@ -21,11 +34,13 @@ class SavedSearchController extends Controller
             'params.size_max' => 'nullable|numeric',
             'params.ftype' => 'nullable|string|max:30',
             'params.tag' => 'nullable|integer',
+            'params.folder' => 'nullable|integer',
+            'is_favorite' => 'boolean',
         ]);
 
-        // Keep only known filter keys with non-empty values.
+        $allowed = array_merge(self::FILE_KEYS, self::GLOBAL_KEYS);
         $params = collect($data['params'])
-            ->only(self::KEYS)
+            ->only($allowed)
             ->filter(fn ($v) => $v !== null && $v !== '')
             ->all();
 
@@ -33,16 +48,28 @@ class SavedSearchController extends Controller
             'owner_id' => auth()->id(),
             'name' => $data['name'],
             'params' => $params,
+            'is_favorite' => $data['is_favorite'] ?? false,
         ]);
 
-        return back()->with('success', 'Smart folder saved.');
+        return back()->with('success', empty($params['q'] ?? null) ? 'Smart folder saved.' : 'Search saved.');
+    }
+
+    public function toggleFavorite(SavedSearch $savedSearch)
+    {
+        $this->authorize('update', $savedSearch);
+        $savedSearch->update(['is_favorite' => ! $savedSearch->is_favorite]);
+
+        return back()->with('success', $savedSearch->fresh()->is_favorite ? 'Pinned to sidebar.' : 'Unpinned from sidebar.');
     }
 
     public function destroy(SavedSearch $savedSearch)
     {
-        abort_unless($savedSearch->owner_id === auth()->id(), 403);
+        $this->authorize('delete', $savedSearch);
         $savedSearch->delete();
 
-        return back()->with('success', 'Smart folder removed.');
+        $wasGlobal = ! empty($savedSearch->params['q'] ?? null);
+        $msg = $wasGlobal ? 'Saved search removed.' : 'Smart folder removed.';
+
+        return back()->with('success', $msg);
     }
 }

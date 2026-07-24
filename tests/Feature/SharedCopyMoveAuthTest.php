@@ -53,6 +53,27 @@ class SharedCopyMoveAuthTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_write_grantee_cannot_move_owners_file_into_their_own_folder(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $grantee = User::factory()->create();
+        $file = File::factory()->for($owner, 'owner')->create();
+        $granteeFolder = File::factory()->for($grantee, 'owner')->folder()->create();
+
+        // Write grant → passes the update policy, but the move must not relocate
+        // the file out of the owner's tree (it would vanish from the owner's view).
+        Permission::factory()->forUser($grantee)->ability(Permission::ABILITY_WRITE)->create([
+            'file_id' => $file->id,
+        ]);
+
+        $this->actingAs($grantee)
+            ->post("/files/{$file->id}/move", ['target_id' => $granteeFolder->id])
+            ->assertSessionHasErrors('target_id');
+
+        $this->assertNull($file->fresh()->parent_id);
+    }
+
     public function test_grantee_can_copy_a_viewable_file_into_their_own_folder(): void
     {
         Storage::fake('public');

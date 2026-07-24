@@ -1,8 +1,7 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import AppLayout from '../../../Layouts/AppLayout.vue';
+import ShellPage from '../../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../../Components/LoadingSkeleton.vue';
-import PageError from '../../../Components/PageError.vue';
 import { usePageLoading } from '../../../composables/usePageLoading';
 
 defineProps({
@@ -16,6 +15,8 @@ const columns = [
     { key: 'email', label: 'Email' },
     { key: 'group', label: 'Group', formatter: (v) => v ?? '—' },
     { key: 'is_admin', label: 'Admin' },
+    { key: 'status', label: 'Status', sortable: false, searchable: false },
+    { key: 'quota_mb', label: 'Quota', formatter: (v) => (v === null || v === undefined ? 'Default' : (v === 0 ? 'Unlimited' : `${v} MB`)) },
     { key: 'actions', label: '', sortable: false, searchable: false },
 ];
 
@@ -25,14 +26,17 @@ function edit(id) {
 </script>
 
 <template>
-    <AppLayout>
-        <PageError />
-        <h4 class="mb-3"><VibeIcon icon="people" class="me-2" />Users</h4>
+    <ShellPage title="Users" icon="people" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
         <LoadingSkeleton v-if="loading" :rows="6" :cols="5" />
-        <VibeDataTable v-else :items="users" :columns="columns" row-key="id" hover striped empty-text="No users.">
+        <VibeDataTable v-else :items="users" :columns="columns" row-key="id" hover striped :searchable="false" empty-text="No users.">
             <template #cell(is_admin)="{ item }">
                 <VibeBadge :variant="item.is_admin ? 'success' : 'secondary'">
                     {{ item.is_admin ? 'Admin' : 'User' }}
+                </VibeBadge>
+            </template>
+            <template #cell(status)="{ item }">
+                <VibeBadge :variant="item.disabled ? 'danger' : 'success'">
+                    {{ item.disabled ? 'Disabled' : 'Active' }}
                 </VibeBadge>
             </template>
             <template #cell(actions)="{ item }">
@@ -41,5 +45,5 @@ function edit(id) {
                 </VibeButton>
             </template>
         </VibeDataTable>
-    </AppLayout>
+    </ShellPage>
 </template>

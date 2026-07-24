@@ -110,4 +110,17 @@ class FileManagerTest extends TestCase
     {
         $this->get(route('files.index'))->assertRedirect(route('login'));
     }
+
+    public function test_index_does_not_ship_section_counts(): void
+    {
+        // Recent/Starred/Trash are global rail states, not Files subsections —
+        // the sidebar nav (and its counts payload) was removed.
+        $user = User::factory()->create();
+        File::factory()->for($user, 'owner')->create(['is_dir' => false]);
+
+        $this->actingAs($user)->get('/')->assertInertia(fn ($page) => $page
+            ->component('Files/Index')
+            ->missing('sectionCounts')
+        );
+    }
 }

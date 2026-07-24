@@ -1,4 +1,5 @@
 import { computed, watch, onBeforeUnmount, type Ref } from 'vue';
+import { FileStatus } from '../lib/constants';
 
 export interface Processable {
     status?: string;
@@ -10,7 +11,7 @@ export interface Processable {
  * remain. Restarts when new pending items appear; cleans up on unmount.
  */
 export function useJobPolling(items: Ref<Processable[]>, onTick: () => void, interval = 3000) {
-    const hasPending = computed(() => items.value.some((f) => f.status === 'pending'));
+    const hasPending = computed(() => items.value.some((f) => f.status === FileStatus.PENDING));
     let timer: ReturnType<typeof setInterval> | null = null;
 
     function stop(): void {
@@ -22,6 +23,7 @@ export function useJobPolling(items: Ref<Processable[]>, onTick: () => void, int
 
     function start(): void {
         if (timer || !hasPending.value) return;
+        onTick();
         timer = setInterval(() => {
             if (!hasPending.value) {
                 stop();

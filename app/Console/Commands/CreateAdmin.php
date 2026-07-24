@@ -30,7 +30,7 @@ class CreateAdmin extends Command
         }
 
         if ($password === '') {
-            $this->error('No password set and user does not exist. Pass --password=… (or set ADMIN_PASSWORD).');
+            $this->error('No password provided and user does not exist. Pass --password=… to set one.');
 
             return self::FAILURE;
         }

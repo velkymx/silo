@@ -1,0 +1,244 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount, flushPromises, VueWrapper } from '@vue/test-utils';
+
+const h = vi.hoisted(() => ({
+    post: vi.fn(),
+    visit: vi.fn(),
+    del: vi.fn(),
+    routerPut: vi.fn(),
+    put: vi.fn(() => Promise.resolve({})),
+    get: vi.fn(() => Promise.resolve({ backlinks: [] as Array<Record<string, unknown>> })),
+    getText: vi.fn(() => Promise.resolve('# Hello')),
+    prompt: vi.fn(() => Promise.resolve('Projects')),
+    confirm: vi.fn(() => Promise.resolve(true)),
+}));
+
+vi.mock('@inertiajs/vue3', () => ({
+    router: { post: h.post, visit: h.visit, delete: h.del, put: h.routerPut, on: vi.fn(() => vi.fn()) },
+    usePage: () => ({ url: '/notes', props: { auth: { user: { id: 1, name: 'QA' } }, storage: { used: 0, quota: 0 } } }),
+    Link: { name: 'Link', template: '<a><slot /></a>' },
+}));
+vi.mock('@/lib/http', () => ({ http: { get: h.get, put: h.put }, getText: h.getText }));
+vi.mock('@/composables/useConfirm', () => ({
+    usePrompt: () => ({ prompt: h.prompt }),
+    useConfirm: () => ({ confirm: h.confirm }),
+    useDialogHost: () => ({
+        state: { open: false, mode: 'confirm', title: '', message: '', inputValue: '', placeholder: '', confirmLabel: 'OK', cancelLabel: 'Cancel', variant: 'primary' },
+        accept: vi.fn(),
+        cancel: vi.fn(),
+    }),
+}));
+
+import NotesIndex from '@/Pages/Notes/Index.vue';
+import NotesSidebar from '@/Components/Notes/NotesSidebar.vue';
+import FolderAccordion from '@/Components/FolderAccordion.vue';
+import BacklinksPanel from '@/Components/Notes/BacklinksPanel.vue';
+
+const notes = [
+    { id: 1, title: 'First', raw_url: '/raw/1', parent_id: 5, updated_at: '2026-06-22 10:00', tags: [{ id: 9, name: 'todo' }] },
+    { id: 2, title: 'Second', raw_url: '/raw/2', parent_id: 12, updated_at: '2026-06-22 11:00', tags: [] },
+];
+
+const mountPage = () => mount(NotesIndex, {
+    props: { rootId: 5, folders: [{ id: 12, name: 'Sub', parent_id: 5 }], notes, tags: [{ id: 9, name: 'todo' }] },
+    global: { stubs: { MarkdownEditor: { template: '<div class="md-stub" />', props: ['modelValue', 'enableLinks'] } } },
+});
+
+function selectRow(wrapper: VueWrapper, id: number) {
+    const table = wrapper.findComponent({ name: 'VibeDataTable' });
+    const row = (table.props('items') as Array<{ id: number }>).find((n) => n.id === id);
+    table.vm.$emit('row-clicked', row, 0);
+}
+
+beforeEach(() => {
+    Object.values(h).forEach((f) => f.mockClear());
+    h.getText.mockResolvedValue('# Hello');
+    h.get.mockResolvedValue({ backlinks: [] });
+});
+
+describe('Notes/Index', () => {
+    it('lists the notes in the explorer table', () => {
+        const wrapper = mountPage();
+        expect(wrapper.findComponent({ name: 'VibeDataTable' }).exists()).toBe(true);
+        expect(wrapper.text()).toContain('First');
+        expect(wrapper.text()).toContain('Second');
+    });
+
+    it('collapses the editor pane until a note is selected', async () => {
+        const wrapper = mountPage();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);
+        selectRow(wrapper, 2);
+        await flushPromises();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(true);
+    });
+
+    it('loads a note body when a row is selected', async () => {
+        const wrapper = mountPage();
+        selectRow(wrapper, 2);
+        await flushPromises();
+        expect(h.getText).toHaveBeenCalledWith('/raw/2');
+    });
+
+    it('toggles distraction-free fullscreen editing and exits on Escape', async () => {
+        const wrapper = mountPage();
+        selectRow(wrapper, 2);
+        await flushPromises();
+
+        expect(wrapper.find('.notes-fullscreen').exists()).toBe(false);
+        await wrapper.get('[data-testid="notes-fullscreen"]').trigger('click');
+        expect(wrapper.find('.notes-fullscreen').exists()).toBe(true);
+        // Backlinks hidden for focus.
+        expect(wrapper.findComponent(BacklinksPanel).exists()).toBe(false);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('.notes-fullscreen').exists()).toBe(false);
+    });
+
+    it('shows a heading outline for the open note', async () => {
+        h.getText.mockResolvedValue('# Alpha\n\nbody\n\n## Beta');
+        const wrapper = mountPage();
+        selectRow(wrapper, 1);
+        await flushPromises();
+        expect(wrapper.text()).toContain('Alpha');
+        expect(wrapper.text()).toContain('Beta');
+        // Clicking an outline entry must not throw.
+        await wrapper.findAll('.dd-item')[0]?.trigger('click');
+    });
+
+    it('creates a note in the current folder via the New note button', async () => {
+        const wrapper = mountPage();
+        await wrapper.findComponent(FolderAccordion).vm.$emit('select-folder', 12);
+        await wrapper.get('[title="New note"]').trigger('click');
+        expect(h.post).toHaveBeenCalledWith('/notes', { name: 'Untitled', parent_id: 12 }, expect.any(Object));
+    });
+
+    it('filters the list by tag path', async () => {
+        const wrapper = mountPage();
+        await wrapper.findComponent(NotesSidebar).vm.$emit('select-tag', 'todo');
+        await flushPromises();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
+        expect(titles).toEqual(['First']);
+    });
+
+    it('a parent tag includes nested-child notes', async () => {
+        const wrapper = mount(NotesIndex, {
+            props: {
+                rootId: 5,
+                folders: [],
+                notes: [
+                    { id: 1, title: 'Parent', raw_url: '/raw/1', parent_id: 5, updated_at: '2026-06-22 10:00', tags: [{ id: 1, name: 'work' }] },
+                    { id: 2, title: 'Child', raw_url: '/raw/2', parent_id: 5, updated_at: '2026-06-22 11:00', tags: [{ id: 2, name: 'work/projects' }] },
+                    { id: 3, title: 'Other', raw_url: '/raw/3', parent_id: 5, updated_at: '2026-06-22 12:00', tags: [{ id: 3, name: 'home' }] },
+                ],
+                tags: [{ id: 1, name: 'work' }, { id: 2, name: 'work/projects' }, { id: 3, name: 'home' }],
+            },
+            global: { stubs: { MarkdownEditor: { template: '<div />', props: ['modelValue', 'enableLinks'] } } },
+        });
+        await wrapper.findComponent(NotesSidebar).vm.$emit('select-tag', 'work');
+        await flushPromises();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
+        expect(titles).toEqual(['Parent', 'Child']);
+    });
+
+    it('filters the list by folder via the accordion', async () => {
+        const wrapper = mountPage();
+        await wrapper.get('[data-folder="12"]').trigger('click');
+        await flushPromises();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const titles = (table.props('items') as Array<{ title: string }>).map((n) => n.title);
+        expect(titles).toEqual(['Second']);
+    });
+
+    it('ME-14: in-flight autosave does not mutate state after unmount', async () => {
+        vi.useFakeTimers();
+        let resolveAutosave!: () => void;
+        h.put.mockReturnValueOnce(new Promise<void>((res) => { resolveAutosave = res; }) as any);
+
+        const namedStub = { name: 'MarkdownEditor', template: '<div class="md-stub" />', props: ['modelValue', 'enableLinks'], emits: ['update:modelValue'] };
+        const wrapper = mount(NotesIndex, {
+            props: { rootId: 5, folders: [], notes, tags: [] },
+            global: { stubs: { MarkdownEditor: namedStub } },
+        });
+        selectRow(wrapper, 1);
+        await flushPromises();
+        // Emit content change from the editor stub to trigger autosave debounce.
+        wrapper.findComponent({ name: 'MarkdownEditor' }).vm.$emit('update:modelValue', 'new content');
+        vi.runAllTimers(); // fire the 800ms debounce → autosave starts
+        await flushPromises(); // let the async autosave function run up to the await
+        // Unmount before the http.put promise resolves.
+        wrapper.unmount();
+        // Resolve the in-flight request — must not throw or mutate dead state.
+        expect(() => resolveAutosave()).not.toThrow();
+        await flushPromises();
+        vi.useRealTimers();
+    });
+
+    it('creates a folder via the New Folder button', async () => {
+        const wrapper = mountPage();
+        await wrapper.get('[data-testid="fa-new"]').trigger('click');
+        await flushPromises();
+        expect(h.prompt).toHaveBeenCalled();
+        expect(h.post).toHaveBeenCalledWith('/notes/folders', { name: 'Projects', parent_id: null }, expect.any(Object));
+    });
+
+    it('checkbox multi-select surfaces the bulk-delete bar', async () => {
+        const wrapper = mountPage();
+        const checks = wrapper.get('[data-pane="contents"]').findAll('input[type="checkbox"]');
+        expect(checks.length).toBe(2);
+        await checks[0].setValue(true);
+        expect(wrapper.text()).toContain('1 selected');
+    });
+});
+
+describe('Notes folder accordion', () => {
+    it('renders nested note folders through FolderAccordion (root normalized to null)', () => {
+        const wrapper = mount(NotesIndex, {
+            props: {
+                rootId: 5,
+                folders: [
+                    { id: 12, name: 'Parent', parent_id: 5 },
+                    { id: 13, name: 'Child', parent_id: 12 },
+                ],
+                notes: [],
+                tags: [],
+            },
+            global: { stubs: { MarkdownEditor: { template: '<div />', props: ['modelValue', 'enableLinks'] } } },
+        });
+        // Both levels reach the accordion (the stub renders all content slots).
+        expect(wrapper.find('[data-folder="12"]').exists()).toBe(true);
+        expect(wrapper.find('[data-folder="13"]').exists()).toBe(true);
+    });
+
+    it('builds a nested tag tree, collapsed by default', async () => {
+        const wrapper = mount(NotesSidebar, {
+            props: {
+                rootId: 5,
+                folders: [],
+                tags: [{ id: 1, name: 'work' }, { id: 2, name: 'work/projects' }],
+                activeTag: null,
+            },
+        });
+        // Parent segment shown; nested child hidden until expanded.
+        expect(wrapper.text()).toContain('work');
+        expect(wrapper.text()).not.toContain('projects');
+
+        await wrapper.get('.chevron').trigger('click');
+        expect(wrapper.text()).toContain('projects');
+    });
+});
+
+describe('BacklinksPanel', () => {
+    it('fetches and renders backlinks, emitting open on click', async () => {
+        h.get.mockResolvedValue({ backlinks: [{ id: 7, title: 'Source', link_text: 'Source' }] });
+        const wrapper = mount(BacklinksPanel, { props: { noteId: 3 } });
+        await flushPromises();
+        expect(h.get).toHaveBeenCalledWith('/notes/3/backlinks');
+        expect(wrapper.text()).toContain('Source');
+
+        await wrapper.get('button.vibe-btn').trigger('click');
+        expect(wrapper.emitted('open')?.[0]).toEqual([7]);
+    });
+});

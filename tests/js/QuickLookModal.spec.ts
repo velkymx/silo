@@ -55,13 +55,26 @@ describe('QuickLookModal', () => {
         expect(peek.attributes('src')).toBe('/t/9');
     });
 
-    it('closes via the close button', async () => {
+    it('shows fmtBytes-formatted size for non-image files', () => {
+        const zipFile = { id: 8, name: 'archive.zip', type: 'zip', mime: 'application/zip', url: '/raw/8', size: 2097152 };
+        const wrapper = mount(QuickLookModal, {
+            props: { modelValue: true, file: zipFile, index: 0, total: 1, menu },
+            global: { stubs },
+        });
+        // 2097152 bytes = 2.0 MB via fmtBytes; inline formatter would say "2048.0 KB"
+        expect(wrapper.text()).toContain('2.0 MB');
+        expect(wrapper.text()).not.toContain('2048');
+    });
+
+    it('closes via the modal chrome (built-in close button)', async () => {
         const wrapper = mount(QuickLookModal, {
             props: { modelValue: true, file, index: 0, total: 1, menu },
             global: { stubs },
         });
-        const close = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Close preview');
-        await close!.trigger('click');
+        // The duplicate in-header close is gone; VibeModal's own ✕ drives the
+        // v-model, which the component forwards.
+        wrapper.findComponent({ name: 'VibeModal' }).vm.$emit('update:modelValue', false);
+        await wrapper.vm.$nextTick();
         expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([false]);
     });
 });

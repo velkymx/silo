@@ -36,9 +36,25 @@ describe('ShareModal', () => {
         httpPost.mockResolvedValue({ permissions: [] });
         const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });
         await flushPromises();
+        const emailInput = wrapper.find('input[type="email"]');
+        await emailInput.setValue('a@b.c');
         const btn = wrapper.findAll('button').find((b) => b.text() === 'Grant');
         await btn!.trigger('click');
-        expect(httpPost).toHaveBeenCalledWith('/files/5/permissions', expect.objectContaining({ subject_type: 'user' }));
+        expect(httpPost).toHaveBeenCalledWith('/files/5/permissions', expect.objectContaining({ subject_type: 'user', email: 'a@b.c' }));
+    });
+
+    it('Grant splits comma-separated emails into multiple posts', async () => {
+        httpPost.mockResolvedValue({ permissions: [] });
+        const wrapper = mount(ShareModal, { props: { modelValue: true, item: file } });
+        await flushPromises();
+        const emailInput = wrapper.find('input[type="email"]');
+        await emailInput.setValue('a@b.c, d@e.f');
+        const btn = wrapper.findAll('button').find((b) => b.text() === 'Grant');
+        await btn!.trigger('click');
+        await flushPromises();
+        expect(httpPost).toHaveBeenCalledTimes(2);
+        expect(httpPost).toHaveBeenNthCalledWith(1, '/files/5/permissions', expect.objectContaining({ email: 'a@b.c' }));
+        expect(httpPost).toHaveBeenNthCalledWith(2, '/files/5/permissions', expect.objectContaining({ email: 'd@e.f' }));
     });
 
     it('removing a grant deletes it', async () => {
@@ -46,8 +62,9 @@ describe('ShareModal', () => {
         const wrapper = mount(ShareModal, { props: { modelValue: false, item: file } });
         await wrapper.setProps({ modelValue: true });
         await flushPromises();
-        // The grants table is the first one; its row has a single remove button.
-        await wrapper.find('table tbody tr button').trigger('click');
+        // The grants table is the first VibeDataTable; the per-row Remove button
+        // carries an aria-label built from the row's subject_label.
+        await wrapper.find('button[aria-label="Remove access for a@b.c"]').trigger('click');
         expect(httpDel).toHaveBeenCalledWith('/files/5/permissions/1');
     });
 
@@ -66,9 +83,9 @@ describe('ShareModal', () => {
         await wrapper.setProps({ modelValue: true });
         await flushPromises();
         vi.useFakeTimers();
-        // Links table is the last table; its first row button is "copy".
-        const tables = wrapper.findAll('table');
-        const copy = tables[tables.length - 1].findAll('button')[0];
+        // VibeDataTable renders the link rows; the copy button has
+        // aria-label="Copy link" so we can target it directly.
+        const copy = wrapper.find('button[aria-label="Copy link"]');
         await copy.trigger('click');
         wrapper.unmount();
         // Flushing the pending 1.5s timeout after unmount must not throw / update state.
@@ -83,5 +100,31 @@ describe('ShareModal', () => {
         const btn = wrapper.findAll('button').find((b) => b.text().includes('Create link'));
         await btn!.trigger('click');
         expect(httpPost).toHaveBeenCalledWith('/files/5/links', expect.objectContaining({ allow_download: true }));
+    });
+
+    it('stale load response is dropped when modal is closed and re-opened', async () => {
+        httpGet.mockReset();
+        let resolveStale!: (v: unknown) => void;
+        const stalePerms = new Promise((res) => { resolveStale = res; });
+        // First open: slow permissions fetch, fast links.
+        httpGet
+            .mockReturnValueOnce(stalePerms)
+            .mockResolvedValueOnce({ links: [] })
+            // Second open: fast permissions + links.
+            .mockResolvedValueOnce({ permissions: [{ id: 2, subject_type: 'user', subject_label: 'current@b.c', ability: 'read' }], inherited: [], groups: [] })
+            .mockResolvedValueOnce({ links: [] });
+
+        const wrapper = mount(ShareModal, { props: { modelValue: false, item: file } });
+        await wrapper.setProps({ modelValue: true });   // first open — stale perms stalls
+        await wrapper.setProps({ modelValue: false });  // close
+        await wrapper.setProps({ modelValue: true });   // re-open — fast perms
+        await flushPromises();
+
+        // Resolve the stale response after the current one already landed.
+        resolveStale({ permissions: [{ id: 1, subject_type: 'user', subject_label: 'stale@b.c', ability: 'read' }], inherited: [], groups: [] });
+        await flushPromises();
+
+        expect(wrapper.text()).not.toContain('stale@b.c');
+        expect(wrapper.text()).toContain('current@b.c');
     });
 });

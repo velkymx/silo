@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue';
+import { FILE_CATEGORIES } from '../lib/constants';
 
 export type DateTarget = 'uploaded' | 'edited';
 export type SizeUnit = 'KB' | 'MB' | 'GB';
@@ -33,13 +34,7 @@ export interface AdvState {
 
 export const TYPE_OPTIONS = [
     { value: '', text: 'Any type' },
-    { value: 'image', text: 'Images' },
-    { value: 'video', text: 'Videos' },
-    { value: 'audio', text: 'Audio' },
-    { value: 'pdf', text: 'PDF' },
-    { value: 'document', text: 'Documents' },
-    { value: 'spreadsheet', text: 'Spreadsheets' },
-    { value: 'archive', text: 'Archives' },
+    ...Object.entries(FILE_CATEGORIES).map(([key, cat]) => ({ value: key, text: cat.filterLabel })),
 ];
 
 export const DATE_TARGET_OPTIONS = [

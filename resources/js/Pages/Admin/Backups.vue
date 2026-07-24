@@ -1,10 +1,10 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
-import AppLayout from '../../Layouts/AppLayout.vue';
+import ShellPage from '../../Components/ShellPage.vue';
 import LoadingSkeleton from '../../Components/LoadingSkeleton.vue';
-import PageError from '../../Components/PageError.vue';
 import { fmtBytes } from '../../lib/format';
+import { BackupStatus } from '../../lib/constants';
 import { useConfirm } from '../../composables/useConfirm';
 import { usePageLoading } from '../../composables/usePageLoading';
 
@@ -40,6 +40,12 @@ async function remove(b) {
     }
 }
 
+function verify(b) {
+    // Non-destructive test restore: verifies checksum, DB import and blob
+    // counts in a scratch dir. Result comes back as a flash message.
+    router.post(`/backups/${b.id}/verify`, {}, { preserveScroll: true });
+}
+
 async function restore(b) {
     if (!await confirm({ title: 'Restore backup', message: `Restore ${b.filename}? This OVERWRITES all current data (database + files).`, confirmLabel: 'Restore', variant: 'danger' })) return;
     if (!await confirm({ title: 'Are you absolutely sure?', message: 'This cannot be undone.', confirmLabel: 'Yes, restore', variant: 'danger' })) return;
@@ -48,7 +54,7 @@ async function restore(b) {
 
 const human = (bytes) => (bytes ? fmtBytes(bytes) : '—');
 
-const statusVariant = (s) => ({ ready: 'success', pending: 'info', failed: 'danger' }[s] || 'secondary');
+const statusVariant = (s) => ({ [BackupStatus.READY]: 'success', [BackupStatus.PENDING]: 'info', [BackupStatus.FAILED]: 'danger' }[s] || 'secondary');
 
 const columns = [
     { key: 'filename', label: 'Backup' },
@@ -62,7 +68,7 @@ const columns = [
 
 // Auto-refresh while a backup is still being built.
 let poll = null;
-const hasPending = computed(() => props.backups.some((b) => b.status === 'pending'));
+const hasPending = computed(() => props.backups.some((b) => b.status === BackupStatus.PENDING));
 onMounted(() => {
     poll = setInterval(() => {
         if (hasPending.value) router.reload({ only: ['backups'] });
@@ -72,14 +78,12 @@ onBeforeUnmount(() => clearInterval(poll));
 </script>
 
 <template>
-    <AppLayout>
-        <PageError />
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <h4 class="mb-0"><VibeIcon icon="archive" class="me-2" />Backups</h4>
+    <ShellPage title="Backups" icon="archive" :parents="[{ text: 'Admin', icon: 'shield-lock' }]">
+        <template #actions>
             <VibeButton variant="primary" @click="runNow">
                 <VibeIcon icon="play-fill" class="me-1" />Back up now
             </VibeButton>
-        </div>
+        </template>
 
         <VibeRow class="g-3">
             <VibeCol :lg="4">
@@ -117,6 +121,7 @@ onBeforeUnmount(() => clearInterval(poll));
                         :items="backups"
                         :columns="columns"
                         row-key="id"
+                        :searchable="false"
                         hover
                         striped
                         :per-page="10"
@@ -124,6 +129,20 @@ onBeforeUnmount(() => clearInterval(poll));
                     >
                         <template #cell(filename)="{ item }">
                             <VibeIcon icon="file-earmark-zip" class="me-1 text-warning" />{{ item.filename }}
+                            <VibeIcon
+                                v-if="item.verified"
+                                icon="shield-check"
+                                class="ms-1 text-success"
+                                title="Integrity verified (sha256)"
+                            />
+                            <VibeBadge
+                                v-else
+                                variant="warning"
+                                class="ms-2"
+                                title="No checksum — cannot be verified and will be refused on restore"
+                            >
+                                Unverifiable
+                            </VibeBadge>
                         </template>
                         <template #cell(compression)="{ item }">
                             <VibeBadge v-if="item.compression === 'bzip2'" variant="primary">Ultra</VibeBadge>
@@ -132,9 +151,9 @@ onBeforeUnmount(() => clearInterval(poll));
                         </template>
                         <template #cell(status)="{ item }">
                             <VibeBadge :variant="statusVariant(item.status)">
-                                <VibeSpinner v-if="item.status === 'pending'" size="sm" class="me-1" />{{ item.status }}
+                                <VibeSpinner v-if="item.status === BackupStatus.PENDING" size="sm" class="me-1" />{{ item.status }}
                             </VibeBadge>
-                            <div v-if="item.status === 'failed'" class="small text-danger text-truncate" style="max-width: 220px" :title="item.note">
+                            <div v-if="item.status === BackupStatus.FAILED" class="small text-danger text-truncate" style="max-width: 220px" :title="item.note">
                                 {{ item.note }}
                             </div>
                         </template>
@@ -149,6 +168,17 @@ onBeforeUnmount(() => clearInterval(poll));
                                     :aria-label="`Download backup ${item.filename}`"
                                 >
                                     <VibeIcon icon="download" />
+                                </VibeButton>
+                                <VibeButton
+                                    v-if="item.status === 'ready'"
+                                    variant="secondary"
+                                    size="sm"
+                                    outline
+                                    title="Test restore (verify without touching live data)"
+                                    :aria-label="`Test restore of backup ${item.filename}`"
+                                    @click="verify(item)"
+                                >
+                                    <VibeIcon icon="clipboard-check" />
                                 </VibeButton>
                                 <VibeButton
                                     v-if="item.status === 'ready'"
@@ -170,5 +200,5 @@ onBeforeUnmount(() => clearInterval(poll));
                 </VibeCard>
             </VibeCol>
         </VibeRow>
-    </AppLayout>
+    </ShellPage>
 </template>

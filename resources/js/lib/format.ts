@@ -14,3 +14,12 @@ export function fmtBytes(n: number): string {
     }
     return `${v.toFixed(i ? 1 : 0)} ${units[i]}`;
 }
+
+/**
+ * English pluralization: `pluralize(1, 'item')` → "1 item",
+ * `pluralize(3, 'item')` → "3 items". Pass an irregular plural as the 3rd arg.
+ */
+export function pluralize(count: number, singular: string, plural?: string): string {
+    const word = count === 1 ? singular : (plural ?? `${singular}s`);
+    return `${count} ${word}`;
+}

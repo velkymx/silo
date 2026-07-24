@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ManagesFilesystem;
+use App\Http\Controllers\Concerns\SanitizesFilename;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\File;
 use App\Models\FileVersion;
+use App\Models\RssItem;
 use App\Models\Tag;
 use App\Services\Audit;
 use App\Services\QuotaService;
 use App\Support\FileResponse;
 use App\Support\Uploads;
 use Illuminate\Http\Request;
-use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -21,10 +23,17 @@ use Inertia\Inertia;
 
 class FileController extends Controller
 {
+    use ManagesFilesystem, SanitizesFilename;
     // Display files and folders for the current (DB-backed) folder.
-    public function index(Request $request, \App\Services\FileSearch $search)
+    public function index(Request $request, \App\Services\FileSearch $search, \App\Services\SectionListing $sectionListing)
     {
         $userId = auth()->id();
+
+        // Unified shell section rail: all | recent | starred | shared | trash.
+        // The section can arrive either as a query param or as a route default
+        // (e.g. /shared, /trash retain their own URLs but render this shell).
+        $raw = $request->get('section', $request->route('section'));
+        $section = in_array($raw, ['all', 'recent', 'starred', 'shared', 'trash'], true) ? $raw : 'all';
 
         $current = null;
         if ($request->filled('folder')) {
@@ -41,23 +50,41 @@ class FileController extends Controller
         $advanced = $search->isAdvanced($request);
         $useSearch = $request->filled('search') || $advanced;
         $scopeFolderId = $search->scopeFolderId($request);
-        $starredOnly = $request->boolean('starred');
-        $recentOnly = $request->boolean('recent');
+        $starredOnly = $request->boolean('starred') || $section === 'starred';
+        $recentOnly = $request->boolean('recent') || $section === 'recent';
         $activeTag = $request->filled('tag')
             ? Tag::where('owner_id', $userId)->find($request->integer('tag'))
             : null;
 
-        // One query for every folder the user owns: powers the tree, the move/copy
-        // picker, and search/tag location labels (no per-file parent walking).
+        // ME-03: keep the immediate page load small. We send at most 200
+        // folders; the move/copy picker and tree-lazy-load fetch more via
+        // GET /folders (parent + q filters, 200 cap per call).
         $allFolders = File::folders()->where('owner_id', $userId)
-            ->orderBy('name')->get(['id', 'name', 'parent_id']);
+            ->orderBy('name')->limit(201)->get(['id', 'name', 'parent_id']);
+        $allFoldersCapped = $allFolders->count() > 200;
+        if ($allFoldersCapped) $allFolders = $allFolders->take(200);
         $folderById = $allFolders->keyBy('id');
+
+        // Starred RSS items are only populated on the starred surface; the
+        // other branches leave it as an empty collection so the prop is
+        // always defined for the page.
+        $rssItems = collect();
 
         // The VibeUI DataTable paginates client-side; a safety cap keeps the
         // payload bounded on very large result sets.
         $cap = 1000;
 
-        if ($useSearch) {
+        if ($section === 'shared') {
+            // Items shared with me (any owner) — permission-gated by the service.
+            $shared = $sectionListing->shared(auth()->user());
+            $folders = $shared->where('is_dir', true)->values();
+            $files = $shared->where('is_dir', false)->values();
+        } elseif ($section === 'trash') {
+            // My trashed deletion-roots; restore/purge go through the trash routes.
+            $trashed = $sectionListing->trashed($userId);
+            $folders = $trashed->where('is_dir', true)->values();
+            $files = $trashed->where('is_dir', false)->values();
+        } elseif ($useSearch) {
             // Unified search: free text + date/size/type/tag/scope in one query.
             $folders = collect();
             $files = $search->build($request, $userId, $allFolders)
@@ -79,6 +106,33 @@ class FileController extends Controller
             $files = File::query()->where('owner_id', $userId)->where('starred', true)->files()
                 ->with(['versions', 'tags'])->orderBy('name')->limit($cap)->get()
                 ->map(fn (File $file) => $this->transform($file) + ['location' => $this->locationLabel($file, $folderById)]);
+            // The /starred view is the user's "everything I care about" surface,
+            // so it has to span every content type. RSS items starred in the
+            // RSS reader show up here alongside starred files/folders, with the
+            // newest star at the top.
+            $rssItems = RssItem::ownedBy($userId)
+                ->whereHas('feed', fn ($q) => $q->where('user_id', $userId))
+                ->starred()
+                ->with('feed:id,title,folder')
+                ->orderByDesc('starred_at')
+                ->limit($cap)
+                ->get()
+                ->map(fn (RssItem $i) => [
+                    'id' => $i->id,
+                    'feed_id' => $i->feed_id,
+                    'feed_title' => $i->feed?->title,
+                    'feed_folder' => $i->feed?->folder,
+                    'title' => $i->title,
+                    'excerpt' => $i->excerpt,
+                    'author' => $i->author,
+                    'categories' => $i->categories ?? [],
+                    'image_url' => $i->image_url,
+                    'url' => $i->url,
+                    'published_at' => optional($i->published_at)->toIso8601String(),
+                    'is_read' => (bool) $i->is_read,
+                    'is_starred' => (bool) $i->is_starred,
+                ])
+                ->values();
         } elseif ($recentOnly) {
             // Most recently uploaded files across every folder.
             $folders = collect();
@@ -100,16 +154,19 @@ class FileController extends Controller
         return Inertia::render('Files/Index', [
             'folders' => $folders->values(),
             'files' => $files->values(),
+            'rssItems' => $rssItems ?? collect(),
             'current' => $current ? ['id' => $current->id, 'name' => $current->name] : null,
             'breadcrumbs' => $this->breadcrumbs($current),
             'searching' => $useSearch,
             'advanced' => $advanced,
+            'section' => $section,
             'starredOnly' => $starredOnly,
             'recentOnly' => $recentOnly,
-            'flat' => $useSearch || (bool) $activeTag || $starredOnly || $recentOnly,
+            'flat' => $useSearch || (bool) $activeTag || $starredOnly || $recentOnly
+                || $section === 'shared' || $section === 'trash',
             'activeTag' => $activeTag ? ['id' => $activeTag->id, 'name' => $activeTag->name] : null,
-            // Flat list of every folder the user owns — used by the tree + move/copy picker.
             'allFolders' => $allFolders,
+            'allFoldersCapped' => $allFoldersCapped,
             'allTags' => Tag::where('owner_id', $userId)->orderBy('name')->get(['id', 'name', 'color']),
             // 'storage' is shared globally by HandleInertiaRequests — not duplicated here.
             'maxUploadKb' => Uploads::maxKb(),
@@ -126,6 +183,38 @@ class FileController extends Controller
                 'tag' => $activeTag?->id,
                 'scope' => $scopeFolderId ? 'folder' : 'all',
             ],
+        ]);
+    }
+
+    // Lazy children for the FileTree: immediate subfolders + files of $parent
+    // (root when omitted), owner-scoped and policy-gated.
+    public function tree(\App\Http\Requests\FileTreeRequest $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = auth()->id();
+        $parentId = $request->integer('parent') ?: null;
+
+        if ($parentId) {
+            $parent = File::folders()->where('owner_id', $userId)->findOrFail($parentId);
+            $this->authorize('view', $parent);
+        }
+
+        $cap = 1000;
+        $base = File::query()->where('owner_id', $userId)->where('parent_id', $parentId);
+
+        $folders = (clone $base)->folders()->withCount('children')->with('tags')
+            ->orderBy('name')->limit($cap)->get()
+            ->map(fn (File $f) => $this->folderShape($f) + [
+                'has_children' => ($f->children_count ?? 0) > 0,
+            ]);
+
+        $files = (clone $base)->files()->with(['versions', 'tags'])
+            ->orderBy('name')->limit($cap)->get()
+            ->map(fn (File $f) => $this->transform($f));
+
+        return response()->json([
+            'folders' => $folders->values(),
+            'files' => $files->values(),
+            'capped' => $folders->count() >= $cap || $files->count() >= $cap,
         ]);
     }
 
@@ -147,38 +236,44 @@ class FileController extends Controller
             $name .= '.md';
         }
         $content = (string) $request->input('content');
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
-            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
-        }
 
-        $path = "uploads/{$userId}/".Str::random(40);
-        if ($ext = pathinfo($name, PATHINFO_EXTENSION)) {
-            $path .= ".{$ext}";
-        }
-        Storage::disk($disk)->put($path, $content);
+        // Serialize quota-affecting writes per user (same lock as upload) so a
+        // concurrent create/upload can't both pass the quota check.
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($userId, $parent, $disk, $name, $content) {
+            if (app(QuotaService::class)->wouldExceed($userId, strlen($content))) {
+                throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
+            }
 
-        $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $content, $parent, $userId) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
+            $path = "uploads/{$userId}/".Str::random(40);
+            if ($ext = pathinfo($name, PATHINFO_EXTENSION)) {
+                $path .= ".{$ext}";
+            }
+            Storage::disk($disk)->put($path, $content);
 
-            return File::create([
-                'name' => $name,
-                'path' => $path,
-                'disk' => $disk,
-                'is_dir' => false,
-                'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
-                'size' => strlen($content),
-                'hash' => hash('sha256', $content),
-                'status' => File::STATUS_PENDING,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
+            $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $content, $parent, $userId) {
+                $this->assertNoCollision($parent?->id, $name, $userId);
+
+                return File::create([
+                    'name' => $name,
+                    'path' => $path,
+                    'disk' => $disk,
+                    'is_dir' => false,
+                    'mime' => str_ends_with($name, '.md') ? 'text/markdown' : 'text/plain',
+                    'size' => strlen($content),
+                    'hash' => hash('sha256', $content),
+                    'status' => File::STATUS_PENDING,
+                    'parent_id' => $parent?->id,
+                    'owner_id' => $userId,
+                ]);
+            });
+            app(QuotaService::class)->invalidate($userId);
+
+            ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.create', $file);
+
+            return redirect()->route('files.index', ['folder' => $parent?->id])
+                ->with('success', "Created “{$name}”.");
         });
-
-        ProcessUploadedFile::dispatch($file->id);
-        Audit::log('file.create', $file);
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Created “{$name}”.");
     }
 
     // Office document types that can be created blank and edited in the browser.
@@ -225,35 +320,39 @@ class FileController extends Controller
             $name .= '.'.$type;
         }
         $bytes = $request->file('file')->get();
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($bytes))) {
-            throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
-        }
 
-        $path = "uploads/{$userId}/".Str::random(40).'.'.$type;
-        Storage::disk($disk)->put($path, $bytes);
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($userId, $parent, $disk, $type, $name, $bytes) {
+            if (app(QuotaService::class)->wouldExceed($userId, strlen($bytes))) {
+                throw ValidationException::withMessages(['name' => 'This would exceed your storage quota.']);
+            }
 
-        $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $type, $bytes, $parent, $userId) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
+            $path = "uploads/{$userId}/".Str::random(40).'.'.$type;
+            Storage::disk($disk)->put($path, $bytes);
 
-            return File::create([
-                'name' => $name,
-                'path' => $path,
-                'disk' => $disk,
-                'is_dir' => false,
-                'mime' => self::NEW_DOC_TYPES[$type],
-                'size' => strlen($bytes),
-                'hash' => hash('sha256', $bytes),
-                'status' => File::STATUS_PENDING,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
+            $file = $this->withFolderLock($userId, $parent?->id, function () use ($name, $path, $disk, $type, $bytes, $parent, $userId) {
+                $this->assertNoCollision($parent?->id, $name, $userId);
+
+                return File::create([
+                    'name' => $name,
+                    'path' => $path,
+                    'disk' => $disk,
+                    'is_dir' => false,
+                    'mime' => self::NEW_DOC_TYPES[$type],
+                    'size' => strlen($bytes),
+                    'hash' => hash('sha256', $bytes),
+                    'status' => File::STATUS_PENDING,
+                    'parent_id' => $parent?->id,
+                    'owner_id' => $userId,
+                ]);
+            });
+            app(QuotaService::class)->invalidate($userId);
+
+            ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.create', $file);
+
+            return redirect()->route('files.index', ['folder' => $parent?->id])
+                ->with('success', "Created “{$name}”.");
         });
-
-        ProcessUploadedFile::dispatch($file->id);
-        Audit::log('file.create', $file);
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Created “{$name}”.");
     }
 
     // Open the full-screen editor page for an editable file (office docs, text).
@@ -299,162 +398,38 @@ class FileController extends Controller
         $userId = $file->owner_id;
         $disk = config('filemanager.disk');
 
-        if (app(QuotaService::class)->wouldExceed($userId, strlen($content) - (int) $file->size)) {
-            throw ValidationException::withMessages(['file' => 'This would exceed your storage quota.']);
-        }
-
-        $newPath = "uploads/{$userId}/".Str::random(40);
-        if ($ext = pathinfo($file->name, PATHINFO_EXTENSION)) {
-            $newPath .= ".{$ext}";
-        }
-        Storage::disk($disk)->put($newPath, $content);
-
-        DB::transaction(function () use ($file, $newPath, $disk, $content, $note) {
-            $this->snapshotVersion($file, null, $note);
-            $file->update([
-                'path' => $newPath,
-                'disk' => $disk,
-                'size' => strlen($content),
-                'hash' => hash('sha256', $content),
-                'version' => $file->version + 1,
-                'status' => File::STATUS_PENDING,
-                'referenced' => false, // edited content is now app-owned
-                'content_edited_at' => now(),
-            ]);
-        });
-
-        ProcessUploadedFile::dispatch($file->id);
-        Audit::log('file.edit', $file);
-
-        return redirect()->route('files.index', ['folder' => $file->parent_id])
-            ->with('success', 'Saved.');
-    }
-
-    // ---- Batch operations (multi-select) ----
-
-    /** Load files by id that the current user owns, preserving the given order. */
-    private function ownedBatch(array $ids): \Illuminate\Support\Collection
-    {
-        $userId = auth()->id();
-        $files = File::whereIn('id', $ids)->where('owner_id', $userId)->get()->keyBy('id');
-
-        return collect($ids)->map(fn ($id) => $files->get($id))->filter()->values();
-    }
-
-    public function batchMove(Request $request)
-    {
-        $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'integer',
-            'target_id' => 'nullable|integer|exists:files,id',
-        ]);
-
-        $userId = auth()->id();
-        $target = $this->resolveFolder($request->input('target_id'), $userId);
-
-        $this->withFolderLock($userId, $target?->id, function () use ($request, $target) {
-            DB::transaction(function () use ($request, $target) {
-                foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                    if ($target && $file->is_dir && $this->isSelfOrDescendant($file, $target)) {
-                        throw ValidationException::withMessages(['target_id' => "Cannot move \"{$file->name}\" into itself."]);
-                    }
-                    $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
-                    $file->update(['parent_id' => $target?->id]);
-                }
-            });
-        });
-
-        return redirect()->route('files.index', ['folder' => $target?->id])
-            ->with('success', 'Moved selected items.');
-    }
-
-    public function batchDelete(Request $request)
-    {
-        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
-
-        DB::transaction(function () use ($request) {
-            foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                if ($file->is_dir) {
-                    $this->trashSubtree($file);
-                }
-                $file->delete();
-                Audit::log('file.trash', $file);
+        return Cache::lock("user-quota-{$userId}", 30)->block(10, function () use ($file, $userId, $disk, $content, $note) {
+            if (app(QuotaService::class)->wouldExceed($userId, strlen($content) - (int) $file->size)) {
+                throw ValidationException::withMessages(['file' => 'This would exceed your storage quota.']);
             }
-        });
 
-        return back()->with('success', 'Moved selected items to trash.');
-    }
+            $newPath = "uploads/{$userId}/".Str::random(40);
+            if ($ext = pathinfo($file->name, PATHINFO_EXTENSION)) {
+                $newPath .= ".{$ext}";
+            }
+            Storage::disk($disk)->put($newPath, $content);
 
-    // New Folder From Selection: create a folder in the current location and
-    // move the selected items into it (Finder-style).
-    public function batchFolder(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'ids' => 'required|array',
-            'ids.*' => 'integer',
-            'parent_id' => 'nullable|integer|exists:files,id',
-        ]);
-
-        $userId = auth()->id();
-        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
-        $name = trim((string) $request->string('name'));
-
-        $folder = $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId, $request) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
-
-            return DB::transaction(function () use ($name, $parent, $userId, $request) {
-                $folder = File::create([
-                    'name' => $name,
-                    'path' => $name,
-                    'disk' => config('filemanager.disk'),
-                    'is_dir' => true,
-                    'parent_id' => $parent?->id,
-                    'owner_id' => $userId,
+            DB::transaction(function () use ($file, $newPath, $disk, $content, $note) {
+                $this->snapshotVersion($file, null, $note);
+                $file->update([
+                    'path' => $newPath,
+                    'disk' => $disk,
+                    'size' => strlen($content),
+                    'hash' => hash('sha256', $content),
+                    'version' => $file->version + 1,
+                    'status' => File::STATUS_PENDING,
+                    'referenced' => false, // edited content is now app-owned
+                    'content_edited_at' => now(),
                 ]);
-
-                foreach ($this->ownedBatch($request->input('ids')) as $file) {
-                    if ($file->id === $folder->id) {
-                        continue;
-                    }
-                    $this->assertNoCollision($folder->id, $file->name, $userId, $file->id);
-                    $file->update(['parent_id' => $folder->id]);
-                }
-
-                return $folder;
             });
+            app(QuotaService::class)->invalidate($userId);
+
+            ProcessUploadedFile::dispatch($file->id);
+            Audit::log('file.edit', $file);
+
+            return redirect()->route('files.index', ['folder' => $file->parent_id])
+                ->with('success', 'Saved.');
         });
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Created “{$folder->name}” from selection.");
-    }
-
-    // Batch rename: the client computes the final names (find/replace, prefix/
-    // suffix, numbering) and previews them; we apply with collision checks.
-    public function batchRename(Request $request)
-    {
-        $request->validate([
-            'renames' => 'required|array',
-            'renames.*.id' => 'required|integer',
-            'renames.*.name' => 'required|string|max:255',
-        ]);
-
-        $userId = auth()->id();
-        $byId = collect($request->input('renames'))->keyBy('id');
-
-        DB::transaction(function () use ($byId, $userId) {
-            $files = File::whereIn('id', $byId->keys())->where('owner_id', $userId)->get();
-            foreach ($files as $file) {
-                $name = trim((string) $byId[$file->id]['name']);
-                if ($name === '' || $name === $file->name) {
-                    continue;
-                }
-                $this->assertNoCollision($file->parent_id, $name, $userId, $file->id);
-                $file->update(['name' => $name]);
-            }
-        });
-
-        return back()->with('success', 'Renamed selected items.');
     }
 
     // Toggle a file's or folder's starred (favorite) flag.
@@ -512,7 +487,7 @@ class FileController extends Controller
             'name' => $folder->name,
             'is_dir' => true,
             'starred' => (bool) $folder->starred,
-            'item_count' => $folder->children_count ?? $folder->children()->count(),
+            'item_count' => $folder->children_count ?? 0,
             'updated_at' => $folder->updated_at->format('Y-m-d H:i'),
             'tags' => $folder->relationLoaded('tags')
                 ? $folder->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
@@ -590,6 +565,9 @@ class FileController extends Controller
             foreach ($request->file('files', []) as $upload) {
                 // Storage is flat per user; the folder hierarchy lives entirely in the DB.
                 $path = $upload->store("uploads/{$userId}", $disk);
+                if ($path === false) {
+                    throw ValidationException::withMessages(['files' => 'One or more files could not be saved. Please try again.']);
+                }
 
                 $cleanName = $this->sanitizeFilename($upload->getClientOriginalName());
 
@@ -610,7 +588,7 @@ class FileController extends Controller
                     ->where('owner_id', $userId)
                     ->where('parent_id', $parent?->id)
                     ->where('name', $cleanName)
-                    ->first();
+                    ->latest('id')->first();
 
                 $file = $existing
                     ? $this->overwrite($existing, $attributes, $userId)
@@ -621,23 +599,11 @@ class FileController extends Controller
                 Audit::log('file.upload', $file, ['size' => $file->size]);
             }
 
+            app(QuotaService::class)->invalidate($userId);
+
             return redirect()->route('files.index', ['folder' => $parent?->id])
                 ->with('success', 'Files uploaded successfully!');
         });
-    }
-
-    /**
-     * Allowlist-sanitize an uploaded filename: strip any path components, keep
-     * only word chars, dash, dot, space and parens, collapse the rest to '_',
-     * and never allow a leading dot / empty result.
-     */
-    protected function sanitizeFilename(string $name): string
-    {
-        $name = basename(str_replace('\\', '/', $name));
-        $name = preg_replace('/[^\w\-. ()]+/u', '_', $name) ?? '';
-        $name = ltrim(trim($name), '.');
-
-        return $name !== '' ? mb_substr($name, 0, 255) : 'file';
     }
 
     // Download a file resolved by DB id (no client-supplied paths).
@@ -702,38 +668,10 @@ class FileController extends Controller
         });
 
         Audit::log('file.trash', $file);
+        app(QuotaService::class)->invalidate(auth()->id());
 
         return redirect()->route('files.index', ['folder' => $file->parent_id])
             ->with('success', 'Moved to trash.');
-    }
-
-    // Create a new folder inside the current folder.
-    public function createFolder(Request $request)
-    {
-        $request->validate([
-            'folder_name' => 'required|string|max:255',
-            'parent_id' => 'nullable|integer|exists:files,id',
-        ]);
-
-        $userId = auth()->id();
-        $parent = $this->resolveFolder($request->input('parent_id'), $userId);
-        $name = trim((string) $request->string('folder_name'));
-
-        $this->withFolderLock($userId, $parent?->id, function () use ($name, $parent, $userId) {
-            $this->assertNoCollision($parent?->id, $name, $userId);
-
-            File::create([
-                'name' => $name,
-                'path' => $name, // informational only; folders have no disk directory
-                'disk' => config('filemanager.disk'),
-                'is_dir' => true,
-                'parent_id' => $parent?->id,
-                'owner_id' => $userId,
-            ]);
-        });
-
-        return redirect()->route('files.index', ['folder' => $parent?->id])
-            ->with('success', "Folder '{$name}' created successfully!");
     }
 
     // Rename a file or folder (display name only; storage path is stable).
@@ -769,6 +707,16 @@ class FileController extends Controller
             ]);
         }
 
+        // A file keeps its owner_id when reparented. Moving it into a folder
+        // owned by someone else would leave it owned by A but living under B's
+        // tree — invisible to A. Keep items inside their owner's tree; a
+        // write-grantee may reorganize within it but not relocate it out.
+        if ($target && $target->owner_id !== $file->owner_id) {
+            throw ValidationException::withMessages([
+                'target_id' => 'Cannot move an item into a folder owned by another user.',
+            ]);
+        }
+
         $this->withFolderLock($file->owner_id, $target?->id, function () use ($file, $target) {
             $this->assertNoCollision($target?->id, $file->name, $file->owner_id, $file->id);
             $file->update(['parent_id' => $target?->id]);
@@ -796,60 +744,44 @@ class FileController extends Controller
             ]);
         }
 
+        // A copy duplicates every blob in the subtree onto the actor's quota.
+        if (app(QuotaService::class)->wouldExceed($actorId, $this->subtreeSize($file))) {
+            throw ValidationException::withMessages([
+                'target_id' => 'This copy would exceed your storage quota.',
+            ]);
+        }
+
         $this->withFolderLock($actorId, $target?->id, function () use ($file, $target, $actorId) {
             $name = $this->uniqueName($target?->id, $file->name, $actorId);
             DB::transaction(fn () => $this->copyNode($file, $target?->id, $name, $actorId));
         });
+        app(QuotaService::class)->invalidate($actorId);
 
         return redirect()->route('files.index', ['folder' => $target?->id])
             ->with('success', 'Copied successfully!');
     }
 
-    // Download a specific historical version of a file.
-    public function downloadVersion(File $file, FileVersion $version)
+    // Total bytes of the file blobs in a subtree (folders hold no bytes),
+    // computed in one recursive CTE so a deep copy's quota check isn't N+1.
+    protected function subtreeSize(File $file): int
     {
-        $this->authorize('view', $file);
+        if (! $file->is_dir) {
+            return (int) $file->size;
+        }
 
-        abort_unless($version->file_id === $file->id, 404);
-        abort_unless(Storage::disk($version->disk)->exists($version->path), 404);
+        $row = DB::selectOne('
+            WITH RECURSIVE sub(id) AS (
+                SELECT id FROM files WHERE id = :root
+                UNION ALL
+                SELECT f.id FROM files f INNER JOIN sub ON f.parent_id = sub.id
+                    WHERE f.deleted_at IS NULL
+            )
+            SELECT COALESCE(SUM(f.size), 0) AS total
+            FROM files f INNER JOIN sub ON f.id = sub.id
+            WHERE f.is_dir = 0 AND f.deleted_at IS NULL
+        ', ['root' => $file->id]);
 
-        return Storage::disk($version->disk)->download($version->path, $version->name);
-    }
-
-    // Restore a historical version as the file's current content.
-    public function restoreVersion(File $file, FileVersion $version)
-    {
-        $this->authorize('update', $file);
-
-        abort_unless($version->file_id === $file->id, 404);
-
-        DB::transaction(function () use ($file, $version) {
-            // Preserve the current content as a version before overwriting it.
-            $this->snapshotVersion($file);
-
-            $file->update([
-                'path' => $version->path,
-                'disk' => $version->disk,
-                'mime' => $version->mime,
-                'size' => $version->size,
-                'hash' => $version->hash,
-                'version' => $file->version + 1,
-                'status' => File::STATUS_PENDING,
-                'content_edited_at' => now(),
-            ]);
-        });
-
-        ProcessUploadedFile::dispatch($file->id);
-
-        return back()->with('success', "Restored version {$version->version}.");
-    }
-
-    // Navigate into a folder resolved by DB id.
-    public function viewFolder(File $folder)
-    {
-        $this->authorize('view', $folder);
-
-        return redirect()->route('files.index', ['folder' => $folder->id]);
+        return (int) ($row->total ?? 0);
     }
 
     // Replace a file's content, archiving its current blob as a version.
@@ -869,43 +801,7 @@ class FileController extends Controller
     // Archive the file's current blob as a historical version row.
     protected function snapshotVersion(File $file, ?int $createdBy = null, ?string $note = null): void
     {
-        FileVersion::create([
-            'file_id' => $file->id,
-            'version' => $file->version,
-            'note' => $note,
-            'name' => $file->name,
-            'path' => $file->path,
-            'disk' => $file->disk,
-            'mime' => $file->mime,
-            'size' => $file->size,
-            'hash' => $file->hash,
-            'created_by' => $createdBy ?? $file->owner_id,
-        ]);
-    }
-
-    // Resolve a folder owned by the user, or null for the root.
-    protected function resolveFolder($id, int $userId): ?File
-    {
-        if (! $id) {
-            return null;
-        }
-
-        $folder = File::folders()->where('owner_id', $userId)->findOrFail($id);
-        $this->authorize('update', $folder);
-
-        return $folder;
-    }
-
-    // Recursively soft-delete a folder's descendants into the trash (blobs kept).
-    protected function trashSubtree(File $folder): void
-    {
-        foreach ($folder->children as $child) {
-            if ($child->is_dir) {
-                $this->trashSubtree($child);
-            }
-
-            $child->delete();
-        }
+        app(\App\Services\FileVersioning::class)->snapshot($file, $createdBy, $note);
     }
 
     // Recursively copy a node under a new parent, duplicating file blobs.
@@ -930,7 +826,9 @@ class FileController extends Controller
             'mime' => $source->mime,
             'size' => $source->size,
             'hash' => $source->hash,
-            'status' => $source->status,
+            // File copies re-process so they get their own thumbnail/metadata
+            // and never inherit a stuck PENDING/FAILED state from the source.
+            'status' => $source->is_dir ? $source->status : File::STATUS_PENDING,
             'metadata' => $source->metadata,
             'thumbnail_path' => null,
             'parent_id' => $parentId,
@@ -941,52 +839,19 @@ class FileController extends Controller
             foreach ($source->children as $child) {
                 $this->copyNode($child, $copy->id, $child->name, $ownerId);
             }
+        } else {
+            ProcessUploadedFile::dispatch($copy->id)->afterCommit();
         }
 
         return $copy;
     }
 
-    // True when $target is $folder itself or sits inside its subtree.
-    protected function isSelfOrDescendant(File $folder, File $target): bool
-    {
-        for ($node = $target; $node; $node = $node->parent) {
-            if ($node->id === $folder->id) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // Reject a name that already exists among siblings.
-    protected function assertNoCollision(?int $parentId, string $name, int $ownerId, ?int $ignoreId = null): void
-    {
-        $exists = File::where('owner_id', $ownerId)
-            ->where('parent_id', $parentId)
-            ->where('name', $name)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->exists();
-
-        if ($exists) {
-            throw ValidationException::withMessages([
-                'name' => "An item named \"{$name}\" already exists here.",
-            ]);
-        }
-    }
-
-    // Produce a non-colliding name by appending "(copy)" / "(copy N)".
     /**
-     * Serialize name-sensitive writes (create/copy/rename/move) within one
-     * folder so concurrent requests can't both pass the uniqueness check and
-     * insert a duplicate. Uses an atomic cross-process cache lock.
+     * Generate a non-colliding name for a copy of `$name` in `$parentId`. TOCTOU
+     * is prevented by requiring the caller to hold `withFolderLock($ownerId,
+     * $parentId)` — two concurrent copies serialize on the lock so the second
+     * sees the first's row before computing its suffix.
      */
-    protected function withFolderLock(int $ownerId, ?int $parentId, Closure $callback): mixed
-    {
-        $key = "file-write:{$ownerId}:".($parentId ?? 'root');
-
-        return Cache::lock($key, 10)->block(5, $callback);
-    }
-
     protected function uniqueName(?int $parentId, string $name, int $ownerId): string
     {
         $base = $name;

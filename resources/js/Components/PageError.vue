@@ -24,7 +24,7 @@ const show = computed(() => messages.value.length > 0 && !dismissed.value);
     <VibeAlert v-if="show" variant="danger" dismissible class="mb-3" @close="dismissed = true">
         <div v-if="messages.length === 1">{{ messages[0] }}</div>
         <ul v-else class="mb-0 ps-3">
-            <li v-for="(m, i) in messages" :key="i">{{ m }}</li>
+            <li v-for="m in messages" :key="m">{{ m }}</li>
         </ul>
     </VibeAlert>
 </template>

@@ -80,9 +80,20 @@ class VirusScanner
             return [null, false];
         }
 
-        $tmp = tempnam(sys_get_temp_dir(), 'avscan_');
-        file_put_contents($tmp, $stream);
+        $tmp = $this->writeTempFromStream($stream);
 
         return [$tmp, true];
+    }
+
+    /** Write a PHP stream resource to a temp file and return its path. */
+    public function writeTempFromStream(mixed $stream): string
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'avscan_');
+        $dest = fopen($tmp, 'wb');
+        stream_copy_to_stream($stream, $dest);
+        fclose($dest);
+        fclose($stream);
+
+        return $tmp;
     }
 }

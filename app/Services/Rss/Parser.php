@@ -1,0 +1,404 @@
+<?php
+
+namespace App\Services\Rss;
+
+use Carbon\Carbon;
+use SimpleXMLElement;
+use Throwable;
+
+/**
+ * Pure parser: bytes in, array of normalized entries out. No DB, no events,
+ * no HTTP — easy to unit-test and reused by the migration command.
+ *
+ * Returned entries: ['guid' => string, 'title' => string, 'url' => string,
+ * 'content' => string, 'excerpt' => string, 'author' => ?string,
+ * 'published_at' => ?Carbon].
+ */
+class Parser
+{
+    /**
+     * @return array{title: ?string, site_url: ?string, entries: array<int, array<string, mixed>>}
+     */
+    public function parse(string $xml): array
+    {
+        $xml = $this->stripBom($xml);
+
+        try {
+            $doc = new SimpleXMLElement($xml, LIBXML_NOCDATA | LIBXML_NOERROR | LIBXML_NOWARNING);
+        } catch (Throwable) {
+            return ['title' => null, 'site_url' => null, 'entries' => []];
+        }
+
+        $root = $doc->getName();
+
+        return match ($root) {
+            'rss' => $this->parseRss($doc),
+            'RDF' => $this->parseRdf($doc),
+            default => $this->parseAtom($doc),
+        };
+    }
+
+    /**
+     * RSS 1.0 (RDF). Items are siblings of <channel> under the rdf:RDF root
+     * and live in the http://purl.org/rss/1.0/ namespace; dates/authors come
+     * from Dublin Core.
+     *
+     * @return array{title: ?string, site_url: ?string, entries: array<int, array<string, mixed>>}
+     */
+    private function parseRdf(SimpleXMLElement $doc): array
+    {
+        $rss1 = 'http://purl.org/rss/1.0/';
+        $root = $doc->children($rss1);
+        $channel = $root->channel ?? null;
+        $title = $channel ? trim((string) $channel->title) : null;
+        $siteUrl = $channel ? trim((string) $channel->link) : null;
+
+        $entries = [];
+        foreach ($root->item as $item) {
+            $content = $this->content($item->children('content', true)->encoded ?? null, $item->description ?? null);
+            $itemTitle = trim((string) ($item->title ?? ''));
+            $link = trim((string) ($item->link ?? ''));
+            $about = trim((string) ($item->attributes('rdf', true)['about'] ?? ''));
+            $date = (string) ($item->children('dc', true)->date ?? '');
+            $fingerprint = implode('|', [$itemTitle, $date, $content]);
+            $entries[] = [
+                'guid' => $this->guid($about !== '' ? $about : $link, $link, $fingerprint),
+                'title' => $itemTitle,
+                'url' => $link,
+                'content' => $content,
+                'excerpt' => $this->excerpt($item->description ?? null, $content),
+                'author' => $this->authorRss($item),
+                'categories' => $this->categoriesRss($item),
+                'image_url' => $this->imageRss($item, $content),
+                'published_at' => $this->parseDate($date),
+            ];
+        }
+
+        return ['title' => $title ?: null, 'site_url' => $siteUrl ?: null, 'entries' => $entries];
+    }
+
+    /**
+     * @return array{title: ?string, site_url: ?string, entries: array<int, array<string, mixed>>}
+     */
+    private function parseRss(SimpleXMLElement $doc): array
+    {
+        $channel = $doc->channel ?? null;
+        $title = $channel ? trim((string) $channel->title) : null;
+        $siteUrl = $channel ? trim((string) $channel->link) : null;
+        $entries = [];
+
+        if (! $channel) {
+            return ['title' => $title, 'site_url' => $siteUrl, 'entries' => $entries];
+        }
+
+        foreach ($channel->item as $item) {
+            $content = $this->content($item->children('content', true)->encoded ?? null, $item->description ?? null);
+            $itemTitle = trim((string) ($item->title ?? ''));
+            $fingerprint = implode('|', [$itemTitle, trim((string) ($item->pubDate ?? '')), $content]);
+            $entries[] = [
+                'guid' => $this->guid((string) ($item->guid ?? ''), (string) ($item->link ?? ''), $fingerprint),
+                'title' => $itemTitle,
+                'url' => trim((string) ($item->link ?? '')),
+                'content' => $content,
+                'excerpt' => $this->excerpt($item->description ?? null, $content),
+                'author' => $this->authorRss($item),
+                'categories' => $this->categoriesRss($item),
+                'image_url' => $this->imageRss($item, $content),
+                'published_at' => $this->parseDate((string) ($item->pubDate ?? '')),
+            ];
+        }
+
+        return ['title' => $title ?: null, 'site_url' => $siteUrl ?: null, 'entries' => $entries];
+    }
+
+    /**
+     * @return array{title: ?string, site_url: ?string, entries: array<int, array<string, mixed>>}
+     */
+    private function parseAtom(SimpleXMLElement $doc): array
+    {
+        $ns = $doc->getNamespaces(true);
+        $nsKey = $ns['atom'] ?? 'http://www.w3.org/2005/Atom';
+        $atom = $doc->children($nsKey);
+        $title = isset($atom->title) ? trim((string) $atom->title) : null;
+
+        $siteUrl = null;
+        if (isset($atom->link)) {
+            foreach ($atom->link as $link) {
+                $rel = (string) $link['rel'];
+                $href = (string) $link['href'];
+                if ($rel === '' || $rel === 'alternate') {
+                    $siteUrl = $href ?: $siteUrl;
+                    break;
+                }
+            }
+        }
+
+        $entries = [];
+        foreach ($atom->entry as $entry) {
+            $entryUrl = '';
+            if (isset($entry->link)) {
+                foreach ($entry->link as $link) {
+                    $rel = (string) $link['rel'];
+                    if ($rel === '' || $rel === 'alternate') {
+                        $entryUrl = (string) $link['href'];
+                        break;
+                    }
+                }
+            }
+            $content = $this->content($entry->content ?? null, $entry->summary ?? null);
+            $entryTitle = trim((string) ($entry->title ?? ''));
+            $published = (string) ($entry->published ?? $entry->updated ?? '');
+            $fingerprint = implode('|', [$entryTitle, $published, $content]);
+            $entries[] = [
+                'guid' => $this->guid((string) ($entry->id ?? ''), $entryUrl, $fingerprint),
+                'title' => $entryTitle,
+                'url' => $entryUrl,
+                'content' => $content,
+                'excerpt' => $this->excerpt($entry->summary ?? null, $content),
+                'author' => isset($entry->author->name) ? trim((string) $entry->author->name) : null,
+                'categories' => $this->categoriesAtom($entry),
+                'image_url' => $this->imageAtom($entry, $content),
+                'published_at' => $this->parseDate($published),
+            ];
+        }
+
+        return ['title' => $title ?: null, 'site_url' => $siteUrl ?: null, 'entries' => $entries];
+    }
+
+    /**
+     * Stable identity for an entry. Prefer the feed's own <guid>/<id>, then
+     * the entry URL. When both are absent, derive a deterministic surrogate
+     * from the entry's content fingerprint — never a random value, or the
+     * (feed_id, guid) unique index can't dedupe and the entry re-inserts on
+     * every refresh.
+     */
+    private function guid(string $guid, string $url, string $fingerprint): string
+    {
+        $guid = trim($guid);
+        $id = $guid !== '' ? $guid : ($url !== '' ? $url : 'sha1:'.sha1($fingerprint));
+
+        // guid column is string(255); a longer id (some feeds use very long
+        // permalinks as the guid) is hashed deterministically so it fits and
+        // still dedupes identically across fetches.
+        return strlen($id) > 255 ? 'sha1:'.sha1($id) : $id;
+    }
+
+    private function content(?SimpleXMLElement $primary, ?SimpleXMLElement $fallback): string
+    {
+        if ($primary !== null && (string) $primary !== '') {
+            return (string) $primary;
+        }
+        if ($fallback !== null && (string) $fallback !== '') {
+            return (string) $fallback;
+        }
+
+        return '';
+    }
+
+    private function excerpt(?SimpleXMLElement $node, string $contentFallback = ''): string
+    {
+        $text = $node !== null ? trim(strip_tags((string) $node)) : '';
+        if ($text === '') {
+            // Some feeds ship only <content:encoded> and no description/summary;
+            // derive the preview from the article body so the row isn't blank.
+            $text = trim(strip_tags($contentFallback));
+        }
+        if ($text === '') {
+            return '';
+        }
+
+        return mb_strlen($text) > 280 ? mb_substr($text, 0, 277).'…' : $text;
+    }
+
+    private function authorRss(SimpleXMLElement $item): ?string
+    {
+        $dc = $item->children('dc', true);
+        $name = isset($dc->creator) ? trim((string) $dc->creator) : null;
+        if ($name) {
+            return $name;
+        }
+        $author = isset($item->author) ? trim((string) $item->author) : null;
+
+        return $author !== '' ? $author : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function categoriesRss(SimpleXMLElement $item): array
+    {
+        $out = [];
+        $dc = $item->children('dc', true);
+        if (isset($dc->subject)) {
+            foreach ($dc->subject as $subject) {
+                $term = trim((string) $subject);
+                if ($term !== '' && ! in_array($term, $out, true)) {
+                    $out[] = $term;
+                }
+            }
+        }
+        if (isset($item->category)) {
+            foreach ($item->category as $cat) {
+                $term = trim((string) $cat);
+                if ($term === '') {
+                    continue;
+                }
+                // RSS often uses "domain/name" — keep just the trailing slug.
+                $slash = strrpos($term, '/');
+                if ($slash !== false) {
+                    $term = substr($term, $slash + 1);
+                }
+                if (! in_array($term, $out, true)) {
+                    $out[] = $term;
+                }
+            }
+        }
+        $media = $item->children('media', true);
+        if (isset($media->category)) {
+            foreach ($media->category as $cat) {
+                $term = trim((string) $cat);
+                if ($term !== '' && ! in_array($term, $out, true)) {
+                    $out[] = $term;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function categoriesAtom(SimpleXMLElement $entry): array
+    {
+        $out = [];
+        if (isset($entry->category)) {
+            foreach ($entry->category as $cat) {
+                $term = $this->attr($cat, 'term') ?? trim((string) $cat);
+                if ($term !== '' && ! in_array($term, $out, true)) {
+                    $out[] = $term;
+                }
+            }
+        }
+        $media = $entry->children('media', true);
+        if (isset($media->category)) {
+            foreach ($media->category as $cat) {
+                $term = $this->attr($cat, 'label') ?? $this->attr($cat, 'scheme') ?? trim((string) $cat);
+                if ($term !== '' && ! in_array($term, $out, true)) {
+                    $out[] = $term;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    private function imageRss(SimpleXMLElement $item, string $content): ?string
+    {
+        if (isset($item->enclosure)) {
+            foreach ($item->enclosure as $enc) {
+                $type = strtolower((string) ($this->attr($enc, 'type') ?? ''));
+                $url = $this->attr($enc, 'url');
+                if ($url !== null && str_starts_with($type, 'image/')) {
+                    return $url;
+                }
+            }
+        }
+        $media = $item->children('media', true);
+        if (isset($media->thumbnail)) {
+            foreach ($media->thumbnail as $thumb) {
+                $url = $this->attr($thumb, 'url');
+                if ($url !== null) {
+                    return $url;
+                }
+            }
+        }
+        if (isset($media->content)) {
+            foreach ($media->content as $mc) {
+                $type = strtolower((string) ($this->attr($mc, 'type') ?? ''));
+                $url = $this->attr($mc, 'url');
+                if ($url !== null && str_starts_with($type, 'image/')) {
+                    return $url;
+                }
+            }
+        }
+        $itunes = $item->children('itunes', true);
+        if (isset($itunes->image)) {
+            $url = $this->attr($itunes->image, 'href');
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return $this->firstImageInHtml($content);
+    }
+
+    private function imageAtom(SimpleXMLElement $entry, string $content): ?string
+    {
+        $media = $entry->children('media', true);
+        if (isset($media->thumbnail)) {
+            foreach ($media->thumbnail as $thumb) {
+                $url = $this->attr($thumb, 'url');
+                if ($url !== null) {
+                    return $url;
+                }
+            }
+        }
+        if (isset($media->content)) {
+            foreach ($media->content as $mc) {
+                $type = strtolower((string) ($this->attr($mc, 'type') ?? ''));
+                $url = $this->attr($mc, 'url');
+                if ($url !== null && str_starts_with($type, 'image/')) {
+                    return $url;
+                }
+            }
+        }
+
+        return $this->firstImageInHtml($content);
+    }
+
+    private function firstImageInHtml(string $html): ?string
+    {
+        if ($html === '' || ! preg_match('/<img\b[^>]*\bsrc\s*=\s*(?:"([^"]*)"|\'([^\']*)\')/i', $html, $m)) {
+            return null;
+        }
+        $url = $m[1] !== '' ? $m[1] : ($m[2] ?? '');
+
+        return $url !== '' ? $url : null;
+    }
+
+    private function parseDate(string $raw): ?Carbon
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
+        }
+        try {
+            return Carbon::parse($raw);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function stripBom(string $xml): string
+    {
+        return str_starts_with($xml, "\xEF\xBB\xBF") ? substr($xml, 3) : $xml;
+    }
+
+    /**
+     * Read an attribute off a SimpleXMLElement. Array access on iterated
+     * children-from-namespaced-parent elements (e.g. $media->thumbnail[0]['url'])
+     * silently returns '' in PHP 8 — ->attributes()['url'] is the working form.
+     */
+    private function attr(SimpleXMLElement $node, string $name): ?string
+    {
+        $attrs = $node->attributes();
+        $value = $attrs[$name] ?? null;
+        if ($value === null) {
+            return null;
+        }
+        $trimmed = trim((string) $value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+}

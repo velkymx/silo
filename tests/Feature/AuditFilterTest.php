@@ -24,6 +24,18 @@ class AuditFilterTest extends TestCase
         );
     }
 
+    public function test_action_filter_percent_is_treated_as_literal(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        AuditLog::create(['action' => 'vault.100%', 'ip' => '127.0.0.1']);
+        AuditLog::create(['action' => 'file.upload', 'ip' => '127.0.0.1']);
+
+        // A bare '%' must only match logs whose action contains a literal '%'.
+        $this->actingAs($admin)->get('/audit?action=' . urlencode('%'))->assertInertia(
+            fn (Assert $p) => $p->has('logs', 1)->where('logs.0.action', 'vault.100%')
+        );
+    }
+
     public function test_date_filter_bounds_results(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

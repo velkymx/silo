@@ -17,7 +17,7 @@ class ProfileGroupEscalationTest extends TestCase
         $privileged = Group::create(['name' => 'Admins']);
         $user = User::factory()->create(['group_id' => $own->id]);
 
-        $this->actingAs($user)->post('/profile', [
+        $this->actingAs($user)->patch('/profile', [
             'name' => 'New Name',
             'email' => $user->email,
             'group_id' => $privileged->id,

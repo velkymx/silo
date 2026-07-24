@@ -38,7 +38,8 @@ class SharedWithMeTest extends TestCase
 
         $this->actingAs($me)->get('/shared')->assertInertia(
             fn (Assert $page) => $page
-                ->component('Shared/Index')
+                ->component('Files/Index')
+                ->where('section', 'shared')
                 ->has('files', 1)
                 ->where('files.0.name', 'shared.txt')
                 ->where('files.0.owner', 'Owner')

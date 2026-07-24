@@ -1,116 +1,90 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 
-const s = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn(), visit: vi.fn(), toggleColorMode: vi.fn() }));
+const s = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn(), visit: vi.fn(), toggleColorMode: vi.fn(), paletteOpen: vi.fn() }));
+vi.mock('@/composables/useCommandPalette', () => ({
+    useCommandPalette: () => ({ state: { open: false }, open: s.paletteOpen, close: vi.fn(), toggle: vi.fn() }),
+}));
 const page = { url: '/', props: {} as Record<string, unknown> };
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: s.get, post: s.post, delete: s.del, visit: s.visit },
     usePage: () => page,
+    Link: { template: '<a><slot /></a>' },
 }));
 vi.mock('@velkymx/vibeui', () => ({
     useColorMode: () => ({ colorMode: ref('auto'), toggleColorMode: s.toggleColorMode }),
     useBreakpoints: () => ({ isMobile: ref(false) }),
 }));
 
-import AppLayout from '@/Layouts/AppLayout.vue';
+import ShellLayout from '@/Layouts/ShellLayout.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
-import { useDialogHost } from '@/composables/useConfirm';
 
-function mountApp(props: Record<string, unknown> = {}) {
+function mountShell(props: Record<string, unknown> = {}) {
     page.url = (props.url as string) ?? '/';
     page.props = {
         auth: { user: { id: 1, name: 'Ada Lovelace', is_admin: true } },
         flash: {},
         storage: { used: 5 * 1024 * 1024, quota: 10 * 1024 * 1024 },
-        savedSearches: [{ id: 7, name: 'Big PDFs', params: { ftype: 'pdf' } }],
-        currentFolder: 12,
+        currentFolder: { id: 12 },
         ...props,
     };
-    return mount(AppLayout, { slots: { default: '<p>page body</p>' } });
+    return mount(ShellLayout, { slots: { contents: '<p>page body</p>' } });
 }
 
 beforeEach(() => Object.values(s).forEach((f) => f.mockClear()));
 
-describe('AppLayout', () => {
+describe('ShellLayout chrome (the app-wide layout)', () => {
     it('renders the user, storage meter and slot body', () => {
-        const wrapper = mountApp();
+        const wrapper = mountShell();
         expect(wrapper.text()).toContain('Ada Lovelace');
         expect(wrapper.text()).toContain('page body');
-        expect(wrapper.text()).toContain('Big PDFs');
         expect(wrapper.text()).toContain('5.0 MB of 10.0 MB');
     });
 
-    it('runs a global search on Enter', async () => {
-        const wrapper = mountApp();
-        const input = wrapper.find('#global-search');
-        await input.setValue('report');
-        await input.trigger('keyup', { key: 'Enter' });
-        expect(s.get).toHaveBeenCalledWith('/', { search: 'report' });
+    it('links to the About page from the footer', () => {
+        const wrapper = mountShell();
+        expect(wrapper.find('[data-testid="about-link"]').exists()).toBe(true);
     });
 
-    it('scopes the search to the current folder', async () => {
-        const wrapper = mountApp();
-        await wrapper.find('#global-search').setValue('report');
-        // The scope dropdown emits item-click; "This folder" sets scope + re-runs.
-        const thisFolder = wrapper.findAll('button.dd-item').find((b) => b.text().includes('This folder'));
-        await thisFolder!.trigger('click');
-        expect(s.get).toHaveBeenCalledWith('/', { search: 'report', scope: 'folder', folder: 12 });
+    it('opens the command palette when the search trigger is clicked', async () => {
+        const wrapper = mountShell();
+        await wrapper.find('#global-search').trigger('click');
+        // The navbar search is a trigger — it opens the palette, never navigates.
+        expect(s.paletteOpen).toHaveBeenCalled();
+        expect(s.get).not.toHaveBeenCalled();
     });
 
-    it('reads the active search + scope from the URL', () => {
-        const wrapper = mountApp({ url: '/?search=hello&scope=folder' });
-        expect((wrapper.find('#global-search').element as HTMLInputElement).value).toBe('hello');
-    });
-
-    it('toggles the sidebar', async () => {
-        const wrapper = mountApp();
-        expect(wrapper.find('aside').exists()).toBe(true);
-        const toggle = wrapper.findAll('button').find((b) => b.attributes('title') === 'Toggle sidebar');
-        await toggle!.trigger('click');
-        expect(wrapper.find('aside').exists()).toBe(false);
-    });
-
-    it('toggles the color mode', async () => {
-        const wrapper = mountApp();
-        const theme = wrapper.findAll('button').find((b) => b.attributes('title')?.startsWith('Theme:'));
+    it('toggles the color mode from the user menu', async () => {
+        const wrapper = mountShell();
+        const theme = wrapper.findAll('button.dd-item').find((b) => b.text().includes('Theme:'));
         await theme!.trigger('click');
         expect(s.toggleColorMode).toHaveBeenCalled();
     });
 
+    it('opens my wall and settings from the user menu', async () => {
+        const wrapper = mountShell();
+        const wall = wrapper.findAll('button.dd-item').find((b) => b.text().includes('My wall'));
+        await wall!.trigger('click');
+        expect(s.visit).toHaveBeenCalledWith('/directory/1');
+
+        const settings = wrapper.findAll('button.dd-item').find((b) => b.text().includes('Settings'));
+        await settings!.trigger('click');
+        expect(s.visit).toHaveBeenCalledWith('/profile');
+    });
+
     it('logs out from the user menu', async () => {
-        const wrapper = mountApp();
+        const wrapper = mountShell();
         const logout = wrapper.findAll('button.dd-item').find((b) => b.text().includes('Logout'));
         await logout!.trigger('click');
         expect(s.post).toHaveBeenCalledWith('/logout');
-    });
-
-    it('runs a saved search', async () => {
-        const wrapper = mountApp();
-        await wrapper.find('.saved-search').trigger('click');
-        expect(s.get).toHaveBeenCalledWith('/', { ftype: 'pdf' });
-    });
-
-    it('deletes a saved search after confirming', async () => {
-        const wrapper = mountApp();
-        await wrapper.find('.saved-search .del-btn').trigger('click');
-        const host = useDialogHost();
-        expect(host.state.open).toBe(true);
-        host.accept();
-        await flushPromises();
-        expect(s.del).toHaveBeenCalledWith('/saved-searches/7', expect.anything());
-    });
-
-    it('hides admin nav for non-admins', () => {
-        const wrapper = mountApp({ auth: { user: { id: 2, name: 'Reg User', is_admin: false } } });
-        expect(wrapper.text()).not.toContain('Audit');
     });
 });
 
 describe('GuestLayout', () => {
     it('renders branding and the slot', () => {
         const wrapper = mount(GuestLayout, { props: { title: 'Sign in' }, slots: { default: '<form>hello</form>' } });
-        expect(wrapper.text()).toContain('File Manager');
+        expect(wrapper.text()).toContain('Silo');
         expect(wrapper.text()).toContain('hello');
     });
 });

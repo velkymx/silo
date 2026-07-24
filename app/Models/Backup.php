@@ -14,7 +14,7 @@ class Backup extends Model
     public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
-        'disk', 'path', 'filename', 'size', 'status', 'compression', 'note', 'created_by',
+        'disk', 'path', 'filename', 'size', 'checksum', 'status', 'compression', 'note', 'created_by',
     ];
 
     protected $casts = [

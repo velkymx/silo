@@ -22,29 +22,28 @@ function submit() {
 <template>
     <GuestLayout title="Set new password">
         <form @submit.prevent="submit">
-            <VibeFormGroup
+<VibeFormGroup
                 label="Email"
-                :validation-state="form.errors.email ? 'invalid' : null"
-                :validation-message="form.errors.email"
-            >
+                :error="form.errors.email"
+             required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
             </VibeFormGroup>
 
-            <VibeFormGroup
+<VibeFormGroup
                 label="New Password"
                 class="mt-3"
-                :validation-state="form.errors.password ? 'invalid' : null"
-                :validation-message="form.errors.password"
-            >
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
+                :error="form.errors.password"
+             required>
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" show-toggle show-password-strength />
             </VibeFormGroup>
 
-            <VibeFormGroup label="Confirm Password" class="mt-3">
+            <VibeFormGroup label="Confirm Password" class="mt-3" required>
                 <VibeFormInput
                     v-model="form.password_confirmation"
                     type="password"
                     required
                     autocomplete="new-password"
+                    show-toggle
                 />
             </VibeFormGroup>
 

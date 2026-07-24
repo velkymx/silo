@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import MarkdownViewer from './MarkdownViewer.vue';
 import DocViewer from './DocViewer.vue';
-import { iconFor, imageTypes } from '../lib/fileTypes';
+import { iconFor, isImageType } from '../lib/fileTypes';
+import { fmtBytes } from '../lib/format';
 
 interface QuickFile {
     id: number;
@@ -16,7 +17,7 @@ interface QuickFile {
 interface ActionItem { text: string; icon: string; action: string }
 
 const open = defineModel<boolean>({ required: true });
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
     file: QuickFile | null;
     index: number;
     total: number;
@@ -26,6 +27,8 @@ withDefaults(defineProps<{
 }>(), { prevFile: null, nextFile: null });
 
 const hoverSide = ref<'prev' | 'next' | null>(null);
+const loading = ref(true);
+const loadError = ref('');
 
 const emit = defineEmits<{
     step: [number];
@@ -35,77 +38,101 @@ const emit = defineEmits<{
 const officeTypes = ['docx', 'xlsx', 'xls', 'csv', 'ods'];
 const previewMarkdownTypes = ['md', 'markdown'];
 
+// Reset the per-file load state when the parent navigates to a different
+// file (via step emit) so the spinner + error come back for each load.
+watch(() => props.file?.id, () => { loading.value = true; loadError.value = ''; });
+
 function isImage(f: QuickFile | null): boolean {
-    return !!f && !!f.type && imageTypes.includes(f.type);
+    return isImageType(f?.type);
+}
+
+function safeUrl(url: string | undefined): string {
+    if (!url) return '';
+    try {
+        const u = new URL(url, window.location.origin);
+        return (u.protocol === 'https:' || u.protocol === 'http:' || u.protocol === 'blob:') ? url : '';
+    } catch {
+        return url.startsWith('/') ? url : '';
+    }
 }
 </script>
 
 <template>
     <VibeModal v-model="open" fullscreen hide-footer>
         <template #header>
-            <div class="d-flex align-items-center justify-content-between w-100">
-                <h5 class="modal-title text-truncate mb-0">
+            <div class="ql-header d-flex align-items-center flex-grow-1 min-w-0">
+                <h5 class="modal-title text-truncate mb-0 flex-grow-1 min-w-0">
                     <VibeIcon :icon="file ? iconFor(file.type) : 'file-earmark'" class="me-2" />
                     {{ file?.name }}
                 </h5>
-                <div class="d-flex gap-2 align-items-center ms-3">
+                <div class="d-flex gap-2 align-items-center ms-auto flex-shrink-0 me-2">
                     <small class="text-muted">{{ index + 1 }} / {{ total }}</small>
                     <div class="position-relative" @mouseenter="hoverSide = 'prev'" @mouseleave="hoverSide = null">
-                        <VibeButton variant="secondary" size="sm" outline title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
+                        <VibeButton variant="light" size="sm" title="Previous (←)" aria-label="Previous file" @click="emit('step', -1)">
                             <VibeIcon icon="chevron-left" />
                         </VibeButton>
                         <div v-if="hoverSide === 'prev' && prevFile" class="ql-peek">
-                            <img v-if="prevFile.thumb_url" :src="prevFile.thumb_url" :alt="prevFile.name">
+                            <img v-if="prevFile.thumb_url" :src="safeUrl(prevFile.thumb_url)" :alt="prevFile.name" loading="lazy">
                             <VibeIcon v-else :icon="iconFor(prevFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ prevFile.name }}</div>
                         </div>
                     </div>
                     <div class="position-relative" @mouseenter="hoverSide = 'next'" @mouseleave="hoverSide = null">
-                        <VibeButton variant="secondary" size="sm" outline title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
+                        <VibeButton variant="light" size="sm" title="Next (→)" aria-label="Next file" @click="emit('step', 1)">
                             <VibeIcon icon="chevron-right" />
                         </VibeButton>
                         <div v-if="hoverSide === 'next' && nextFile" class="ql-peek">
-                            <img v-if="nextFile.thumb_url" :src="nextFile.thumb_url" :alt="nextFile.name">
+                            <img v-if="nextFile.thumb_url" :src="safeUrl(nextFile.thumb_url)" :alt="nextFile.name" loading="lazy">
                             <VibeIcon v-else :icon="iconFor(nextFile.type)" class="fs-2" />
                             <div class="text-truncate small mt-1">{{ nextFile.name }}</div>
                         </div>
                     </div>
-                    <VibeButton variant="success" size="sm" :href="`/download/${file?.id}`">
+                    <VibeButton v-if="file?.id" variant="primary" size="sm" :href="`/download/${file.id}`">
                         <VibeIcon icon="download" class="me-1" />Download
                     </VibeButton>
                     <VibeDropdown
                         v-if="file"
-                        variant="primary"
+                        variant="light"
                         size="sm"
+                        menu-end
                         :items="menu"
                         @item-click="emit('action', $event)"
                     >
-                        <VibeIcon icon="three-dots-vertical" class="me-1" />Actions
+                        <template #button><VibeIcon icon="three-dots-vertical" class="me-1" />Actions</template>
                     </VibeDropdown>
-                    <VibeButton variant="secondary" size="sm" outline title="Close" aria-label="Close preview" @click="open = false">
-                        <VibeIcon icon="x-lg" />
-                    </VibeButton>
                 </div>
             </div>
         </template>
 
-        <div v-if="file" class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center" style="height: calc(100vh - 130px)">
+        <!-- One viewport-capped column: the preview row flexes, the below
+             slot (filmstrip) keeps its natural height inside the budget. -->
+        <div v-if="file" class="d-flex flex-column" style="height: calc(100vh - 140px)">
+        <div class="d-flex align-items-stretch flex-grow-1" style="min-height: 0">
+        <div class="quicklook-body d-flex flex-column align-items-center justify-content-center text-center flex-grow-1 min-w-0 h-100">
+            <VibeSpinner v-if="loading" class="mb-2" />
+            <div v-if="loadError" class="alert alert-danger">{{ loadError }}</div>
             <img
                 v-if="isImage(file)"
-                :src="file.url"
+                :src="safeUrl(file.url)"
                 :alt="file.name"
                 class="img-fluid rounded"
-                style="max-height: 100%; object-fit: contain"
+                loading="lazy"
+                style="max-height: 100%; object-fit: contain; aspect-ratio: 1"
+                @load="loading = false"
+                @error="loadError = 'Could not load image.'"
             >
             <iframe
                 v-else-if="file.type === 'pdf'"
-                :src="file.url"
+                :src="safeUrl(file.url)"
+                :title="`PDF preview of ${file.name}`"
                 class="w-100 h-100 border rounded"
+                @load="loading = false"
+                @error="loadError = 'Could not load preview.'"
             ></iframe>
-            <audio v-else-if="file.mime?.startsWith('audio/')" :src="file.url" controls class="w-100" />
+            <audio v-else-if="file.mime?.startsWith('audio/')" :src="safeUrl(file.url)" controls class="w-100" />
             <video
                 v-else-if="file.mime?.startsWith('video/')"
-                :src="file.url"
+                :src="safeUrl(file.url)"
                 controls
                 class="img-fluid rounded"
                 style="max-height: 100%"
@@ -119,7 +146,7 @@ function isImage(f: QuickFile | null): boolean {
             <DocViewer
                 v-else-if="officeTypes.includes(file.type ?? '')"
                 :key="file.id"
-                :url="file.url ?? ''"
+                :url="safeUrl(file.url)"
                 :type="file.type ?? ''"
                 class="w-100 h-100 overflow-auto text-start"
             />
@@ -131,11 +158,32 @@ function isImage(f: QuickFile | null): boolean {
             <div v-else class="text-muted py-5">
                 <VibeIcon :icon="iconFor(file.type)" class="display-1 d-block mb-3" />
                 No inline preview for this file type.
-                <div class="small mt-2">{{ file.mime || 'unknown type' }} · {{ ((file.size ?? 0) / 1024).toFixed(1) }} KB</div>
+                <div class="small mt-2">{{ file.mime || 'unknown type' }} · {{ fmtBytes(file.size ?? 0) }}</div>
             </div>
+        </div>
+        <aside v-if="$slots.side" class="quicklook-side border-start overflow-auto flex-shrink-0 h-100 text-start">
+            <slot name="side" />
+        </aside>
+        </div>
+        <slot name="below" />
         </div>
     </VibeModal>
 </template>
+
+<style>
+.quicklook-side {
+    width: 320px;
+}
+
+/* VibeModal wraps the header slot in a content-sized .modal-title h5,
+   teleports to <body> (out of scoped-CSS reach), and drops fallthrough
+   attrs — so key on our own slot content: grow the wrapping title to the
+   full header width so the nav/actions cluster can right-align. */
+.modal-header > .modal-title:has(> .ql-header) {
+    flex-grow: 1;
+    min-width: 0;
+}
+</style>
 
 <style scoped>
 /* Hover preview of the adjacent file under the prev/next buttons. */

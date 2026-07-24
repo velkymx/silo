@@ -2,13 +2,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 vi.mock('@inertiajs/vue3', () => ({
-    router: { get: vi.fn(), on: vi.fn(() => () => {}) },
-    usePage: () => ({ props: { flash: {}, errors: {} } }),
+    router: { get: vi.fn(), visit: vi.fn(), on: vi.fn(() => () => {}) },
+    usePage: () => ({ url: '/usage', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
+    Link: { name: 'Link', template: '<a><slot /></a>' },
 }));
 
 import Storage from '@/Pages/Storage/Index.vue';
 
-describe('Storage/Index page', () => {
+describe('Storage/Index page (explorer shell)', () => {
     const props = {
         summary: { used: 5 * 1024 * 1024, quota: 10 * 1024 * 1024 },
         nodes: [{ id: 1, name: 'Docs', parent_id: null, is_dir: true, size: 4 * 1024 * 1024 }],
@@ -16,10 +17,14 @@ describe('Storage/Index page', () => {
         byCategory: { image: 2 * 1024 * 1024, archive: 3 * 1024 * 1024 },
     };
 
-    it('renders the usage summary and percentage', () => {
+    it('renders the usage summary and percentage in the shell top bar', () => {
         const wrapper = mount(Storage, { props });
         expect(wrapper.text()).toContain('5.0 MB');
         expect(wrapper.text()).toContain('(50%)');
+        // Shell layout without folder/detail panes; no legacy AppLayout.
+        expect(wrapper.find('[data-pane="rail"]').exists()).toBe(true);
+        expect(wrapper.find('[data-pane="folders"]').exists()).toBe(false);
+        expect(wrapper.find('[data-stub="AppLayout"]').exists()).toBe(false);
     });
 
     it('lists categories and largest files', () => {

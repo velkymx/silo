@@ -1,0 +1,175 @@
+<?php
+
+namespace Tests\Unit\Rss;
+
+use App\Services\Rss\Parser;
+use PHPUnit\Framework\TestCase;
+
+class ParserTest extends TestCase
+{
+    public function test_parses_rss_2_with_basic_fields(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>Laravel News</title>
+  <link>https://laravel-news.com</link>
+  <description>News</description>
+  <item>
+    <title>Security patch</title>
+    <link>https://laravel-news.com/security</link>
+    <guid>https://laravel-news.com/security</guid>
+    <pubDate>Mon, 06 Jul 2026 12:00:00 GMT</pubDate>
+    <description><![CDATA[<p>Big deal</p>]]></description>
+    <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Eric Barnes</dc:creator>
+  </item>
+</channel></rss>
+XML;
+
+        $parser = new Parser;
+        $out = $parser->parse($xml);
+
+        $this->assertSame('Laravel News', $out['title']);
+        $this->assertSame('https://laravel-news.com', $out['site_url']);
+        $this->assertCount(1, $out['entries']);
+        $entry = $out['entries'][0];
+        $this->assertSame('Security patch', $entry['title']);
+        $this->assertSame('https://laravel-news.com/security', $entry['guid']);
+        $this->assertSame('Eric Barnes', $entry['author']);
+        $this->assertNotNull($entry['published_at']);
+    }
+
+    public function test_parses_atom_with_content(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Atom Feed</title>
+  <link rel="alternate" href="https://example.com"/>
+  <entry>
+    <id>tag:example,2026:1</id>
+    <title>Hello</title>
+    <link rel="alternate" href="https://example.com/hello"/>
+    <published>2026-07-06T00:00:00Z</published>
+    <author><name>Jane</name></author>
+    <summary>World</summary>
+  </entry>
+</feed>
+XML;
+
+        $parser = new Parser;
+        $out = $parser->parse($xml);
+
+        $this->assertSame('Atom Feed', $out['title']);
+        $this->assertCount(1, $out['entries']);
+        $this->assertSame('tag:example,2026:1', $out['entries'][0]['guid']);
+        $this->assertSame('Jane', $out['entries'][0]['author']);
+        $this->assertSame('World', $out['entries'][0]['excerpt']);
+    }
+
+    public function test_parses_rss_1_rdf_feed(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://example.com">
+    <title>RDF Feed</title>
+    <link>https://example.com</link>
+  </channel>
+  <item rdf:about="https://example.com/post-1">
+    <title>RDF Post</title>
+    <link>https://example.com/post-1</link>
+    <description>Summary here</description>
+    <dc:creator>Ada</dc:creator>
+    <dc:date>2026-07-06T09:00:00Z</dc:date>
+  </item>
+</rdf:RDF>
+XML;
+
+        $parser = new Parser;
+        $out = $parser->parse($xml);
+
+        $this->assertSame('RDF Feed', $out['title']);
+        $this->assertSame('https://example.com', $out['site_url']);
+        $this->assertCount(1, $out['entries']);
+        $entry = $out['entries'][0];
+        $this->assertSame('RDF Post', $entry['title']);
+        $this->assertSame('https://example.com/post-1', $entry['guid']);
+        $this->assertSame('https://example.com/post-1', $entry['url']);
+        $this->assertSame('Ada', $entry['author']);
+        $this->assertSame('Summary here', $entry['excerpt']);
+        $this->assertNotNull($entry['published_at']);
+    }
+
+    public function test_excerpt_falls_back_to_content_when_no_description(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel><title>F</title><link>https://x</link>
+    <item>
+      <title>No summary</title>
+      <guid>c-1</guid>
+      <content:encoded><![CDATA[<p>The full body text is here.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>
+XML;
+
+        $out = (new Parser)->parse($xml);
+        $this->assertSame('The full body text is here.', $out['entries'][0]['excerpt']);
+    }
+
+    public function test_garbage_returns_empty(): void
+    {
+        $parser = new Parser;
+        $out = $parser->parse('not-xml-at-all');
+
+        $this->assertSame([], $out['entries']);
+    }
+
+    public function test_falls_back_to_url_for_missing_guid(): void
+    {
+        $xml = <<<'XML'
+<rss><channel>
+  <item><title>No guid</title><link>https://x/y</link></item>
+</channel></rss>
+XML;
+
+        $parser = new Parser;
+        $out = $parser->parse($xml);
+
+        $this->assertSame('https://x/y', $out['entries'][0]['guid']);
+    }
+
+    public function test_overlong_guid_is_hashed_to_fit_the_column(): void
+    {
+        $long = str_repeat('x', 300);
+        $xml = '<rss><channel><item><title>t</title><guid>'.$long.'</guid></item></channel></rss>';
+
+        $parser = new Parser;
+        $guid = $parser->parse($xml)['entries'][0]['guid'];
+
+        $this->assertLessThanOrEqual(255, strlen($guid));
+        $this->assertStringStartsWith('sha1:', $guid);
+        $this->assertSame($guid, $parser->parse($xml)['entries'][0]['guid'], 'Hashed guid must be stable for dedupe');
+    }
+
+    public function test_guidless_and_linkless_entry_gets_deterministic_surrogate(): void
+    {
+        $xml = <<<'XML'
+<rss><channel>
+  <item><title>Orphan</title><description>Same body</description><pubDate>Mon, 06 Jul 2026 12:00:00 GMT</pubDate></item>
+</channel></rss>
+XML;
+
+        $parser = new Parser;
+        $first = $parser->parse($xml)['entries'][0]['guid'];
+        $second = $parser->parse($xml)['entries'][0]['guid'];
+
+        $this->assertStringStartsWith('sha1:', $first);
+        $this->assertSame($first, $second, 'Surrogate GUID must be stable across parses so dedupe works');
+    }
+}

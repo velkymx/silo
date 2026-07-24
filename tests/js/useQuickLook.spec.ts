@@ -47,4 +47,15 @@ describe('useQuickLook', () => {
         ql.close();
         expect(ql.quickOpen.value).toBe(false);
     });
+
+    it('initialIndex seeds the active + quick indices', () => {
+        const ql = useQuickLook(files(), 2);
+        expect(ql.selectedIndex.value).toBe(2);
+        expect(ql.quickFile.value?.id).toBe(30);
+    });
+
+    it('initialIndex is clamped to the file range', () => {
+        const ql = useQuickLook(files(), 99);
+        expect(ql.selectedIndex.value).toBe(2);
+    });
 });

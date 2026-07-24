@@ -24,6 +24,16 @@ class User extends Authenticatable
         'group_id',
         'is_admin',
         'avatar_path',
+        'title',
+        'department',
+        'phone',
+        'location',
+        'bio',
+        'blocked_keywords',
+        'start_date',
+        'manager_id',
+        'disabled_at',
+        'quota_mb',
     ];
 
     /**
@@ -47,7 +57,17 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'start_date' => 'date',
+            'blocked_keywords' => 'array',
+            'disabled_at' => 'datetime',
+            'quota_mb' => 'integer',
         ];
+    }
+
+    /** Disabled accounts cannot log in; live sessions end on the next request. */
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
     }
 
     // Relationships
@@ -60,5 +80,17 @@ class User extends Authenticatable
     public function files()
     {
         return $this->hasMany(File::class, 'owner_id');
+    }
+
+    /** The user this person reports to (org chart). */
+    public function manager()
+    {
+        return $this->belongsTo(self::class, 'manager_id');
+    }
+
+    /** People who report to this user. */
+    public function reports()
+    {
+        return $this->hasMany(self::class, 'manager_id');
     }
 }

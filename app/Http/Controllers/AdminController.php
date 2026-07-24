@@ -10,22 +10,6 @@ use Inertia\Inertia;
 
 class AdminController extends Controller
 {
-    // add a constructor that checks if the user is authenticated and if is_admin is set to 1
-    public function __construct()
-    {
-        // Add a closure-based middleware to check admin privileges
-        $this->middleware(function ($request, $next) {
-            $user = auth()->user();
-
-            // Abort if the user is not authenticated or not an admin
-            if (! $user || ! $user->is_admin) {
-                abort(403, 'Access denied. Admins only.');
-            }
-
-            return $next($request);
-        });
-    }
-
     /**
      * Display a list of all users.
      *
@@ -40,6 +24,8 @@ class AdminController extends Controller
             'email' => $user->email,
             'is_admin' => (bool) $user->is_admin,
             'group' => $user->group?->name,
+            'disabled' => $user->isDisabled(),
+            'quota_mb' => $user->quota_mb,
         ]);
 
         return Inertia::render('Admin/Users/Index', compact('users'));
@@ -54,7 +40,7 @@ class AdminController extends Controller
     public function edit(User $user)
     {
         return Inertia::render('Admin/Users/Edit', [
-            'user' => $user->only('id', 'name', 'email', 'is_admin', 'group_id'),
+            'user' => $user->only('id', 'name', 'email', 'is_admin', 'group_id', 'quota_mb') + ['disabled' => $user->isDisabled()],
             'groups' => Group::all(['id', 'name']),
         ]);
     }
@@ -89,8 +75,19 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
-            'group_id' => 'required|exists:groups,id',
+            'group_id' => 'nullable|exists:groups,id',
             'is_admin' => 'nullable|boolean',
+            'disabled' => 'nullable|boolean',
+            // Per-user storage quota in MB: null = global default, 0 = unlimited.
+            'quota_mb' => 'nullable|integer|min:0|max:16777215',
+            // Directory profile fields (admins may edit others').
+            'title' => 'nullable|string|max:120',
+            'department' => 'nullable|string|max:120',
+            'phone' => 'nullable|string|max:40',
+            'location' => 'nullable|string|max:120',
+            'bio' => 'nullable|string|max:2000',
+            'start_date' => 'nullable|date',
+            'manager_id' => 'nullable|exists:users,id',
         ]);
 
         // Never let the final administrator strip their own (or the last) admin
@@ -102,11 +99,29 @@ class AdminController extends Controller
             ]);
         }
 
+        // Disabling guards: never yourself, never the last active administrator.
+        $wantsDisabled = $request->boolean('disabled');
+        if ($wantsDisabled && $user->id === $request->user()->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'disabled' => 'You cannot disable your own account.',
+            ]);
+        }
+        if ($wantsDisabled && $user->is_admin
+            && User::where('is_admin', true)->whereNull('disabled_at')->count() <= 1) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'disabled' => 'You cannot disable the last active administrator.',
+            ]);
+        }
+
         // Update the user's basic info
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->group_id = $validated['group_id'];
         $user->is_admin = $wantsAdmin;
+        $user->disabled_at = $wantsDisabled ? ($user->disabled_at ?? now()) : null;
+        $user->quota_mb = $validated['quota_mb'] ?? null;
+        $user->fill(collect($validated)
+            ->only(['title', 'department', 'phone', 'location', 'bio', 'start_date', 'manager_id'])->all());
 
         // Update password only if provided
         if (!empty($validated['password'])) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\SanitizesFilename;
 use App\Jobs\ProcessUploadedFile;
 use App\Models\Album;
 use App\Models\File;
@@ -15,6 +16,8 @@ use Inertia\Inertia;
 
 class PhotoController extends Controller
 {
+    use SanitizesFilename;
+
     private const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'tiff'];
 
     // The timeline grid + filters (album / tag).
@@ -79,8 +82,11 @@ class PhotoController extends Controller
 
         foreach ($request->file('files', []) as $upload) {
             $path = $upload->store("uploads/{$userId}", $disk);
+            if ($path === false) {
+                throw ValidationException::withMessages(['files' => 'One or more photos could not be saved. Please try again.']);
+            }
             $file = File::create([
-                'name' => $upload->getClientOriginalName(),
+                'name' => $this->sanitizeFilename($upload->getClientOriginalName()),
                 'path' => $path,
                 'disk' => $disk,
                 'is_dir' => false,
@@ -108,7 +114,7 @@ class PhotoController extends Controller
 
     public function destroyAlbum(Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $album->delete();
 
         return back()->with('success', 'Album deleted.');
@@ -116,7 +122,7 @@ class PhotoController extends Controller
 
     public function addToAlbum(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $ids = $this->ownedPhotoIds($request);
         $album->photos()->syncWithoutDetaching($ids);
         if (! $album->cover_file_id && $ids) {
@@ -128,7 +134,7 @@ class PhotoController extends Controller
 
     public function removeFromAlbum(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $album->photos()->detach($this->ownedPhotoIds($request));
 
         return back()->with('success', 'Removed from album.');
@@ -136,7 +142,7 @@ class PhotoController extends Controller
 
     public function setCover(Request $request, Album $album)
     {
-        $this->authorizeAlbum($album);
+        $this->authorize('update', $album);
         $id = $this->ownedPhotoIds($request)[0] ?? null;
         abort_unless($id, 404, 'Photo not found.');
         $album->update(['cover_file_id' => $id]);
@@ -164,11 +170,6 @@ class PhotoController extends Controller
         }
 
         return back()->with('success', 'Order updated.');
-    }
-
-    private function authorizeAlbum(Album $album): void
-    {
-        abort_unless($album->owner_id === auth()->id(), 403);
     }
 
     /** Validate + return file ids that are image files owned by the user. */
@@ -204,6 +205,7 @@ class PhotoController extends Controller
         $meta = $f->metadata ?? [];
         $taken = $meta['taken_at'] ?? $meta['date_taken'] ?? $meta['DateTimeOriginal'] ?? null;
         $ts = ($taken ? @strtotime($taken) : false) ?: $f->created_at->getTimestamp();
+        $camera = trim(implode(' ', array_filter([$meta['camera_make'] ?? null, $meta['camera_model'] ?? null])));
 
         return [
             'id' => $f->id,
@@ -212,12 +214,26 @@ class PhotoController extends Controller
             'thumb_url' => $f->thumbnail_path ? route('files.thumbnail', $f) : route('files.raw', $f),
             'starred' => (bool) $f->starred,
             'status' => $f->status,
+            // Quick Look's type-aware preview needs these — without them the
+            // lightbox showed "No inline preview" for every photo.
+            'type' => strtolower(pathinfo($f->name, PATHINFO_EXTENSION)),
+            'mime' => $f->mime,
+            'size' => $f->size,
             'tags' => $f->relationLoaded('tags')
                 ? $f->tags->map(fn (Tag $t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values()
                 : [],
             'taken_at' => $ts,
+            'added_at' => $f->created_at->getTimestamp(),
             'date' => date('Y-m', $ts),
             'date_label' => date('F Y', $ts),
+            // Picasa-style browse hooks: EXIF camera for filtering, dimensions
+            // for the justified-row grid (null when extraction hasn't run).
+            'camera' => $camera !== '' ? $camera : null,
+            'width' => isset($meta['width']) ? (int) $meta['width'] : null,
+            'height' => isset($meta['height']) ? (int) $meta['height'] : null,
+            // Structured EXIF/IPTC/XMP/GPS block for the lightbox info panel
+            // (null until enrichment has run for this file).
+            'photo_meta' => $meta['photo'] ?? null,
         ];
     }
 }

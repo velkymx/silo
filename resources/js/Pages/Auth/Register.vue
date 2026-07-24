@@ -12,38 +12,36 @@ function submit() {
 <template>
     <GuestLayout title="Create account">
         <form @submit.prevent="submit">
-            <VibeFormGroup
+<VibeFormGroup
                 label="Name"
-                :validation-state="form.errors.name ? 'invalid' : null"
-                :validation-message="form.errors.name"
-            >
+                :error="form.errors.name"
+             required>
                 <VibeFormInput v-model="form.name" required autocomplete="name" />
             </VibeFormGroup>
 
-            <VibeFormGroup
+<VibeFormGroup
                 label="Email"
                 class="mt-3"
-                :validation-state="form.errors.email ? 'invalid' : null"
-                :validation-message="form.errors.email"
-            >
+                :error="form.errors.email"
+             required>
                 <VibeFormInput v-model="form.email" type="email" required autocomplete="username" />
             </VibeFormGroup>
 
-            <VibeFormGroup
+<VibeFormGroup
                 label="Password"
                 class="mt-3"
-                :validation-state="form.errors.password ? 'invalid' : null"
-                :validation-message="form.errors.password"
-            >
-                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" />
+                :error="form.errors.password"
+             required>
+                <VibeFormInput v-model="form.password" type="password" required autocomplete="new-password" show-toggle show-password-strength />
             </VibeFormGroup>
 
-            <VibeFormGroup label="Confirm Password" class="mt-3">
+            <VibeFormGroup label="Confirm Password" class="mt-3" required>
                 <VibeFormInput
                     v-model="form.password_confirmation"
                     type="password"
                     required
                     autocomplete="new-password"
+                    show-toggle
                 />
             </VibeFormGroup>
 

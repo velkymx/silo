@@ -3,27 +3,17 @@ import { mount } from '@vue/test-utils';
 
 const { routerGet } = vi.hoisted(() => ({ routerGet: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
-    router: { get: routerGet, on: vi.fn(() => () => {}) },
-    usePage: () => ({ props: { flash: {}, errors: {} } }),
+    router: { get: routerGet, post: vi.fn(), visit: vi.fn(), on: vi.fn(() => () => {}) },
+    usePage: () => ({ url: '/', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
+    Link: { name: 'Link', template: '<a><slot /></a>' },
 }));
 
-import SharedIndex from '@/Pages/Shared/Index.vue';
 import SharedFolder from '@/Pages/Shared/Folder.vue';
 
 const files = [{ id: 21, name: 'photo.png', owner: 'Alice', size: 2048, type: 'png', abilities: ['view'], url: '/raw/21' }];
 
 describe('Shared pages', () => {
     beforeEach(() => routerGet.mockClear());
-
-    it('Index shows an empty state when nothing is shared', () => {
-        const wrapper = mount(SharedIndex, { props: { folders: [], files: [] } });
-        expect(wrapper.text()).toContain('Nothing shared with you yet');
-    });
-
-    it('Index renders the listing when items exist', () => {
-        const wrapper = mount(SharedIndex, { props: { folders: [], files } });
-        expect(wrapper.text()).toContain('photo.png');
-    });
 
     it('Folder breadcrumb navigates to an ancestor', async () => {
         const wrapper = mount(SharedFolder, {

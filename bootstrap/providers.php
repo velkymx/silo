@@ -1,5 +1,9 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\RssServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
+    AppServiceProvider::class,
+    RssServiceProvider::class,
 ];

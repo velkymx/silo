@@ -13,7 +13,7 @@ export class HttpError extends Error {
     }
 }
 
-function csrfToken(): string {
+export function csrfToken(): string {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 }
 

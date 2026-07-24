@@ -5,27 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\File;
 use App\Services\Audit;
 use App\Services\TrashService;
-use Inertia\Inertia;
 
 class TrashController extends Controller
 {
     public function __construct(private TrashService $trash)
     {
-    }
-
-    // List the user's trashed items (deletion roots only).
-    public function index()
-    {
-        $items = $this->trash->roots(auth()->id())->map(fn (File $f) => [
-            'id' => $f->id,
-            'name' => $f->name,
-            'is_dir' => $f->is_dir,
-            'size' => $f->size,
-            'type' => strtolower(pathinfo($f->name, PATHINFO_EXTENSION)),
-            'deleted_at' => $f->deleted_at?->format('Y-m-d H:i'),
-        ]);
-
-        return Inertia::render('Trash/Index', ['items' => $items]);
     }
 
     // Restore a trashed item (and its subtree).
@@ -36,6 +20,24 @@ class TrashController extends Controller
         Audit::log('file.restore', $file);
 
         return back()->with('success', 'Restored.');
+    }
+
+    // Restore multiple trashed items (undo for batch-delete).
+    public function batchRestore(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
+        $files = File::withTrashed()
+            ->whereIn('id', $request->ids)
+            ->where('owner_id', auth()->id())
+            ->get();
+
+        foreach ($files as $file) {
+            $this->authorize('restore', $file);
+            $this->trash->restore($file);
+            Audit::log('file.restore', $file);
+        }
+
+        return back()->with('success', count($files) . ' item(s) restored.');
     }
 
     // Permanently delete a trashed item (and its subtree + blobs).

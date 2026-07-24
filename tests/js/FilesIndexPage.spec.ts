@@ -8,7 +8,7 @@ const s = vi.hoisted(() => ({
 vi.mock('@inertiajs/vue3', () => ({
     router: { get: s.get, post: s.post, put: s.put, delete: s.del, visit: s.visit, reload: s.reload, on: vi.fn(() => () => {}) },
     useForm: (data: Record<string, unknown>) => ({ ...data, processing: false, errors: {}, post: s.formPost, reset: s.formReset, clearErrors: vi.fn() }),
-    usePage: () => ({ props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 } } }),
+    usePage: () => ({ url: '/', props: { auth: { user: { id: 1, name: 'QA' } }, flash: {}, errors: {}, storage: { used: 0, quota: 0 }, savedSearches: [{ id: 7, name: 'Big PDFs', params: { ftype: 'pdf' } }] } }),
     Link: { name: 'Link', template: '<a><slot /></a>' },
     Head: { name: 'Head', template: '<span><slot /></span>' },
 }));
@@ -22,10 +22,19 @@ vi.mock('@/lib/http', () => ({
 
 // Stub heavy modal children (each covered by its own spec) so their internal
 // async handlers don't fire during Files/Index interaction tests.
-vi.mock('@/Components/EditorModal.vue', () => ({ default: { name: 'EditorModal', template: '<div />' } }));
+// EditorModal loads via defineAsyncComponent. Vue only unwraps `default`
+// from the resolved module when it looks like an ES module; without the
+// marker it treats the vitest mock proxy itself as the component and every
+// property probe on it throws asynchronously (unhandled rejections).
+vi.mock('@/Components/EditorModal.vue', () => ({
+    __esModule: true,
+    default: { name: 'EditorModal', template: '<div />' },
+}));
 vi.mock('@/Components/ShareModal.vue', () => ({ default: { name: 'ShareModal', template: '<div />' } }));
 vi.mock('@/Components/QuickLookModal.vue', () => ({ default: { name: 'QuickLookModal', template: '<div />' } }));
 vi.mock('@/Components/UploadModal.vue', () => ({ default: { name: 'UploadModal', template: '<div />' } }));
+// triggerDownload clicks a transient <a href download>; jsdom can't navigate.
+vi.mock('@/lib/download', () => ({ triggerDownload: vi.fn() }));
 
 import FilesIndex from '@/Pages/Files/Index.vue';
 import { useDialogHost } from '@/composables/useConfirm';
@@ -35,30 +44,51 @@ const files = [{ id: 21, name: 'memo.txt', is_dir: false, type: 'txt', size: 12,
 const allTags = [{ id: 3, name: 'work', color: '#abc' }];
 
 function mountIndex(extra = {}) {
-    return mount(FilesIndex, {
-        props: {
-            folders, files, allFolders: folders, allTags,
-            breadcrumbs: [],
-            filters: { search: '', sort: 'name', direction: 'asc' },
-            storage: { used: 0, quota: 0 }, maxUploadKb: 1024,
-            ...extra,
-        },
-    });
+    // FilesIndex uses options-API props (`type: Object`), so `current: null`
+    // doesn't line up with the inferred prop type — loosen the fixture.
+    const props: Record<string, any> = {
+        folders, files, current: null, allFolders: folders, allTags,
+        breadcrumbs: [],
+        filters: { search: '', sort: 'name', direction: 'asc' },
+        storage: { used: 0, quota: 0 }, maxUploadKb: 1024,
+        section: 'all',
+        ...extra,
+    };
+
+    return mount(FilesIndex, { props });
 }
 
 beforeEach(() => { Object.values(s).forEach((f) => f.mockClear()); localStorage.clear(); });
 
 describe('Files/Index page', () => {
-    it('renders folder and file names', () => {
+    it('renders folder and file names in the contents pane', () => {
         const wrapper = mountIndex();
-        expect(wrapper.text()).toContain('Reports');
-        expect(wrapper.text()).toContain('memo.txt');
+        const contentsPane = wrapper.get('[data-pane="contents"]');
+        expect(contentsPane.text()).toContain('Reports');
+        expect(contentsPane.text()).toContain('memo.txt');
     });
 
     it('breadcrumb click navigates to a folder', async () => {
         const wrapper = mountIndex();
         wrapper.findComponent({ name: 'VibeBreadcrumb' }).vm.$emit('item-click', { item: { folder: 10, active: false } });
         expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
+    });
+
+    it('runs a smart folder (saved search) from the folders pane', async () => {
+        const wrapper = mountIndex();
+        expect(wrapper.text()).toContain('Big PDFs');
+        await wrapper.get('.saved-search').trigger('click');
+        expect(s.get).toHaveBeenCalledWith('/', { ftype: 'pdf' });
+    });
+
+    it('deletes a smart folder after confirming', async () => {
+        const wrapper = mountIndex();
+        await wrapper.get('.saved-search .del-btn').trigger('click');
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.accept();
+        await flushPromises();
+        expect(s.del).toHaveBeenCalledWith('/saved-searches/7', expect.anything());
     });
 
     it('clicking a sidebar tag filters by it', async () => {
@@ -76,10 +106,11 @@ describe('Files/Index page', () => {
         expect(s.get).toHaveBeenCalledWith('/', {}, expect.anything());
     });
 
-    it('switching to grid view persists the preference', async () => {
+    it('cycling the view toggle persists the preference', async () => {
         const wrapper = mountIndex();
-        const grid = wrapper.findAll('button').find((b) => b.attributes('title') === 'Thumbnail view');
-        await grid!.trigger('click');
+        const toggle = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Toggle view');
+        // Default is list; one cycle → grid.
+        await toggle!.trigger('click');
         expect(localStorage.getItem('fm-view')).toBe('grid');
     });
 
@@ -89,6 +120,102 @@ describe('Files/Index page', () => {
             filters: { search: '', sort: 'name', direction: 'asc', ftype: 'image', size_min: 1048576 },
         });
         expect(wrapper.text()).toContain('Images');
+    });
+
+    it('selecting an editable file in the default section shows Edit/Preview in the detail pane', async () => {
+        const wrapper = mountIndex();
+        wrapper.vm.selectContentItem({ ...files[0], is_dir: false });
+        await wrapper.vm.$nextTick();
+        const detailPane = wrapper.get('[data-pane="detail"]');
+        expect(detailPane.text()).toContain(files[0].name);
+        expect(detailPane.text()).toContain('Edit');
+        expect(detailPane.text()).toContain('Preview');
+    });
+
+    it('table row click on a file opens the preview pane', async () => {
+        const wrapper = mountIndex();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const row = (table.props('items') as Array<{ id: number; is_dir: boolean }>).find((i) => !i.is_dir);
+        table.vm.$emit('row-clicked', row, 0);
+        await wrapper.vm.$nextTick();
+        expect(wrapper.get('[data-pane="detail"]').text()).toContain('memo.txt');
+    });
+
+    it('table row click on a folder navigates into it', async () => {
+        const wrapper = mountIndex();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const row = (table.props('items') as Array<{ id: number; is_dir: boolean }>).find((i) => i.is_dir);
+        table.vm.$emit('row-clicked', row, 0);
+        expect(s.get).toHaveBeenCalledWith('/', { folder: 10 }, expect.anything());
+    });
+
+    it('row checkboxes drive multi-select for BatchActions', async () => {
+        const wrapper = mountIndex();
+        const checks = wrapper.get('[data-pane="contents"]').findAll('input[type="checkbox"]');
+        expect(checks.length).toBe(2); // one per row (folder + file)
+        await checks[0].setValue(true);
+        await checks[1].setValue(true);
+        const batch = wrapper.findComponent({ name: 'BatchActions' });
+        expect((batch.props('selectedItems') as unknown[]).length).toBe(2);
+    });
+
+    it('Escape clears the selection and collapses the preview pane', async () => {
+        const wrapper = mountIndex();
+        wrapper.vm.selectContentItem({ ...files[0], is_dir: false });
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(true);
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.vm.$nextTick();
+        expect(wrapper.find('[data-pane="detail"]').exists()).toBe(false);
+    });
+
+    it('table omits checkbox and action columns for sections the viewer does not own', () => {
+        const wrapper = mountIndex({ section: 'shared' });
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const keys = (table.props('columns') as Array<{ key: string }>).map((c) => c.key);
+        expect(keys).toEqual(['name', 'modified', 'size', 'kind']);
+    });
+
+    it('table sorts by name ascending with sortable meta columns', () => {
+        const wrapper = mountIndex();
+        const table = wrapper.findComponent({ name: 'VibeDataTable' });
+        const keys = (table.props('columns') as Array<{ key: string }>).map((c) => c.key);
+        expect(keys).toEqual(['_select', 'name', 'modified', 'size', 'kind', '_actions']);
+        expect(table.attributes()).toMatchObject({ 'sort-by': 'name' });
+    });
+
+    it('there is no select-mode toggle in the toolbar', () => {
+        const wrapper = mountIndex();
+        expect(wrapper.findAll('button').some((b) => b.attributes('title') === 'Select multiple')).toBe(false);
+    });
+
+    it('grid thumbnail size control persists the choice', async () => {
+        localStorage.setItem('fm-view', 'grid');
+        const wrapper = mountIndex();
+        const large = wrapper.findAll('button').find((b) => b.attributes('title') === 'Large thumbnails');
+        await large!.trigger('click');
+        expect(localStorage.getItem('fm-grid-size')).toBe('l');
+    });
+
+    it('HI-17: mounts without throwing when localStorage.getItem throws SecurityError', () => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementationOnce(() => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+        });
+        let wrapper: ReturnType<typeof mountIndex> | undefined;
+        expect(() => { wrapper = mountIndex(); }).not.toThrow();
+        // Mounted without throwing and the view toggle is present (defaulted to list).
+        expect(wrapper!.findAll('button').some((b) => b.attributes('aria-label') === 'Toggle view')).toBe(true);
+        vi.restoreAllMocks();
+    });
+
+    it('HI-17: switching view does not throw when localStorage.setItem throws SecurityError', async () => {
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+        });
+        const wrapper = mountIndex();
+        const gridBtn = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Toggle view');
+        await expect(gridBtn!.trigger('click')).resolves.not.toThrow();
+        vi.restoreAllMocks();
     });
 });
 
@@ -219,5 +346,13 @@ describe('Files/Index item actions (grid view)', () => {
         // Several modals render a "Create" button; the folder modal's runs submitFolder.
         for (const c of w.findAll('button').filter((b) => b.text().trim() === 'Create')) await c.trigger('click');
         expect(s.formPost).toHaveBeenCalledWith('/folders', expect.anything());
+    });
+
+    it('CR-05: size cell uses fmtBytes not raw division — 2 GB shows "2 GB" not "2097152.0 KB"', () => {
+        const bigFile = { id: 99, name: 'big.bin', is_dir: false, type: 'bin', size: 2 * 1024 * 1024 * 1024, status: 'ready', versions: [], tags: [], created_at: 'now' };
+        const w = mountIndex({ files: [bigFile] });
+        // Table view renders the size cell.
+        expect(w.text()).not.toContain('2097152.0 KB');
+        expect(w.text()).toContain('GB');
     });
 });

@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 const { routerPost } = vi.hoisted(() => ({ routerPost: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
     router: { post: routerPost, get: vi.fn(), put: vi.fn(), delete: vi.fn(), visit: vi.fn(), reload: vi.fn(), on: vi.fn(() => () => {}) },
-    usePage: () => ({ props: { auth: { user: { name: 'T', is_admin: true } }, flash: {}, storage: null, folders: [], savedSearches: [], currentFolder: null } }),
+    usePage: () => ({ url: '/', props: { auth: { user: { name: 'T', is_admin: true } }, flash: {}, storage: null, folders: [], savedSearches: [], currentFolder: null } }),
     useForm: (data: Record<string, unknown>) => ({ ...data, processing: false, errors: {}, post: vi.fn(), put: vi.fn(), delete: vi.fn(), reset: vi.fn() }),
     Link: { name: 'Link', template: '<a><slot /></a>' },
     Head: { name: 'Head', template: '<span><slot /></span>' },
@@ -29,6 +29,26 @@ describe('Admin/Backups', () => {
         expect(wrapper.text()).toContain('b1.zip');
         expect(wrapper.text()).toContain('Ultra');
         expect(wrapper.text()).toContain('pending');
+    });
+
+    it('flags a backup with no checksum as Unverifiable', () => {
+        const wrapper = mount(Backups, {
+            props: {
+                ...props,
+                backups: [
+                    { id: 1, filename: 'ok.zip', size: 2048, status: 'ready', compression: 'bzip2', note: null, verified: true, created_by: 'T', created_at: '2026-06-14 10:00' },
+                    { id: 2, filename: 'old.zip', size: 2048, status: 'ready', compression: 'bzip2', note: null, verified: false, created_by: 'T', created_at: '2026-06-14 10:05' },
+                ],
+            },
+        });
+        expect(wrapper.text()).toContain('Unverifiable');
+    });
+
+    it('"Test restore" posts to the verify endpoint', async () => {
+        const wrapper = mount(Backups, { props });
+        const btn = wrapper.findAll('button').find((b) => b.attributes('title')?.includes('Test restore'));
+        await btn!.trigger('click');
+        expect(routerPost).toHaveBeenCalledWith('/backups/1/verify', {}, expect.anything());
     });
 
     it('"Back up now" posts to /backups', async () => {

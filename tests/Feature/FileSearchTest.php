@@ -65,4 +65,30 @@ class FileSearchTest extends TestCase
             fn (Assert $page) => $page->has('files', 0)
         );
     }
+
+    public function test_search_percent_wildcard_is_treated_as_literal(): void
+    {
+        $user = User::factory()->create();
+        File::factory()->for($user, 'owner')->create(['name' => 'sales-100%.csv']);
+        File::factory()->for($user, 'owner')->create(['name' => 'unrelated.txt']);
+
+        // A literal '%' query must match only the file whose name contains '%',
+        // not every file owned by the user (which is what an un-escaped LIKE would return).
+        $this->actingAs($user)->get('/?search=' . urlencode('%'))->assertInertia(
+            fn (Assert $page) => $page->has('files', 1)->where('files.0.name', 'sales-100%.csv')
+        );
+    }
+
+    public function test_search_underscore_wildcard_is_treated_as_literal(): void
+    {
+        $user = User::factory()->create();
+        File::factory()->for($user, 'owner')->create(['name' => 'a_c.txt']);
+        File::factory()->for($user, 'owner')->create(['name' => 'abc.txt']);
+
+        // An un-escaped '_' acts as a single-char wildcard and would match 'abc' too.
+        // Escaped, 'a_c' must match only the file with a literal underscore.
+        $this->actingAs($user)->get('/?search=a_c')->assertInertia(
+            fn (Assert $page) => $page->has('files', 1)->where('files.0.name', 'a_c.txt')
+        );
+    }
 }

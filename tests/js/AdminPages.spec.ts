@@ -9,10 +9,13 @@ const spies = vi.hoisted(() => ({
     formClearErrors: vi.fn(),
     routerGet: vi.fn(),
     routerVisit: vi.fn(),
+    routerDelete: vi.fn(),
+    routerPost: vi.fn(),
+    routerPatch: vi.fn(),
 }));
 vi.mock('@inertiajs/vue3', () => ({
-    router: { get: spies.routerGet, visit: spies.routerVisit, on: vi.fn(() => () => {}), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-    usePage: () => ({ props: { flash: {}, errors: {} } }),
+    router: { get: spies.routerGet, visit: spies.routerVisit, delete: spies.routerDelete, on: vi.fn(() => () => {}), post: spies.routerPost, patch: spies.routerPatch },
+    usePage: () => ({ url: '/', props: { flash: {}, errors: {} } }),
     useForm: (data: Record<string, unknown>) => ({
         ...data, processing: false, errors: {},
         post: spies.formPost, patch: spies.formPatch, delete: spies.formDelete,
@@ -77,31 +80,58 @@ describe('Admin/Users', () => {
 describe('Admin/Groups', () => {
     const groups = [{ id: 3, name: 'Ops', users_count: 2 }];
 
-    it('Add group posts to /groups', async () => {
+    it('New group prompts for a name then posts to /groups', async () => {
         const wrapper = mount(GroupsIndex, { props: { groups } });
-        const add = wrapper.findAll('button').find((b) => b.text().includes('Add group'));
-        await add!.trigger('click');
-        expect(spies.formPost).toHaveBeenCalledWith('/groups', expect.anything());
+        await wrapper.get('[data-testid="new-group"]').trigger('click');
+        const host = useDialogHost();
+        expect(host.state.open).toBe(true);
+        host.state.inputValue = 'Dev';
+        host.accept();
+        await flushPromises();
+        expect(spies.routerPost).toHaveBeenCalledWith('/groups', { name: 'Dev' }, expect.anything());
     });
 
-    it('Edit reveals the inline save control', async () => {
+    it('Rename prompts (prefilled) then patches the group', async () => {
         const wrapper = mount(GroupsIndex, { props: { groups } });
-        const editBtn = wrapper.findAll('button').find((b) => b.find('.bi').exists() && b.classes().includes('vibe-btn'));
-        // The first icon-only button in the actions cell is the pencil (edit).
-        await wrapper.findAll('button').find((b) => b.element.querySelector('.bi') && b.text() === '')!.trigger('click');
-        expect(wrapper.findAll('button').some((b) => b.text().includes('Save'))).toBe(true);
-        expect(editBtn).toBeTruthy();
+        const rename = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Rename Ops');
+        await rename!.trigger('click');
+        const host = useDialogHost();
+        expect(host.state.inputValue).toBe('Ops');
+        host.state.inputValue = 'Operations';
+        host.accept();
+        await flushPromises();
+        expect(spies.routerPatch).toHaveBeenCalledWith('/groups/3', { name: 'Operations' }, expect.anything());
     });
 
     it('Delete confirms then issues a DELETE', async () => {
         const wrapper = mount(GroupsIndex, { props: { groups } });
-        // The danger (trash) button is the last icon button in the row.
-        const iconButtons = wrapper.findAll('button').filter((b) => b.element.querySelector('.bi') && b.text() === '');
-        await iconButtons[iconButtons.length - 1].trigger('click');
+        const trash = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Delete Ops');
+        await trash!.trigger('click');
         const host = useDialogHost();
         expect(host.state.open).toBe(true);
         host.accept();
         await flushPromises();
-        expect(spies.formDelete).toHaveBeenCalledWith('/groups/3', expect.anything());
+        expect(spies.routerDelete).toHaveBeenCalledWith('/groups/3', expect.anything());
+    });
+
+    it('delete button is disabled while a delete is in flight', async () => {
+        // routerDelete stalls — never calls onFinish.
+        spies.routerDelete.mockImplementationOnce((_url: string, opts: { onFinish?: () => void }) => {
+            // do nothing — simulate pending request
+            void opts;
+        });
+        const wrapper = mount(GroupsIndex, { props: { groups } });
+        const iconButtons = wrapper.findAll('button').filter((b) => b.element.querySelector('.bi') && b.text() === '');
+        const trashBtn = iconButtons[iconButtons.length - 1];
+        await trashBtn.trigger('click');
+        const host = useDialogHost();
+        host.accept();
+        await flushPromises();
+        // Button must be disabled while in flight.
+        expect(trashBtn.element.disabled).toBe(true);
+        // A second click must not fire a second DELETE.
+        await trashBtn.trigger('click');
+        await flushPromises();
+        expect(spies.routerDelete).toHaveBeenCalledTimes(1);
     });
 });

@@ -29,12 +29,11 @@ function unlock() {
         <template v-if="locked">
             <p class="text-muted small">This link is password-protected.</p>
             <form @submit.prevent="unlock">
-                <VibeFormGroup
+<VibeFormGroup
                     label="Password"
-                    :validation-state="form.errors.password ? 'invalid' : null"
-                    :validation-message="form.errors.password"
-                >
-                    <VibeFormInput v-model="form.password" type="password" required />
+                    :error="form.errors.password"
+                 required>
+                    <VibeFormInput v-model="form.password" type="password" required show-toggle />
                 </VibeFormGroup>
                 <VibeButton type="submit" variant="primary" class="w-100 mt-4" :disabled="form.processing">
                     Unlock

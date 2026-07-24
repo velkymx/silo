@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useConfirm } from '../composables/useConfirm';
+import { useToast } from '../composables/useToast';
 import { useBusyGuard } from '../composables/useBusyGuard';
 import { useBatchRename } from '../composables/useBatchRename';
 
@@ -20,6 +21,7 @@ const count = computed(() => props.selectedItems.length);
 const batchIds = computed(() => props.selectedItems.map((i) => i.id));
 
 const { confirm } = useConfirm();
+const toast = useToast();
 // Single-flight guard: only one batch op runs at a time.
 const { busy: batchBusy, run: runBatch, release: releaseBatch } = useBusyGuard({ autoRelease: false });
 
@@ -33,9 +35,15 @@ function finishAndClose(close: () => void) {
 
 async function batchDelete(): Promise<void> {
     if (!await confirm({ title: 'Move to trash', message: `Move ${count.value} item(s) to trash?`, confirmLabel: 'Move to trash', variant: 'danger' })) return;
-    runBatch(() => router.post('/files/batch/delete', { ids: batchIds.value }, {
+    const ids = [...batchIds.value];
+    runBatch(() => router.post('/files/batch/delete', { ids }, {
         preserveScroll: true,
-        onSuccess: () => emit('done'),
+        onSuccess: () => {
+            emit('done');
+            toast.push(`${ids.length} item(s) moved to trash`, {
+                undo: () => router.post('/trash/batch/restore', { ids }, { preserveScroll: true }),
+            });
+        },
         onFinish: releaseBatch,
     }));
 }
@@ -68,13 +76,13 @@ function submitRename(): void {
         <strong>{{ count }} selected</strong>
         <div class="ms-auto d-flex flex-wrap gap-2">
             <!-- Move is the most common bulk action → the single primary. -->
-            <VibeButton variant="primary" size="sm" @click="moveTarget = null; moveOpen = true">
+            <VibeButton variant="primary" size="sm" :disabled="batchBusy" @click="moveTarget = null; moveOpen = true">
                 <VibeIcon icon="folder-symlink" class="me-1" />Move…
             </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="folderName = 'New Folder'; folderOpen = true">
+            <VibeButton variant="secondary" size="sm" outline :disabled="batchBusy" @click="folderName = 'New Folder'; folderOpen = true">
                 <VibeIcon icon="folder-plus" class="me-1" />New Folder
             </VibeButton>
-            <VibeButton variant="secondary" size="sm" outline @click="renameOpen = true">
+            <VibeButton variant="secondary" size="sm" outline :disabled="batchBusy" @click="renameOpen = true">
                 <VibeIcon icon="input-cursor-text" class="me-1" />Rename…
             </VibeButton>
             <VibeButton variant="danger" size="sm" outline :disabled="batchBusy" @click="batchDelete">
@@ -139,16 +147,19 @@ function submitRename(): void {
             </div>
 
             <h6 class="mt-3 text-muted">Preview</h6>
-            <div class="border rounded" style="max-height: 50vh; overflow: auto">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr v-for="r in renamePreview" :key="r.id">
-                            <td class="text-muted text-truncate" style="max-width: 280px">{{ r.from }}</td>
-                            <td class="text-center text-muted"><VibeIcon icon="arrow-right" /></td>
-                            <td class="fw-medium text-truncate" :class="{ 'text-danger': r.to !== r.from && renamePreview.filter(x => x.to === r.to).length > 1 }">{{ r.to }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="border rounded p-2" style="max-height: 50vh; overflow: auto">
+                <div
+                    v-for="r in renamePreview"
+                    :key="r.id"
+                    class="d-flex align-items-center gap-2 py-1"
+                >
+                    <span class="text-muted text-truncate" style="max-width: 280px">{{ r.from }}</span>
+                    <VibeIcon icon="arrow-right" class="text-muted flex-shrink-0" />
+                    <span
+                        class="fw-medium text-truncate"
+                        :class="{ 'text-danger': r.to !== r.from && renamePreview.filter(x => x.to === r.to).length > 1 }"
+                    >{{ r.to }}</span>
+                </div>
             </div>
         </div>
         <template #footer>

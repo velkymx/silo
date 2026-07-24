@@ -2,26 +2,41 @@
 
 namespace App\Providers;
 
+use App\Automation\Actions\ActionRegistry;
+use App\Automation\AutomationDispatcher;
+use App\Automation\EventDispatcher;
+use App\Automation\Events\AutomationEventRegistry;
+use App\Automation\Resolvers\EventContextResolver;
+use App\Automation\Resolvers\RssEventContextResolver;
+use App\Automation\Subscribers\SubscriberRegistry;
+use App\Services\VaultCrypto;
+use App\Workflow\Expression\ConditionEvaluator;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
-     * Register any application services.
+     * The engine itself is engine-only wiring. Module registrations
+     * (event types, subscribers) live in their own providers
+     * (RssServiceProvider today, Files/Calendar/Photos later).
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(VaultCrypto::class);
+
+        $this->app->singleton(AutomationEventRegistry::class);
+        $this->app->singleton(SubscriberRegistry::class);
+        $this->app->singleton(ActionRegistry::class);
+        $this->app->singleton(ConditionEvaluator::class);
+
+        $this->app->bind(EventContextResolver::class, RssEventContextResolver::class);
+
+        $this->app->singleton(EventDispatcher::class, AutomationDispatcher::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Behind a TLS-terminating proxy in production, force generated URLs to
-        // https so assets/links aren't emitted as http (mixed content).
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }

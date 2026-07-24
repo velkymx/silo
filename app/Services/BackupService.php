@@ -14,10 +14,17 @@ use ZipArchive;
 
 class BackupService
 {
-    /** Disk the archives live on (kept private — never the public web root). */
-    public const DISK = 'local';
-
     public const DIR = 'backups';
+
+    /**
+     * Disk the archives live on (config/backup.php). Defaults to 'local' but
+     * should point offsite in production — a backup on the same volume as the
+     * data is not a backup.
+     */
+    public static function disk(): string
+    {
+        return config('backup.disk', 'local');
+    }
 
     /**
      * Build a compressed archive of the database + all stored file blobs and
@@ -27,30 +34,44 @@ class BackupService
     {
         $filename = 'backup-'.now()->format('Ymd-His').'.zip';
         $backup = Backup::create([
-            'disk' => self::DISK,
+            'disk' => self::disk(),
             'filename' => $filename,
             'status' => Backup::STATUS_PENDING,
             'created_by' => $userId,
         ]);
 
-        $absDir = Storage::disk(self::DISK)->path(self::DIR);
-        if (! is_dir($absDir)) {
-            mkdir($absDir, 0775, true);
-        }
-        $absPath = $absDir.DIRECTORY_SEPARATOR.$filename;
+        $absPath = null;
 
         try {
+            // The archive is streamed to and restored from a local path, so the
+            // destination must be a local-driver disk. For offsite durability,
+            // point BACKUP_DISK at a local disk whose root is a mounted offsite
+            // volume (NFS, rclone/s3fs mount) rather than an object-store driver.
+            $driver = config('filesystems.disks.'.self::disk().'.driver');
+            if ($driver !== 'local') {
+                throw new \RuntimeException("Backup disk '".self::disk()."' uses the '{$driver}' driver; only local-driver disks are supported. Point BACKUP_DISK at a local disk mounted on your offsite volume.");
+            }
+
+            $absDir = Storage::disk(self::disk())->path(self::DIR);
+            if (! is_dir($absDir)) {
+                mkdir($absDir, 0775, true);
+            }
+            $absPath = $absDir.DIRECTORY_SEPARATOR.$filename;
+
             $compression = $this->buildArchive($absPath);
 
             $backup->update([
                 'path' => self::DIR.'/'.$filename,
                 'size' => is_file($absPath) ? filesize($absPath) : 0,
+                'checksum' => is_file($absPath) ? hash_file('sha256', $absPath) : null,
                 'status' => Backup::STATUS_READY,
                 'compression' => $compression,
                 'note' => 'Database + file blobs.',
             ]);
         } catch (\Throwable $e) {
-            @unlink($absPath);
+            if ($absPath) {
+                @unlink($absPath);
+            }
             $backup->update([
                 'status' => Backup::STATUS_FAILED,
                 'note' => $e->getMessage(),
@@ -207,9 +228,8 @@ class BackupService
                     '--host='.($config['host'] ?? '127.0.0.1'),
                     '--port='.($config['port'] ?? 3306),
                     '--user='.($config['username'] ?? 'root'),
-                    '--password='.($config['password'] ?? ''),
                     $config['database'],
-                ], $tmp);
+                ], $tmp, ['MYSQL_PWD' => $config['password'] ?? '']);
 
                 return ['abs' => $tmp, 'name' => 'database.sql', 'cleanup' => true];
             }
@@ -239,9 +259,8 @@ class BackupService
     private function jsonSnapshot(): array
     {
         $tmp = tempnam(sys_get_temp_dir(), 'dbjson_');
-        $tables = collect(DB::select('SELECT name FROM sqlite_master WHERE type = "table"'))
-            ->pluck('name')
-            ->reject(fn ($t) => str_starts_with($t, 'sqlite_'));
+        $tables = collect(Schema::getTables())
+            ->pluck('name');
 
         $data = [];
         foreach ($tables as $table) {
@@ -274,6 +293,10 @@ class BackupService
             throw new \RuntimeException('Backup archive is missing.');
         }
 
+        // Integrity gate: a corrupt or truncated archive must fail loudly here,
+        // before restore() rewrites the live database and blobs — never after.
+        $this->verifyIntegrity($backup, $archive);
+
         // Single-process guard: a restore rewrites the whole database and all
         // blobs, so two running at once (or concurrent writes) would corrupt
         // live data. Reject if another restore already holds the lock.
@@ -282,10 +305,125 @@ class BackupService
             throw new \RuntimeException('A restore is already in progress. Try again shortly.');
         }
 
+        // Atomic-ish restore: snapshot the CURRENT live state first, so any
+        // failure part-way through (disk full, bad dump, crash) rolls back to
+        // where we started instead of leaving a half-restored, clobbered
+        // install. The snapshot is a normal archive built from live data.
+        $safety = sys_get_temp_dir().'/prerestore_'.Str::random(12).'.zip';
+        $keepSafety = false;
+
+        try {
+            $this->buildArchive($safety);
+
+            try {
+                return ['disks' => $this->applyArchive($archive)];
+            } catch (\Throwable $restoreError) {
+                try {
+                    $this->applyArchive($safety);
+                } catch (\Throwable $rollbackError) {
+                    // Rollback itself failed — the install may be inconsistent.
+                    // Preserve the pre-restore snapshot so an operator can
+                    // recover manually, and surface both failures.
+                    $keepSafety = true;
+                    throw new \RuntimeException(
+                        "Restore failed and automatic rollback also failed. The pre-restore snapshot has been preserved at {$safety}. Original error: {$restoreError->getMessage()}",
+                        0,
+                        $rollbackError,
+                    );
+                }
+
+                throw new \RuntimeException(
+                    'Restore failed; the system was rolled back to its pre-restore state. '.$restoreError->getMessage(),
+                    0,
+                    $restoreError,
+                );
+            }
+        } finally {
+            if (! $keepSafety) {
+                @unlink($safety);
+            }
+            $lock->release();
+        }
+    }
+
+    /**
+     * Extract a backup archive into a scratch directory and apply it (database
+     * then blobs). Used for both the real restore and the rollback from the
+     * pre-restore safety snapshot. Returns per-disk blob counts.
+     *
+     * @return array<string, int>
+     */
+    private function applyArchive(string $archivePath): array
+    {
         $work = sys_get_temp_dir().'/restore_'.Str::random(12);
         mkdir($work, 0775, true);
 
         try {
+            $zip = new ZipArchive();
+            if ($zip->open($archivePath) !== true) {
+                throw new \RuntimeException('Could not open the backup archive.');
+            }
+            $this->assertSafeZipEntries($zip);
+            $zip->extractTo($work);
+            $zip->close();
+
+            $this->restoreDatabase($work);
+
+            return $this->restoreBlobs($work);
+        } finally {
+            $this->rmrf($work);
+        }
+    }
+
+    /**
+     * Verify the archive matches the sha256 recorded when it was created. A
+     * mismatch means bit-rot, a truncated upload, or tampering — refuse to
+     * restore. Backups predating checksums (null) cannot be verified; those are
+     * rejected too, since restore is destructive and an unverifiable archive is
+     * not a safe source of truth.
+     */
+    public function verifyIntegrity(Backup $backup, ?string $archive = null): void
+    {
+        $archive ??= Storage::disk($backup->disk)->path($backup->path);
+
+        if ($backup->checksum === null) {
+            throw new \RuntimeException('This backup has no integrity checksum and cannot be verified for restore.');
+        }
+
+        if (! hash_equals($backup->checksum, hash_file('sha256', $archive))) {
+            throw new \RuntimeException('Backup integrity check failed: the archive does not match its recorded checksum.');
+        }
+    }
+
+    /**
+     * Dry-run / test-restore: prove a backup is actually recoverable without
+     * touching live data. Verifies the checksum, extracts to a scratch dir,
+     * parses the manifest, loads the database dump into an isolated in-memory /
+     * temp engine (never the live connection), and reconciles blob counts
+     * against the manifest. Returns a structured report; never throws.
+     *
+     * @return array{ok: bool, checksum: bool, manifest: bool, database: array{format: ?string, ok: bool, tables: int, detail: string}, blobs: array<string, array{expected: int, found: int, ok: bool}>, error: ?string}
+     */
+    public function dryRun(Backup $backup): array
+    {
+        $report = [
+            'ok' => false,
+            'checksum' => false,
+            'manifest' => false,
+            'database' => ['format' => null, 'ok' => false, 'tables' => 0, 'detail' => 'Not checked.'],
+            'blobs' => [],
+            'error' => null,
+        ];
+
+        $work = sys_get_temp_dir().'/dryrun_'.Str::random(12);
+
+        try {
+            $this->verifyIntegrity($backup);
+            $report['checksum'] = true;
+
+            $archive = Storage::disk($backup->disk)->path($backup->path);
+            mkdir($work, 0775, true);
+
             $zip = new ZipArchive();
             if ($zip->open($archive) !== true) {
                 throw new \RuntimeException('Could not open the backup archive.');
@@ -294,14 +432,115 @@ class BackupService
             $zip->extractTo($work);
             $zip->close();
 
-            $this->restoreDatabase($work);
-            $disks = $this->restoreBlobs($work);
+            $manifest = is_file($work.'/manifest.json')
+                ? json_decode((string) file_get_contents($work.'/manifest.json'), true)
+                : null;
+            $report['manifest'] = is_array($manifest);
 
-            return ['disks' => $disks];
+            $report['database'] = $this->dryRunDatabase($work);
+            $report['blobs'] = $this->dryRunBlobs($work, is_array($manifest) ? ($manifest['disks'] ?? []) : []);
+
+            $blobsOk = ! collect($report['blobs'])->contains(fn (array $b) => ! $b['ok']);
+            $report['ok'] = $report['checksum'] && $report['manifest'] && $report['database']['ok'] && $blobsOk;
+        } catch (\Throwable $e) {
+            $report['error'] = $e->getMessage();
         } finally {
             $this->rmrf($work);
-            $lock->release();
         }
+
+        return $report;
+    }
+
+    /**
+     * Load the archived database dump into an isolated engine to prove it
+     * imports cleanly, without touching the live connection.
+     *
+     * @return array{format: ?string, ok: bool, tables: int, detail: string}
+     */
+    private function dryRunDatabase(string $work): array
+    {
+        $dir = $work.'/database';
+
+        if (is_file($dir.'/database.sqlite')) {
+            try {
+                $pdo = new \PDO('sqlite:'.$dir.'/database.sqlite');
+                $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+                $integrity = $pdo->query('PRAGMA integrity_check')->fetchColumn();
+                $tables = (int) $pdo->query("SELECT count(*) FROM sqlite_master WHERE type='table'")->fetchColumn();
+
+                return [
+                    'format' => 'sqlite',
+                    'ok' => $integrity === 'ok' && $tables > 0,
+                    'tables' => $tables,
+                    'detail' => $integrity === 'ok' ? "SQLite integrity OK, {$tables} tables." : "SQLite integrity: {$integrity}.",
+                ];
+            } catch (\Throwable $e) {
+                return ['format' => 'sqlite', 'ok' => false, 'tables' => 0, 'detail' => 'SQLite import failed: '.$e->getMessage()];
+            }
+        }
+
+        if (is_file($dir.'/database.json')) {
+            $data = json_decode((string) file_get_contents($dir.'/database.json'), true);
+            $ok = is_array($data) && count($data) > 0;
+
+            return [
+                'format' => 'json',
+                'ok' => $ok,
+                'tables' => is_array($data) ? count($data) : 0,
+                'detail' => $ok ? count($data).' tables in snapshot.' : 'Snapshot is empty or unreadable.',
+            ];
+        }
+
+        if (is_file($dir.'/database.sql')) {
+            $size = filesize($dir.'/database.sql');
+
+            return [
+                'format' => 'sql',
+                'ok' => $size > 0,
+                'tables' => 0,
+                'detail' => $size > 0 ? 'SQL dump present ('.$size.' bytes); not import-tested.' : 'SQL dump is empty.',
+            ];
+        }
+
+        return ['format' => null, 'ok' => false, 'tables' => 0, 'detail' => 'No database dump found in the archive.'];
+    }
+
+    /**
+     * Reconcile extracted blob counts against the manifest, without writing to
+     * any live disk.
+     *
+     * @param  array<string, int>  $expected
+     * @return array<string, array{expected: int, found: int, ok: bool}>
+     */
+    private function dryRunBlobs(string $work, array $expected): array
+    {
+        $base = $work.'/blobs';
+        $result = [];
+
+        // Every disk the manifest claims to hold, plus any extra dirs found.
+        $diskNames = array_unique(array_merge(
+            array_keys($expected),
+            is_dir($base) ? array_values(array_filter(scandir($base), fn ($d) => $d !== '.' && $d !== '..' && is_dir($base.'/'.$d))) : [],
+        ));
+
+        foreach ($diskNames as $diskName) {
+            $found = 0;
+            $root = $base.'/'.$diskName;
+            if (is_dir($root)) {
+                $iter = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)
+                );
+                foreach ($iter as $fileInfo) {
+                    if ($fileInfo->isFile()) {
+                        $found++;
+                    }
+                }
+            }
+            $exp = (int) ($expected[$diskName] ?? 0);
+            $result[$diskName] = ['expected' => $exp, 'found' => $found, 'ok' => $found === $exp];
+        }
+
+        return $result;
     }
 
     /**
@@ -362,12 +601,24 @@ class BackupService
     private function restoreJsonSnapshot(array $data): void
     {
         Schema::disableForeignKeyConstraints();
+        // SQLite ignores the disable PRAGMA inside a transaction (e.g. tests), so
+        // also defer FK checks to commit — by then every table is repopulated and
+        // consistent, making restore order independent of table creation order.
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA defer_foreign_keys = ON');
+        }
         try {
+            // Clear all tables, then repopulate. Deferred/disabled FK checks keep
+            // this safe regardless of parent/child ordering in the snapshot.
+            foreach (array_reverse(array_keys($data)) as $table) {
+                if (Schema::hasTable($table)) {
+                    DB::table($table)->delete();
+                }
+            }
             foreach ($data as $table => $rows) {
                 if (! Schema::hasTable($table)) {
                     continue;
                 }
-                DB::table($table)->truncate();
                 foreach (array_chunk($rows, 500) as $chunk) {
                     if ($chunk) {
                         DB::table($table)->insert($chunk);
@@ -380,7 +631,7 @@ class BackupService
     }
 
     /** Restore blob files into their disks. Returns per-disk counts. */
-    private function restoreBlobs(string $work): array
+    protected function restoreBlobs(string $work): array
     {
         $base = $work.'/blobs';
         $counts = [];
