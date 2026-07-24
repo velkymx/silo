@@ -13,6 +13,18 @@ async function login(page: import('@playwright/test').Page) {
     await page.goto('/');
 }
 
+// Upload one file so tests have a row to act on (a fresh DB has none).
+async function uploadFile(page: import('@playwright/test').Page, name: string) {
+    const png = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+    );
+    await page.getByRole('button', { name: 'Upload' }).first().click();
+    await page.locator('.modal.show input[type=file]').setInputFiles({ name, mimeType: 'image/png', buffer: png });
+    // Upload auto-starts and the modal auto-closes once done.
+    await expect(page.locator('.modal.show')).toHaveCount(0);
+}
+
 test('login form: labels, submit button, and error are accessible', async ({ page }) => {
     await page.goto('/login');
 
@@ -35,6 +47,10 @@ test('login form: labels, submit button, and error are accessible', async ({ pag
 
 test('register form: all fields labelled and required markers present', async ({ page }) => {
     await page.goto('/register');
+    // Wait for the SPA to hydrate (cold CI first-load can lag past the default
+    // assertion timeout) before probing labels.
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('button', { name: /register/i })).toBeVisible();
 
     await expect(page.getByLabel('Name')).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
@@ -59,9 +75,13 @@ test('upload modal: input labelled and focus moves into modal on open', async ({
 test('context menu: keyboard navigation and Escape dismiss work', async ({ page }) => {
     await login(page);
 
+    // Upload a file so there's a row to act on (fresh DB has none).
+    const fname = `ctx-${Date.now()}.png`;
+    await uploadFile(page, fname);
+
     // Right-click the file name cell (the context menu is wired on the FileItem
     // in that cell, not the whole row).
-    const nameCell = page.locator('table tbody tr').first().locator('td').nth(1);
+    const nameCell = page.locator('table tbody tr', { hasText: fname }).first().locator('td').nth(1);
     await expect(nameCell).toBeVisible();
     await nameCell.click({ button: 'right' });
 

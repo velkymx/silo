@@ -68,15 +68,22 @@ test('bulk select and delete in Photos page', async ({ page }) => {
     await login(page);
     await page.goto('/photos');
 
-    // Enter select mode.
-    await page.getByRole('button', { name: /select/i }).first().click();
+    // Upload a photo so there's something to select (fresh DB has none).
+    const png = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+    );
+    await page.getByRole('button', { name: 'Upload photos' }).click();
+    await page.locator('.modal.show input[type=file]').setInputFiles({ name: `ph-${Date.now()}.png`, mimeType: 'image/png', buffer: png });
+    await page.locator('.modal.show').getByRole('button', { name: 'Upload' }).click();
+    await expect(page.locator('.modal.show')).toHaveCount(0);
 
-    // Click the first photo thumbnail to select it.
-    const firstThumb = page.locator('button.photo-thumb').first();
-    await expect(firstThumb).toBeVisible();
-    await firstThumb.click();
+    // Select the first photo via its hover check button.
+    const thumb = page.locator('button.photo-thumb').first();
+    await expect(thumb).toBeVisible();
+    await thumb.hover();
+    await page.getByRole('button', { name: /^Select / }).first().click();
 
-    // A selection count or batch toolbar should appear.
-    const selInfo = page.locator('.alert').or(page.getByText(/selected/i));
-    await expect(selInfo.first()).toBeVisible();
+    // The batch trash action becomes available once a photo is selected.
+    await expect(page.getByRole('button', { name: /move to trash|delete|trash/i }).first()).toBeVisible();
 });
