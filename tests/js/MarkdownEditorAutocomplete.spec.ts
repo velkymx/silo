@@ -18,8 +18,11 @@ vi.mock('@toast-ui/editor', () => ({
         _md = '';
         _sel: number[][] = [[0, 0], [0, 0]];
         _change: (() => void) | null = null;
+        _mode = 'wysiwyg';
         constructor(o: { initialValue: string }) { h.editorCtor(o); this._md = o.initialValue ?? ''; h.editor = this; }
         on(evt: string, cb: () => void) { if (evt === 'change') this._change = cb; }
+        isMarkdownMode() { return this._mode === 'markdown'; }
+        changeMode(mode: string) { this._mode = mode; }
         getMarkdown() { return this._md; }
         setMarkdown(v: string) { this._md = v; }
         getSelection() { return this._sel; }

@@ -22,8 +22,11 @@ vi.mock('@toast-ui/editor', () => ({
     default: class {
         _md: string;
         _change: (() => void) | null = null;
+        _mode = 'wysiwyg';
         constructor(o: { initialValue: string }) { h.editorCtor(o); this._md = o.initialValue; h.editor = this; }
         on(evt: string, cb: () => void) { if (evt === 'change') this._change = cb; }
+        isMarkdownMode() { return this._mode === 'markdown'; }
+        changeMode(mode: string) { this._mode = mode; }
         getMarkdown() { return this._md; }
         setMarkdown(v: string) { h.setMarkdown(v); this._md = v; }
         destroy() {}
