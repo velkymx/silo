@@ -18,7 +18,7 @@ async function login(page: import('@playwright/test').Page) {
 // does not register under the Playwright runner, so the batch delete no-ops here.
 // The single-item trash (smoke) and Photos batch delete both pass. Skipped until
 // the checkbox-selection interaction is understood; feature itself is verified.
-test.fixme('bulk select and trash in file list view', async ({ page }) => {
+test('bulk select and trash in file list view', async ({ page }) => {
     await login(page);
 
     // Upload two files so there's something to select.
@@ -52,12 +52,11 @@ test.fixme('bulk select and trash in file list view', async ({ page }) => {
     const toolbar = page.locator('[data-testid="batch-actions"]').or(page.getByText('selected'));
     await expect(toolbar.first()).toBeVisible();
 
-    // Delete the selection.
+    // Delete the selection, then confirm in the in-app dialog. The dialog opens
+    // asynchronously — wait for its button (a bare count() check races the slower
+    // CI runner and skips the confirm, leaving the file untrashed).
     await page.getByRole('button', { name: /delete/i }).click();
-    const confirmBtn = page.locator('.modal.show button:has-text("Move to trash")').or(
-        page.locator('.modal.show button:has-text("Delete")'),
-    );
-    if (await confirmBtn.count()) await confirmBtn.first().click();
+    await page.locator('.modal.show').getByRole('button', { name: 'Move to trash' }).click();
 
     // The selected file leaves the list once moved to trash (durable effect —
     // the confirmation toast is transient and races the list refresh).
