@@ -22,7 +22,7 @@ async function loadMore(): Promise<void> {
         const last = older.value.length ? older.value[older.value.length - 1] : props.posts[props.posts.length - 1];
         const params = new URLSearchParams({ before: String(last.id) });
         if (props.wallUserId) params.set('wall_user_id', String(props.wallUserId));
-        const data = await http.get(`/wall?${params}`);
+        const data = await http.get<{ posts: WallPostShape[]; hasMore: boolean }>(`/wall?${params}`);
         const known = new Set([...props.posts, ...older.value].map((p) => p.id));
         older.value.push(...(data?.posts ?? []).filter((p: WallPostShape) => !known.has(p.id)));
         hasMore.value = !!data?.hasMore;
