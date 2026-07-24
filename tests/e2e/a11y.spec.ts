@@ -82,12 +82,14 @@ test('context menu: keyboard navigation and Escape dismiss work', async ({ page 
     const fname = `ctx-${Date.now()}.png`;
     await uploadFile(page, fname);
 
-    // Right-click the file name text itself — the context menu is wired on the
-    // FileItem, and targeting the name guarantees the event lands on it (a cell
-    // centre can miss the FileItem on some renderers).
-    const nameText = page.locator('table tbody tr', { hasText: fname }).first().getByText(fname);
-    await expect(nameText).toBeVisible();
-    await nameText.click({ button: 'right' });
+    // Open the context menu by dispatching a `contextmenu` event on the name
+    // cell (which carries the @contextmenu handler). locator.click({button:
+    // 'right'}) does NOT emit a contextmenu event under headless Chromium on
+    // Linux (CI), so the menu never opens there — dispatchEvent is reliable
+    // cross-platform.
+    const nameCell = page.locator('table tbody tr', { hasText: fname }).first().locator('.fm-name-cell');
+    await expect(nameCell).toBeVisible();
+    await nameCell.dispatchEvent('contextmenu');
 
     // Scope to the context menu specifically — [role="menu"] also matches the
     // notification dropdown.
