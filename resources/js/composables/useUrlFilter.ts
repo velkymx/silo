@@ -1,4 +1,4 @@
-import { ref, watch, onBeforeUnmount } from 'vue';
+import { ref, watch, onBeforeUnmount, getCurrentInstance } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 interface UseUrlFilterOptions<T extends Record<string, unknown>> {
@@ -51,9 +51,14 @@ export function useUrlFilter<T extends Record<string, unknown>>({
         { deep: true },
     );
 
-    onBeforeUnmount(() => {
-        if (timer) clearTimeout(timer);
-    });
+    // Guard so the composable can also be exercised outside a component setup
+    // (unit tests call the factory directly) without Vue warning about a
+    // lifecycle hook with no active instance.
+    if (getCurrentInstance()) {
+        onBeforeUnmount(() => {
+            if (timer) clearTimeout(timer);
+        });
+    }
 
     return { filters, setFilter, clearFilters, isDirty };
 }

@@ -33,6 +33,8 @@ vi.mock('@/Components/EditorModal.vue', () => ({
 vi.mock('@/Components/ShareModal.vue', () => ({ default: { name: 'ShareModal', template: '<div />' } }));
 vi.mock('@/Components/QuickLookModal.vue', () => ({ default: { name: 'QuickLookModal', template: '<div />' } }));
 vi.mock('@/Components/UploadModal.vue', () => ({ default: { name: 'UploadModal', template: '<div />' } }));
+// triggerDownload clicks a transient <a href download>; jsdom can't navigate.
+vi.mock('@/lib/download', () => ({ triggerDownload: vi.fn() }));
 
 import FilesIndex from '@/Pages/Files/Index.vue';
 import { useDialogHost } from '@/composables/useConfirm';

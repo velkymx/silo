@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { ref } from 'vue';
 
-vi.mock('@velkymx/vibeui', () => ({ useColorMode: () => ({ colorMode: { value: 'light' } }) }));
+// colorMode must be a real ref — MarkdownEditor watch()es it, and a plain
+// { value } object is not a valid watch source.
+vi.mock('@velkymx/vibeui', () => ({ useColorMode: () => ({ colorMode: ref('light') }) }));
 
 import MarkdownEditor from '@/Components/MarkdownEditor.vue';
 

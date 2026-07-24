@@ -15,10 +15,12 @@ const passthrough = (name: string, scope: Record<string, unknown> = {}) => ({
     },
 });
 
-// <input>-like model stub.
+// <input>-like model stub. `size` is declared as a prop (not forwarded) — the
+// real Vibe inputs consume it for bootstrap sizing (sm/lg); leaking it to the
+// native <input> throws "value sm is invalid" since input.size wants an integer.
 const inputStub = (name: string, type = 'text') => ({
     name,
-    props: ['modelValue'],
+    props: ['modelValue', 'size'],
     emits: ['update:modelValue'],
     template: `<input data-stub="${name}" type="${type}" :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
 });
@@ -63,6 +65,8 @@ const components: Record<string, any> = {
     },
     VibeAutocomplete: inputStub('VibeAutocomplete'),
     VibeFormWysiwyg: inputStub('VibeFormWysiwyg'),
+    // Range slider (min/max/step/aria-label fall through as valid range attrs).
+    VibeSlider: inputStub('VibeSlider', 'range'),
 
     // Modal: render header/default/footer slots (so their handlers wire up).
     VibeModal: {

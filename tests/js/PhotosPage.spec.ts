@@ -14,6 +14,9 @@ vi.mock('@inertiajs/vue3', () => ({
 }));
 vi.mock('vue-advanced-cropper', () => ({ Cropper: { name: 'Cropper', template: '<div class="cropper-stub" />' } }));
 vi.mock('vue-advanced-cropper/dist/style.css', () => ({}));
+// triggerDownload builds a transient <a href download> and clicks it; jsdom
+// can't navigate, so stub it out (the Download menu test only asserts no throw).
+vi.mock('@/lib/download', () => ({ triggerDownload: vi.fn() }));
 
 import Photos from '@/Pages/Photos/Index.vue';
 import { useDialogHost } from '@/composables/useConfirm';
