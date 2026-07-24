@@ -30,10 +30,14 @@ watch(open, async (v) => {
         }
         await nextTick();
         focusableItems()[0]?.focus();
-        document.addEventListener('keydown', onKey);
+        // Capture phase: the menu reuses Bootstrap's .dropdown-menu/.dropdown-item
+        // classes, so Bootstrap's global (bubble-phase) dropdown key handler would
+        // otherwise hijack Arrow/Escape — opening the notification dropdown and
+        // swallowing Escape. Running first + stopping propagation keeps control here.
+        document.addEventListener('keydown', onKey, true);
         window.addEventListener('scroll', close, true);
     } else {
-        document.removeEventListener('keydown', onKey);
+        document.removeEventListener('keydown', onKey, true);
         window.removeEventListener('scroll', close, true);
         returnFocus?.focus();
     }
@@ -48,9 +52,10 @@ function onSelect(item: MenuItem): void {
     close();
 }
 function onKey(e: KeyboardEvent): void {
-    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); close(); return; }
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();
+    e.stopImmediatePropagation();
     const items = focusableItems();
     if (!items.length) return;
     const cur = items.indexOf(document.activeElement as HTMLElement);
@@ -63,7 +68,7 @@ function onKey(e: KeyboardEvent): void {
 }
 
 onBeforeUnmount(() => {
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('scroll', close, true);
 });
 </script>

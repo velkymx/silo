@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { fmtBytes } from '../lib/format';
 import { useFileUpload } from '../composables/useFileUpload';
@@ -47,8 +47,8 @@ const overQuota = computed(() =>
 );
 
 // Auto-close once every item has settled and at least one succeeded.
-const allSettled = computed(() => items.value.length > 0
-    && items.value.every(i => i.state === 'done' || i.state === 'error' || i.state === 'cancelled'));
+const allSettled = computed(() => items.length > 0
+    && items.every(i => i.state === 'done' || i.state === 'error' || i.state === 'cancelled'));
 let closeTimer = null;
 function maybeCloseOnAllDone() {
     if (allSettled.value && doneCount.value > 0) {
@@ -64,6 +64,8 @@ function maybeCloseOnAllDone() {
         }, 600);
     }
 }
+// Drive the auto-close: re-check whenever items settle or a new one completes.
+watch([allSettled, doneCount], maybeCloseOnAllDone);
 </script>
 
 <template>

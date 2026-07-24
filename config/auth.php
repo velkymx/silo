@@ -112,4 +112,17 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Login Rate Limit
+    |--------------------------------------------------------------------------
+    |
+    | Max login attempts per minute for the /login endpoint. Defaults to 5 for
+    | credential-stuffing protection; the E2E suite raises it (many serial
+    | logins in under a minute would otherwise trip the throttle).
+    |
+    */
+
+    'login_rate_limit' => env('LOGIN_RATE_LIMIT', 5),
+
 ];

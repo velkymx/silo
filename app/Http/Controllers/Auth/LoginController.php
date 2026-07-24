@@ -42,7 +42,7 @@ class LoginController extends Controller
 
         // Rate-limit the login endpoint (on top of the per-credential
         // ThrottlesLogins lockout) against credential stuffing.
-        $this->middleware('throttle:5,1')->only('login');
+        $this->middleware('throttle:' . config('auth.login_rate_limit') . ',1')->only('login');
     }
 
     /**

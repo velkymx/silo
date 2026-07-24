@@ -15,7 +15,9 @@ async function login(page) {
     await page.fill('input[type=email]', EMAIL);
     await page.fill('input[type=password]', PASSWORD);
     await page.click('button[type=submit]');
-    await page.waitForURL('**/');
+    // Login redirects to /dashboard; land on the file manager (app root).
+    await page.waitForURL('**/dashboard');
+    await page.goto('/');
 }
 
 test('image gallery: lightbox opens, next works, filmstrip on-screen', async ({ page }) => {
@@ -27,10 +29,10 @@ test('image gallery: lightbox opens, next works, filmstrip on-screen', async ({ 
         mimeType: 'image/png',
         buffer: Buffer.from(b64, 'base64'),
     }));
-    await page.getByText('Upload', { exact: false }).first().click();
+    await page.getByRole('button', { name: 'Upload' }).first().click();
     await page.locator('.modal.show input[type=file]').setInputFiles(files);
-    await page.locator('.modal.show button:has-text("Upload")').click();
-    await expect(page.getByText('Files uploaded successfully!')).toBeVisible();
+    // Upload auto-starts on file pick; the modal auto-closes when it finishes.
+    await expect(page.locator('.modal.show')).toHaveCount(0);
 
     // Go to the Photos gallery.
     await page.goto('/photos');
