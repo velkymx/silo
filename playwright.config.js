@@ -20,7 +20,7 @@ export default defineConfig({
         // workers. A single worker starves under a real page load (HTML + assets
         // + XHR in flight at once), hanging requests and causing 30s timeouts.
         command:
-            'php artisan migrate --force && php artisan db:seed --class=E2ESeeder --force && QUEUE_CONNECTION=sync LOGIN_RATE_LIMIT=1000 PHP_CLI_SERVER_WORKERS=4 php artisan serve --port=8811 --no-reload',
+            'php artisan migrate --force && php artisan db:seed --class=E2ESeeder --force && QUEUE_CONNECTION=sync LOGIN_RATE_LIMIT=1000 ALLOW_REGISTRATION=true PHP_CLI_SERVER_WORKERS=4 php artisan serve --port=8811 --no-reload',
         url: 'http://127.0.0.1:8811/login',
         timeout: 60000,
         reuseExistingServer: true,

@@ -21,8 +21,11 @@ async function uploadFile(page: import('@playwright/test').Page, name: string) {
     );
     await page.getByRole('button', { name: 'Upload' }).first().click();
     await page.locator('.modal.show input[type=file]').setInputFiles({ name, mimeType: 'image/png', buffer: png });
-    // Upload auto-starts and the modal auto-closes once done.
+    // Upload auto-starts and the modal auto-closes once done, then the list
+    // soft-reloads — wait for it to settle so the new row is interactive.
     await expect(page.locator('.modal.show')).toHaveCount(0);
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('table tbody tr', { hasText: name })).toBeVisible();
 }
 
 test('login form: labels, submit button, and error are accessible', async ({ page }) => {
