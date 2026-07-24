@@ -7,7 +7,14 @@ const props = defineProps<{ wallUserId?: number | null }>();
 const body = ref('');
 const posting = ref(false);
 
-const empty = computed(() => body.value.replace(/<[^>]*>/g, '').trim() === '');
+// Empty when the editor holds no visible text. Parse the HTML and read its
+// textContent rather than stripping tags with a regex — a regex tag-strip is
+// fragile (an unterminated `<script` can survive) and flagged by scanners. The
+// value is only used to gate the Post button; the rendered body is sanitised
+// separately in WallPostCard.
+const empty = computed(() =>
+    (new DOMParser().parseFromString(body.value, 'text/html').body.textContent ?? '').trim() === '',
+);
 
 function post(): void {
     if (empty.value || posting.value) return;
