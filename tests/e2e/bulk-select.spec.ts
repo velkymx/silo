@@ -13,11 +13,6 @@ async function login(page: import('@playwright/test').Page) {
     await page.goto('/');
 }
 
-// KNOWN ISSUE: the list-view batch trash works in manual/scripted reproduction
-// (checkbox select → batch delete → row leaves the list, 302), but the selection
-// does not register under the Playwright runner, so the batch delete no-ops here.
-// The single-item trash (smoke) and Photos batch delete both pass. Skipped until
-// the checkbox-selection interaction is understood; feature itself is verified.
 test('bulk select and trash in file list view', async ({ page }) => {
     await login(page);
 
@@ -42,11 +37,13 @@ test('bulk select and trash in file list view', async ({ page }) => {
     const listToggle = page.getByRole('button', { name: /list/i }).or(page.locator('[aria-label="List view"]'));
     if (await listToggle.count()) await listToggle.first().click();
 
-    // Select the first row via its hover checkbox column.
+    // Select the first row via its hover checkbox column. VibeUI 1.3 puts the
+    // passed class on the <input> itself rather than a wrapper, so target the
+    // checkbox by its accessible name instead of a descendant selector.
     const firstRow = page.locator('table tbody tr', { hasText: names[0] });
     await expect(firstRow).toBeVisible();
     await firstRow.hover();
-    await firstRow.locator('.st-select-check input[type="checkbox"]').first().check();
+    await firstRow.getByRole('checkbox', { name: /^Select / }).first().check();
 
     // BatchActions toolbar should appear.
     const toolbar = page.locator('[data-testid="batch-actions"]').or(page.getByText('selected'));
