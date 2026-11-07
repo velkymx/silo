@@ -23,4 +23,13 @@ describe('sanitizeHtml', () => {
         const out = sanitizeHtml('<a href="javascript:alert(1)">x</a>');
         expect(out.toLowerCase()).not.toContain('javascript:');
     });
+
+    it('keeps the signed, same-origin RSS image proxy URL in img src', () => {
+        // Inline article images are rewritten server-side to /rss/image?...;
+        // the defense-in-depth pass must not strip the signature query param.
+        const src = 'http://localhost/rss/image?url=https%3A%2F%2Fex.com%2Fa.png&amp;signature=abc123';
+        const out = sanitizeHtml(`<p>Hi</p><img src="${src}" alt="x">`);
+        expect(out).toContain('/rss/image');
+        expect(out).toContain('signature=abc123');
+    });
 });

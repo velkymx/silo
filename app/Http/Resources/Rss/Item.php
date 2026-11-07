@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Rss;
 
 use App\Models\RssItem;
+use App\Services\Rss\ImageProxy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -38,6 +39,7 @@ class Item extends JsonResource
     {
         /** @var RssItem $item */
         $item = $this->resource;
+        $images = app(ImageProxy::class);
 
         $base = [
             'id' => $item->id,
@@ -49,7 +51,7 @@ class Item extends JsonResource
             'excerpt' => $item->excerpt,
             'author' => $item->author,
             'categories' => $item->categories ?? [],
-            'image_url' => $item->image_url,
+            'image_url' => $images->url($item->image_url),
             'url' => $item->url,
             'published_at' => optional($item->published_at)->toIso8601String(),
             'is_read' => (bool) $item->is_read,
@@ -57,7 +59,9 @@ class Item extends JsonResource
         ];
 
         if ($this->full) {
-            $base['content'] = $item->content;
+            // Inline article images are rewritten at render time so they too
+            // come from our origin instead of hotlinking the feed's hosts.
+            $base['content'] = $images->rewriteContent($item->content);
             $base['feed_site_url'] = $item->feed?->site_url;
         }
 
