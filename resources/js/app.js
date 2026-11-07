@@ -1,13 +1,15 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import '@velkymx/vibeui/dist/style.css'; // VibeUI component styles (slider, etc.)
+import 'quill/dist/quill.snow.css'; // VibeFormWysiwyg editor theme
 import 'material-icons/iconfont/material-icons.css'; // jspreadsheet toolbar glyphs (bundled, no CDN)
 import '../css/theme.css';
 import './bootstrap';
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
-import VibeUI, { useColorMode } from '@velkymx/vibeui';
+import VibeUI, { makeDomPurifySanitizer, useColorMode } from '@velkymx/vibeui';
+import DOMPurify from 'dompurify';
 // Restore the saved theme and follow the OS in "auto" mode.
 useColorMode().initColorMode();
 
@@ -29,7 +31,13 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(VibeUI);
+            .use(VibeUI, {
+                // VibeFormWysiwyg loads Quill lazily; Quill stays out of the main chunk.
+                wysiwyg: {
+                    quillLoader: () => import('quill'),
+                    sanitizer: makeDomPurifySanitizer(DOMPurify),
+                },
+            });
 
         app.config.errorHandler = (err, _instance, info) => {
             console.error('[Vue]', info, err);
