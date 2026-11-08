@@ -66,6 +66,15 @@ class PublicShareController extends Controller
         $link = $this->resolve($token);
         $this->assertUnlocked($link);
 
+        // A view-only link may still preview inline-renderable media, but raw()
+        // serves every other type as an attachment — effectively a download.
+        // Enforce the flag here too, not just in download(), so it cannot be
+        // bypassed through the preview route.
+        abort_unless(
+            FileResponse::inlineAllowed($link->file->mime) || $link->allow_download,
+            403,
+        );
+
         abort_unless($link->file->status === \App\Models\File::STATUS_READY || $link->file->referenced, 404);
         abort_unless(Storage::disk($link->file->disk)->exists($link->file->path), 404);
 

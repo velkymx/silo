@@ -14,12 +14,12 @@ class ShareLinkTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function storedFile(User $owner): File
+    private function storedFile(User $owner, string $name = 'a.png', string $mime = 'image/png'): File
     {
-        Storage::disk('public')->put($path = 'uploads/'.$owner->id.'/a.png', 'imgbytes');
+        Storage::disk('public')->put($path = 'uploads/'.$owner->id.'/'.$name, 'imgbytes');
 
         return File::factory()->for($owner, 'owner')->create([
-            'name' => 'a.png', 'path' => $path, 'mime' => 'image/png',
+            'name' => $name, 'path' => $path, 'mime' => $mime,
         ]);
     }
 
@@ -52,6 +52,29 @@ class ShareLinkTest extends TestCase
 
         $this->get(route('shares.public.raw', $link->token))->assertOk();
         $this->get(route('shares.public.download', $link->token))->assertForbidden();
+    }
+
+    public function test_view_only_link_cannot_download_a_non_previewable_file_via_raw(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $file = $this->storedFile($owner, 'report.zip', 'application/zip');
+        $link = ShareLink::factory()->viewOnly()->create(['file_id' => $file->id]);
+
+        // raw() serves non-previewable types as an attachment, i.e. a download.
+        // The view-only flag must be enforced there too, not just in download().
+        $this->get(route('shares.public.raw', $link->token))->assertForbidden();
+        $this->get(route('shares.public.download', $link->token))->assertForbidden();
+    }
+
+    public function test_downloadable_link_can_stream_a_non_previewable_file_via_raw(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $file = $this->storedFile($owner, 'report.zip', 'application/zip');
+        $link = ShareLink::factory()->create(['file_id' => $file->id, 'allow_download' => true]);
+
+        $this->get(route('shares.public.raw', $link->token))->assertOk();
     }
 
     public function test_expired_link_is_not_found(): void
