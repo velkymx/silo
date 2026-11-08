@@ -9,6 +9,28 @@ jobs:
   php-tests:
     name: PHP tests
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: filemanager_test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    # phpunit.xml forces DB_CONNECTION=mysql + DB_DATABASE=filemanager_test;
+    # this job-level env supplies the MySQL 8.0 service credentials.
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: filemanager_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v5
 
@@ -16,7 +38,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          extensions: gd, exif, fileinfo, pdo_sqlite, sqlite3, mbstring, bcmath, zip
+          extensions: gd, exif, fileinfo, pdo_mysql, mysql, mbstring, bcmath, zip
           coverage: none
 
       - name: Install Composer dependencies
@@ -26,6 +48,10 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h127.0.0.1 -proot --silent; do sleep 2; done
 
       - name: Run tests
         run: php artisan test
@@ -46,6 +72,13 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: filemanager_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v5
 
@@ -59,18 +92,10 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare environment (MySQL)
+      - name: Prepare environment
         run: |
           cp .env.example .env
           php artisan key:generate
-          {
-            echo "DB_CONNECTION=mysql"
-            echo "DB_HOST=127.0.0.1"
-            echo "DB_PORT=3306"
-            echo "DB_DATABASE=filemanager_test"
-            echo "DB_USERNAME=root"
-            echo "DB_PASSWORD=root"
-          } >> .env
 
       - name: Wait for MySQL
         run: |
@@ -103,6 +128,26 @@ jobs:
   e2e:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: filemanager_test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: filemanager_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v5
 
@@ -110,7 +155,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          extensions: gd, exif, fileinfo, pdo_sqlite, sqlite3, mbstring, bcmath, zip
+          extensions: gd, exif, fileinfo, pdo_mysql, mysql, mbstring, bcmath, zip
           coverage: none
 
       - name: Setup Node
@@ -123,14 +168,15 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           npm ci
 
-      - name: Prepare environment (SQLite + file drivers)
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h127.0.0.1 -proot --silent; do sleep 2; done
+
+      - name: Prepare environment (MySQL + file drivers)
         run: |
           cp .env.example .env
           php artisan key:generate
-          touch database/database.sqlite
           {
-            echo "DB_CONNECTION=sqlite"
-            echo "DB_DATABASE=${{ github.workspace }}/database/database.sqlite"
             echo "SESSION_DRIVER=file"
             echo "CACHE_STORE=file"
             echo "QUEUE_CONNECTION=sync"

@@ -205,6 +205,14 @@ class BackupService
      */
     private function dumpDatabase(): array
     {
+        // Tests have always used the portable JSON snapshot (SQLite :memory:
+        // could not be copied verbatim). Keep that contract on every driver so
+        // a test's open transaction is never disturbed by native dump/restore
+        // DDL — production still uses the driver's native dump below.
+        if (app()->runningUnitTests()) {
+            return $this->jsonSnapshot();
+        }
+
         $driver = config('database.default');
         $config = config("database.connections.{$driver}");
 
@@ -223,8 +231,14 @@ class BackupService
 
         try {
             if (($config['driver'] ?? null) === 'mysql') {
+                // --single-transaction takes a consistent InnoDB snapshot without
+                // LOCK TABLES. The default lock would wait forever on the metadata
+                // lock held by an open transaction (e.g. RefreshDatabase in tests,
+                // or a long-running write in production).
                 $this->run([
                     'mysqldump',
+                    '--single-transaction',
+                    '--skip-lock-tables',
                     '--host='.($config['host'] ?? '127.0.0.1'),
                     '--port='.($config['port'] ?? 3306),
                     '--user='.($config['username'] ?? 'root'),
@@ -259,14 +273,19 @@ class BackupService
     private function jsonSnapshot(): array
     {
         $tmp = tempnam(sys_get_temp_dir(), 'dbjson_');
+        $driver = config('database.default');
+        $database = config("database.connections.{$driver}.database");
+        // On some MySQL/MariaDB builds getTables() is not schema-scoped and
+        // returns every database the account can see. Never snapshot those.
         $tables = collect(Schema::getTables())
+            ->filter(fn (array $t) => ! isset($t['schema']) || $t['schema'] === $database)
             ->pluck('name');
 
         $data = [];
         foreach ($tables as $table) {
             $data[$table] = DB::table($table)->get()->map(fn ($r) => (array) $r)->all();
         }
-        file_put_contents($tmp, json_encode($data));
+        file_put_contents($tmp, json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE));
 
         return ['abs' => $tmp, 'name' => 'database.json', 'cleanup' => true];
     }
