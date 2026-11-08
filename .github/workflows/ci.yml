@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    # Release tags run the same full suite (PHP on MySQL, frontend, E2E)
+    # before the GitHub release is published.
+    tags: ['v*']
   pull_request:
 
 jobs:
