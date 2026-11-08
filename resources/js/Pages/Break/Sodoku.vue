@@ -237,9 +237,13 @@ function setValue(v: number): void {
     pushHistory();
     state.board[r][c] = v;
     clearCellCharges(state, r, c);
+    // Record the wrong entry straight away — the 3-mistake limit must apply
+    // while playing, not only when the player thinks to press Check.
+    chargeMistakes(state, state.board, state.given, SOLUTION.value);
+    loseIfLimitReached();
     state.pencil[r][c] = '';
     HINT.value = null;
-    advanceAfterMove(r, c);
+    if (STATUS.value !== 'lost') advanceAfterMove(r, c);
 }
 
 function erase(): void {
@@ -296,19 +300,21 @@ function finishGame(): void {
     }
 }
 
-function check(): void {
-    if (STATUS.value === 'won' || STATUS.value === 'lost') return;
-
-    // Charge one mistake per wrong entry not charged by an earlier Check.
-    // Mistakes are cumulative: three separate wrong entries (each fixed
-    // before the next) reach the limit, while re-checking an unchanged
-    // board never double-charges.
-    chargeMistakes(state, state.board, state.given, SOLUTION.value);
-
-    if (state.mistakes >= MAX_MISTAKES) {
+function loseIfLimitReached(): void {
+    if (state.mistakes >= MAX_MISTAKES && STATUS.value !== 'lost') {
         STATUS.value = 'lost';
         state.elapsedMs += NOW.value - state.startedAt;
     }
+}
+
+function check(): void {
+    if (STATUS.value === 'won' || STATUS.value === 'lost') return;
+
+    // Wrong entries are normally charged as they are entered; this also
+    // charges any wrong cells restored from a saved game that were never
+    // charged, without ever double-charging the same entry.
+    chargeMistakes(state, state.board, state.given, SOLUTION.value);
+    loseIfLimitReached();
 }
 
 function useHint(): void {

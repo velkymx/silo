@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Sodoku from '@/Pages/Break/Sodoku.vue';
 
@@ -69,6 +70,28 @@ describe('Sodoku mistake tracking', () => {
         press('0');
         press('4');
         await clickCheck(wrapper);
+        expect(wrapper.text()).toContain('3 / 3');
+        expect(wrapper.text()).toContain('Three mistakes');
+
+        wrapper.unmount();
+    });
+
+    it('reaches the limit from wrong entries alone, without pressing Check', async () => {
+        const wrapper = mountGame();
+
+        press('ArrowRight');
+        press('2'); // first wrong entry
+        await nextTick();
+        expect(wrapper.text()).toContain('1 / 3');
+
+        press('ArrowLeft');
+        press('0');
+        press('3'); // second
+        press('ArrowLeft');
+        press('0');
+        press('4'); // third -> game over
+        await nextTick();
+
         expect(wrapper.text()).toContain('3 / 3');
         expect(wrapper.text()).toContain('Three mistakes');
 
