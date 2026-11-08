@@ -20,6 +20,7 @@ use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\PublicShareController;
 use App\Http\Controllers\Rss\FeedController as RssFeedController;
+use App\Http\Controllers\Rss\ImageController as RssImageController;
 use App\Http\Controllers\Rss\ItemController as RssItemController;
 use App\Http\Controllers\Rss\NotificationController as RssNotificationController;
 use App\Http\Controllers\Rss\OpmlController as RssOpmlController;
@@ -246,6 +247,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/items/{item}', [RssItemController::class, 'show'])->name('items.show');
         Route::get('/feeds/{feed}/favicon', [\App\Http\Controllers\Rss\FeedController::class, 'favicon'])->name('feeds.favicon');
+        // Signed, auth-gated proxy for feed-controlled images (featured
+        // thumbnails + inline article images) so they load from 'self'.
+        Route::get('/image', [RssImageController::class, 'show'])->middleware('signed')->name('image');
         Route::post('/items/{item}/read', [RssItemController::class, 'markRead'])->name('items.read');
         Route::post('/items/{item}/unread', [RssItemController::class, 'markUnread'])->name('items.unread');
         Route::post('/items/{item}/star', [RssItemController::class, 'toggleStar'])->name('items.star');

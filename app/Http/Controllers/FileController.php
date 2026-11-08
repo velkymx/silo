@@ -11,6 +11,7 @@ use App\Models\RssItem;
 use App\Models\Tag;
 use App\Services\Audit;
 use App\Services\QuotaService;
+use App\Services\Rss\ImageProxy;
 use App\Support\FileResponse;
 use App\Support\Uploads;
 use Illuminate\Http\Request;
@@ -110,6 +111,7 @@ class FileController extends Controller
             // so it has to span every content type. RSS items starred in the
             // RSS reader show up here alongside starred files/folders, with the
             // newest star at the top.
+            $images = app(ImageProxy::class);
             $rssItems = RssItem::ownedBy($userId)
                 ->whereHas('feed', fn ($q) => $q->where('user_id', $userId))
                 ->starred()
@@ -126,7 +128,7 @@ class FileController extends Controller
                     'excerpt' => $i->excerpt,
                     'author' => $i->author,
                     'categories' => $i->categories ?? [],
-                    'image_url' => $i->image_url,
+                    'image_url' => $images->url($i->image_url),
                     'url' => $i->url,
                     'published_at' => optional($i->published_at)->toIso8601String(),
                     'is_read' => (bool) $i->is_read,
