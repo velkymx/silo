@@ -9,6 +9,7 @@ import {
     type Hint,
 } from '../../lib/sodoku/solver';
 import { seedForDate, deterministicId } from '../../lib/sodoku/seed';
+import { chargeMistakes, clearCellCharges } from '../../lib/sodoku/mistakes';
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 type Status = 'playing' | 'won' | 'lost' | 'paused';
@@ -55,6 +56,7 @@ interface SavedState {
     date: string;
     seed: number;
     mistakes: number;
+    chargedWrongKeys: string[]; // wrong entries already charged by Check
     startedAt: number;
     elapsedMs: number;
     history: string[]; // serialized board states for Undo
@@ -72,6 +74,7 @@ function emptyPuzzle(): SavedState {
         date: props.date,
         seed: props.seed,
         mistakes: 0,
+        chargedWrongKeys: [],
         startedAt: Date.now(),
         elapsedMs: 0,
         history: [],
@@ -105,6 +108,7 @@ function tryRestore(): void {
         state.selected = saved.selected;
         state.pencilMode = saved.pencilMode;
         state.mistakes = saved.mistakes;
+        state.chargedWrongKeys = saved.chargedWrongKeys ?? [];
         state.startedAt = saved.startedAt;
         state.elapsedMs = saved.elapsedMs;
         state.history = saved.history;
@@ -232,6 +236,7 @@ function setValue(v: number): void {
     }
     pushHistory();
     state.board[r][c] = v;
+    clearCellCharges(state, r, c);
     state.pencil[r][c] = '';
     HINT.value = null;
     advanceAfterMove(r, c);
@@ -244,6 +249,7 @@ function erase(): void {
     if (state.board[r][c] === 0) return;
     pushHistory();
     state.board[r][c] = 0;
+    clearCellCharges(state, r, c);
     state.pencil[r][c] = '';
 }
 
@@ -291,24 +297,14 @@ function finishGame(): void {
 }
 
 function check(): void {
-    // Re-validate the current board against the solution. Mark wrong
-    // cells by setting board to a negative sentinel that the template
-    // checks. Use the same board but track errors separately.
-    // (Implementation: increment mistakes for any cell that doesn't
-    // match the solution.)
     if (STATUS.value === 'won' || STATUS.value === 'lost') return;
-    let newMistakes = 0;
-    for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-            const v = state.board[r][c];
-            if (v !== 0 && !state.given[r][c] && v !== SOLUTION.value[r][c]) {
-                newMistakes++;
-            }
-        }
-    }
-    if (newMistakes > state.mistakes) {
-        state.mistakes = newMistakes;
-    }
+
+    // Charge one mistake per wrong entry not charged by an earlier Check.
+    // Mistakes are cumulative: three separate wrong entries (each fixed
+    // before the next) reach the limit, while re-checking an unchanged
+    // board never double-charges.
+    chargeMistakes(state, state.board, state.given, SOLUTION.value);
+
     if (state.mistakes >= MAX_MISTAKES) {
         STATUS.value = 'lost';
         state.elapsedMs += NOW.value - state.startedAt;
@@ -328,6 +324,7 @@ function applyHint(): void {
     if (state.given[h.row][h.col]) return;
     pushHistory();
     state.board[h.row][h.col] = h.value;
+    clearCellCharges(state, h.row, h.col);
     state.pencil[h.row][h.col] = '';
     HINT.value = null;
     if (IS_SOLVED.value) {
