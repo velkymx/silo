@@ -14,9 +14,24 @@ class DispatchSavedSearchesTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * PlatformSearch::people() searches every user (the staff directory is
+     * global), not just the owner. A faker name such as "Barbara" would match
+     * a "%bar%" query on MySQL's case-insensitive LIKE and inflate the result
+     * count, so pin the user's searchable fields to values that cannot match
+     * any query term used below.
+     */
+    private function makeUser(): User
+    {
+        return User::factory()->create([
+            'name' => 'Search Owner',
+            'email' => 'search-owner@example.test',
+        ]);
+    }
+
     public function test_first_run_is_silent_and_snapshots_count(): void
     {
-        $user = User::factory()->create();
+        $user = $this->makeUser();
         $feed = RssFeed::factory()->for($user)->create();
         RssItem::factory()->count(5)->create(['feed_id' => $feed->id, 'user_id' => $user->id, 'title' => 'foo']);
         $s = SavedSearch::create(['owner_id' => $user->id, 'name' => 'Foo', 'params' => ['q' => 'foo']]);
@@ -31,7 +46,7 @@ class DispatchSavedSearchesTest extends TestCase
 
     public function test_increased_count_pushes_notification(): void
     {
-        $user = User::factory()->create();
+        $user = $this->makeUser();
         $feed = RssFeed::factory()->for($user)->create();
         RssItem::factory()->count(3)->create(['feed_id' => $feed->id, 'user_id' => $user->id, 'title' => 'bar']);
         $s = SavedSearch::create([
@@ -51,7 +66,7 @@ class DispatchSavedSearchesTest extends TestCase
 
     public function test_unchanged_count_does_not_notify(): void
     {
-        $user = User::factory()->create();
+        $user = $this->makeUser();
         $feed = RssFeed::factory()->for($user)->create();
         RssItem::factory()->count(2)->create(['feed_id' => $feed->id, 'user_id' => $user->id, 'title' => 'baz']);
         $s = SavedSearch::create([
@@ -69,7 +84,7 @@ class DispatchSavedSearchesTest extends TestCase
 
     public function test_decreased_count_does_not_notify(): void
     {
-        $user = User::factory()->create();
+        $user = $this->makeUser();
         $feed = RssFeed::factory()->for($user)->create();
         RssItem::factory()->count(1)->create(['feed_id' => $feed->id, 'user_id' => $user->id, 'title' => 'qux']);
         $s = SavedSearch::create([
@@ -89,7 +104,7 @@ class DispatchSavedSearchesTest extends TestCase
 
     public function test_notification_links_to_search_url(): void
     {
-        $user = User::factory()->create();
+        $user = $this->makeUser();
         $feed = RssFeed::factory()->for($user)->create();
         RssItem::factory()->count(3)->create(['feed_id' => $feed->id, 'user_id' => $user->id, 'title' => 'ping']);
         SavedSearch::create([
